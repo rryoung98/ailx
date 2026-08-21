@@ -102,7 +102,7 @@ describe("scroll cinema CSS gating", () => {
     const media = gated.indexOf("@media (prefers-reduced-motion: no-preference)");
     expect(media).toBeGreaterThan(-1);
     const inner = gated.slice(media);
-    expect(inner).toContain("height: 240vh");
+    expect(inner).toContain("height: 185vh");
     expect(inner).toContain("view-timeline: --hero-scrub block");
     expect(inner).toContain("position: sticky");
     expect(inner).toContain("animation-timeline: --hero-scrub");
