@@ -27,14 +27,6 @@ import { t4Plugin } from "./plugin.js";
 import { decodeT4Checkpoint, encodeT4Checkpoint, type T4CheckpointState } from "./checkpoint.js";
 import type { T4Draft, T4Final, T4Finals } from "./types.js";
 
-const vars: CSSProperties = {
-  ["--bg" as string]: "#0b0d12",
-  ["--fg" as string]: "#e6e9f0",
-  ["--muted" as string]: "#8b93a7",
-  ["--accent" as string]: "#6b46f2", /* AA: 5.55:1 under white button text (was #7c5cff at 4.35:1) */
-  ["--card" as string]: "#121622",
-  ["--border" as string]: "#232a3d",
-};
 
 const panel: CSSProperties = {
   background: "var(--card)",
@@ -49,7 +41,7 @@ const panel: CSSProperties = {
 const mono: CSSProperties = {
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
   fontSize: 13,
-  background: "#0a0c11",
+  background: "var(--bg, #faf8f6)",
   color: "var(--fg)",
   border: "1px solid var(--border)",
   borderRadius: 6,
@@ -184,11 +176,16 @@ export function Runner(props: TrackUIProps) {
     const p = prompt.trim();
     if (!p || submitted || genBusy) return;
     if (!hasKey) {
-      // No key → deterministic offline demo, labeled as such.
+      // No key → deterministic offline demo, labeled as such. Repeating the
+      // same prompt gets a fresh VARIATION (like a real model's sampling):
+      // the nonce is how many drafts already used this exact prompt.
+      const priorSamePrompt = latest.current.drafts.filter(
+        (d) => d.prompt.trim().toLowerCase() === p.toLowerCase(),
+      ).length;
       commitDraft({
         index: latest.current.drafts.length,
         prompt: p,
-        svg: generateImage(p),
+        svg: generateImage(p, priorSamePrompt),
         modelId: IMAGE_MODEL_ID,
         clientTs: now(),
       });
@@ -339,7 +336,6 @@ export function Runner(props: TrackUIProps) {
     return (
       <div
         style={{
-          ...vars,
           background: "var(--bg)",
           color: "var(--fg)",
           minHeight: "100%",
@@ -364,8 +360,8 @@ export function Runner(props: TrackUIProps) {
                 letterSpacing: 0.5,
                 borderRadius: 999,
                 padding: "4px 10px",
-                border: disclosed ? "1px solid #4ade80" : "1px solid var(--border)",
-                color: disclosed ? "#4ade80" : "var(--muted)",
+                border: disclosed ? `1px solid var(--good, #15803d)` : "1px solid var(--border)",
+                color: disclosed ? "var(--good, #15803d)" : "var(--muted)",
               }}
             >
               {disclosed ? "AI-GENERATED · DISCLOSED" : "NO DISCLOSURE ATTACHED"}
@@ -451,7 +447,6 @@ export function Runner(props: TrackUIProps) {
   return (
     <div
       style={{
-        ...vars,
         background: "var(--bg)",
         color: "var(--fg)",
         minHeight: "100%",
@@ -492,7 +487,7 @@ export function Runner(props: TrackUIProps) {
           {hasKey ? (
             <>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "#4ade80" }}>
+                <span style={{ fontSize: 12, color: "var(--good, #15803d)" }}>
                   ● Connected — key stored only in this browser (shared with T1)
                 </span>
                 <button
@@ -538,7 +533,7 @@ export function Runner(props: TrackUIProps) {
             placeholder="e.g. three boats on a storm wave under a gold star, centered"
           />
           {genError && (
-            <p role="alert" style={{ margin: 0, color: "#f87171", fontSize: 13 }}>
+            <p role="alert" style={{ margin: 0, color: "var(--bad, #b91c1c)", fontSize: 13 }}>
               {genError}
             </p>
           )}
@@ -669,7 +664,9 @@ export function Runner(props: TrackUIProps) {
               overflowY: "auto",
             }}
           >
-            {drafts.map((d) => (
+            {/* Newest first — a fresh generation always appears at the top
+                of the gallery, never below the fold. */}
+            {[...drafts].reverse().map((d) => (
               <div
                 key={d.index}
                 style={{
@@ -687,7 +684,7 @@ export function Runner(props: TrackUIProps) {
                   style={{ width: "100%", display: "block", borderRadius: 4 }}
                 />
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                  #{d.index + 1} · {d.prompt.slice(0, 48)}
+                  #{d.index + 1}{d.index === drafts.length - 1 ? " · latest" : ""} · {d.prompt.slice(0, 48)}
                 </span>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button
