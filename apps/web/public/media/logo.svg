@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 96" fill="none" aria-label="AILX">
+  <!-- AILX wordmark: geometric strokes, rounded caps. Mint on green. -->
+  <g stroke="#b7f0cd" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <!-- A -->
+    <path class="lg lg-a" d="M14 82 L40 16 L66 82" />
+    <path class="lg lg-a2" d="M26 56 L54 56" />
+    <!-- I -->
+    <path class="lg lg-i" d="M96 16 L96 82" />
+    <!-- L -->
+    <path class="lg lg-l" d="M130 16 L130 82 L172 82" />
+    <!-- X (accent letter, slightly brighter) -->
+    <path class="lg lg-x1" stroke="#d8ffe8" d="M204 16 L258 82" />
+    <path class="lg lg-x2" stroke="#d8ffe8" d="M258 16 L204 82" />
+  </g>
+</svg>

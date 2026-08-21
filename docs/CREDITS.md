@@ -84,6 +84,17 @@ each item's `provenance` records model, date, and the exact prompt.
 
 ## Site chrome
 
-Hero backdrop (`apps/web/public/media/hero-desk.jpg`): AI-generated
-(gemini-3.1-flash-image), disclosed — decorative only, aria-hidden, never an
-exam item. Provenance: `apps/web/public/media/hero-desk.provenance.json`.
+Hero backdrop (`apps/web/public/media/hero-desk.jpg`, v2 with blank pages):
+AI-generated (gemini-3.1-flash-image), disclosed — decorative only,
+aria-hidden, never an exam item. Provenance:
+`apps/web/public/media/hero-desk.provenance.json` and
+`apps/web/public/media/backdrops.provenance.json`.
+
+Campus aerial (`apps/web/public/media/campus-map.jpg`): AI-generated
+(gemini-3.1-flash-image), decorative map-pan backdrop for the T1–T4
+journey, aria-hidden, never an exam item. Provenance:
+`apps/web/public/media/backdrops.provenance.json`.
+
+AILX wordmark (`apps/web/public/media/logo.svg`): original stroked SVG
+drawn for this project (no third-party source); used by the covering
+loader.

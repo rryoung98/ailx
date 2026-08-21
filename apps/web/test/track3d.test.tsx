@@ -54,6 +54,7 @@ describe("lazy-import boundary (no three in the server graph)", () => {
   it.each([
     "app/page.tsx",
     "lib/track3d/TrackBands.tsx",
+    "lib/track3d/CampusJourney.tsx",
     "lib/track3d/TrackScene.tsx",
     "lib/track3d/registry.ts",
     "lib/track3d/presence.ts",
@@ -67,7 +68,7 @@ describe("lazy-import boundary (no three in the server graph)", () => {
     expect(registry).toContain('import("./scenes")');
     expect(registry).not.toMatch(/^\s*import\s[^;]*from\s+["']\.\/scenes["']/m);
     // no other landing module short-circuits the boundary
-    for (const rel of ["app/page.tsx", "lib/track3d/TrackBands.tsx", "lib/track3d/TrackScene.tsx"]) {
+    for (const rel of ["app/page.tsx", "lib/track3d/TrackBands.tsx", "lib/track3d/CampusJourney.tsx", "lib/track3d/TrackScene.tsx"]) {
       expect(src(rel)).not.toMatch(/from\s+["'][^"']*scenes["']/);
     }
     // and the scenes module is the one place three is allowed
@@ -99,6 +100,29 @@ describe("scene render quality", () => {
     for (const banned of ["lineSegments", "lineBasicMaterial", "EdgesGeometry", "wireframe"]) {
       expect(scenes()).not.toContain(banned);
     }
+  });
+
+  // paper-realism pass (user-reported: "flat dark boxes on cream")
+  it("builds scenes from lit paper surfaces, not flat unlit dark slabs", () => {
+    const s = scenes();
+    expect(s).toContain("meshStandardMaterial");
+    expect(s).toContain("directionalLight");
+    expect(s).toContain("ambientLight");
+    expect(s).toContain('"#fdfcfa"'); // paper white base
+    expect(s).not.toContain("#242220"); // old flat dark slab fill
+    expect(s).not.toContain("0.055, 0.075, 0.106"); // old dark T4 shader base
+  });
+
+  it("cards float over soft blurred shadow planes", () => {
+    const s = scenes();
+    expect(s).toContain("makeShadowTexture");
+    expect(s).toContain("ShadowBlob");
+  });
+
+  it("T3 flips the wrong claim card to its corrected face with a spring check", () => {
+    const s = scenes();
+    expect(s).toContain("easeOutBack");
+    expect(s).toMatch(/rotation\.y = flip \* Math\.PI/);
   });
 });
 

@@ -1,0 +1,17 @@
+{
+  "files": {
+    "hero-desk.jpg": {
+      "prompt": "Photorealistic top-down photo of a warm wooden study desk in soft afternoon light: blank cream notebook pages with no writing, a green fountain pen, scattered printed landscape photographs, a wooden ruler, a ceramic cup of tea, paper clips, blank graph paper with simple hand-drawn line curves only, no letters, no words, no numbers, no labels anywhere. Warm cream and deep green tones, gentle shadows, no people, wide composition.",
+      "note": "replaces garbled-text v1"
+    },
+    "campus-map.jpg": {
+      "prompt": "Aerial drone photograph of a modern green university campus by a river: four distinctive buildings spread across the frame \u2014 a glass studio pavilion (left), a round gallery hall (center-left), a terraced library with reading gardens (center-right), and a media arts building with a curved white roof (right). Connected by tree-lined paths, lawns, a small plaza with umbrellas. Warm afternoon light, photorealistic, no text, no logos, no people close-up. Very wide panoramic composition.",
+      "note": "wide aerial for T1-T4 map-pan parallax"
+    }
+  },
+  "kind": "ai-generated",
+  "model": "google/gemini-3.1-flash-image",
+  "provider": "openrouter/Google AI Studio",
+  "date": "2026-08-21",
+  "disclosure": "Decorative backdrops. AI-generated, disclosed in docs/CREDITS.md, aria-hidden; not exam items."
+}

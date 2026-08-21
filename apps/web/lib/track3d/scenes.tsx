@@ -12,8 +12,13 @@
  * below devicePixelRatio upscales and reads as grain; the budget levers
  * are the paused frameloop and scene size, not DPR.
  *
+ * Look (user-directed "paper realism" pass): every scene is built from
+ * lit paper-white surfaces (meshStandardMaterial under one directional
+ * light + ambient fill) with deep-green accents and soft blurred shadow
+ * planes, floating on the page cream — no flat unlit black slabs.
+ *
  * Anti-grain rules (user-reported): textures get sRGB + mipmaps +
- * anisotropy; edges are THICK GEOMETRY (inverted-hull rims, beam frames),
+ * anisotropy; edges are THICK GEOMETRY (extruded bevels, beam frames),
  * never 1px GL lines, which alias at any DPR.
  */
 import { useMemo, useRef } from "react";
@@ -22,11 +27,13 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { t2VisualMedia } from "../TrackVisuals";
 import type { SceneCanvasProps, SceneId } from "./registry";
 
-/* Paper re-light: ink geometry + deep-green accents read on cream
-   (canvas stays transparent; the page's paper shows through). */
+/* Paper palette: white cards + cream slabs + deep-green accents on the
+   page cream (canvas stays transparent; the paper shows through). */
+const PAPER = "#fdfcfa";
+const CREAM = "#f0e9dd";
+const INK = "#33302b";
 const ACCENT = "#0b6b47";
-const ACCENT_DIM = "#bcd9cc";
-const SLAB = "#242220";
+const ACCENT_SOFT = "#bcd9cc";
 const GOOD = "#0b6b47";
 const BAD = "#b91c1c";
 
@@ -62,7 +69,13 @@ function easeInOut(x: number): number {
   return c * c * (3 - 2 * c);
 }
 
-/** Text stamp/glyph as a canvas-backed sprite texture. */
+/** Springy overshoot for pops (checkmark, stamps). */
+function easeOutBack(x: number): number {
+  const c = Math.min(1, Math.max(0, x));
+  const k = 1.70158;
+  return 1 + (k + 1) * Math.pow(c - 1, 3) + k * Math.pow(c - 1, 2);
+}
+
 function crispTexture<T extends THREE.Texture>(tex: T, maxAniso = 8): T {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.generateMipmaps = true;
@@ -97,148 +110,235 @@ function makeCheckTexture(): THREE.CanvasTexture {
   canvas.height = 128;
   const ctx = canvas.getContext("2d");
   if (ctx) {
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(64, 64, 56, 0, Math.PI * 2);
+    ctx.fill();
     ctx.strokeStyle = GOOD;
     ctx.lineWidth = 14;
     ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(28, 68);
-    ctx.lineTo(54, 96);
-    ctx.lineTo(102, 34);
+    ctx.moveTo(34, 68);
+    ctx.lineTo(56, 92);
+    ctx.lineTo(96, 40);
     ctx.stroke();
   }
   return crispTexture(new THREE.CanvasTexture(canvas));
 }
 
-/** Rim thickness for inverted-hull outlines (world units). */
-const RIM = 0.022;
-
-/**
- * A slab (mesh) plus a thick accent rim. The rim is an inverted hull —
- * the same box scaled out by RIM and rendered BackSide — so the edge
- * reads as a solid glow band instead of an aliasing 1px GL line.
- */
-function Slab({
-  size,
-  color = SLAB,
-  edge = ACCENT,
-  edgeOpacity = 0.9,
-}: {
-  size: [number, number, number];
-  color?: string;
-  edge?: string;
-  edgeOpacity?: number;
-}) {
-  const geo = useMemo(() => new THREE.BoxGeometry(...size), [size]);
-  const rimScale = useMemo(
-    () =>
-      [
-        (size[0] + RIM * 2) / size[0],
-        (size[1] + RIM * 2) / size[1],
-        (size[2] + RIM * 2) / size[2],
-      ] as [number, number, number],
-    [size],
-  );
-  return (
-    <group>
-      <mesh geometry={geo}>
-        <meshBasicMaterial color={color} />
-      </mesh>
-      <mesh geometry={geo} scale={rimScale}>
-        <meshBasicMaterial color={edge} side={THREE.BackSide} transparent opacity={edgeOpacity} />
-      </mesh>
-    </group>
-  );
+/** Soft radial shadow blob — the "blurred drop shadow" under every card. */
+function makeShadowTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    const g = ctx.createRadialGradient(64, 64, 6, 64, 64, 62);
+    g.addColorStop(0, "rgba(26, 26, 26, 0.34)");
+    g.addColorStop(0.6, "rgba(26, 26, 26, 0.14)");
+    g.addColorStop(1, "rgba(26, 26, 26, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
-/** A flat rectangular frame built from four beam boxes (thick, alias-free). */
-function BeamFrame({
+function ShadowBlob({
   w,
   h,
-  t = 0.05,
-  depth = 0.05,
-  color = ACCENT,
+  position,
   opacity = 1,
 }: {
   w: number;
   h: number;
-  t?: number;
-  depth?: number;
-  color?: string;
+  position: [number, number, number];
   opacity?: number;
 }) {
+  const tex = useMemo(() => makeShadowTexture(), []);
+  return (
+    <mesh position={position}>
+      <planeGeometry args={[w, h]} />
+      <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false} />
+    </mesh>
+  );
+}
+
+/** Rounded-rectangle shape (shared by cards and slabs). */
+function roundedShape(w: number, h: number, r: number): THREE.Shape {
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2 + r, -h / 2);
+  s.lineTo(w / 2 - r, -h / 2);
+  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+  s.lineTo(w / 2, h / 2 - r);
+  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+  s.lineTo(-w / 2 + r, h / 2);
+  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+  s.lineTo(-w / 2, -h / 2 + r);
+  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+  return s;
+}
+
+/** Extruded rounded slab with a small bevel — catches the key light so
+    paper-white surfaces read as physical cards, not flat rectangles. */
+function roundedSlabGeo(w: number, h: number, r: number, depth: number): THREE.ExtrudeGeometry {
+  const geo = new THREE.ExtrudeGeometry(roundedShape(w, h, r), {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: 0.012,
+    bevelSize: 0.012,
+    bevelSegments: 2,
+    curveSegments: 8,
+  });
+  geo.translate(0, 0, -depth / 2);
+  return geo;
+}
+
+/** A lit paper card: rounded slab + optional accent edge bar on the left. */
+function PaperCard({
+  w,
+  h,
+  depth = 0.05,
+  color = PAPER,
+  edge,
+}: {
+  w: number;
+  h: number;
+  depth?: number;
+  color?: string;
+  edge?: string;
+}) {
+  const geo = useMemo(() => roundedSlabGeo(w, h, Math.min(0.1, h / 4), depth), [w, h, depth]);
   return (
     <group>
-      <mesh position={[0, h / 2 - t / 2, 0]}>
-        <boxGeometry args={[w, t, depth]} />
-        <meshBasicMaterial color={color} transparent opacity={opacity} />
+      <mesh geometry={geo}>
+        <meshStandardMaterial color={color} roughness={0.82} metalness={0} />
       </mesh>
-      <mesh position={[0, -h / 2 + t / 2, 0]}>
-        <boxGeometry args={[w, t, depth]} />
-        <meshBasicMaterial color={color} transparent opacity={opacity} />
-      </mesh>
-      <mesh position={[-w / 2 + t / 2, 0, 0]}>
-        <boxGeometry args={[t, h - t * 2, depth]} />
-        <meshBasicMaterial color={color} transparent opacity={opacity} />
-      </mesh>
-      <mesh position={[w / 2 - t / 2, 0, 0]}>
-        <boxGeometry args={[t, h - t * 2, depth]} />
-        <meshBasicMaterial color={color} transparent opacity={opacity} />
-      </mesh>
+      {edge ? (
+        <mesh position={[-w / 2 + 0.045, 0, depth / 2 + 0.014]}>
+          <boxGeometry args={[0.055, h * 0.68, 0.02]} />
+          <meshStandardMaterial color={edge} roughness={0.6} metalness={0} />
+        </mesh>
+      ) : null}
     </group>
   );
 }
 
-// ---- T1 · Creative Build: wire rects assemble into a tiny 3D site --------
+/** A thin ink strip — one line of "text" on a paper card. */
+function InkLine({
+  w,
+  position,
+  color = INK,
+  opacity = 1,
+}: {
+  w: number;
+  position: [number, number, number];
+  color?: string;
+  opacity?: number;
+}) {
+  return (
+    <mesh position={position}>
+      <boxGeometry args={[w, 0.045, 0.016]} />
+      <meshStandardMaterial color={color} roughness={0.9} transparent opacity={opacity} />
+    </mesh>
+  );
+}
 
-const T1_SLABS: { size: [number, number, number]; to: [number, number, number]; from: [number, number, number] }[] = [
-  { size: [2.5, 0.78, 0.1], to: [0, 0.62, 0.05], from: [-2.2, 1.9, -1.6] }, // hero slab
-  { size: [0.76, 0.6, 0.1], to: [-0.87, -0.28, 0.05], from: [-2.4, -1.7, 1.2] },
-  { size: [0.76, 0.6, 0.1], to: [0, -0.28, 0.05], from: [0.4, -2.3, -1.8] },
-  { size: [0.76, 0.6, 0.1], to: [0.87, -0.28, 0.05], from: [2.6, -1.2, 1.5] },
+/** Shared key light + ambient fill for every scene. */
+function PaperLights() {
+  return (
+    <>
+      <ambientLight intensity={1.15} />
+      <directionalLight position={[2.6, 4.2, 5.2]} intensity={1.9} />
+      <directionalLight position={[-3, -1.5, 2]} intensity={0.4} color={"#fff7ea"} />
+    </>
+  );
+}
+
+// ---- T1 · Creative Build: a paper browser assembles typed lines into a page
+
+/** Content blocks the typed lines assemble into (cream + green slabs). */
+const T1_BLOCKS: { size: [number, number]; to: [number, number]; color: string }[] = [
+  { size: [2.18, 0.62], to: [0, 0.42], color: CREAM },        // hero panel
+  { size: [0.66, 0.5], to: [-0.76, -0.32], color: ACCENT_SOFT },
+  { size: [0.66, 0.5], to: [0, -0.32], color: CREAM },
+  { size: [0.66, 0.5], to: [0.76, -0.32], color: ACCENT },
 ];
+
+const T1_LINES = [0.62, 0.5, 0.56, 0.42, 0.52];
 
 function T1Scene({ speed, reducedMotion }: SceneProps) {
   const group = useRef<THREE.Group>(null);
-  const spin = useRef<THREE.Group>(null);
-  const slabs = useRef<(THREE.Group | null)[]>([]);
+  const float = useRef<THREE.Group>(null);
   const time = useSceneTime(speed, reducedMotion);
   useParallax(group);
+  const lineRefs = useRef<(THREE.Group | null)[]>([]);
+  const blockRefs = useRef<(THREE.Group | null)[]>([]);
+  const windowGeo = useMemo(() => roundedSlabGeo(3.3, 2.44, 0.12, 0.09), []);
   useFrame(() => {
     const t = time();
-    const cycle = (t % 9) / 9; // assemble → hold → scatter
-    const p =
-      cycle < 0.45 ? easeInOut(cycle / 0.45) : cycle < 0.8 ? 1 : 1 - easeInOut((cycle - 0.8) / 0.2);
-    T1_SLABS.forEach((s, i) => {
-      const g = slabs.current[i];
+    const cycle = (t % 10) / 10;
+    // 0–0.34 lines type in · 0.34–0.62 blocks assemble · hold · 0.9– reset
+    T1_LINES.forEach((_, i) => {
+      const g = lineRefs.current[i];
       if (!g) return;
-      const k = easeInOut(Math.min(1, Math.max(0, p * 1.6 - i * 0.18)));
-      g.position.set(
-        s.from[0] + (s.to[0] - s.from[0]) * k,
-        s.from[1] + (s.to[1] - s.from[1]) * k,
-        s.from[2] + (s.to[2] - s.from[2]) * k,
-      );
-      g.rotation.set((1 - k) * 1.8, (1 - k) * 2.4, 0);
+      const typeIn = easeInOut(Math.min(1, Math.max(0, (cycle - 0.03 - i * 0.055) / 0.08)));
+      const giveWay = easeInOut(Math.min(1, Math.max(0, (cycle - 0.36 - i * 0.04) / 0.12)));
+      const gone = cycle > 0.92 ? 0 : 1;
+      g.scale.x = Math.max(0.0001, typeIn * gone);
+      g.visible = typeIn > 0.01 && giveWay < 0.95 && gone > 0;
+      g.position.z = 0.08 - giveWay * 0.02;
     });
-    if (spin.current) spin.current.rotation.y = Math.sin(t * 0.25) * 0.34;
+    T1_BLOCKS.forEach((b, i) => {
+      const g = blockRefs.current[i];
+      if (!g) return;
+      const grow = easeInOut(Math.min(1, Math.max(0, (cycle - 0.38 - i * 0.055) / 0.11)));
+      const gone = cycle > 0.9 ? 1 - easeInOut((cycle - 0.9) / 0.08) : 1;
+      const s = grow * gone;
+      g.scale.setScalar(Math.max(0.0001, s));
+      g.visible = s > 0.01;
+      g.position.set(b.to[0], b.to[1], 0.1);
+    });
+    // gentle idle float
+    if (float.current) {
+      float.current.position.y = Math.sin(t * 0.7) * 0.05;
+      float.current.rotation.z = Math.sin(t * 0.4) * 0.012;
+    }
   });
   return (
     <group ref={group}>
-      <group ref={spin}>
-        {/* browser frame: front + receded back beam rects give the 3D wire read */}
-        <group position={[0, 0, 0.12]}>
-          <BeamFrame w={3.1} h={2.3} t={0.045} depth={0.045} color={ACCENT} opacity={0.85} />
-        </group>
-        <group position={[0, 0, -0.12]}>
-          <BeamFrame w={3.1} h={2.3} t={0.045} depth={0.045} color={ACCENT_DIM} opacity={0.8} />
-        </group>
-        {/* chrome bar */}
-        <mesh position={[0, 1.02, 0.06]}>
-          <planeGeometry args={[3.04, 0.16]} />
-          <meshBasicMaterial color={ACCENT_DIM} transparent opacity={0.5} />
+      <group ref={float}>
+        <ShadowBlob w={4.4} h={3.4} position={[0.12, -0.26, -0.5]} opacity={0.85} />
+        {/* paper-white browser window */}
+        <mesh geometry={windowGeo}>
+          <meshStandardMaterial color={PAPER} roughness={0.85} metalness={0} />
         </mesh>
-        {T1_SLABS.map((s, i) => (
-          <group key={i} ref={(el) => { slabs.current[i] = el; }}>
-            <Slab size={s.size} edgeOpacity={i === 0 ? 1 : 0.7} />
+        {/* chrome bar + traffic-light dots */}
+        <mesh position={[0, 1.05, 0.062]}>
+          <boxGeometry args={[3.22, 0.2, 0.02]} />
+          <meshStandardMaterial color={CREAM} roughness={0.9} />
+        </mesh>
+        {["#e3a49a", "#e8d3a4", ACCENT_SOFT].map((c, i) => (
+          <mesh key={c} position={[-1.42 + i * 0.17, 1.05, 0.085]} rotation={[0, 0, 0]}>
+            <circleGeometry args={[0.042, 20]} />
+            <meshStandardMaterial color={c} roughness={0.6} />
+          </mesh>
+        ))}
+        {/* typed lines (thin ink strips, left-aligned like source code) */}
+        {T1_LINES.map((w, i) => (
+          <group
+            key={i}
+            ref={(el) => { lineRefs.current[i] = el; }}
+            position={[-1.35 + w / 2 + 0.35, 0.66 - i * 0.28, 0.08]}
+          >
+            <InkLine w={w} position={[0, 0, 0]} color={i % 3 === 2 ? ACCENT : INK} />
+          </group>
+        ))}
+        {/* assembled page blocks (lit slabs with beveled edges) */}
+        {T1_BLOCKS.map((b, i) => (
+          <group key={i} ref={(el) => { blockRefs.current[i] = el; }}>
+            <PaperCard w={b.size[0]} h={b.size[1]} depth={0.06} color={b.color} />
           </group>
         ))}
       </group>
@@ -246,7 +346,7 @@ function T1Scene({ speed, reducedMotion }: SceneProps) {
   );
 }
 
-// ---- T2 · Authenticity: real snapshot photos orbit; a stamp slaps on -----
+// ---- T2 · Authenticity: photos on paper mounts orbit; a stamp slaps on ---
 
 function T2Scene({ speed, reducedMotion }: SceneProps) {
   const group = useRef<THREE.Group>(null);
@@ -284,8 +384,8 @@ function T2Scene({ speed, reducedMotion }: SceneProps) {
       const depth = (z + 1) / 2; // 0 back … 1 front
       const s = 0.72 + depth * 0.42;
       g.scale.setScalar(s);
-      mat.opacity = 0.35 + depth * 0.65;
-      // periodically the front plane tilts forward and the stamp slaps on
+      mat.opacity = 0.45 + depth * 0.55;
+      // periodically the front card tilts forward and the stamp slaps on
       const phase = (t + i * 3.5) % 7;
       const slapIn = phase > 4.6 && phase < 6.4 ? easeInOut((phase - 4.6) / 0.5) : 0;
       const slap = slapIn * (phase > 6.0 ? 1 - easeInOut((phase - 6.0) / 0.4) : 1);
@@ -299,8 +399,13 @@ function T2Scene({ speed, reducedMotion }: SceneProps) {
   });
   return (
     <group ref={group}>
+      <ShadowBlob w={4.6} h={2.2} position={[0, -1.15, -0.9]} opacity={0.7} />
       {media.map((m, i) => (
         <group key={m.src} ref={(el) => { planes.current[i] = el; }}>
+          {/* white paper mount behind each photo (lit, beveled) */}
+          <group position={[0, 0, -0.045]}>
+            <PaperCard w={1.66} h={1.28} depth={0.05} />
+          </group>
           <mesh>
             <planeGeometry args={[1.5, 1.05]} />
             <meshBasicMaterial
@@ -319,107 +424,88 @@ function T2Scene({ speed, reducedMotion }: SceneProps) {
   );
 }
 
-// ---- T3 · Reasoning: a chat bubble shatters and reassembles corrected ----
+// ---- T3 · Reasoning: the wrong claim card flips over, corrected ----------
 
-function roundedRectGeo(w: number, h: number, r: number): THREE.ShapeGeometry {
-  const s = new THREE.Shape();
-  s.moveTo(-w / 2 + r, -h / 2);
-  s.lineTo(w / 2 - r, -h / 2);
-  s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
-  s.lineTo(w / 2, h / 2 - r);
-  s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
-  s.lineTo(-w / 2 + r, h / 2);
-  s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
-  s.lineTo(-w / 2, -h / 2 + r);
-  s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
-  return new THREE.ShapeGeometry(s);
-}
-
-function Bubble({ w, h, edge }: { w: number; h: number; edge: string }) {
-  // Fill plate on top of a slightly larger edge-colored plate: a thick,
-  // alias-free outline (flat shapes cannot use the inverted-hull trick).
-  const geo = useMemo(() => roundedRectGeo(w, h, 0.12), [w, h]);
-  const rim = useMemo(() => roundedRectGeo(w + RIM * 2.4, h + RIM * 2.4, 0.13), [w, h]);
+/** A message card: white paper + accent edge + ink text lines. */
+function MessageCard({
+  w,
+  h,
+  edge,
+  lines,
+}: {
+  w: number;
+  h: number;
+  edge?: string;
+  lines: number[];
+}) {
   return (
     <group>
-      <mesh geometry={rim} position={[0, 0, -0.004]}>
-        <meshBasicMaterial color={edge} transparent opacity={0.9} />
-      </mesh>
-      <mesh geometry={geo} position={[0, 0, 0.004]}>
-        <meshBasicMaterial color={SLAB} />
-      </mesh>
+      <PaperCard w={w} h={h} depth={0.045} edge={edge} />
+      {lines.map((lw, i) => (
+        <InkLine
+          key={i}
+          w={lw * w}
+          position={[(-w / 2) + 0.16 + (lw * w) / 2, h / 2 - 0.16 - i * 0.13, 0.045]}
+          color={INK}
+          opacity={0.75}
+        />
+      ))}
     </group>
   );
 }
-
-const SHARDS: [number, number][] = [
-  [-0.45, 0.14],
-  [0.45, 0.14],
-  [-0.45, -0.14],
-  [0.45, -0.14],
-];
 
 function T3Scene({ speed, reducedMotion }: SceneProps) {
   const group = useRef<THREE.Group>(null);
   const time = useSceneTime(speed, reducedMotion);
   useParallax(group);
-  const shardRefs = useRef<(THREE.Group | null)[]>([]);
-  const fixedRef = useRef<THREE.Group>(null);
+  const flipRef = useRef<THREE.Group>(null);
   const checkRef = useRef<THREE.Sprite>(null);
   const checkTex = useMemo(() => makeCheckTexture(), []);
   useFrame(() => {
     const t = time();
     const cycle = (t % 8) / 8;
-    // 0–0.3 intact wrong bubble · 0.3–0.55 shatter · 0.55–0.85 corrected · fade
-    const burst = cycle < 0.3 ? 0 : cycle < 0.55 ? easeInOut((cycle - 0.3) / 0.25) : 1;
-    const heal = cycle < 0.55 ? 0 : cycle < 0.85 ? easeInOut((cycle - 0.55) / 0.3) : 1;
-    SHARDS.forEach(([sx, sy], i) => {
-      const g = shardRefs.current[i];
-      if (!g) return;
-      const fly = burst * (1 - heal * 0);
-      g.position.set(sx + sx * fly * 1.4, 0.12 + sy + sy * fly * 2.2, fly * 0.5);
-      g.rotation.z = fly * (i % 2 === 0 ? 0.8 : -0.8);
-      g.scale.setScalar(1 - heal); // shards give way to the corrected bubble
-      g.visible = heal < 0.98;
-    });
-    if (fixedRef.current) {
-      fixedRef.current.scale.setScalar(0.2 + 0.8 * heal);
-      fixedRef.current.visible = heal > 0.02;
+    // 0–0.35 wrong claim sits · 0.35–0.6 card flips over · corrected holds
+    const flip = cycle < 0.35 ? 0 : cycle < 0.6 ? easeInOut((cycle - 0.35) / 0.25) : 1;
+    if (flipRef.current) {
+      flipRef.current.rotation.y = flip * Math.PI;
+      flipRef.current.position.z = 0.12 + Math.sin(flip * Math.PI) * 0.55;
     }
     if (checkRef.current) {
-      const rise = Math.max(0, heal - 0.3) / 0.7;
-      checkRef.current.position.y = 0.55 + rise * 0.45;
-      (checkRef.current.material as THREE.SpriteMaterial).opacity = rise;
+      const pop = cycle < 0.62 ? 0 : cycle < 0.8 ? easeOutBack((cycle - 0.62) / 0.18) : 1;
+      const fade = cycle > 0.94 ? 1 - easeInOut((cycle - 0.94) / 0.06) : 1;
+      checkRef.current.scale.set(0.5 * pop, 0.5 * pop, 1);
+      (checkRef.current.material as THREE.SpriteMaterial).opacity = Math.min(1, pop) * fade;
     }
-    if (group.current) group.current.position.y = Math.sin(t * 0.7) * 0.06;
+    if (group.current) group.current.position.y = Math.sin(t * 0.7) * 0.05;
   });
   return (
     <group ref={group}>
-      {/* stacked conversation */}
-      <group position={[-0.55, 0.95, -0.35]}>
-        <Bubble w={1.5} h={0.5} edge={ACCENT_DIM} />
+      <ShadowBlob w={4.6} h={3.2} position={[0.1, -0.3, -0.7]} opacity={0.8} />
+      {/* stacked conversation: paper-white message cards */}
+      <group position={[-0.62, 0.98, -0.3]}>
+        <MessageCard w={1.7} h={0.56} edge={ACCENT_SOFT} lines={[0.7, 0.5]} />
       </group>
-      <group position={[0.7, -0.75, -0.2]}>
-        <Bubble w={1.3} h={0.44} edge={ACCENT_DIM} />
+      <group position={[0.74, -0.86, -0.25]}>
+        <MessageCard w={1.5} h={0.5} edge={ACCENT_SOFT} lines={[0.62, 0.4]} />
       </group>
-      {/* the wrong claim: four shards */}
-      {SHARDS.map(([sx, sy], i) => (
-        <group key={i} ref={(el) => { shardRefs.current[i] = el; }} position={[sx, 0.12 + sy, 0]}>
-          <Bubble w={0.9} h={0.28} edge={BAD} />
+      {/* the claim card: wrong on the front, corrected on the back — it
+          flips over with a lift when the seeded error is caught */}
+      <group ref={flipRef} position={[0, 0.08, 0.12]}>
+        <group>
+          <MessageCard w={2.1} h={0.72} edge={BAD} lines={[0.78, 0.6, 0.44]} />
         </group>
-      ))}
-      {/* the corrected bubble */}
-      <group ref={fixedRef} position={[0, 0.12, 0.05]}>
-        <Bubble w={1.9} h={0.58} edge={GOOD} />
+        <group rotation={[0, Math.PI, 0]}>
+          <MessageCard w={2.1} h={0.72} edge={GOOD} lines={[0.72, 0.55]} />
+        </group>
       </group>
-      <sprite ref={checkRef} position={[0.95, 0.55, 0.3]} scale={[0.4, 0.4, 1]}>
+      <sprite ref={checkRef} position={[1.05, 0.62, 0.6]} scale={[0.0001, 0.0001, 1]}>
         <spriteMaterial map={checkTex} transparent opacity={0} depthTest={false} />
       </sprite>
     </group>
   );
 }
 
-// ---- T4 · Direction: noisy tiles settle sharp; one gets the frame --------
+// ---- T4 · Direction: noisy paper tiles settle sharp; one gets the frame --
 
 const T4_VERT = /* glsl */ `
   uniform float uT;
@@ -430,7 +516,7 @@ const T4_VERT = /* glsl */ `
     vec3 p = position;
     float n = sin(p.x * 7.0 + uT) * sin(p.y * 5.0 - uT * 1.3)
             + 0.5 * sin(p.x * 13.0 - uT * 0.7);
-    p.z += n * (1.0 - uSharp) * 0.16;
+    p.z += n * (1.0 - uSharp) * 0.14;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   }
 `;
@@ -441,11 +527,13 @@ const T4_FRAG = /* glsl */ `
   varying vec2 vUv;
   void main() {
     float grain = fract(sin(dot(vUv * (40.0 - 30.0 * uSharp), vec2(12.9898, 78.233)) + uT) * 43758.5453);
-    vec3 deep = vec3(0.055, 0.075, 0.106);   // #0e1319
-    vec3 blue = vec3(0.177, 0.290, 0.600);   // accent-dim-ish
-    vec3 base = mix(deep, blue, vUv.y * 0.7 + 0.15 * sin(uT * 0.3 + vUv.x * 4.0));
-    vec3 noisy = mix(base, vec3(grain * 0.35), (1.0 - uSharp) * 0.6);
-    gl_FragColor = vec4(noisy, 1.0);
+    vec3 cream = vec3(0.945, 0.918, 0.868);  // paper cream
+    vec3 green = vec3(0.043, 0.420, 0.278);  // deep accent green
+    float wash = vUv.y * 0.55 + 0.18 * sin(uT * 0.3 + vUv.x * 4.0);
+    vec3 settled = mix(cream, green, clamp(wash, 0.0, 0.85));
+    vec3 fuzzy = mix(cream, vec3(grain * 0.35 + 0.5), 0.5);
+    vec3 col = mix(fuzzy, settled, uSharp);
+    gl_FragColor = vec4(col, 1.0);
   }
 `;
 
@@ -463,14 +551,14 @@ function T4Scene({ speed, reducedMotion }: SceneProps) {
   useParallax(group);
   const mats = useRef<(THREE.ShaderMaterial | null)[]>([]);
   const frameMat = useMemo(
-    () => new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0 }),
+    () => new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.5, transparent: true, opacity: 0 }),
     [],
   );
   const pips = useRef<(THREE.Mesh | null)[]>([]);
   const frameGeos = useMemo(() => {
-    const t = 0.045;
-    const wide = new THREE.BoxGeometry(1.06, t, t);
-    const tall = new THREE.BoxGeometry(t, 1.06 - t * 2, t);
+    const t = 0.05;
+    const wide = new THREE.BoxGeometry(1.14, t, t);
+    const tall = new THREE.BoxGeometry(t, 1.14 - t * 2, t);
     return { wide, tall, t };
   }, []);
   useFrame(() => {
@@ -492,32 +580,40 @@ function T4Scene({ speed, reducedMotion }: SceneProps) {
       const a = t * 0.9 + (i * Math.PI * 2) / 3;
       p.position.set(Math.cos(a) * 1.55, Math.sin(a) * 1.15, Math.sin(a * 1.3) * 0.3);
     });
+    if (group.current) group.current.position.y = Math.sin(t * 0.6) * 0.04;
   });
   return (
     <group ref={group}>
+      <ShadowBlob w={4.2} h={3.6} position={[0.1, -0.2, -0.6]} opacity={0.8} />
       {T4_POS.map(([x, y], i) => (
-        <mesh key={i} position={[x, y, 0]}>
-          <planeGeometry args={[0.96, 0.96, 24, 24]} />
-          <shaderMaterial
-            ref={(el) => { mats.current[i] = el; }}
-            vertexShader={T4_VERT}
-            fragmentShader={T4_FRAG}
-            uniforms={{ uT: { value: 0 }, uSharp: { value: 0 } }}
-          />
-        </mesh>
+        <group key={i} position={[x, y, 0]}>
+          {/* white paper mat behind each render tile */}
+          <group position={[0, 0, -0.05]}>
+            <PaperCard w={1.12} h={1.12} depth={0.05} />
+          </group>
+          <mesh>
+            <planeGeometry args={[0.96, 0.96, 24, 24]} />
+            <shaderMaterial
+              ref={(el) => { mats.current[i] = el; }}
+              vertexShader={T4_VERT}
+              fragmentShader={T4_FRAG}
+              uniforms={{ uT: { value: 0 }, uSharp: { value: 0 } }}
+            />
+          </mesh>
+        </group>
       ))}
       {/* the chosen tile's highlight frame (thick beams, shared fading material) */}
       <group position={[T4_POS[CHOSEN][0], T4_POS[CHOSEN][1], 0.09]}>
-        <mesh geometry={frameGeos.wide} material={frameMat} position={[0, 0.53 - frameGeos.t / 2, 0]} />
-        <mesh geometry={frameGeos.wide} material={frameMat} position={[0, -0.53 + frameGeos.t / 2, 0]} />
-        <mesh geometry={frameGeos.tall} material={frameMat} position={[-0.53 + frameGeos.t / 2, 0, 0]} />
-        <mesh geometry={frameGeos.tall} material={frameMat} position={[0.53 - frameGeos.t / 2, 0, 0]} />
+        <mesh geometry={frameGeos.wide} material={frameMat} position={[0, 0.57 - frameGeos.t / 2, 0]} />
+        <mesh geometry={frameGeos.wide} material={frameMat} position={[0, -0.57 + frameGeos.t / 2, 0]} />
+        <mesh geometry={frameGeos.tall} material={frameMat} position={[-0.57 + frameGeos.t / 2, 0, 0]} />
+        <mesh geometry={frameGeos.tall} material={frameMat} position={[0.57 - frameGeos.t / 2, 0, 0]} />
       </group>
       {/* three quota pips */}
       {[0, 1, 2].map((i) => (
         <mesh key={i} ref={(el) => { pips.current[i] = el; }}>
           <sphereGeometry args={[0.045, 12, 12]} />
-          <meshBasicMaterial color={ACCENT} />
+          <meshStandardMaterial color={ACCENT} roughness={0.4} />
         </mesh>
       ))}
     </group>
@@ -542,6 +638,7 @@ export function SceneCanvas({ id, active, reducedMotion, hovered }: SceneCanvasP
       camera={{ position: [0, 0, 4.1], fov: 40 }}
       gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
     >
+      <PaperLights />
       <Scene speed={hovered ? 1.9 : 1} reducedMotion={reducedMotion} />
     </Canvas>
   );

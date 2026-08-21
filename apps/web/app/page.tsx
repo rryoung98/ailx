@@ -4,6 +4,7 @@ import { HeroCanvas } from "../lib/HeroCanvas";
 import { PillCTA } from "../lib/PillCTA";
 import { Reveal } from "../lib/Reveal";
 import { Teaser } from "../lib/Teaser";
+import { CampusJourney } from "../lib/track3d/CampusJourney";
 import { TrackBands } from "../lib/track3d/TrackBands";
 import { TRACK_LIST } from "../lib/tracks";
 
@@ -33,6 +34,37 @@ function HeroArtifacts() {
   );
 }
 
+/** Small CSS-art visuals for the three "what you get" steps. */
+function StepVizTracks() {
+  return (
+    <div className="wyg-viz wyg-viz-tracks" aria-hidden="true">
+      {TRACK_LIST.map((t) => (
+        <span key={t.code} className="mono">{t.code}</span>
+      ))}
+    </div>
+  );
+}
+
+function StepVizScore() {
+  return (
+    <div className="wyg-viz wyg-viz-score" aria-hidden="true">
+      <span className="wyg-score-ring"><span className="wyg-score-num">1</span></span>
+    </div>
+  );
+}
+
+function StepVizReport() {
+  return (
+    <div className="wyg-viz wyg-viz-report" aria-hidden="true">
+      <span className="wyg-report-card">
+        <span className="wyg-report-line" />
+        <span className="wyg-report-line short" />
+        <span className="wyg-report-check">✓</span>
+      </span>
+    </div>
+  );
+}
+
 export default function Home() {
   return (
     <main className="page">
@@ -52,13 +84,12 @@ export default function Home() {
                   </h1>
                   <span className="hero-fade"><Annotation>scored like an instrument</Annotation></span>
                   <p className="lede hero-lede hero-fade">
-                    Build, detect, reason, direct. Four playable tracks, scored like a real
-                    instrument — the AILX 2026.1 specification, trilateral (US·JP·KR) by design.
-                    This site is its live demo build.
+                    Play four short tracks: build, spot fakes, reason, direct.
+                    Get one score you can check.
                   </p>
                   <p className="hero-cta hero-fade">
                     <Link className="btn primary" href="/exam">Play</Link>
-                    <Link className="btn" href="/validate">Watch it prove itself</Link>
+                    <Link className="btn" href="/validate">See it prove itself</Link>
                   </p>
                 </div>
                 <div className="hero-fade"><Teaser /></div>
@@ -111,25 +142,39 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container-wide track-bands-landing">
+      {/* Map-pan journey over the campus aerial (supporting browsers) with
+          the static alternating bands as the no-timeline / reduced-motion
+          fallback. CSS guarantees exactly one of the two is displayed. */}
+      <CampusJourney />
+      <section className="container-wide track-bands-landing track-bands-fallback">
         <TrackBands />
       </section>
 
-      <Reveal as="section" className="container" style={{ marginTop: "3rem", paddingBottom: "5.5rem" }}>
-        <div className="grid4">
-          <div className="stat"><div className="value">4 × 100</div><div className="label">points; every track scored a different way, on purpose</div></div>
-          <div className="stat"><div className="value">d′</div><div className="label">detection is scored by sensitivity, not percent correct (see methodology)</div></div>
-          <div className="stat"><div className="value">3</div><div className="label">languages — EN · JA · KO, translation provenance recorded</div></div>
-          <div className="stat"><div className="value">1 : 2 : 3</div><div className="label">Distinction : Merit : Pass — IMO-style fixed quotas</div></div>
-        </div>
-        <p className="faint small" style={{ marginTop: "2rem", maxWidth: "44rem" }}>
-          Every score recomputable byte-identically from stored inputs: content-addressed
-          items, pure scoring, versioned rubrics. The words live in the{" "}
-          <Link href="/methodology">methodology</Link>; the proof runs live on{" "}
-          <Link href="/validate">/validate</Link>. Demo build — deterministic simulators,
-          nothing leaves your browser.
+      {/* What you get: three steps, one idea each. */}
+      <section className="container wyg" aria-label="What you get">
+        <ol className="wyg-steps">
+          <Reveal as="li" className="wyg-step">
+            <StepVizTracks />
+            <h2 className="wyg-title">Play the four tracks.</h2>
+            <p className="wyg-line">Build a page, spot the fakes, catch the lies, direct the renders.</p>
+          </Reveal>
+          <Reveal as="li" className="wyg-step">
+            <StepVizScore />
+            <h2 className="wyg-title">Get one honest score.</h2>
+            <p className="wyg-line">Four tracks become one number and one band. The math is public.</p>
+          </Reveal>
+          <Reveal as="li" className="wyg-step">
+            <StepVizReport />
+            <h2 className="wyg-title">Share a report that proves itself.</h2>
+            <p className="wyg-line">Every point can be recomputed from what you did. Nothing leaves your browser.</p>
+          </Reveal>
+        </ol>
+        <p className="wyg-footnotes faint small">
+          How the scoring works: <Link href="/methodology">methodology</Link>.
+          Watch it check itself: <Link href="/validate">/validate</Link>.
+          This is the demo build of the AILX 2026.1 spec.
         </p>
-      </Reveal>
+      </section>
       <PillCTA href="/exam">Play</PillCTA>
     </main>
   );

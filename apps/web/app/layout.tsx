@@ -6,6 +6,7 @@ import { Fraunces, Caveat } from "next/font/google";
 const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable", variable: "--font-serif", display: "swap" });
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
+import { Loader } from "../lib/Loader";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${serif.variable} ${script.variable}`}>
       <body>
+        <Loader />
         <a href="#main" className="skip-link">Skip to main content</a>
         <header className="site-header">
           <div className="inner">
@@ -37,9 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="site-footer">
           <div className="container">
             <p>
-              AILX 2026.1 · static showcase build. All model calls in this build are
-              deterministic demo simulators (seeded by SHA-256 of their inputs) behind the
-              production interfaces — no network calls, everything runs in your browser.
+              AILX 2026.1 · static demo build. Every model call is a deterministic
+              simulator, seeded by SHA-256 of its inputs. No network calls. Everything
+              runs in your browser.
             </p>
             <p>AILX plays like a game and is built like an instrument.</p>
             <p>
