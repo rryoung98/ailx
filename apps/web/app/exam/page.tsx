@@ -57,7 +57,7 @@ export default function ExamPage() {
     const v = loadAttemptValidated(window.localStorage);
     setLog(v && v.log.length > 0 ? v.log : null);
     if (v && v.dropped > 0) {
-      setPersistWarning(`stored attempt log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
+      setPersistWarning(`stored run log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
     }
     setHydrated(true);
   }, []);
@@ -168,7 +168,7 @@ export default function ExamPage() {
           ⚠ Persistence warning: {persistWarning}
         </div>
       ) : null}
-      <div className="container"><p className="muted">Loading attempt…</p></div></main>;
+      <div className="container"><p className="muted">Loading your run…</p></div></main>;
   }
 
   // ---- No attempt yet -----------------------------------------------------
@@ -183,10 +183,11 @@ export default function ExamPage() {
       ) : null}
       
         <div className="container" style={{ maxWidth: 820 }}>
-          <div className="eyebrow">Demo sitting · AILX 2026.1</div>
-          <h1>Four tracks. One attempt.</h1>
+          <div className="eyebrow">Demo run · AILX 2026.1</div>
+          <h1>Four tracks. One run.</h1>
           <p className="lede">
-            T1 to T4 in sequence, each on its own clock. Pause between each move, never interrupting a swipe. The event log remains in this browser.
+            T1 to T4 in sequence, each on its own clock. You can pause between
+            moves, never mid-swipe. The event log stays in this browser.
           </p>
           <ul className="checklist" style={{ margin: "1.5rem 0" }}>
             {TRACK_LIST.map((t) => (
@@ -211,7 +212,7 @@ export default function ExamPage() {
               commit([{ type: "attempt_started", attemptId, config: cfg, ts }]);
             }}
           >
-            Begin attempt
+            Start your run
           </button>
         </div>
       </main>
@@ -229,7 +230,7 @@ export default function ExamPage() {
       ) : null}
       
         <div className="container" style={{ maxWidth: 820 }}>
-          <h1>Attempt complete</h1>
+          <h1>Run complete</h1>
           <p className="lede">All four tracks are scored. The diagnostic report is the real reward.</p>
           <p style={{ display: "flex", gap: "0.8rem" }}>
             <Link href="/report" className="btn primary">Open the diagnostic report →</Link>
@@ -253,7 +254,7 @@ export default function ExamPage() {
       ) : null}
       
         <div className="container" style={{ maxWidth: 820 }}>
-          <div className="eyebrow">Attempt {state.attemptId}</div>
+          <div className="eyebrow">run {state.attemptId}</div>
           <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
           <ul className="checklist" style={{ margin: "1.5rem 0" }}>
             {TRACK_LIST.map((t) => {
@@ -276,15 +277,18 @@ export default function ExamPage() {
             })}
           </ul>
           {next ? (
-            <button
-              className="btn primary"
-              onClick={() => commit([{ type: "track_started", trackId: next, ts: stamp() }])}
-            >
-              Start {TRACK_META[next].code} · {TRACK_META[next].name} ({fmt(state.config!.budgets[next])})
-            </button>
+            <>
+              <p className="muted" style={{ margin: "0 0 0.8rem" }}>{TRACK_META[next].hype}</p>
+              <button
+                className="btn primary"
+                onClick={() => commit([{ type: "track_started", trackId: next, ts: stamp() }])}
+              >
+                Start {TRACK_META[next].code} · {TRACK_META[next].name} ({fmt(state.config!.budgets[next])})
+              </button>
+            </>
           ) : (
             <button className="btn primary" onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}>
-              Finish attempt
+              Finish run
             </button>
           )}
           <span style={{ marginLeft: "0.8rem" }}>
@@ -403,10 +407,10 @@ function ResetButton({ onReset }: { onReset: () => void }) {
     <button
       className="btn danger"
       onClick={() => {
-        if (window.confirm("Discard this attempt and its event log?")) onReset();
+        if (window.confirm("Discard this run and its event log?")) onReset();
       }}
     >
-      Reset attempt
+      Restart run
     </button>
   );
 }

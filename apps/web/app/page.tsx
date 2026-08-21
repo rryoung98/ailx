@@ -1,13 +1,7 @@
 import Link from "next/link";
 import { HeroCanvas } from "../lib/HeroCanvas";
 import { Teaser } from "../lib/Teaser";
-
-const TRACKS = [
-  { id: "T1", name: "Creative Build", mechanic: "▸ direct a build, live preview, ship it", desc: "Ship a personal site against a brief. Gates + blinded pairwise human judgement." },
-  { id: "T2", name: "Authenticity Discrimination", mechanic: "▸ swipe deck · arrow keys · replay reveal", desc: "120 rapid real-or-fake calls with confidence. Scored on d′, not percent correct." },
-  { id: "T3", name: "AI-Assisted Reasoning", mechanic: "▸ the assistant lies twice. catch it", desc: "A hard problem, an instrumented assistant seeded with wrong outputs, your name on the answer." },
-  { id: "T4", name: "Generative Direction", mechanic: "▸ 6 generations. make them count", desc: "Take a brief to a finished image under a hard quota. Direction, not volume." },
-];
+import { TrackCards } from "../lib/TrackVisuals";
 
 export default function Home() {
   return (
@@ -17,15 +11,17 @@ export default function Home() {
         <div className="container hero-inner">
           <div className="grid2" style={{ gap: "2.5rem", alignItems: "center" }}>
             <div>
-              <div className="eyebrow">The AI Literacy Examination · 2026.1</div>
+              <div className="eyebrow">AILX 2026.1 · four tracks, one score</div>
               <h1 className="hero-title">
                 Benchmarks rate the models.<br />This one rates <em>you</em>.
               </h1>
               <p className="lede hero-lede">
-                Four performance tracks — build, detect, reason, and direct — are scored like a real instrument. Built to the AILX 2026.1 specification — a trilateral (US·JP·KR) instrument design; this site is its live demo build.
+                Build, detect, reason, direct. Four playable tracks, scored like a real
+                instrument — the AILX 2026.1 specification, trilateral (US·JP·KR) by design.
+                This site is its live demo build.
               </p>
               <p className="hero-cta">
-                <Link className="btn primary" href="/exam">Start the exam</Link>
+                <Link className="btn primary" href="/exam">Play</Link>
                 <Link className="btn" href="/validate">Watch it prove itself</Link>
               </p>
             </div>
@@ -35,19 +31,7 @@ export default function Home() {
       </section>
 
       <section className="container" style={{ marginTop: "3.5rem" }}>
-        <div className="grid4">
-          {TRACKS.map((t) => (
-            <Link key={t.id} href="/exam" style={{ color: "inherit", textDecoration: "none" }}>
-              <div className="card track-card" style={{ height: "100%" }}>
-                <h3 style={{ marginBottom: "0.3rem" }}>
-                  <span className="mono" style={{ color: "var(--accent)" }}>{t.id}</span> {t.name}
-                </h3>
-                <p className="muted small" style={{ margin: "0.3rem 0 0.6rem" }}>{t.desc}</p>
-                <span className="mechanic mono">{t.mechanic}</span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <TrackCards />
       </section>
 
       <section className="container" style={{ marginTop: "3rem" }}>

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { LocaleSwitcher } from "../lib/LocaleSwitcher";
 
 export const metadata: Metadata = {
-  title: "AILX — The AI Literacy Examination",
+  title: "AILX — the AI-literacy game that scores like an instrument",
   description:
-    "A task-performance-based AI-literacy examination for adults, built to the AILX 2026.1 specification: four authentic tracks, 400 raw points, audit-grade scoring. Live demo build.",
+    "Four playable tracks — build, detect, reason, direct. 400 raw points, audit-grade scoring, built to the AILX 2026.1 specification. Live demo build.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Link href="/" className="wordmark">AIL<span>X</span></Link>
             <nav className="site-nav" aria-label="Primary">
               <Link href="/methodology">Methodology</Link>
-              <Link href="/exam">Sit the exam</Link>
+              <Link href="/exam">Play</Link>
               <Link href="/report">Report</Link>
               <Link href="/validate">Validate</Link>
               <LocaleSwitcher />
@@ -38,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               deterministic demo simulators (seeded by SHA-256 of their inputs) behind the
               production interfaces — no network calls, everything runs in your browser.
             </p>
+            <p>AILX plays like a game and is built like an instrument.</p>
             <p>
               Instrument spec: <span className="mono">AILX-Spec-2026.1</span> · pilot cohort
               n = 45 · US / Japan / Korea · YTL Summit 2026.

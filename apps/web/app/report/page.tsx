@@ -137,8 +137,8 @@ export default function ReportPage() {
       <main className="page">
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>The report is the reward</h1>
-          <p className="lede">{state ? `${done} of 4 tracks scored. Finish the attempt to unlock it.` : "No attempt in this browser yet."}</p>
-          <p><Link className="btn primary" href="/exam">{state ? "Continue →" : "Sit the exam →"}</Link></p>
+          <p className="lede">{state ? `${done} of 4 tracks scored. Finish the run to unlock it.` : "No run in this browser yet."}</p>
+          <p><Link className="btn primary" href="/exam">{state ? "Continue →" : "Play →"}</Link></p>
         </div>
       </main>
     );
@@ -156,7 +156,7 @@ export default function ReportPage() {
         <div className="share-card" style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
             <div>
-              <div className="eyebrow">attempt {state.attemptId} · n = {summary.cohortSize}</div>
+              <div className="eyebrow">run {state.attemptId} · n = {summary.cohortSize}</div>
               {/* The rAF count-up is decorative for AT: hide the animated
                   number and expose the final value + band once, politely. */}
               <div aria-hidden="true" className="composite-number" style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>

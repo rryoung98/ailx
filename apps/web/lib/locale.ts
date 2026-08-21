@@ -27,7 +27,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 
 /** Shown beside the switcher: content localizes, chrome does not. */
 export const LOCALE_SCOPE_NOTE =
-  "Item content follows this locale; exam UI chrome stays English in the demo.";
+  "Item content follows this locale; game UI chrome stays English in the demo.";
 
 export function isLocale(v: unknown): v is Locale {
   return v === "en" || v === "ja" || v === "ko";
