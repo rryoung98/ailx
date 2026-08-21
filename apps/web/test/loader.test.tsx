@@ -130,6 +130,10 @@ describe("Loader CSS", () => {
     expect(css).toContain("@keyframes loaderFade");
     expect(css).toContain("@keyframes loaderWipe");
     expect(css).toMatch(/\.loader-logo \.lg-fill \{[^}]*animation: loaderFade/s);
+    // The fade must NEVER animate transform: the groups carry a scale(1,-1)
+    // attribute flip that CSS transforms would override (upside-down bug).
+    const fade = css.slice(css.indexOf("@keyframes loaderFade"));
+    expect(fade.slice(0, fade.indexOf("}") + 1)).not.toContain("transform");
     expect(css).toContain("translateY(-101%)");
     // the script X lands after the serif AIL
     expect(css).toMatch(/\.loader-logo \.lg-x \{[^}]*animation-delay/s);

@@ -1051,7 +1051,9 @@ html[data-ailx-loaded="1"] .loader { display: none; }
 }
 .loader-logo .lg-ail { fill: #f7f4f2; }
 .loader-logo .lg-x { fill: #b7f0cd; animation-delay: 220ms; }
-@keyframes loaderFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* opacity-only: a CSS transform here would override the SVG groups'
+   scale(1,-1) flip attribute and render the wordmark upside down. */
+@keyframes loaderFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes loaderWipe { from { transform: none; } to { transform: translateY(-101%); } }
 
 
