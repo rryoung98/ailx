@@ -89,6 +89,8 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   const [phase, setPhase] = useState<Phase>(restored?.phase ?? "intro");
   const [idx, setIdx] = useState(restored?.deckIndex ?? 0);
   const [choice, setChoice] = useState<number | null>(null);
+  const choiceRef = useRef<number | null>(null);
+  choiceRef.current = choice;
   const [confidence, setConfidence] = useState(50);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [responses, setResponses] = useState<T2Response[]>(restored?.responses ?? []);
@@ -196,6 +198,11 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     }
     setSecondsLeft(exposure);
     const t = setInterval(() => {
+      // Clock pauses while the confidence sheet is up: picking how sure you
+      // are is reflection, not exposure — the decision latency was already
+      // anchored at the swipe. (choiceRef mirrors `choice` to keep this
+      // interval stable across renders.)
+      if (choiceRef.current !== null) return;
       setSecondsLeft((s) => (s === null ? null : s - 1));
     }, 1000);
     return () => clearInterval(t);
