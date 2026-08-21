@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  loadAttempt, project, TRACK_IDS,
+  append, loadAttempt, project, TRACK_IDS,
   type SequencedEntry,
 } from "@ailx/session";
+import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
+import { scoreTrack } from "../../lib/registry";
 import { calibrationBins, t2ResponsesFromArtifact } from "../../lib/calibration";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
 import { candidateComposite } from "../../lib/composite";
@@ -107,6 +109,32 @@ export default function ReportPage() {
   const [hydrated, setHydrated] = useState(false);
   const [showBand, setShowBand] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Sample mode: the bundled deterministic fixture rendered read-only —
+  // nothing is written to storage, a banner marks it clearly.
+  const [sample, setSampleState] = useState(false);
+  const setSample = (v: boolean) => {
+    setSampleState(v);
+    if (v) {
+      // Score the bundled artifacts through the REAL track plugins so the
+      // sample report exercises the same path as a live run (read-only).
+      let sampleLog = buildSampleAttemptLog();
+      const proj = project(sampleLog);
+      for (const t of TRACK_IDS) {
+        const artifact = proj.tracks[t].artifact;
+        if (!artifact) continue;
+        const rec = scoreTrack(t, artifact, "en", proj.attemptId ?? undefined);
+        sampleLog = append(sampleLog, {
+          type: "track_scored", trackId: t, score: rec.score,
+          judgments: rec.judgments,
+          rubricVersion: rec.rubricVersion,
+          scoringDigest: rec.scoringDigest,
+          modelManifest: rec.modelManifest,
+          ts: sampleLog[sampleLog.length - 1].ts + 1000,
+        });
+      }
+      setLog(sampleLog);
+    } else setLog(loadAttempt(window.localStorage));
+  };
   useEffect(() => {
     setLog(loadAttempt(window.localStorage));
     setHydrated(true);
@@ -139,7 +167,14 @@ export default function ReportPage() {
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>The report is the reward</h1>
           <p className="lede">{state ? `${done} of 4 tracks scored. Finish the run to unlock it.` : "No run in this browser yet."}</p>
-          <p><Link className="btn primary" href="/exam">{state ? "Continue →" : "Play →"}</Link></p>
+          <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
+            <Link className="btn primary" href="/exam">{state ? "Continue →" : "Play →"}</Link>
+            {!state ? (
+              <button type="button" className="btn" onClick={() => setSample(true)}>
+                Peek at a sample report
+              </button>
+            ) : null}
+          </p>
         </div>
       </main>
     );
@@ -154,6 +189,13 @@ export default function ReportPage() {
     <main className="page">
       <div className="container" style={{ maxWidth: 820 }}>
         <h1 className="sr-only">Diagnostic report</h1>
+        {sample ? (
+          <div role="note" style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap", border: "1px solid var(--border)", background: "var(--card)", borderRadius: 10, padding: "0.6rem 1rem", marginBottom: "1.2rem", fontSize: "0.85rem" }}>
+            <span className="badge demo">sample</span>
+            <span className="muted" style={{ flex: 1 }}>This is the bundled demo fixture, not your play. Nothing was saved.</span>
+            <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setSample(false)}>Exit sample</button>
+          </div>
+        ) : null}
         <div className="share-card" style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
             <div>
