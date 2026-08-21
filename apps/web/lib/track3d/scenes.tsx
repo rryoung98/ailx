@@ -22,11 +22,13 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { t2VisualMedia } from "../TrackVisuals";
 import type { SceneCanvasProps, SceneId } from "./registry";
 
-const ACCENT = "#5b8cff";
-const ACCENT_DIM = "#2d4a99";
-const SLAB = "#141821";
-const GOOD = "#4ade80";
-const BAD = "#f87171";
+/* Paper re-light: ink geometry + deep-green accents read on cream
+   (canvas stays transparent; the page's paper shows through). */
+const ACCENT = "#0b6b47";
+const ACCENT_DIM = "#bcd9cc";
+const SLAB = "#242220";
+const GOOD = "#0b6b47";
+const BAD = "#b91c1c";
 
 /** Fixed pose time used when prefers-reduced-motion is set. */
 const POSE_T = 4.6;

@@ -78,7 +78,7 @@ export function HeroCanvas() {
         const twinkle = reduced ? 1 : 0.75 + 0.25 * Math.sin(t * 0.008 + p.phase);
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(122, 162, 255, ${(p.a * twinkle).toFixed(3)})`;
+        ctx.fillStyle = `rgba(25, 46, 25, ${(p.a * twinkle * 0.55).toFixed(3)})`; // ink drift on paper
         ctx.fill();
       }
     };

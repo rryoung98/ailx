@@ -256,7 +256,8 @@ textarea.field:focus, input.field:focus { outline: none; border-color: var(--acc
 }
 .hero-inner { position: relative; z-index: 1; padding-top: 1.5rem; padding-bottom: 2.5rem; }
 .hero-title {
-  font-size: clamp(1.9rem, 1.1rem + 3.4vw, 2.6rem);
+  font-family: var(--serif); font-weight: 480;
+  font-size: clamp(2.1rem, 1.1rem + 3.8vw, 3rem);
   letter-spacing: -0.025em; margin: 0 0 0.9rem; text-wrap: balance;
 }
 .hero-title em { color: var(--accent); font-style: italic; }
@@ -344,8 +345,9 @@ summary { cursor: pointer; }
 }
 .teaser-card {
   position: absolute; inset: 0;
-  background: var(--bg); border: 1px solid var(--border-strong);
-  border-radius: 12px; padding: 0.9rem; overflow: hidden;
+  background: var(--card); border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(26, 26, 26, 0.08);
+  border-radius: 16px; padding: 0.9rem; overflow: hidden;
   display: flex; flex-direction: column; justify-content: center;
   will-change: transform;
 }
