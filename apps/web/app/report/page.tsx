@@ -6,9 +6,12 @@ import {
   loadAttempt, project, TRACK_IDS,
   type SequencedEntry,
 } from "@ailx/session";
+import { calibrationBins, t2ResponsesFromArtifact } from "../../lib/calibration";
+import { CalibrationCurve } from "../../lib/CalibrationCurve";
 import { candidateComposite } from "../../lib/composite";
 import { participantExport, researchExport } from "../../lib/exportTiers";
 import { narratives, trackInsights } from "../../lib/insights";
+import { t2Items } from "../../lib/instrument";
 import { TRACK_META } from "../../lib/tracks";
 
 function download(filename: string, data: unknown) {
@@ -113,6 +116,12 @@ export default function ReportPage() {
   const state = useMemo(() => (log ? project(log) : null), [log]);
   const summary = useMemo(() => (state ? candidateComposite(state) : null), [state]);
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
+  const calBins = useMemo(() => {
+    if (!state) return [];
+    const keys: Record<string, number> = {};
+    for (const it of t2Items("en")) keys[it.id] = it.key;
+    return calibrationBins(t2ResponsesFromArtifact(state.tracks.t2.artifact), keys);
+  }, [state]);
   const counted = useCountUp(summary?.composite ?? 0);
 
   if (!hydrated) {
@@ -144,7 +153,7 @@ export default function ReportPage() {
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
             <div>
               <div className="eyebrow">attempt {state.attemptId} · n = {summary.cohortSize}</div>
-              <div style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              <div className="composite-number" style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                 {counted.toFixed(1)}
               </div>
               <div className="muted small">composite · mean 50 · SD 15 · P{pct}</div>
@@ -157,6 +166,15 @@ export default function ReportPage() {
             <Radar values={summary.trackRaw} />
           </div>
           <DistStrip cohort={summary.cohortComposites} mine={summary.composite} />
+          <div className="share-track-bars" data-testid="share-track-bars">
+            {TRACK_IDS.map((t) => (
+              <div className="row" key={t}>
+                <span className="mono" style={{ color: "var(--accent)" }}>{t.toUpperCase()}</span>
+                <div className="meter"><div style={{ width: `${Math.max(0, Math.min(100, summary.trackRaw[t]))}%` }} /></div>
+                <span className="mono" style={{ textAlign: "right" }}>{summary.trackRaw[t].toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
           <p className="faint small mono" style={{ margin: "0.4rem 0 0" }}>
             quota-derived band cutlines (this cohort):{" "}
             {(["Distinction", "Merit", "Pass"] as const)
@@ -202,6 +220,12 @@ export default function ReportPage() {
                   </div>
                 );
               })}
+              {t === "t2" && calBins.some((b) => b.n > 0) && (
+                <>
+                  <h4 style={{ margin: "1rem 0 0", fontSize: "0.9rem" }}>Calibration — confidence vs observed accuracy</h4>
+                  <CalibrationCurve bins={calBins} />
+                </>
+              )}
               <p className="faint small mono" style={{ marginBottom: 0 }}>
                 rubric {ts.rubricVersion?.slice(0, 12)}… · scoring {ts.scoringDigest?.slice(0, 12)}… ·{" "}
                 {ts.modelManifest?.screening ? `judge ${ts.modelManifest.screening}` : ts.modelManifest?.pipeline ?? ts.modelManifest?.note}
@@ -212,6 +236,7 @@ export default function ReportPage() {
                   <summary className="faint mono">
                     {ts.judgments.length} stored judgment rows (score() replays exactly these)
                   </summary>
+                  <div style={{ overflowX: "auto" }}>
                   <table className="small mono" style={{ marginTop: "0.4rem", borderCollapse: "collapse" }}>
                     <thead>
                       <tr>
@@ -232,6 +257,7 @@ export default function ReportPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </details>
               )}
             </div>
