@@ -6,7 +6,12 @@ import {
   requestVibeCompletion,
   parseModelsResponse,
   fetchModelIds,
+  normalizeBaseUrl,
+  chatCompletionsUrl,
+  modelsUrl,
   CURATED_MODELS,
+  DEFAULT_BASE_URL,
+  LLM_BASE_URL_STORAGE,
   OPENROUTER_CHAT_URL,
   OPENROUTER_KEY_STORAGE,
   OpenRouterError,
@@ -124,9 +129,16 @@ describe("requestVibeCompletion (mocked fetch — no network)", () => {
 });
 
 describe("model list", () => {
-  it("curated defaults are present and slash-namespaced", () => {
-    expect(CURATED_MODELS).toContain("openai/gpt-4o-mini");
-    expect(CURATED_MODELS).toContain("anthropic/claude-3.5-haiku");
+  it("curated defaults track the current OpenRouter catalog", () => {
+    expect(CURATED_MODELS).toEqual([
+      "openai/gpt-4.1-nano",
+      "openai/gpt-4.1-mini",
+      "anthropic/claude-sonnet-5",
+      "google/gemini-3.5-flash-lite",
+      "deepseek/deepseek-v4-flash",
+      "moonshotai/kimi-k3",
+      "z-ai/glm-5.2:free",
+    ]);
     expect(CURATED_MODELS.every((m) => m.includes("/"))).toBe(true);
   });
   it("parseModelsResponse extracts and sorts ids, tolerating junk", () => {
@@ -144,5 +156,54 @@ describe("model list", () => {
         "k",
       ),
     ).toEqual(["m/1"]);
+  });
+});
+
+describe("custom API base URL (local OpenAI-compatible servers)", () => {
+  it("normalizeBaseUrl trims, strips trailing slashes and defaults", () => {
+    expect(normalizeBaseUrl(undefined)).toBe(DEFAULT_BASE_URL);
+    expect(normalizeBaseUrl("")).toBe(DEFAULT_BASE_URL);
+    expect(normalizeBaseUrl("   ")).toBe(DEFAULT_BASE_URL);
+    expect(normalizeBaseUrl("http://localhost:11434/v1/")).toBe("http://localhost:11434/v1");
+    expect(normalizeBaseUrl(" http://localhost:11434/v1// ")).toBe("http://localhost:11434/v1");
+  });
+  it("derives chat/models endpoints from any base", () => {
+    expect(chatCompletionsUrl()).toBe(OPENROUTER_CHAT_URL);
+    expect(chatCompletionsUrl("http://localhost:11434/v1")).toBe(
+      "http://localhost:11434/v1/chat/completions",
+    );
+    expect(modelsUrl("http://localhost:8000/v1/")).toBe("http://localhost:8000/v1/models");
+  });
+  it("the storage slot is declared", () => {
+    expect(LLM_BASE_URL_STORAGE).toBe("ailx:llm-base-url");
+  });
+  it("an empty key omits the Authorization header (keyless local servers)", () => {
+    const payload = buildVibeRequest({ model: "m", brief: "b", currentHtml: "<p/>", userPrompt: "p" });
+    const init = buildFetchInit("", payload);
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+  });
+  it("requestVibeCompletion targets the custom base, keyless (mocked fetch)", async () => {
+    const payload = buildVibeRequest({ model: "kimi-k3", brief: "b", currentHtml: "<p/>", userPrompt: "p" });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [{ message: { content: "ok" } }] }),
+    });
+    await requestVibeCompletion(fetchMock, "", payload, "http://localhost:11434/v1/");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:11434/v1/chat/completions");
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+  });
+  it("fetchModelIds targets the custom base without auth when keyless", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: "kimi-k3" }] }),
+    });
+    expect(await fetchModelIds(fetchMock, "", "http://localhost:11434/v1")).toEqual(["kimi-k3"]);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:11434/v1/models");
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
   });
 });

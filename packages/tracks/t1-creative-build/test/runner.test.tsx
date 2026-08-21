@@ -29,7 +29,9 @@ describe("T1 Runner (SSR smoke)", () => {
     expect(html).toContain("aria-label=\"Assist model\"");
     expect(html).toContain("aria-label=\"Custom model override\"");
     // No key -> demo label with the paste-a-key hint; nothing key-like rendered.
-    expect(html).toContain("paste an OpenRouter key for a real model");
+    expect(html).toContain("connect OpenRouter or paste a key for a real");
+    expect(html).toContain("Connect OpenRouter (quick SSO)");
+    expect(html).toContain("aria-label=\"API base URL\"");
     expect(html).not.toMatch(/sk-or-/);
   });
 });
