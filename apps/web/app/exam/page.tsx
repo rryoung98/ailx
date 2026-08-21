@@ -9,9 +9,11 @@ import {
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
 import {
-  DEMO_SCORING_DIGEST, demoModelManifest, demoRubricVersion,
-} from "../../lib/demo";
-import { loadTrackModule, scoreTrackArtifact, type TrackModule } from "../../lib/registry";
+  clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
+} from "../../lib/checkpoints";
+import {
+  checkpointToArtifact, loadTrackModule, scoreTrack, type TrackModule,
+} from "../../lib/registry";
 import { trackConfig } from "../../lib/instrument";
 import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
 
@@ -58,6 +60,13 @@ export default function ExamPage() {
 
   const state = useMemo(() => (log ? project(log) : null), [log]);
 
+  /** Monotonic event timestamp: the machine rejects backwards clocks. */
+  const stamp = useCallback((): number => {
+    const cur = logRef.current;
+    const last = cur && cur.length > 0 ? cur[cur.length - 1].ts : 0;
+    return Math.max(Date.now(), last);
+  }, []);
+
   const commit = useCallback((entries: readonly (Parameters<typeof append>[1])[]) => {
     setLog((prev) => {
       let next = prev ?? [];
@@ -78,32 +87,61 @@ export default function ExamPage() {
     return () => { cancelled = true; };
   }, [activeTrack]);
 
-  // Timeout watchdog: budget exhausted → auto-complete the track.
+  // Rehydration source for the active track: last stored checkpoint (F2).
+  const attemptId = state?.attemptId;
+  const initialCheckpoint = useMemo(() => {
+    if (!attemptId || !activeTrack || typeof window === "undefined") return undefined;
+    return loadCheckpoint(window.localStorage, attemptId, activeTrack);
+    // Reload only when the mounted track changes — the runner owns live state.
+  }, [attemptId, activeTrack]);
+
+  /**
+   * Complete + score a track through the REAL plugins. timedOut is DERIVED
+   * from budget accounting (the machine rejects a disagreeing flag). On
+   * timeout the artifact is rebuilt from the last checkpoint — a partial
+   * response scores by each track's missing-response rules, never a
+   * sentinel (F1).
+   */
+  const finishTrack = useCallback((t: TrackId, artifact: unknown) => {
+    const cur = logRef.current ? project(logRef.current) : null;
+    if (!cur || cur.currentTrack !== t || cur.tracks[t].status === "completed") return;
+    const ts = stamp();
+    const timedOut = secondsRemaining(cur, t, ts) <= 0;
+    const rec = scoreTrack(t, artifact);
+    commit([
+      { type: "track_completed", trackId: t, artifact, timedOut, ts },
+      {
+        type: "track_scored", trackId: t, score: rec.score,
+        judgments: rec.judgments,
+        rubricVersion: rec.rubricVersion,
+        scoringDigest: rec.scoringDigest,
+        modelManifest: rec.modelManifest,
+        ts,
+      },
+    ]);
+    if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
+  }, [commit, stamp]);
+
+  // Timeout watchdog: budget exhausted → score the last checkpoint (F1/F2).
   useEffect(() => {
-    if (!state || state.phase !== "in_track" || !state.currentTrack) return;
+    if (!state || !state.currentTrack) return;
+    if (state.phase !== "in_track" && state.phase !== "paused") return;
     const t = state.currentTrack;
     if (secondsRemaining(state, t, now) <= 0) {
-      finishTrack(t, { demo: true, trackId: t, timedOut: true }, true);
+      const cp = state.attemptId
+        ? loadCheckpoint(window.localStorage, state.attemptId, t)
+        : undefined;
+      finishTrack(t, checkpointToArtifact(t, cp));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, state]);
 
-  const finishTrack = useCallback((t: TrackId, artifact: unknown, timedOut: boolean) => {
+  const resetAttempt = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
-    if (!cur || cur.currentTrack !== t || cur.tracks[t].status === "completed") return;
-    const score = scoreTrackArtifact(t, artifact);
-    const ts = Date.now();
-    commit([
-      { type: "track_completed", trackId: t, artifact, timedOut, ts },
-      {
-        type: "track_scored", trackId: t, score,
-        rubricVersion: demoRubricVersion(t),
-        scoringDigest: DEMO_SCORING_DIGEST,
-        modelManifest: demoModelManifest(t),
-        ts,
-      },
-    ]);
-  }, [commit]);
+    if (cur?.attemptId) clearAllCheckpoints(window.localStorage, cur.attemptId);
+    clearAttempt(window.localStorage);
+    setLog(null);
+  }, []);
 
   if (!hydrated) {
     return <main className="page"><div className="container"><p className="muted">Loading attempt…</p></div></main>;
@@ -130,7 +168,7 @@ export default function ExamPage() {
             ))}
           </ul>
           <p className="small faint">
-            <span className="badge demo">demo</span> Deterministic scoring based on the SHA-256 hash of your actions. The same play will always result in the same score.
+            <span className="badge demo">demo</span> Deterministic scoring: the real track plugins score your stored artifact and judgments. The same play will always result in the same score.
           </p>
           <button
             className="btn primary"
@@ -156,7 +194,7 @@ export default function ExamPage() {
           <p className="lede">All four tracks are scored. The diagnostic report is the real reward.</p>
           <p style={{ display: "flex", gap: "0.8rem" }}>
             <Link href="/report" className="btn primary">Open the diagnostic report →</Link>
-            <ResetButton onReset={() => { clearAttempt(window.localStorage); setLog(null); }} />
+            <ResetButton onReset={resetAttempt} />
           </p>
         </div>
       </main>
@@ -195,17 +233,17 @@ export default function ExamPage() {
           {next ? (
             <button
               className="btn primary"
-              onClick={() => commit([{ type: "track_started", trackId: next, ts: Date.now() }])}
+              onClick={() => commit([{ type: "track_started", trackId: next, ts: stamp() }])}
             >
               Start {TRACK_META[next].code} · {TRACK_META[next].name} ({fmt(state.config!.budgets[next])})
             </button>
           ) : (
-            <button className="btn primary" onClick={() => commit([{ type: "attempt_completed", ts: Date.now() }])}>
+            <button className="btn primary" onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}>
               Finish attempt
             </button>
           )}
           <span style={{ marginLeft: "0.8rem" }}>
-            <ResetButton onReset={() => { clearAttempt(window.localStorage); setLog(null); }} />
+            <ResetButton onReset={resetAttempt} />
           </span>
         </div>
       </main>
@@ -222,10 +260,22 @@ export default function ExamPage() {
     attemptId: state.attemptId!,
     locale: state.config!.locale,
     config: trackConfig(t),
-    onEvent: (event: TrackEvent) =>
-      commit([{ type: "track_event", trackId: t, event, ts: Date.now() }]),
-    onComplete: (artifact: unknown) => finishTrack(t, artifact, false),
+    onEvent: (event: TrackEvent) => {
+      const cur = logRef.current ? project(logRef.current) : null;
+      // Drop late events once the budget is exhausted (machine enforces too).
+      if (!cur || cur.phase !== "in_track" || cur.currentTrack !== t) return;
+      const ts = stamp();
+      if (secondsRemaining(cur, t, ts) <= 0) return;
+      commit([{ type: "track_event", trackId: t, event, ts }]);
+    },
+    onComplete: (artifact: unknown) => finishTrack(t, artifact),
     secondsRemaining: remaining,
+    // F2: the runner rehydrates from the last checkpoint and persists every
+    // meaningful mutation back through onCheckpoint.
+    checkpoint: initialCheckpoint,
+    onCheckpoint: (cp: unknown) => {
+      if (state.attemptId) saveCheckpoint(window.localStorage, state.attemptId, t, cp);
+    },
   };
 
   const budget = state.config!.budgets[t];
@@ -247,22 +297,34 @@ export default function ExamPage() {
           <div style={{ display: "flex", gap: "0.9rem", alignItems: "center" }}>
             <span className={`timer${remaining <= 60 ? " low" : ""}`}>{fmt(remaining)}</span>
             {paused ? (
-              <button className="btn" onClick={() => commit([{ type: "resumed", ts: Date.now() }])}>Resume</button>
+              <button className="btn" onClick={() => commit([{ type: "resumed", ts: stamp() }])}>Resume</button>
             ) : (
-              <button className="btn" onClick={() => commit([{ type: "paused", ts: Date.now() }])}>Pause</button>
+              <button className="btn" onClick={() => commit([{ type: "paused", ts: stamp() }])}>Pause</button>
             )}
           </div>
         </div>
         <div className="runner-frame" style={{ marginTop: "1.2rem", position: "relative" }}>
-          {paused ? (
-            <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-              <h3>Paused</h3>
-              <p className="muted">The track clock is stopped. Content is hidden while paused.</p>
+          {/* F2: the Runner stays MOUNTED while paused — a veil covers it so
+              content is hidden but in-progress state survives. */}
+          {mod ? (
+            <div aria-hidden={paused} style={paused ? { visibility: "hidden" } : undefined}>
+              <mod.Runner {...uiProps} />
             </div>
-          ) : mod ? (
-            <mod.Runner {...uiProps} />
           ) : (
             <p className="muted">Loading track runner…</p>
+          )}
+          {paused && (
+            <div
+              role="dialog" aria-label="Paused"
+              style={{
+                position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center",
+                background: "var(--bg, #0b0d10)", zIndex: 5, textAlign: "center", padding: "3rem 1rem",
+              }}
+            >
+              <h3>Paused</h3>
+              <p className="muted">The track clock is stopped. Content is hidden while paused; your work is kept.</p>
+            </div>
           )}
         </div>
         <div className={`time-bar${remaining <= 60 ? " low" : ""}`}>

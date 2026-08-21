@@ -1,8 +1,14 @@
 /**
- * Instrument wiring: adapts the content package (snapshot + bank fixture)
- * into the config shapes each track plugin validates.
+ * Instrument wiring: derives track configs from the COMMITTED instrument
+ * snapshot (instruments/2026.1/snapshot.json) — the authoritative content
+ * package — into the config shapes each track plugin validates (F16).
+ *
+ * T2 items come from the snapshot's embedded bank; per-item exposure
+ * seconds come from the snapshot's instrument config blocks (F3). The T3
+ * demo scenario remains code-side (no content-package changes); its hash is
+ * pinned and asserted at test time.
  */
-import bankRaw from "./fixtures/t2-bank.json";
+import snapshotRaw from "../../../instruments/2026.1/snapshot.json";
 
 interface BankItem {
   id: string;
@@ -10,13 +16,62 @@ interface BankItem {
   locale: string;
   difficulty: string;
   stem: string;
-  material: { kind: string; text?: string; svg?: string; dataUri?: string; [k: string]: unknown };
+  material: {
+    kind: string;
+    text?: string;
+    svg?: string;
+    dataUri?: string;
+    data_uri?: string;
+    [k: string]: unknown;
+  };
   options: Array<{ id: string; label: string }>;
   key: string;
   rationale: string;
   provenance?: unknown;
 }
 
+interface SnapshotBlock {
+  id: string;
+  exposure_seconds?: number | null;
+  untimed?: boolean;
+}
+
+interface SnapshotTrack {
+  trackId: string;
+  plugin: string;
+  config: Record<string, unknown>;
+  rubricVersion: string;
+  bank?: { items: BankItem[]; sha256?: string };
+}
+
+interface Snapshot {
+  format: string;
+  instrument: { manifest: Record<string, unknown>; tracks: SnapshotTrack[] };
+}
+
+export const SNAPSHOT = snapshotRaw as unknown as Snapshot;
+
+const SNAPSHOT_TRACK_IDS: Record<"t1" | "t2" | "t3" | "t4", string> = {
+  t1: "t1-creative-build",
+  t2: "t2-discrimination",
+  t3: "t3-reasoning",
+  t4: "t4-generative",
+};
+
+export function snapshotTrack(trackId: "t1" | "t2" | "t3" | "t4"): SnapshotTrack {
+  const t = SNAPSHOT.instrument.tracks.find(
+    (x) => x.trackId === SNAPSHOT_TRACK_IDS[trackId],
+  );
+  if (!t) throw new Error(`snapshot missing track ${trackId}`);
+  return t;
+}
+
+/** Per-track rubricVersion from the committed snapshot (F12). */
+export function snapshotRubricVersion(trackId: "t1" | "t2" | "t3" | "t4"): string {
+  return snapshotTrack(trackId).rubricVersion;
+}
+
+/** Bank item type → T2Config item type. */
 const TYPE_MAP: Record<string, string> = {
   "text-authenticity": "message-page",
   "image-provenance": "media-image",
@@ -26,36 +81,83 @@ const TYPE_MAP: Record<string, string> = {
 
 const DIFF_MAP: Record<string, number> = { easy: 0.25, medium: 0.5, hard: 0.85 };
 
+/** Option ids that name the SIGNAL (synthetic / hostile) call. */
+const SIGNAL_OPTION_IDS = new Set(["ai", "synthetic", "hostile"]);
+
+/**
+ * Per-item-type exposure seconds, read from the snapshot's instrument
+ * config blocks (media-image 6, media-video 12, media-audio 10,
+ * message-email 25, message-page 25; provenance untimed → undefined).
+ */
+export function t2ExposureSeconds(): Record<string, number | undefined> {
+  const blocks = (snapshotTrack("t2").config.blocks ?? []) as SnapshotBlock[];
+  const map: Record<string, number | undefined> = {};
+  for (const b of blocks) {
+    map[b.id] =
+      b.untimed === true || b.exposure_seconds == null
+        ? undefined
+        : b.exposure_seconds;
+  }
+  return map;
+}
+
 function materialToString(m: BankItem["material"]): string {
+  // The committed bank uses snake_case data_uri; accept camelCase and raw
+  // svg too so image items always render as images (F3).
+  if (typeof m.data_uri === "string") return m.data_uri;
   if (typeof m.dataUri === "string") return m.dataUri;
   if (typeof m.svg === "string") {
     return `data:image/svg+xml;base64,${typeof btoa === "function" ? btoa(unescape(encodeURIComponent(m.svg))) : Buffer.from(m.svg, "utf8").toString("base64")}`;
   }
   if (typeof m.text === "string") return m.text;
+  if (m.kind === "email") {
+    const parts: string[] = [];
+    if (typeof m.from_display === "string" || typeof m.from_address === "string") {
+      parts.push(`From: ${[m.from_display, m.from_address && `<${String(m.from_address)}>`].filter(Boolean).join(" ")}`);
+    }
+    if (typeof m.subject === "string") parts.push(`Subject: ${m.subject}`);
+    if (typeof m.body === "string") parts.push("", String(m.body));
+    if (parts.length > 0) return parts.join("\n");
+  }
+  if (typeof m.body === "string") return m.body;      // chat
+  if (typeof m.details === "string") return m.details; // scenario
   return JSON.stringify(m);
 }
 
-/** Bank items (content-addressed upstream) → T2Config item shape. */
+/** Snapshot bank items (content-addressed upstream) → T2Config item shape. */
 export function t2Items(locale: string = "en") {
-  const items = (bankRaw as BankItem[])
+  const bank = snapshotTrack("t2").bank;
+  if (!bank) throw new Error("snapshot t2 bank missing");
+  const exposure = t2ExposureSeconds();
+  const items = bank.items
     .filter((i) => i.locale === locale)
-    .map((i) => ({
-      id: i.id,
-      type: TYPE_MAP[i.type] ?? "provenance",
-      stem: i.stem,
-      material: materialToString(i.material),
-      options: i.options.map((o) => o.label),
-      key: Math.max(0, i.options.findIndex((o) => o.id === i.key)),
-      difficulty: DIFF_MAP[i.difficulty] ?? 0.5,
-      rationale: i.rationale,
-    }));
+    .map((i) => {
+      const type = TYPE_MAP[i.type] ?? "provenance";
+      const signal = i.options.findIndex((o) => SIGNAL_OPTION_IDS.has(o.id));
+      return {
+        id: i.id,
+        type,
+        stem: i.stem,
+        material: materialToString(i.material),
+        options: i.options.map((o) => o.label),
+        key: Math.max(0, i.options.findIndex((o) => o.id === i.key)),
+        ...(signal >= 0 ? { signal } : {}),
+        difficulty: DIFF_MAP[i.difficulty] ?? 0.5,
+        rationale: i.rationale,
+        ...(exposure[type] !== undefined ? { exposureSeconds: exposure[type] } : {}),
+      };
+    });
   // Demo deck: keep the sitting short & fun — 12 items across difficulties.
   const binary = items.filter((i) => i.type !== "provenance");
   const prov = items.filter((i) => i.type === "provenance");
   return [...binary.slice(0, 9), ...prov.slice(0, 3)];
 }
 
-/** T3 demo scenario (mirrors the t3 package's validated fixture). */
+/**
+ * T3 demo scenario (mirrors the t3 package's validated fixture). Kept
+ * code-side by design — NO content-package changes — with its canonical
+ * hash pinned as T3_SCENARIO_SHA256 and asserted by tests.
+ */
 export const T3_SCENARIO = {
   title: "Grid interconnection queue reform",
   brief:
@@ -74,6 +176,10 @@ export const T3_SCENARIO = {
   ],
   minWords: 120,
 };
+
+/** Pinned sha256(canonicalJson(T3_SCENARIO)) — asserted at test time. */
+export const T3_SCENARIO_SHA256 =
+  "38d7bdb42bae91e6377cfd586242e8db1e43ba194de0534ce3cfa90f46dff3dd";
 
 /** Per-track config passed to the real Runner + score(). */
 export function trackConfig(trackId: "t1" | "t2" | "t3" | "t4"): unknown {

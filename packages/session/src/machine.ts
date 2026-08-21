@@ -3,6 +3,15 @@
  * "Session structure". Event-sourced: the append-only log is the source of
  * truth; state is a pure projection of the log. No clocks are read here —
  * every timestamp comes in on the event, so projection is deterministic.
+ *
+ * Invariants enforced at append time (F13):
+ *  - timestamps are nondecreasing across the whole log;
+ *  - track_event is rejected once the track budget is exhausted;
+ *  - track_completed.timedOut must AGREE with budget accounting
+ *    (timedOut === activeMs-at-ts >= budget) — the flag is derived, never
+ *    trusted from the caller;
+ *  - negative durations (defensive, e.g. legacy stored logs) clamp to 0 in
+ *    projection.
  */
 
 import type { TrackId } from "./scoring.js";
@@ -22,6 +31,16 @@ export interface TrackScoreValue {
   scaled: number; // 0–100 raw track points
 }
 
+/** Stored judgment row (mirrors @ailx/core Judgment — structural). */
+export interface JudgmentRecord {
+  dimension: string;
+  sample: number;
+  /** Normalized rubric value in [0, 1] (core contract). */
+  value: number;
+  evidence?: string;
+  modelId: string;
+}
+
 export type SessionLogEntry =
   | { type: "attempt_started"; attemptId: string; config: SessionConfig; ts: number }
   | { type: "track_started"; trackId: TrackId; ts: number }
@@ -29,7 +48,13 @@ export type SessionLogEntry =
   | { type: "resumed"; ts: number }
   | { type: "track_event"; trackId: TrackId; event: TrackEventPayload; ts: number }
   | { type: "track_completed"; trackId: TrackId; artifact: unknown; timedOut: boolean; ts: number }
-  | { type: "track_scored"; trackId: TrackId; score: TrackScoreValue; rubricVersion: string; scoringDigest: string; modelManifest: Record<string, string>; ts: number }
+  | {
+      type: "track_scored"; trackId: TrackId; score: TrackScoreValue;
+      rubricVersion: string; scoringDigest: string; modelManifest: Record<string, string>;
+      /** Judgment rows score() consumed — persisted for reproducibility (F12). */
+      judgments?: ReadonlyArray<JudgmentRecord>;
+      ts: number;
+    }
   | { type: "attempt_completed"; ts: number };
 
 export type SequencedEntry = SessionLogEntry & { seq: number };
@@ -73,6 +98,8 @@ export interface TrackState {
   rubricVersion?: string;
   scoringDigest?: string;
   modelManifest?: Record<string, string>;
+  /** Judgment rows persisted with the score (F12). */
+  judgments?: ReadonlyArray<JudgmentRecord>;
 }
 
 export interface SessionState {
@@ -83,6 +110,8 @@ export interface SessionState {
   currentTrack?: TrackId;
   tracks: Record<TrackId, TrackState>;
   lastSeq: number;
+  /** Timestamp of the last applied entry — appends must not go backwards. */
+  lastTs?: number;
 }
 
 export const TRACK_ORDER: readonly TrackId[] = TRACK_IDS;
@@ -96,6 +125,21 @@ export function initialState(): SessionState {
 }
 
 export class TransitionError extends Error {}
+
+/** Active (unpaused) milliseconds a track has consumed as of `nowMs`. */
+function usedMsAt(s: SessionState, trackId: TrackId, nowMs: number): number {
+  const t = s.tracks[trackId];
+  const running =
+    t.runningSince !== undefined ? Math.max(0, nowMs - t.runningSince) : 0;
+  return t.activeMs + running;
+}
+
+/** True when the track's configured budget is exhausted as of `nowMs`. */
+function budgetExhaustedAt(s: SessionState, trackId: TrackId, nowMs: number): boolean {
+  const cfg = s.config;
+  if (!cfg) return false;
+  return usedMsAt(s, trackId, nowMs) >= cfg.budgets[trackId] * 1000;
+}
 
 /**
  * Validate-and-append. Returns a NEW log; never mutates. Throws
@@ -114,6 +158,13 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
   const fail = (msg: string): never => {
     throw new TransitionError(`${e.type} rejected: ${msg} (phase=${s.phase})`);
   };
+  if (typeof e.ts !== "number" || !Number.isFinite(e.ts)) {
+    fail("ts must be a finite number");
+  }
+  // Nondecreasing timestamps across the whole log (F13).
+  if (s.lastTs !== undefined && e.ts < s.lastTs) {
+    fail(`ts ${e.ts} is earlier than the last event ts ${s.lastTs}`);
+  }
   switch (e.type) {
     case "attempt_started":
       if (s.phase !== "idle") fail("attempt already started");
@@ -133,11 +184,22 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
     case "track_event":
       if (s.phase !== "in_track" || s.currentTrack !== e.trackId)
         fail("track not active");
+      if (budgetExhaustedAt(s, e.trackId, e.ts))
+        fail("budget exhausted — no further track events accepted");
       return;
-    case "track_completed":
+    case "track_completed": {
       if ((s.phase !== "in_track" && s.phase !== "paused") || s.currentTrack !== e.trackId)
         fail("track not active");
+      // timedOut is DERIVED from accounting; the caller's flag must agree.
+      const derived = budgetExhaustedAt(s, e.trackId, e.ts);
+      if (e.timedOut !== derived) {
+        fail(
+          `timedOut=${e.timedOut} disagrees with budget accounting ` +
+          `(derived=${derived})`,
+        );
+      }
       return;
+    }
     case "track_scored":
       if (s.tracks[e.trackId].status !== "completed") fail("track not completed");
       return;
@@ -154,6 +216,7 @@ export function project(log: readonly SequencedEntry[]): SessionState {
   const s = initialState();
   for (const e of log) {
     s.lastSeq = e.seq;
+    s.lastTs = s.lastTs === undefined ? e.ts : Math.max(s.lastTs, e.ts);
     switch (e.type) {
       case "attempt_started":
         s.phase = "between_tracks";
@@ -170,7 +233,8 @@ export function project(log: readonly SequencedEntry[]): SessionState {
       }
       case "paused": {
         const t = s.tracks[s.currentTrack!];
-        t.activeMs += e.ts - (t.runningSince ?? e.ts);
+        // Negative durations clamp to 0 (defensive for legacy stored logs).
+        t.activeMs += Math.max(0, e.ts - (t.runningSince ?? e.ts));
         t.runningSince = undefined;
         s.phase = "paused";
         break;
@@ -186,13 +250,16 @@ export function project(log: readonly SequencedEntry[]): SessionState {
         break;
       case "track_completed": {
         const t = s.tracks[e.trackId];
+        // Derive timedOut from accounting BEFORE folding the final slice,
+        // matching what append() validated (never trust the stored flag).
+        const derived = budgetExhaustedAt(s, e.trackId, e.ts);
         if (t.runningSince !== undefined) {
-          t.activeMs += e.ts - t.runningSince;
+          t.activeMs += Math.max(0, e.ts - t.runningSince);
           t.runningSince = undefined;
         }
         t.status = "completed";
         t.artifact = e.artifact;
-        t.timedOut = e.timedOut;
+        t.timedOut = s.config ? derived : e.timedOut;
         s.currentTrack = undefined;
         s.phase = "between_tracks";
         break;
@@ -203,6 +270,7 @@ export function project(log: readonly SequencedEntry[]): SessionState {
         t.rubricVersion = e.rubricVersion;
         t.scoringDigest = e.scoringDigest;
         t.modelManifest = e.modelManifest;
+        t.judgments = e.judgments;
         break;
       }
       case "attempt_completed":
@@ -224,10 +292,7 @@ export function secondsRemaining(
 ): number {
   const cfg = state.config;
   if (!cfg) return 0;
-  const t = state.tracks[trackId];
-  const running =
-    t.runningSince !== undefined ? Math.max(0, nowMs - t.runningSince) : 0;
-  const usedMs = t.activeMs + running;
+  const usedMs = usedMsAt(state, trackId, nowMs);
   return Math.max(0, Math.ceil((cfg.budgets[trackId] * 1000 - usedMs) / 1000));
 }
 

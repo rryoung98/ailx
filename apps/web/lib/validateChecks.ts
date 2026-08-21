@@ -7,12 +7,17 @@
 // Deep import: the purity harness only (no node:crypto in the browser bundle).
 import { runPure } from "@ailx/core/dist/purity.js";
 import {
-  append, canonicalJson, demoCohort, itemId, project, rubricVersionOf,
+  append, demoCohort, itemId, project, rubricVersionOf,
   scoreCohort, sha256Hex, TRACK_IDS,
-  type TrackRawScores, type TrackScoreValue,
+  type TrackRawScores,
 } from "@ailx/session";
-import { demoScoreArtifact } from "./demo";
+import { t1Plugin } from "@ailx/track-t1";
+import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
+import { plugin as t3Plugin, validateT3Config } from "@ailx/track-t3";
+import { t4Plugin } from "@ailx/track-t4";
 import GOLDEN from "./fixtures/composite-golden.json";
+import PLUGIN_GOLDEN from "./fixtures/plugin-golden.json";
+import { scoreTrack, type TrackScoringRecord } from "./registry";
 import { buildSampleAttemptLog } from "./sampleAttempt";
 
 export interface CheckResult {
@@ -39,6 +44,43 @@ const SAMPLE_ITEM = {
 };
 const SAMPLE_ITEM_ID = "146a9d0f9a9396b8afa3ffbdbeee9ac430fe9820686fc5772006144452c2ef4f";
 const SHA_ABC = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
+interface PluginGoldenFixture {
+  config: unknown;
+  artifact: unknown;
+  judgments: Array<{ dimension: string; sample: number; value: number; modelId: string }>;
+  expected: { raw: Record<string, number>; scaled: number };
+}
+
+const PG = PLUGIN_GOLDEN as unknown as Record<"t1" | "t2" | "t3" | "t4", PluginGoldenFixture>;
+
+/** Runs a REAL plugin score() on its golden fixture. Pure by contract. */
+function runPluginGolden(t: "t1" | "t2" | "t3" | "t4") {
+  const f = PG[t];
+  const rubricVersion = "golden-rubric";
+  switch (t) {
+    case "t1":
+      return t1Plugin.score(
+        { artifact: f.artifact as never, judgments: f.judgments, rubricVersion },
+        t1Plugin.validateConfig(f.config),
+      );
+    case "t2":
+      return t2Plugin.score(
+        { artifact: f.artifact as never, judgments: f.judgments, rubricVersion },
+        validateT2Config(f.config),
+      );
+    case "t3":
+      return t3Plugin.score(
+        { artifact: f.artifact as never, judgments: f.judgments, rubricVersion },
+        validateT3Config(f.config),
+      );
+    case "t4":
+      return t4Plugin.score(
+        { artifact: f.artifact as never, judgments: f.judgments, rubricVersion },
+        t4Plugin.validateConfig(f.config),
+      );
+  }
+}
 
 export function runAllChecks(): CheckResult[] {
   return [
@@ -71,17 +113,35 @@ export function runAllChecks(): CheckResult[] {
     }),
 
     run("purity", "Scoring purity harness", "§14 — score() runs where fetch/Date.now/Math.random throw", () => {
-      const scored = runPure(() => scoreCohort(GOLDEN.cohort as TrackRawScores[]));
-      const demoScored = runPure(() => demoScoreArtifact("t3", { demo: true, trackId: "t3", response: "x", interactions: ["prompted"] }));
+      // ALL FOUR real plugin scorers run inside the harness.
+      const clean = (["t1", "t2", "t3", "t4"] as const).every((t) => {
+        const s = runPure(() => runPluginGolden(t));
+        return typeof s.scaled === "number";
+      });
       let impureTrapped = false;
       try {
         runPure(() => Math.random());
       } catch {
         impureTrapped = true;
       }
+      const composite = runPure(() => scoreCohort(GOLDEN.cohort as TrackRawScores[]));
       return {
-        pass: scored.composite.length === GOLDEN.cohort.length && demoScored.scaled > 0 && impureTrapped,
-        detail: `composite + demo scorer both run clean under the harness; an impure score (Math.random) is trapped: ${impureTrapped}`,
+        pass: clean && impureTrapped && composite.composite.length === GOLDEN.cohort.length,
+        detail: `all four real plugin score() functions + the composite run clean under the harness; an impure score (Math.random) is trapped: ${impureTrapped}`,
+      };
+    }),
+
+    run("plugin-golden", "Real scorer golden fixtures", "§14 — each track's score() reproduces pinned values", () => {
+      const drift: string[] = [];
+      for (const t of ["t1", "t2", "t3", "t4"] as const) {
+        const got = runPure(() => runPluginGolden(t));
+        if (JSON.stringify(got) !== JSON.stringify(PG[t].expected)) drift.push(t);
+      }
+      return {
+        pass: drift.length === 0,
+        detail: drift.length === 0
+          ? `t1..t4 golden artifacts+judgments reproduce pinned scores (${(["t1", "t2", "t3", "t4"] as const).map((t) => `${t}:${PG[t].expected.scaled}`).join(" ")})`
+          : `drift in: ${drift.join(", ")} — regenerate deliberately via apps/web/scripts/gen-plugin-golden.mjs`,
       };
     }),
 
@@ -110,15 +170,16 @@ export function runAllChecks(): CheckResult[] {
       };
     }),
 
-    run("sample-attempt", "End-to-end sample attempt", "§04 — session log → track scores → composite → band", () => {
+    run("sample-attempt", "End-to-end sample attempt", "§04 — session log → REAL plugin scores → composite → band", () => {
       const result1 = scoreSampleAttempt();
       const result2 = scoreSampleAttempt();
       const identical = JSON.stringify(result1) === JSON.stringify(result2);
       const inBounds = result1.composite >= 0 && result1.composite <= 100 &&
-        TRACK_IDS.every((t) => result1.tracks[t].scaled >= 0 && result1.tracks[t].scaled <= 100);
+        TRACK_IDS.every((t) => result1.tracks[t].score.scaled >= 0 && result1.tracks[t].score.scaled <= 100);
+      const notInvalid = TRACK_IDS.every((t) => result1.tracks[t].score.raw.invalid === undefined);
       return {
-        pass: identical && inBounds && result1.pausedMsAccounted,
-        detail: `fixture attempt scores ${TRACK_IDS.map((t) => `${t}:${result1.tracks[t].scaled}`).join(" ")} → composite ${result1.composite} (${result1.band}); replay-deterministic: ${identical}; pause excluded from active time: ${result1.pausedMsAccounted}`,
+        pass: identical && inBounds && notInvalid && result1.pausedMsAccounted,
+        detail: `fixture attempt scores ${TRACK_IDS.map((t) => `${t}:${result1.tracks[t].score.scaled}`).join(" ")} → composite ${result1.composite} (${result1.band}); replay-deterministic: ${identical}; pause excluded from active time: ${result1.pausedMsAccounted}`,
       };
     }),
   ];
@@ -127,12 +188,13 @@ export function runAllChecks(): CheckResult[] {
 function scoreSampleAttempt() {
   const log = buildSampleAttemptLog();
   const state = project(log);
-  const tracks = {} as Record<(typeof TRACK_IDS)[number], TrackScoreValue>;
+  const tracks = {} as Record<(typeof TRACK_IDS)[number], TrackScoringRecord>;
   const raw = {} as TrackRawScores;
   for (const t of TRACK_IDS) {
-    const s = runPure(() => demoScoreArtifact(t, state.tracks[t].artifact));
+    // The SAME registry path the exam uses: real plugin score() under runPure.
+    const s = runPure(() => scoreTrack(t, state.tracks[t].artifact));
     tracks[t] = s;
-    raw[t] = s.scaled;
+    raw[t] = s.score.scaled;
   }
   const cohort = [...demoCohort("ailx-2026.1-demo-cohort", 44), raw];
   const r = scoreCohort(cohort);
