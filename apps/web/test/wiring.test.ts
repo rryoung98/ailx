@@ -33,7 +33,7 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
     const images = t2Items("en").filter((i) => i.type === "media-image");
     expect(images.length).toBeGreaterThan(0);
     for (const i of images) {
-      expect(i.material.startsWith("data:image")).toBe(true);
+      expect(i.material.startsWith("data:image") || i.material.startsWith("/ailx/t2-media/")).toBe(true);
     }
   });
 
@@ -184,5 +184,24 @@ describe("real plugin scoring (F1: no fallback, fail closed)", () => {
     // extra unknown fields survive (new T4 shapes)
     const t4 = checkpointToArtifact("t4", { drafts: [], finals: { images: [] }, chosenSet: [], note: "n", disclosed: false });
     expect((t4 as { finals: { images: unknown[] } }).finals).toEqual({ images: [] });
+  });
+});
+
+import { readFileSync, existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { describe as d2, it as it2, expect as ex2 } from "vitest";
+
+d2("real media items", () => {
+  const items = t2Items("en");
+  const media = items.filter((i) => i.material.startsWith("/ailx/t2-media/"));
+  it2("bank includes real-vs-AI photo items", () => {
+    ex2(media.length).toBeGreaterThanOrEqual(6);
+  });
+  it2("every referenced media file exists and is <= 200 KB", () => {
+    for (const i of media) {
+      const p = join(__dirname, "..", "public", i.material.replace("/ailx/", ""));
+      ex2(existsSync(p), p).toBe(true);
+      ex2(statSync(p).size).toBeLessThanOrEqual(200_000);
+    }
   });
 });

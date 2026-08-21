@@ -38,7 +38,7 @@ const ghostBtn: CSSProperties = {
 };
 
 function Material({ item }: { item: T2Item }) {
-  if (item.material.startsWith("data:image/")) {
+  if (item.material.startsWith("data:image/") || /^(https?:)?\/[^\s]+\.(jpe?g|png|webp|gif)$/i.test(item.material)) {
     return (
       <img
         src={item.material}

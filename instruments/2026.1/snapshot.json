@@ -1170,9 +1170,669 @@
               "rationale": "Screenshots destroy metadata by construction, so absence on a screenshot has zero evidential value. Correct procedure: trace to the earliest obtainable file and check ITS credentials against the trust list.",
               "stem": "A screenshot of a signed press photo circulates with the caption 'no Content Credentials — probably AI'. The original, on the agency's site, carries a valid manifest. What failed in the reasoning chain?",
               "type": "provenance-reasoning"
+            },
+            {
+              "difficulty": "hard",
+              "id": "0a6c26f1d76097bd196fc6045cc166f04559a16116b78808bfc7cbfba2e22bdd",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "hotel courtyard",
+                "kind": "image",
+                "src": "t2-media/79af8a82960e.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Irishandys",
+                "license": "CC0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Plaza_Calderon_in_Binondo,_Manila,_Philippines_late_1800%27s_to_early_1900%27s.jpg",
+                "tier": "a-generated",
+                "title": "File:Plaza Calderon in Binondo, Manila, Philippines late 1800's to early 1900's.jpg"
+              },
+              "rationale": "Foliage repeats in tiled patterns and window reflections do not match the courtyard geometry — texture repetition is a generator tell.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "7886e34cbe78f8664140e08fd349400a69c509685b14369f75a7313177cf305c",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "beach huts",
+                "kind": "image",
+                "src": "t2-media/cd8fca17c7f6.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "gemini",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Cabine_balneari.jpg",
+                "tier": "a-generated",
+                "title": "File:Cabine balneari.jpg"
+              },
+              "rationale": "Beach hut stripes drift in width and the shadows fall at slightly different angles hut to hut — inconsistent light is a generator tell.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "hard",
+              "id": "b58ac503b65e254778263dfd48d6d41ba1ee1cfda48f4f473829a359fa9d740f",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "green apple",
+                "kind": "image",
+                "src": "t2-media/eb9b7d51d61d.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Midjourney; prompted by The masketta man",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Green_apple_gen.png",
+                "tier": "a-generated",
+                "title": "File:Green apple gen.png"
+              },
+              "rationale": "The apple's specular highlight has no window shape and the stem junction is smoothed over — physically implausible reflections betray synthesis.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "b5ba398bec0b86fc56c8e76d076dbd692ddc3041337871a787aee3dfc6d8ff2e",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "meat stew dish",
+                "kind": "image",
+                "src": "t2-media/cc46563e0668.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Dalle 3.0",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Khasir_Rejala_Bangladesh.jpg",
+                "tier": "a-generated",
+                "title": "File:Khasir Rejala Bangladesh.jpg"
+              },
+              "rationale": "Squid rings merge into the stew with no occlusion boundaries and the rim pattern warps — object boundaries dissolve under generation.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "hard",
+              "id": "50a91ab461795ddbe5c8b89f681e332cf29925faf4c766d7ec87a869320b2d80",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "leek",
+                "kind": "image",
+                "src": "t2-media/24dfeb021b56.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Craiyon algorithm",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Leek_on_a_white_background.png",
+                "tier": "a-generated",
+                "title": "File:Leek on a white background.png"
+              },
+              "rationale": "The leek's root fibers fuse into a uniform brush texture and the white balance is impossibly even — organic chaos is hard to fake.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "d2493c8ab293c853ac025608b36d5c6bd9bbf86abb5d9cf760ba8e0814dc17b5",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "moonlit forest path",
+                "kind": "image",
+                "src": "t2-media/3bf3d45bb71c.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Murani compositor",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:!%C2%BA_acto,_introducci%C3%B3n._%22Oh_luna_lucente%22.jpg",
+                "tier": "a-generated",
+                "title": "File:!º acto, introducción. \"Oh luna lucente\".jpg"
+              },
+              "rationale": "Moon lights the path from the wrong side relative to tree shadows — a single light source should agree everywhere.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "hard",
+              "id": "d76282a87699492d99b4c8b9223c27872582c275275ed61201ea9824bc2d003b",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "hedgehog",
+                "kind": "image",
+                "src": "t2-media/b69e9e8858fd.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "FLUX.1 [schnell]; prompted by Emdosis",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Cute_Hedgehog.jpg",
+                "tier": "a-generated",
+                "title": "File:Cute Hedgehog.jpg"
+              },
+              "rationale": "Spine directions swirl in patches instead of following the body's growth pattern — fur/spine flow errors reveal generation.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "c2d5d419a45fab8609525985628ccd866b27241112d2fb286cf427ca95a8f708",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "classical facade",
+                "kind": "image",
+                "src": "t2-media/bf9752342194.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "ChatGPT 5.5",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Esternosangaetano.png",
+                "tier": "a-generated",
+                "title": "File:Esternosangaetano.png"
+              },
+              "rationale": "Ornament repeats identically across bays and the inscription letters degrade into pseudo-glyphs — text and ornament repetition are tells.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "easy",
+              "id": "d847cc2808559b4c0c3d6d722141b36c059fd2b4817db4b79a5f12f3297b9268",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "Japanese street with tulips",
+                "kind": "image",
+                "src": "t2-media/60c2743f3130.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Leonardo AI",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Japanese_buildings_and_Turkish_tulips.jpg",
+                "tier": "a-generated",
+                "title": "File:Japanese buildings and Turkish tulips.jpg"
+              },
+              "rationale": "Tulip heads repeat in cloned clusters and roof lines wobble against perspective — cloned detail plus geometry drift.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "2a5f20558e15d47a4c06fb9313600a4e769a5b495668a4b514784bc1060e75c7",
+              "key": "ai",
+              "locale": "en",
+              "material": {
+                "alt": "dosa meal",
+                "kind": "image",
+                "src": "t2-media/c9c0a56c620e.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Author:Gemini AI",
+                "license": "Public domain",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Dosa_IMAGE.png",
+                "tier": "a-generated",
+                "title": "File:Dosa IMAGE.png"
+              },
+              "rationale": "The chutney bowls' ellipses are inconsistent with one camera position — perspective coherence fails across the plate.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "11a926985f9ecb425b5e69f2f040b9be48a927dbb04c2b0b3552855c8d76da21",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "hotel-courtyard",
+                "kind": "image",
+                "src": "t2-media/ac625c778a60.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Basile Morin",
+                "license": "CC BY-SA 4.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Exterior_facade_of_Residence_Bassac_at_blue_hour,_town_of_Champasak,_Laos.jpg",
+                "tier": "b-licensed",
+                "title": "File:Exterior facade of Residence Bassac at blue hour, town of Champasak, Laos.jpg"
+              },
+              "rationale": "Consistent light temperature across sources, believable signage wear, and reflections that track geometry confirm a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "0266b0f4fc633e12d9ca1658c97a7923066712045871ff11ddbc985e9a4e30a3",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "beach",
+                "kind": "image",
+                "src": "t2-media/fb1ff0b6a97d.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Jebulon",
+                "license": "CC0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Parasols,_Evening,_Beach,_Rincon_de_la_Victoria,_Andalusia,_Spain.jpg",
+                "tier": "b-licensed",
+                "title": "File:Parasols, Evening, Beach, Rincon de la Victoria, Andalusia, Spain.jpg"
+              },
+              "rationale": "Uniform sun angle across every parasol shadow and natural sand granularity confirm a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "65141df36cf673c0fc91098522673a3bd0b89ff9601e412b4f21e8257b055f58",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "hedgehog",
+                "kind": "image",
+                "src": "t2-media/7bb12d1723c7.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Michael Gäbler",
+                "license": "CC BY-SA 3.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Erinaceus_europaeus_(Linnaeus,_1758).jpg",
+                "tier": "b-licensed",
+                "title": "File:Erinaceus europaeus (Linnaeus, 1758).jpg"
+              },
+              "rationale": "Spine flow follows body growth lines and the eye catchlight matches the ambient light — a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "c506cee87af8d5c7f3b1af8c8c8e45327403d71906c9a5fba62feecae9248b10",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "night-forest",
+                "kind": "image",
+                "src": "t2-media/32dfed510acc.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Vyacheslav Argenberg",
+                "license": "CC BY 4.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Andaman_Islands,_Full_moon_night,_Forest_by_the_sea_at_night.jpg",
+                "tier": "b-licensed",
+                "title": "File:Andaman Islands, Full moon night, Forest by the sea at night.jpg"
+              },
+              "rationale": "Moonlight direction, silhouette softness, and sensor noise are all consistent — a long-exposure photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "aacaf7a1f8ef0509a856e32ff74c6cd51053958247c44f2040d4d7285d14d244",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "apple",
+                "kind": "image",
+                "src": "t2-media/a6499cd29190.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Dietmar Rabich",
+                "license": "CC BY-SA 4.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Melbourne_(AU),_Queen_Victoria_Market_--_2019_--_1542.jpg",
+                "tier": "b-licensed",
+                "title": "File:Melbourne (AU), Queen Victoria Market -- 2019 -- 1542.jpg"
+              },
+              "rationale": "Random surface blemishes and consistent window-shaped speculars across every fruit confirm a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "d05f09c6710f1117a947d5a5009aea5c195aac52cbf7c3ad92641d3574aaabde",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "stew",
+                "kind": "image",
+                "src": "t2-media/3ce7bae3a765.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Samphotography",
+                "license": "CC BY-SA 4.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Indian_Sambar.jpg",
+                "tier": "b-licensed",
+                "title": "File:Indian Sambar.jpg"
+              },
+              "rationale": "Steam, oil sheen, and occlusion between vegetables behave physically — a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "c15d097d1f252485f5edf8f057d18b6f560d1949990fa8ce23e6e5897b2cf653",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "vegetable",
+                "kind": "image",
+                "src": "t2-media/1ac81826d931.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Touam (Hervé Agnoux)",
+                "license": "CC BY-SA 4.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Carottes_et_poireaux_de_la_ferme_Grandjard_au_march%C3%A9_de_la_place_Albert_Thomas.jpg",
+                "tier": "b-licensed",
+                "title": "File:Carottes et poireaux de la ferme Grandjard au marché de la place Albert Thomas.jpg"
+              },
+              "rationale": "Root dirt, bruising, and irregular sizes across produce show natural variation — a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "efa2ff07633bf297f1ff899f64ea4c9bcd5e4716620470bddf39817f7ae12833",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "facade",
+                "kind": "image",
+                "src": "t2-media/da96373f7c16.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "AgnosticPreachersKid",
+                "license": "CC BY-SA 3.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Facade_-_National_City_Christian_Church.JPG",
+                "tier": "b-licensed",
+                "title": "File:Facade - National City Christian Church.JPG"
+              },
+              "rationale": "Weathering streaks under ledges and legible, consistent inscription lettering confirm a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "4d7312ca1c6b56b30462e930f17011ff9efdb404a40df75e2822152440c5cd68",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "dosa",
+                "kind": "image",
+                "src": "t2-media/3a6837119bc7.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "Yosomono from Fukuoka, Japan",
+                "license": "CC BY 2.0",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:Dosa_(36400591833).jpg",
+                "tier": "b-licensed",
+                "title": "File:Dosa (36400591833).jpg"
+              },
+              "rationale": "Consistent perspective across bowls and natural browning gradients on the crepe confirm a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
+            },
+            {
+              "difficulty": "medium",
+              "id": "305c3be2238665e2f551a5334c8725adbc2fb420f828e51679d2d95e1f405a5f",
+              "key": "real",
+              "locale": "en",
+              "material": {
+                "alt": "japan-street",
+                "kind": "image",
+                "src": "t2-media/d494181d4b55.jpg"
+              },
+              "options": [
+                {
+                  "id": "ai",
+                  "label": "AI-generated image"
+                },
+                {
+                  "id": "real",
+                  "label": "Photograph"
+                }
+              ],
+              "provenance": {
+                "author": "663highland",
+                "license": "CC BY 2.5",
+                "retrieved": "2026-08-21",
+                "source": "Wikimedia Commons",
+                "source_url": "https://commons.wikimedia.org/wiki/File:140510_Tamba_Traditional_Art_Craft_Park_Sue_no_Sato_Sasayama_Hyogo_pref_Japan02s3.jpg",
+                "tier": "b-licensed",
+                "title": "File:140510 Tamba Traditional Art Craft Park Sue no Sato Sasayama Hyogo pref Japan02s3.jpg"
+              },
+              "rationale": "Signage is legible, foliage is irregular, and the perspective is coherent end to end — a photograph.",
+              "stem": "Is this a photograph or an AI-generated image?",
+              "type": "image-provenance"
             }
           ],
-          "sha256": "eda6dd1924daaf3b2836c3c03af2f7a53ace07a04ed1c3002c0afe4c9c3a80d7"
+          "sha256": "fb678a42c0c44cc832d442cfdeaf8e12fdfd2f6b08e1993b1b0d9e4b3bf7789e"
         }
       },
       {

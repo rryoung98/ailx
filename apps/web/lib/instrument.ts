@@ -104,6 +104,11 @@ export function t2ExposureSeconds(): Record<string, number | undefined> {
 function materialToString(m: BankItem["material"]): string {
   // The committed bank uses snake_case data_uri; accept camelCase and raw
   // svg too so image items always render as images (F3).
+  if (m.kind === "image" && typeof m.src === "string") {
+    // Real media files under apps/web/public, served beneath the basePath.
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx";
+    return `${base}/${String(m.src).replace(/^\/+/, "")}`;
+  }
   if (typeof m.data_uri === "string") return m.data_uri;
   if (typeof m.dataUri === "string") return m.dataUri;
   if (typeof m.svg === "string") {
@@ -148,9 +153,17 @@ export function t2Items(locale: string = "en") {
       };
     });
   // Demo deck: keep the sitting short & fun — 12 items across difficulties.
+  // Real-media photo items (repo-local files) lead the deck; balance the
+  // photo block between AI and authentic keys so d' stays measurable.
+  const isMedia = (i: { material: string }) => i.material.startsWith("/");
   const binary = items.filter((i) => i.type !== "provenance");
   const prov = items.filter((i) => i.type === "provenance");
-  return [...binary.slice(0, 9), ...prov.slice(0, 3)];
+  const mediaAi = binary.filter((i) => isMedia(i) && i.signal === i.key);
+  const mediaReal = binary.filter((i) => isMedia(i) && i.signal !== i.key);
+  const media = [...Array(Math.min(3, mediaAi.length, mediaReal.length)).keys()]
+    .flatMap((k) => [mediaAi[k], mediaReal[k]]);
+  const rest = binary.filter((i) => !media.includes(i));
+  return [...media, ...rest.slice(0, Math.max(0, 9 - media.length)), ...prov.slice(0, 3)];
 }
 
 /**
