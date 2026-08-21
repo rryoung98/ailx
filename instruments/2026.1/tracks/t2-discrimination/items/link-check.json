@@ -1,7 +1,7 @@
 {
-  "bank_sha256": "256133b8a3c052b536df4872bb137a4e5c63f402882cd3dfe8edbd4b99d5d7f2",
+  "bank_sha256": "827eca87f56f4320b707a7b642b2f02bbb53710f8eed37da0d588a190889266a",
   "checked_at": "2026-08-21",
-  "url_count": 55,
+  "url_count": 67,
   "all_ok": true,
   "results": [
     {
@@ -68,6 +68,14 @@
       ]
     },
     {
+      "url": "https://commons.wikimedia.org/wiki/File:Apoyacubiertos.png",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "62486b8a8ffadd7e3420a52d937c236092355cb67f5cf4bc15683e018dfc387b"
+      ]
+    },
+    {
       "url": "https://commons.wikimedia.org/wiki/File:Arc_Triomphe.jpg",
       "status": 200,
       "ok": true,
@@ -81,6 +89,14 @@
       "ok": true,
       "item_ids": [
         "493798be5aa2f14f0892ee9caa0d18bdd6e67cbb40d014a775aa452c764da72f"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Berliner_Pfannkuchen_5.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "f96e6fe940555027825d3b9a19246cabebbe72b9ad83231cf2e72722f0c25e17"
       ]
     },
     {
@@ -106,6 +122,14 @@
       "ok": true,
       "item_ids": [
         "42b1a0d9483e1d0b635bc69bd379e27bbb3c09d3a75ef465e8af91ec735f7325"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Chocolate_Donut_With_Sprinkles_on_it.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "d054bf1a4253be92f099b2261cd658026bf668a86b18fd3417158dedcee5ace5"
       ]
     },
     {
@@ -139,6 +163,30 @@
       "item_ids": [
         "d4b4c861ac359dce676210a00440bd409892857289c13d9969c366c6d4295e19",
         "d53fc723728bd4a1065ef4a95eb3d2ef869f5136363be2acf83949ad1ac98691"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Cutlery_drawer.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "49975afd4307e626c38354db70e93c518820a5bfa27eff3c624edd61f6f014de"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:DFC_1238_Plate_of_seasoned_grilled_meat_topped_with_raw_onion_rings_served_with_a_baked_potato_topped_with_creamy_sauce_a_side_of_rice_or_cabbage_and_dipping_sauce.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "b62beb5d4cbd825e73dddda7422e74b25e4f08141abbc44396b74b3fc8bfa183"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Doener_Kebab_(9682662957).jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "8f9efa1d9ff7578cbfa3fa9c4d5f1f47486ae80268c8bed8051c9da947cbdd9b"
       ]
     },
     {
@@ -203,6 +251,22 @@
       "ok": true,
       "item_ids": [
         "2b252697ac103424b84a0462ee2d8cd20a3bc0a83df37bdf80974658996feeaf"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Flourdumplingsoup.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "3728bf3963a78755a4d9189eb07ba2bcb2dc267aefc142ba09dc59211066c907"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Generative_AI_can_be_used_to_create_realistic_images_of_food_dishes.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "c82dee3e1416c0bd7e7a7e1eb3ccfa10c1b68ade9635b24e6278d4fd009c8e1c"
       ]
     },
     {
@@ -295,6 +359,14 @@
       ]
     },
     {
+      "url": "https://commons.wikimedia.org/wiki/File:McAfrika_rekonstruert_med_KI.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "14fda187ff83137f09d1934d2c9fb2d2a09a1ce524b0798529079191d2d1a95e"
+      ]
+    },
+    {
       "url": "https://commons.wikimedia.org/wiki/File:Melbourne_(AU),_Queen_Victoria_Market_--_2019_--_1542.jpg",
       "status": 200,
       "ok": true,
@@ -308,6 +380,14 @@
       "ok": true,
       "item_ids": [
         "1052a7057a27072d9d10531fcf9b4cb227d885afda2c97f430974ac28db7ecfd"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Oven-baked_veggie_chips.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "cf7068a6efc6addea9a30e15dad0f7447abc668531c15a295458db7bc7d70515"
       ]
     },
     {
@@ -335,6 +415,14 @@
       ]
     },
     {
+      "url": "https://commons.wikimedia.org/wiki/File:Singapore_Korean-system-gastronomie-01.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "def3553bbca320e914ac66254b4826a3c374f2721624bbb58451f9b8b132c175"
+      ]
+    },
+    {
       "url": "https://commons.wikimedia.org/wiki/File:Sirk_%C3%A7ukuru.jpg",
       "status": 200,
       "ok": true,
@@ -356,6 +444,14 @@
       "ok": true,
       "item_ids": [
         "c200f9a6b96ab1cd60a220bdc39855330f1b79fe960155d2433b0afd1ec1c5ba"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Tuna_Salad_with_sweet_corn.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "4fc4eccc2a44ec578804d9b090bb618bcb8010080040063a455c976a67f15399"
       ]
     },
     {

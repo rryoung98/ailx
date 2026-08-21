@@ -69,3 +69,15 @@ AI passages ("ai"-keyed text-authenticity items) are genuinely
 model-generated via OpenRouter (`openai/gpt-4o-mini`, 2026-08-21) using
 `instruments/2026.1/tracks/t2-discrimination/tools/gen-ai-passages.mjs`;
 each item's `provenance` records model, date, and the exact prompt.
+| f98af2483f40.jpg | AI-generated | Author: Perchance AI; prompted by John Doe | Public domain | [File:Flourdumplingsoup.jpg](https://commons.wikimedia.org/wiki/File:Flourdumplingsoup.jpg) |
+| c0112dc52e10.jpg | AI-generated | Dennis Sylvester Hurd | CC0 | [File:Generative AI can be used to create realistic images of](https://commons.wikimedia.org/wiki/File:Generative_AI_can_be_used_to_create_realistic_images_of_food_dishes.jpg) |
+| fcd27045eaab.jpg | AI-generated | Codex’s built-in OpenAI image-generation and editing engine | Public domain | [File:McAfrika rekonstruert med KI.jpg](https://commons.wikimedia.org/wiki/File:McAfrika_rekonstruert_med_KI.jpg) |
+| 4aad445d8709.jpg | AI-generated | Piersey | CC BY 2.0 | [File:Oven-baked veggie chips.jpg](https://commons.wikimedia.org/wiki/File:Oven-baked_veggie_chips.jpg) |
+| d9e10c4ce1bd.jpg | AI-generated | ChatGPT | Public domain | [File:Apoyacubiertos.png](https://commons.wikimedia.org/wiki/File:Apoyacubiertos.png) |
+| 8efac43f3d63.jpg | AI-generated | Bango Renders | CC0 | [File:Chocolate Donut With Sprinkles on it.jpg](https://commons.wikimedia.org/wiki/File:Chocolate_Donut_With_Sprinkles_on_it.jpg) |
+| 78bb42ab69f4.jpg | Photograph | CEphoto, Uwe Aranas | CC BY-SA 3.0 | [File:Singapore Korean-system-gastronomie-01.jpg](https://commons.wikimedia.org/wiki/File:Singapore_Korean-system-gastronomie-01.jpg) |
+| 369c4dcde8bd.jpg | Photograph | PattayaPatrol | CC BY-SA 4.0 | [File:DFC 1238 Plate of seasoned grilled meat topped with raw](https://commons.wikimedia.org/wiki/File:DFC_1238_Plate_of_seasoned_grilled_meat_topped_with_raw_onion_rings_served_with_a_baked_potato_topped_with_creamy_sauce_a_side_of_rice_or_cabbage_and_dipping_sauce.jpg) |
+| de474801736c.jpg | Photograph | Lauren Travis | CC BY 2.0 | [File:Doener Kebab (9682662957).jpg](https://commons.wikimedia.org/wiki/File:Doener_Kebab_(9682662957).jpg) |
+| be810838ac5d.jpg | Photograph | Adesolive | CC0 | [File:Tuna Salad with sweet corn.jpg](https://commons.wikimedia.org/wiki/File:Tuna_Salad_with_sweet_corn.jpg) |
+| 636f536bab7f.jpg | Photograph | Acabashi | CC BY-SA 4.0 | [File:Cutlery drawer.jpg](https://commons.wikimedia.org/wiki/File:Cutlery_drawer.jpg) |
+| f729f0c0bed1.jpg | Photograph | Sebastian Koppehel | CC BY 4.0 | [File:Berliner Pfannkuchen 5.jpg](https://commons.wikimedia.org/wiki/File:Berliner_Pfannkuchen_5.jpg) |

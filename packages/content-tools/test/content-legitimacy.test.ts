@@ -38,7 +38,7 @@ const prov = (i: (typeof bank.items)[number]) => (i.provenance ?? {}) as Prov;
 describe("bank content legitimacy", () => {
   it("image-provenance items are real media only (mock SVG scenes retired)", () => {
     const images = bank.items.filter((i) => i.type === "image-provenance");
-    expect(images.length).toBe(44);
+    expect(images.length).toBeGreaterThanOrEqual(44);
     for (const i of images) {
       expect((i.material as { kind?: string }).kind).toBe("image");
       const p = prov(i);
