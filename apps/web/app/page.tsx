@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { HeroCanvas } from "../lib/HeroCanvas";
 import { Teaser } from "../lib/Teaser";
-import { TrackCards } from "../lib/TrackVisuals";
+import { TrackBands } from "../lib/track3d/TrackBands";
 
 export default function Home() {
   return (
@@ -30,8 +30,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container" style={{ marginTop: "3.5rem" }}>
-        <TrackCards />
+      <section className="container-wide" style={{ marginTop: "4.5rem" }}>
+        <TrackBands />
       </section>
 
       <section className="container" style={{ marginTop: "3rem" }}>

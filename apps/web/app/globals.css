@@ -512,3 +512,44 @@ summary { cursor: pointer; }
   .tv1-line { transform: none; }
   .teaser-card { transition: none !important; }
 }
+
+/* ---- track bands (landing, editorial 3D rows) ------------------------- */
+/* De-slopped replacement for the uniform card grid: four alternating
+   full-width rows, oversized mono numerals as anchors, WebGL scenes
+   floating borderless on the page black. */
+.container-wide { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem; }
+.track-bands { display: flex; flex-direction: column; gap: clamp(3.5rem, 9vh, 6.5rem); }
+.track-band {
+  display: grid; grid-template-columns: 1.1fr 1fr;
+  gap: clamp(1.5rem, 5vw, 4.5rem); align-items: center;
+  color: inherit; text-decoration: none;
+}
+.track-band:hover { text-decoration: none; }
+.track-band.flip .track-band-viz { order: 2; }
+.track-band.flip .track-band-copy { order: 1; text-align: right; }
+.track-band-viz { min-width: 0; }
+.track-scene { aspect-ratio: 16 / 10; position: relative; }
+.track-scene canvas { display: block; width: 100% !important; height: 100% !important; }
+/* the CSS fallback previews lose their card chrome inside a band */
+.track-scene .tviz { position: absolute; inset: 0; aspect-ratio: auto; border: none; border-radius: 12px; background: transparent; }
+.track-band-copy { min-width: 0; }
+.track-band-num {
+  display: block; font-family: var(--mono); font-weight: 700;
+  font-size: clamp(3.2rem, 8vw, 5.6rem); line-height: 1;
+  letter-spacing: -0.04em; color: var(--accent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.track-band-title {
+  margin: 0.6rem 0 0.35rem; font-size: clamp(1.25rem, 2.6vw, 1.7rem);
+  font-weight: 700; letter-spacing: -0.02em;
+}
+.track-band-line { margin: 0; color: var(--muted); font-size: 1.02rem; max-width: 26rem; }
+.track-band.flip .track-band-line { margin-left: auto; }
+.track-band-num, .track-band-title { transition: color 150ms ease; }
+.track-band:hover .track-band-title { color: var(--accent); }
+@media (max-width: 720px) {
+  .track-band, .track-band.flip { grid-template-columns: 1fr; gap: 1rem; }
+  .track-band.flip .track-band-viz { order: 2; }
+  .track-band.flip .track-band-copy { order: 1; text-align: left; }
+  .track-band.flip .track-band-line { margin-left: 0; }
+}
