@@ -12,7 +12,8 @@
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@ailx/core": "workspace:*"
+    "@ailx/core": "workspace:*",
+    "@ailx/session": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
