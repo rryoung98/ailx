@@ -5,7 +5,7 @@ Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] tod
 ## Phase 0 — Repository & skeleton
 - [x] Monorepo scaffold (pnpm workspaces, TypeScript, vitest, CI)
 - [x] `packages/core`: TrackPlugin interface (apiVersion 2), content addressing, purity sandbox
-- [ ] `apps/web`: Next.js standalone app shell
+- [x] `apps/web`: Next.js static-export shell, live on GitHub Pages
 
 ## Phase 1 — Content pipeline (spec §14)
 - [ ] Instrument package loader (manifest.yaml → validated in-memory instrument)
@@ -14,7 +14,7 @@ Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] tod
 - [ ] OCI packaging of `instruments/2026.1` (cosign, load-by-digest) — later
 
 ## Phase 2 — Platform core (spec §11, §14 schema)
-- [ ] Postgres schema: instruments, track_versions, attempts, responses (append-only), scores, judgments, transcripts
+- [x] Postgres schema (`db/schema.sql`): instruments, track_versions, attempts, responses (append-only), scores, judgments, transcripts
 - [ ] Auth: Clerk behind an `AuthProvider` interface (keys borrowable from ../exchequer for dev)
 - [ ] Session engine: 4-track session structure, timing, resume
 - [ ] Track plugin runtime: startSession / ingest / pipeline stages / pure score()
