@@ -6,7 +6,6 @@ import { Fraunces, Caveat } from "next/font/google";
 const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable", variable: "--font-serif", display: "swap" });
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
-import { LocaleSwitcher } from "../lib/LocaleSwitcher";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
@@ -27,7 +26,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/exam">Play</Link>
               <Link href="/report">Report</Link>
               <Link href="/validate">Validate</Link>
-              <LocaleSwitcher />
             </nav>
           </div>
         </header>

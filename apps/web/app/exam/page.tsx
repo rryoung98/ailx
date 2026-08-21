@@ -15,13 +15,14 @@ import {
   checkpointToArtifact, loadTrackModule, scoreTrack, type TrackModule,
 } from "../../lib/registry";
 import { trackConfig } from "../../lib/instrument";
-import { LOCALE_SCOPE_NOTE, useLocale, type Locale } from "../../lib/locale";
+// Locale UI removed: the demo serves the English deck; SessionConfig.locale
+// stays in the frozen data contract (always "en" at attempt start).
 import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
 import { Annotation } from "../../lib/Annotation";
 import { ConnectPanel } from "../../lib/ConnectPanel";
 import { PillCTA } from "../../lib/PillCTA";
 
-function demoConfig(locale: Locale): SessionConfig {
+function demoConfig(locale: "en"): SessionConfig {
   return {
     instrument: "ailx",
     version: "2026.1",
@@ -48,10 +49,6 @@ export default function ExamPage() {
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
-  // Persisted content locale ('ailx:locale', header switcher). Snapshotted
-  // into SessionConfig at attempt start — mid-attempt switches never change
-  // a live sitting's deck.
-  const chosenLocale = useLocale();
   const logRef = useRef<SequencedEntry[] | null>(null);
   logRef.current = log;
 
@@ -176,7 +173,7 @@ export default function ExamPage() {
 
   // ---- No attempt yet -----------------------------------------------------
   if (!state) {
-    const cfg = demoConfig(chosenLocale);
+    const cfg = demoConfig("en");
     return (
       <main className="page">
       {persistWarning ? (
@@ -204,9 +201,6 @@ export default function ExamPage() {
           </ul>
           <p className="small faint">
             <span className="badge demo">demo</span> Deterministic scoring: the real track plugins score your stored artifact and judgments. The same play will always result in the same score.
-          </p>
-          <p className="small faint">
-            Content locale: <span className="mono">{chosenLocale}</span> (header switcher). {LOCALE_SCOPE_NOTE}{chosenLocale !== "en" ? " ja/ko item content is machine-translated and marked unreviewed in item provenance." : ""}
           </p>
           <ConnectPanel />
           <PillCTA

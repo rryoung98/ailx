@@ -15,7 +15,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import RootLayout from "../app/layout";
-import { LocaleSwitcher } from "../lib/LocaleSwitcher";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -67,26 +66,6 @@ describe("root layout a11y structure", () => {
     const nav = els().find((e) => e.type === "nav");
     expect(nav).toBeDefined();
     expect((nav!.props as Record<string, unknown>)["aria-label"]).toBe("Primary");
-  });
-});
-
-describe("locale switcher a11y", () => {
-  let root: Root | null = null;
-  afterEach(() => {
-    if (root) act(() => root!.unmount());
-    root = null;
-  });
-
-  it("marks each locale button with its own language", () => {
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    root = createRoot(container);
-    act(() => root!.render(createElement(LocaleSwitcher)));
-    const buttons = [...container.querySelectorAll("button")];
-    expect(buttons.map((b) => b.getAttribute("lang"))).toEqual(["en", "ja", "ko"]);
-    // Pressed state is exposed to AT.
-    expect(buttons.every((b) => b.hasAttribute("aria-pressed"))).toBe(true);
-    container.remove();
   });
 });
 
