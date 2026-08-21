@@ -8,22 +8,22 @@ Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] tod
 - [x] `apps/web`: Next.js static-export shell, live on GitHub Pages
 
 ## Phase 1 — Content pipeline (spec §14)
-- [ ] Instrument package loader (manifest.yaml → validated in-memory instrument)
-- [ ] Content addressing CLI: hash items, verify `bank.sha256`, compute `rubric_version`
-- [ ] Golden-fixture harness per track (CI gate on scoring drift)
+- [x] Instrument package loader (`@ailx/content-tools`)
+- [x] Content addressing CLIs: `hash-bank`, `rubric-version`, `build-snapshot`
+- [x] Golden-fixture harness per track (CI gate on scoring drift)
 - [ ] OCI packaging of `instruments/2026.1` (cosign, load-by-digest) — later
 
 ## Phase 2 — Platform core (spec §11, §14 schema)
 - [x] Postgres schema (`db/schema.sql`): instruments, track_versions, attempts, responses (append-only), scores, judgments, transcripts
 - [ ] Auth: Clerk behind an `AuthProvider` interface (keys borrowable from ../exchequer for dev)
-- [ ] Session engine: 4-track session structure, timing, resume
-- [ ] Track plugin runtime: startSession / ingest / pipeline stages / pure score()
+- [x] Session engine (`@ailx/session`): event-sourced machine, budgets, pause/resume, composite §04
+- [x] Track plugin runtime wired client-side (registry + plugin score over stored demo judgments)
 
 ## Phase 3 — Tracks
-- [ ] T2 first (closest to a classic item bank): swipe + replay UI, item delivery, response capture
-- [ ] T3 instrumented assistant: xAPI-shaped events (prompted/revised/regenerated/submitted), transcript table with `revision_of`
-- [ ] T1 sandbox: CSP opaque-origin spike, artifact hosting, Playwright capture job
-- [ ] T4 generative direction: model calls, gallery governance
+- [x] T2 swipe + replay UI, SDT scoring (d′ + Brier + provenance)
+- [x] T3 instrumented assistant: planted errors, xAPI events, revision chains
+- [x] T1 sandbox (srcdoc iframe, allow-scripts only, injected CSP); Playwright capture deferred to hosted phase
+- [x] T4 generative direction (deterministic demo image model, quota, disclosure)
 
 ## Phase 4 — Judging pipeline (spec §11)
 - [ ] Cloud Tasks spine: capture → judge → aggregate → scored
@@ -32,8 +32,8 @@ Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] tod
 - [ ] Bias correction + human adjudication queue (top decile)
 
 ## Phase 5 — Psychometrics, export, ops
-- [ ] Scoring composite + performance bands
-- [ ] Export tiers (participant / institution / research / regulator)
+- [x] Composite + bands (probit scale 50/15, quota bands, live on /report)
+- [x] Export tiers: individual + research JSON on /report (institution/regulator deferred to hosted phase)
 - [ ] BigQuery telemetry, xAPI export endpoint
 - [ ] Infra: Cloud Run + LB + Cloud Armor, Cloud SQL, 4 GCS buckets behind CDN, WIF CI/CD
 
@@ -41,3 +41,7 @@ Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] tod
 - [ ] Verify judge/image model availability in `asia-northeast1`
 - [ ] DeepSpeak v2 non-academic licence conversation
 - [ ] Public Suffix List PR
+
+## Dogfood record
+- 2026-08-21: full live playthrough on Pages (T1→T4 real runners, report, exports); /validate ALL 7 CHECKS PASS; report raw-key alias bug found via dogfood and fixed.
+- Codex (codex-cli) adopted as external code reviewer; findings feed PR-based fixes.
