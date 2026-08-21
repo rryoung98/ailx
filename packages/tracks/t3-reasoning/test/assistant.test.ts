@@ -78,12 +78,14 @@ describe("DemoJudge (deterministic JudgeAdapter)", () => {
     expect(await j.judge(req)).toEqual(await j.judge(req));
   });
 
-  it("returns rubric-band values in [0,5] and demo-labeled evidence", async () => {
+  it("returns NORMALIZED values in [0,1] (band/5) and demo-labeled evidence", async () => {
     const j = new DemoJudge();
     for (let sample = 0; sample < 3; sample++) {
       const r = await j.judge({ ...req, sample });
       expect(r.value).toBeGreaterThanOrEqual(0);
-      expect(r.value).toBeLessThanOrEqual(5);
+      expect(r.value).toBeLessThanOrEqual(1);
+      // Bands are integers 0..5, so the normalized value is a multiple of 0.2.
+      expect(Number.isInteger(r.value * 5)).toBe(true);
       expect(r.evidence).toContain("[DEMO]");
       expect(r.modelId).toMatch(/^demo-judge-[123]@1$/);
     }

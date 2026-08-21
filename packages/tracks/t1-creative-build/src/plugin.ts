@@ -108,4 +108,7 @@ export const t1Plugin: TrackPlugin<T1Config, T1Session, T1Artifact, T1Score> = {
   score(inputs: ScoreInputs<T1Artifact>, cfg: T1Config): T1Score {
     return scoreT1(inputs, cfg);
   },
+
+  /** Lazy UI loader (F11) — the platform must not hardcode track imports. */
+  ui: () => import("./Runner.js").then((m) => ({ Runner: m.Runner })),
 };

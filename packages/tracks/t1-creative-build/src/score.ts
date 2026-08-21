@@ -9,22 +9,36 @@ import type { T1Artifact, T1Config, T1Score } from "./types.js";
  * - 30 pts functional & accessibility gates  (dimension 'functional')
  * - 40 pts comparative visual merit          (dimension 'comparative')
  * - 20 pts technical ambition                (dimension 'ambition')
- * - 10 pts design rationale                  (dimension 'rationale',
- *          blended with a process signal from the stored prompt log)
+ * - 10 pts design rationale                  (dimension 'rationale' — ALL
+ *          10 points come from the judged coherence dimension; the stored
+ *          prompt-log process signal is reported as a diagnostic only and
+ *          adds no points)
  */
 
 function clamp01(x: number): number {
   return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
-/** Median across judge samples — robust to a single outlier sample. */
+/**
+ * Median across judge samples — robust to a single outlier sample.
+ * Judgment values are NORMALIZED to [0, 1] by contract (JudgeResponse.value);
+ * anything outside that range is invalid stored data and throws rather than
+ * silently clamping into full credit (F10).
+ */
 export function medianForDimension(
   judgments: ReadonlyArray<Judgment>,
   dimension: string,
 ): number {
   const vals = judgments
     .filter((j) => j.dimension === dimension)
-    .map((j) => clamp01(j.value))
+    .map((j) => {
+      if (!Number.isFinite(j.value) || j.value < 0 || j.value > 1) {
+        throw new Error(
+          `t1 judgment out of range: dimension=${j.dimension} sample=${j.sample} value=${j.value} (expected normalized [0,1])`,
+        );
+      }
+      return j.value;
+    })
     .sort((a, b) => a - b);
   if (vals.length === 0) return 0;
   const mid = Math.floor(vals.length / 2);
@@ -33,9 +47,10 @@ export function medianForDimension(
 
 /**
  * Process signal from the stored prompt log, in [0,1].
- * Rewards evidence of an actual iteration loop: prompting the assistant AND
- * revising afterwards. Log-only presence (no revision) earns half credit.
- * Pure: derived from stored artifact data only.
+ * DIAGNOSTIC ONLY (F8): reported in raw as 'process.signal', never added to
+ * any point component. Rewards evidence of an actual iteration loop:
+ * prompting the assistant AND revising afterwards. Log-only presence (no
+ * revision) earns half signal. Pure: derived from stored artifact data only.
  */
 export function processSignal(artifact: T1Artifact): number {
   const prompted = artifact.promptLog.filter((e) => e.kind === "prompted").length;
@@ -52,16 +67,13 @@ export function scoreT1(
   const raw: Record<string, number> = {};
   let scaled = 0;
   for (const dim of T1_DIMENSIONS) {
-    let unit = medianForDimension(inputs.judgments, dim);
-    if (dim === "rationale") {
-      // 10-pt rationale blends judged coherence (70%) with the stored
-      // prompt-log process signal (30%) — "iteration diagnostic vs random".
-      unit = 0.7 * unit + 0.3 * processSignal(inputs.artifact);
-    }
+    const unit = medianForDimension(inputs.judgments, dim);
     const pts = T1_WEIGHTS[dim] * unit;
     raw[dim] = round3(pts);
     scaled += pts;
   }
+  // Reported diagnostic only — contributes zero points (F8).
+  raw["process.signal"] = round3(processSignal(inputs.artifact));
   return { raw, scaled: round3(scaled) };
 }
 

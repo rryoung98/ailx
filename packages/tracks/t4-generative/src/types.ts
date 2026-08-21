@@ -5,8 +5,12 @@ export interface T4Config {
   brief: string;
   /** Stated audience. */
   audience: string;
-  /** Final-render quota — "generation quota as a resource" (spec §13). */
-  maxGenerations: number;
+  /**
+   * Hard final-render quotas — spec §T4: drafts are unlimited on a fast
+   * model; FINAL renders are quota-limited to three images and one video.
+   */
+  finalImageQuota: number;
+  finalVideoQuota: number;
   /** Max chars for the direction note. */
   noteMaxChars: number;
 }
@@ -16,8 +20,9 @@ export interface T4Session {
   trackId: string;
 }
 
-export interface T4Generation {
-  /** 0-based generation index — order matters for steering efficiency. */
+/** One unlimited-model draft generation. Order matters for steering. */
+export interface T4Draft {
+  /** 0-based draft index — order matters for steering efficiency. */
   index: number;
   prompt: string;
   /** Deterministic demo render (SVG markup) of the prompt. */
@@ -25,13 +30,38 @@ export interface T4Generation {
   clientTs: string;
 }
 
+/** A quota-consuming final render, promoted from a draft. */
+export interface T4Final {
+  kind: "image" | "video";
+  /** Which draft was promoted. */
+  fromDraftIndex: number;
+  prompt: string;
+  /**
+   * image: SVG markup; video: animated-SVG markup (demo simulation of the
+   * one-video quota — a labeled, animated still).
+   */
+  asset: string;
+  clientTs: string;
+}
+
+export interface T4Finals {
+  /** Up to finalImageQuota entries. */
+  images: T4Final[];
+  /** At most one (finalVideoQuota). */
+  video?: T4Final;
+}
+
 export interface T4Artifact {
-  /** Full prompt chain, in order. */
-  generations: T4Generation[];
-  /** Index into generations of the candidate's chosen output. */
-  chosenIndex: number;
+  /** Full draft chain, in order (unlimited). */
+  drafts: T4Draft[];
+  /** Quota-limited final deliverables. */
+  finals: T4Finals;
+  /** Indices into finals.images composing the delivered set. */
+  chosenSet: number[];
   /** Direction note: what the work should communicate and why it does. */
   note: string;
+  /** AI-generation disclosure statement attached to the delivered set. */
+  disclosed: boolean;
 }
 
 export interface T4Score {
@@ -40,10 +70,10 @@ export interface T4Score {
 }
 
 /**
- * Judgment dimensions consumed by score(), values in [0,1]:
+ * Judgment dimensions consumed by score(), values NORMALIZED to [0,1]:
  *  - 'brief-fit'    blind-viewer agreement with the brief's stated intent
  *  - 'comparative'  Bradley–Terry scaled position from blinded pairwise
- *  - 'generation'   per-generation judge value; `sample` = generation index
+ *  - 'generation'   per-DRAFT judge value; `sample` = draft index
  *                   (feeds steering efficiency)
  *  - 'direction-note' coherence/diagnosticity of the direction note
  *  - 'provenance'   disclosure & attribution hygiene

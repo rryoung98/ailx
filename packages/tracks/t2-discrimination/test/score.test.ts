@@ -96,14 +96,64 @@ describe("T2 score()", () => {
     expect(score([])).toEqual(s);
   });
 
+  it("F7 regression: a fully unanswered deck earns ZERO calibration credit", () => {
+    const s = score([]);
+    expect(s.raw.answeredBinary).toBe(0);
+    expect(s.raw.calibrationCoverage).toBe(0);
+    expect(s.raw.calibration).toBe(0);
+    // Lapse-only responses (choice -1) are equally unanswered.
+    const lapses = items.map((i) => ({ itemId: i.id, choice: -1, confidence: 0, latencyMs: 0 }));
+    expect(score(lapses).raw.calibration).toBe(0);
+  });
+
+  it("F7: lapsed items are excluded from the Brier mean, not scored as 0.5 forecasts", () => {
+    const binary = items.filter((i) => i.type !== "provenance");
+    // Answer every binary item correctly at confidence 90, but lapse on one.
+    const lapsedId = binary[0].id;
+    const responses = items.map((i) =>
+      i.id === lapsedId
+        ? { itemId: i.id, choice: -1, confidence: 0, latencyMs: 0 }
+        : { itemId: i.id, choice: i.key, confidence: 90, latencyMs: 500 },
+    );
+    const s = score(responses);
+    expect(s.raw.answeredBinary).toBe(binary.length - 1);
+    // Brier reflects only the answered forecasts: (0.95-1)^2 = 0.0025
+    // (reported rounded to 3 decimals).
+    expect(s.raw.brier).toBe(0.003);
+    // Coverage is full (>= 50% answered), so no extra penalty beyond exclusion.
+    expect(s.raw.calibrationCoverage).toBe(1);
+  });
+
+  it("F7: answering under half the deck scales calibration weight linearly", () => {
+    const binary = items.filter((i) => i.type !== "provenance");
+    // Answer exactly 2 of the binary items perfectly, lapse the rest.
+    const answered = new Set(binary.slice(0, 2).map((i) => i.id));
+    const responses = items
+      .filter((i) => i.type !== "provenance")
+      .map((i) =>
+        answered.has(i.id)
+          ? { itemId: i.id, choice: i.key, confidence: 90, latencyMs: 500 }
+          : { itemId: i.id, choice: -1, confidence: 0, latencyMs: 0 },
+      );
+    const s = score(responses);
+    const frac = 2 / binary.length;
+    expect(frac).toBeLessThan(0.5);
+    expect(s.raw.calibrationCoverage).toBeCloseTo(frac / 0.5, 3);
+    // Points = weight * (1 - 2*brier) * coverage, strictly below the
+    // same-Brier full-coverage score.
+    expect(s.raw.calibration).toBeCloseTo(25 * (1 - 2 * 0.0025) * (frac / 0.5), 3);
+  });
+
   it("golden fixture: mixed candidate (pinned — any drift fails the build)", () => {
     const s = score(mixedResponses);
     expect(s).toMatchInlineSnapshot(`
       {
         "raw": {
           "accuracy": 0.667,
+          "answeredBinary": 6,
           "brier": 0.297,
           "calibration": 10.167,
+          "calibrationCoverage": 1,
           "criterion": 0.484,
           "dPrime": 0.967,
           "falseAlarms": 0,
@@ -153,6 +203,11 @@ describe("T2 plugin shape", () => {
     expect(plugin.apiVersion).toBe(2);
     expect(plugin.id).toBe("t2-discrimination");
     expect(plugin.pipeline(config)).toEqual([]);
+  });
+  it("exposes a lazy ui() loader resolving to the Runner (F11)", async () => {
+    expect(typeof plugin.ui).toBe("function");
+    const mod = await plugin.ui!();
+    expect(typeof mod.Runner).toBe("function");
   });
   it("ingest is idempotent over the same payload", async () => {
     const ctx = { attemptId: "a1", trackId: "t2-discrimination", locale: "en" as const, emit: async () => {} };
