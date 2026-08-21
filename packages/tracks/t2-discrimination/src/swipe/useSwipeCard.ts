@@ -226,6 +226,12 @@ export function useSwipeCard({ cardKey, enabled, onCommit }: UseSwipeCardOptions
       const d = drag.current;
       if (!d || d.pointerId !== e.pointerId) return;
       motion.current.dragging = false;
+      // Age the velocity to release time: append a release-instant sample so
+      // "drag fast, hold still, release" decays to ~0 instead of replaying
+      // the last pointermove's cached velocity (audit: stale-fling fix).
+      d.samples.push({ x: e.clientX, t: now() });
+      if (d.samples.length > 24) d.samples.splice(0, d.samples.length - 24);
+      motion.current.vx = estimateVelocity(d.samples);
       const decision = cancelled
         ? "spring"
         : decideRelease(motion.current.x, motion.current.vx, d.width);

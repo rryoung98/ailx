@@ -22,7 +22,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from "react";
 import type { T2Item } from "./types.js";
 import { useSwipeCard } from "./swipe/useSwipeCard.js";
 import { detectWebGL } from "./swipe/webgl.js";
@@ -76,13 +76,14 @@ function badgeStyle(side: "left" | "right", opacity: number): CSSProperties {
   } as CSSProperties;
 }
 
-function CardBody({ item, hideImage }: { item: T2Item; hideImage: boolean }) {
+function CardBody({ item, hideImage, slotRef }: { item: T2Item; hideImage: boolean; slotRef?: Ref<HTMLImageElement> }) {
   const image = isImageMaterial(item.material);
   return (
     <>
       <p style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem" }}>{item.stem}</p>
       {image ? (
         <img
+          ref={slotRef}
           src={item.material}
           alt="exam material"
           draggable={false}
@@ -132,9 +133,11 @@ export interface SwipeDeckProps {
    * Defaults to "an image is visible in the current stack".
    */
   deckHasImages?: boolean;
+  /** Fired when the current top card's stimulus is actually visible. */
+  onStimulusReady?: () => void;
 }
 
-export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages }: SwipeDeckProps) {
+export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady }: SwipeDeckProps) {
   const swipeable = item.options.length === 2;
   const [webgl, setWebgl] = useState(false);
   useEffect(() => {
@@ -200,6 +203,42 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages }:
   );
   const useGL = webgl && (deckHasImages ?? anyImageVisible);
   const glImageUrl = useGL && topIsImage && !m.exited ? item.material : null;
+  // Measure the DOM image slot so the WebGL plane aligns to it exactly
+  // (the stem stays DOM-rendered above the plane; audit fix).
+  const imgSlotRef = useRef<HTMLImageElement | null>(null);
+  const [slot, setSlot] = useState<{ ox: number; oy: number; w: number; h: number } | null>(null);
+  useIsoLayoutEffect(() => {
+    const el = imgSlotRef.current;
+    const box = containerRef.current;
+    if (!el || !box) { setSlot(null); return; }
+    const measure = () => {
+      const a = el.getBoundingClientRect();
+      const b = box.getBoundingClientRect();
+      setSlot({
+        ox: a.left + a.width / 2 - (b.left + b.width / 2),
+        oy: a.top + a.height / 2 - (b.top + b.height / 2),
+        w: a.width,
+        h: a.height,
+      });
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return; // jsdom / old engines
+    const ro = new ResizeObserver(measure);
+    ro.observe(el); ro.observe(box);
+    return () => ro.disconnect();
+  }, [item.id, glImageUrl]);
+  // Which GL texture is decoded & visible — DOM image stays until then, so
+  // the stimulus never blanks while the lazy three bundle/texture loads.
+  const [glReadyUrl, setGlReadyUrl] = useState<string | null>(null);
+  const handleTextureReady = useCallback((url: string) => {
+    setGlReadyUrl(url);
+    onStimulusReady?.();
+  }, [onStimulusReady]);
+  // Non-GL stimuli (text cards, or GL disabled): visible on DOM commit.
+  useEffect(() => {
+    if (!glImageUrl) onStimulusReady?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id, glImageUrl === null]);
 
   const topTransform = `translate3d(${m.x}px, ${m.y}px, 0) rotate(${m.rot}deg)`;
   const promoteTransition = "transform 340ms cubic-bezier(0.2, 1.4, 0.4, 1), opacity 340ms ease";
@@ -254,24 +293,34 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages }:
             touchAction: swipeable ? "none" : "auto",
           }}
         >
-          <CardBody item={item} hideImage={Boolean(glImageUrl)} />
-          {swipeable && (
-            <>
-              <span
-                data-testid="badge-left"
-                style={badgeStyle("left", m.x < 0 || m.exiting === "left" ? m.badge : 0)}
-              >
-                {item.options[0]}
-              </span>
-              <span
-                data-testid="badge-right"
-                style={badgeStyle("right", m.x > 0 || m.exiting === "right" ? m.badge : 0)}
-              >
-                {item.options[1]}
-              </span>
-            </>
-          )}
+          <CardBody item={item} hideImage={Boolean(glImageUrl) && glReadyUrl === glImageUrl} slotRef={imgSlotRef} />
         </div>
+
+        {/* Verdict badges: own overlay ABOVE the WebGL layer, glued to the
+            card via the same transform (audit fix: GL must not cover them). */}
+        {swipeable && !m.exited && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", inset: 0, zIndex: 6, pointerEvents: "none",
+              transform: topTransform,
+              transition: m.dragging || m.exiting ? "none" : "transform 40ms linear",
+            }}
+          >
+            <span
+              data-testid="badge-left"
+              style={badgeStyle("left", m.x < 0 || m.exiting === "left" ? m.badge : 0)}
+            >
+              {item.options[0]}
+            </span>
+            <span
+              data-testid="badge-right"
+              style={badgeStyle("right", m.x > 0 || m.exiting === "right" ? m.badge : 0)}
+            >
+              {item.options[1]}
+            </span>
+          </div>
+        )}
 
         {/* Persistent WebGL layer for the whole deck (image cards only). */}
         {useGL && (
@@ -281,8 +330,11 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages }:
                 imageUrl={glImageUrl}
                 motion={motion}
                 parallax={parallax}
-                width={cardSize.w - 32}
-                height={cardSize.h - 32}
+                width={slot ? slot.w : cardSize.w - 32}
+                height={slot ? slot.h : cardSize.h - 32}
+                offsetX={slot ? slot.ox : 0}
+                offsetY={slot ? slot.oy : 0}
+                onTextureReady={handleTextureReady}
               />
             </Suspense>
           </div>

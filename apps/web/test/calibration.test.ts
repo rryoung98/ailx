@@ -40,10 +40,13 @@ describe("calibrationBins", () => {
       ],
       KEYS,
     );
+    // Scored-forecast domain: p = 0.5 + conf/200, bins span [0.5, 1].
     expect(bins).toHaveLength(5);
-    expect(bins[4]).toMatchObject({ lo: 80, hi: 100, n: 2, accuracy: 0.5 });
-    expect(bins[4].meanConfidence).toBeCloseTo(0.875);
-    expect(bins[0]).toMatchObject({ lo: 0, hi: 20, n: 1, accuracy: 1 });
+    expect(bins[4]).toMatchObject({ lo: 0.9, hi: 1, n: 2, accuracy: 0.5 });
+    // conf 90 -> p .95, conf 85 -> p .925 → mean .9375
+    expect(bins[4].meanConfidence).toBeCloseTo(0.9375);
+    // conf 10 -> p .55 lands in the bottom [0.5, 0.6) bin
+    expect(bins[0]).toMatchObject({ lo: 0.5, hi: 0.6, n: 1, accuracy: 1 });
     expect(bins[1].n + bins[2].n + bins[3].n).toBe(0);
   });
 

@@ -32,9 +32,15 @@ export interface CardSceneProps {
   imageUrl: string | null;
   motion: MutableRefObject<CardMotion>;
   parallax: MutableRefObject<ParallaxTarget>;
-  /** CSS pixel size of the card surface. */
+  /** CSS pixel size of the image slot the plane must fill. */
   width: number;
   height: number;
+  /** Slot center offset (px) from the container center — aligns the plane to
+      the DOM image slot inside the card (stem stays DOM-rendered above). */
+  offsetX?: number;
+  offsetY?: number;
+  /** Fired once the texture for imageUrl is decoded and the mesh is visible. */
+  onTextureReady?: (imageUrl: string) => void;
 }
 
 const DEG = Math.PI / 180;
@@ -81,7 +87,7 @@ const SHADOW_FRAG = /* glsl */ `
   }
 `;
 
-function CardMesh({ imageUrl, motion, parallax, width, height }: CardSceneProps & { imageUrl: string }) {
+function CardMesh({ imageUrl, motion, parallax, width, height, offsetX = 0, offsetY = 0, onTextureReady }: CardSceneProps & { imageUrl: string }) {
   const gl = useThree((s) => s.gl);
   const texture = useTexture(imageUrl);
   const mesh = useRef<THREE.Mesh>(null);
@@ -92,6 +98,23 @@ function CardMesh({ imageUrl, motion, parallax, width, height }: CardSceneProps 
     texture.anisotropy = gl.capabilities.getMaxAnisotropy();
     texture.needsUpdate = true;
   }, [texture, gl]);
+
+  // useTexture suspends until decode completes, so first mount for this url
+  // means the stimulus is actually visible — anchor latency/exposure here.
+  useEffect(() => {
+    onTextureReady?.(imageUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageUrl]);
+
+  // contain-fit: preserve the image's aspect ratio inside the card box
+  // (mirrors the DOM path's objectFit: "contain") instead of stretching.
+  const img = texture.image as { width?: number; height?: number } | undefined;
+  const fit = useMemo(() => {
+    const iw = img?.width ?? width;
+    const ih = img?.height ?? height;
+    const scale = Math.min(width / iw, height / ih);
+    return { w: iw * scale, h: ih * scale };
+  }, [img?.width, img?.height, width, height]);
 
   const cardMaterial = useMemo(
     () =>
@@ -134,8 +157,8 @@ function CardMesh({ imageUrl, motion, parallax, width, height }: CardSceneProps 
     const m = motion.current;
     const p = parallax.current;
     if (mesh.current) {
-      mesh.current.position.x = m.x;
-      mesh.current.position.y = -m.y;
+      mesh.current.position.x = m.x + offsetX;
+      mesh.current.position.y = -m.y - offsetY;
       mesh.current.rotation.z = -m.rot * DEG;
       // Parallax tilt from pointer position (subtle).
       const targetRX = p.y * 0.08;
@@ -148,8 +171,8 @@ function CardMesh({ imageUrl, motion, parallax, width, height }: CardSceneProps 
     cardMaterial.uniforms.uCurl.value = curl.current;
     cardMaterial.uniforms.uDir.value = m.vx < 0 || (m.vx === 0 && m.x < 0) ? -1 : 1;
     if (shadow.current) {
-      shadow.current.position.x = m.x * 1.06;
-      shadow.current.position.y = -m.y - 14;
+      shadow.current.position.x = m.x * 1.06 + offsetX;
+      shadow.current.position.y = -m.y - 14 - offsetY;
       shadow.current.rotation.z = -m.rot * DEG;
       const lift = Math.min(1, Math.abs(m.x) / 200 + curl.current);
       (shadowMaterial.uniforms.uOpacity as { value: number }).value = 0.35 + lift * 0.2;
@@ -161,10 +184,10 @@ function CardMesh({ imageUrl, motion, parallax, width, height }: CardSceneProps 
   return (
     <group>
       <mesh ref={shadow} position={[0, -14, -30]} material={shadowMaterial}>
-        <planeGeometry args={[width * 1.15, height * 1.15]} />
+        <planeGeometry args={[fit.w * 1.15, fit.h * 1.15]} />
       </mesh>
       <mesh ref={mesh} material={cardMaterial}>
-        <planeGeometry args={[width, height, 24, 32]} />
+        <planeGeometry args={[fit.w, fit.h, 24, 32]} />
       </mesh>
     </group>
   );
@@ -175,6 +198,7 @@ export default function CardScene(props: CardSceneProps) {
     <Canvas
       orthographic
       flat
+      frameloop={props.imageUrl ? "always" : "never"}
       dpr={[1, 2]}
       camera={{ position: [0, 0, 300], zoom: 1, near: 0.1, far: 1000 }}
       gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}

@@ -144,9 +144,31 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     [cfg.items.length, idx, item, onEvent, responses, saveCheckpoint],
   );
 
-  // Fixed-exposure countdown per timed item; a lapse is recorded as choice -1.
+  // Stimulus-ready gating (audit fix): for image items the WebGL texture may
+  // still be decoding when React selects the item — latency and exposure must
+  // anchor at the moment the stimulus is actually visible, not at selection.
+  // Per-item readiness keyed by item id: SwipeDeck reports synchronously on
+  // commit for DOM stimuli, at texture-decode for WebGL image cards. Keying
+  // avoids child-before-parent effect ordering races.
+  const [readyItemId, setReadyItemId] = useState<string | null>(null);
+  const itemIdRef = useRef<string | null>(null);
+  itemIdRef.current = item ? item.id : null;
+  const stimulusReady = Boolean(item && readyItemId === item.id);
+  const handleStimulusReady = useCallback(() => {
+    setReadyItemId(itemIdRef.current);
+  }, []);
+  // Safety net: never leave an item unanchored if a load event is lost.
   useEffect(() => {
-    if (phase !== "deck" || !item) return;
+    if (phase !== "deck" || stimulusReady || !item) return;
+    const t = setTimeout(() => setReadyItemId(item.id), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, idx, stimulusReady]);
+
+  // Fixed-exposure countdown per timed item; a lapse is recorded as choice -1.
+  // Starts only once the stimulus is visible (stimulusReady).
+  useEffect(() => {
+    if (phase !== "deck" || !item || !stimulusReady) return;
     shownAt.current = performance.now();
     decisionLatency.current = null;
     if (untimed) {
@@ -154,13 +176,12 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
       return;
     }
     setSecondsLeft(exposure);
-    const startedIdx = idx;
     const t = setInterval(() => {
       setSecondsLeft((s) => (s === null ? null : s - 1));
     }, 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, idx]);
+  }, [phase, idx, stimulusReady]);
 
   useEffect(() => {
     if (phase === "deck" && secondsLeft !== null && secondsLeft <= 0) {
@@ -233,6 +254,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             decisionLatency.current = Math.max(0, Math.round(performance.now() - shownAt.current));
             setChoice(i);
           }}
+          onStimulusReady={handleStimulusReady}
         />
         {/* Confidence sheet — slides up under the deck after each swipe. */}
         <div

@@ -15,7 +15,7 @@ export interface T2ResponseLike {
 }
 
 export interface CalibrationBin {
-  /** Confidence range covered by this bin, inclusive lo, exclusive hi (last bin inclusive). */
+  /** Forecast-probability range [0.5..1] covered by this bin (scored contract p = 0.5 + conf/200). */
   lo: number;
   hi: number;
   /** Number of ANSWERED responses that landed in the bin. */
@@ -59,24 +59,30 @@ export function calibrationBins(
   binCount = 5,
 ): CalibrationBin[] {
   if (!Number.isInteger(binCount) || binCount < 1) throw new Error("binCount must be a positive integer");
-  const width = 100 / binCount;
+  // The scored calibration contract (T2 scoring) interprets the 0..100 slider
+  // as a forecast p = 0.5 + confidence/200, i.e. the probability assigned to
+  // the CHOSEN option lives in [0.5, 1]. The reliability diagram must use the
+  // same domain, or slider 0 (scored as 50% certainty) would plot at x=0.
+  const lo0 = 0.5;
+  const width = (1 - lo0) / binCount;
   const sums = Array.from({ length: binCount }, () => ({ n: 0, conf: 0, correct: 0 }));
   for (const r of responses) {
     if (r.choice === -1) continue;
     const key = keyByItem[r.itemId];
     if (typeof key !== "number") continue;
     const conf = Math.min(100, Math.max(0, r.confidence));
-    const bi = Math.min(binCount - 1, Math.floor(conf / width));
+    const p = 0.5 + conf / 200;
+    const bi = Math.min(binCount - 1, Math.floor((p - lo0) / width));
     const s = sums[bi];
     s.n += 1;
-    s.conf += conf;
+    s.conf += p;
     if (r.choice === key) s.correct += 1;
   }
   return sums.map((s, i) => ({
-    lo: i * width,
-    hi: (i + 1) * width,
+    lo: lo0 + i * width,
+    hi: lo0 + (i + 1) * width,
     n: s.n,
-    meanConfidence: s.n > 0 ? s.conf / s.n / 100 : 0,
+    meanConfidence: s.n > 0 ? s.conf / s.n : 0,
     accuracy: s.n > 0 ? s.correct / s.n : 0,
   }));
 }

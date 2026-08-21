@@ -15,8 +15,9 @@ const W = 340;
 const H = 240;
 const PAD = { l: 40, r: 12, t: 12, b: 34 };
 
+const X0 = 0.5; // forecast domain starts at 0.5 (scored contract p = 0.5 + conf/200)
 function sx(v: number): number {
-  return PAD.l + v * (W - PAD.l - PAD.r);
+  return PAD.l + ((v - X0) / (1 - X0)) * (W - PAD.l - PAD.r);
 }
 function sy(v: number): number {
   return H - PAD.b - v * (H - PAD.t - PAD.b);
@@ -33,22 +34,24 @@ export function CalibrationCurve({ bins }: { bins: ReadonlyArray<CalibrationBin>
         viewBox={`0 0 ${W} ${H}`}
         className="calibration-svg"
         role="img"
-        aria-label={`Calibration curve: ${total} answered responses across ${filled.length} confidence bins`}
+        aria-label={`Calibration curve: ${total} answered responses across ${filled.length} certainty bins`}
       >
         {/* gridlines + axis labels */}
         {[0, 0.25, 0.5, 0.75, 1].map((v) => (
-          <g key={v}>
-            <line x1={sx(0)} y1={sy(v)} x2={sx(1)} y2={sy(v)} stroke="var(--border)" strokeWidth="1" />
-            <text x={sx(0) - 6} y={sy(v) + 3} textAnchor="end" fontSize="9" fill="var(--faint)" fontFamily="var(--mono)">
-              {Math.round(v * 100)}%
-            </text>
-            <text x={sx(v)} y={H - PAD.b + 14} textAnchor="middle" fontSize="9" fill="var(--faint)" fontFamily="var(--mono)">
-              {Math.round(v * 100)}
-            </text>
-          </g>
+          <line key={`gy${v}`} x1={sx(X0)} y1={sy(v)} x2={sx(1)} y2={sy(v)} stroke="var(--border)" strokeWidth="1" />
         ))}
-        <text x={(sx(0) + sx(1)) / 2} y={H - 4} textAnchor="middle" fontSize="9.5" fill="var(--muted)">
-          stated confidence
+        {[0, 0.25, 0.5, 0.75, 1].map((v) => (
+          <text key={`ly${v}`} x={sx(X0) - 6} y={sy(v) + 3} textAnchor="end" fontSize="9" fill="var(--faint)" fontFamily="var(--mono)">
+            {Math.round(v * 100)}%
+          </text>
+        ))}
+        {[0.5, 0.625, 0.75, 0.875, 1].map((v) => (
+          <text key={`lx${v}`} x={sx(v)} y={H - PAD.b + 14} textAnchor="middle" fontSize="9" fill="var(--faint)" fontFamily="var(--mono)">
+            {Math.round(v * 100)}
+          </text>
+        ))}
+        <text x={(sx(X0) + sx(1)) / 2} y={H - 4} textAnchor="middle" fontSize="9.5" fill="var(--muted)">
+          forecast certainty (p = 0.5 + confidence/200)
         </text>
         <text
           x={10} y={(sy(0) + sy(1)) / 2} textAnchor="middle" fontSize="9.5" fill="var(--muted)"
@@ -58,7 +61,7 @@ export function CalibrationCurve({ bins }: { bins: ReadonlyArray<CalibrationBin>
         </text>
         {/* perfect-calibration diagonal */}
         <line
-          x1={sx(0)} y1={sy(0)} x2={sx(1)} y2={sy(1)}
+          x1={sx(X0)} y1={sy(X0)} x2={sx(1)} y2={sy(1)}
           stroke="var(--border-strong)" strokeWidth="1" strokeDasharray="4 4"
         />
         {/* observed curve */}

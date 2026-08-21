@@ -33,26 +33,26 @@ Commons under a free license; "Photograph" rows are genuine camera photographs.
 | `e621151fccb4.jpg` | Photograph | Citroen 2CV AZ.jpg | Krzysztof Golik | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Citroen_2CV_AZ.jpg) |
 | `a1da11b10d5e.jpg` | Photograph | A plate of red sauce pasta.jpg | Masum-al-Hasan Rocky | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:A_plate_of_red_sauce_pasta.jpg) |
 | `86516c937b4f.jpg` | Photograph | Sno river valley, Caucasian mountains, Georgia.jpg | Vyacheslav Argenberg | CC BY 4.0 | [source](https://commons.wikimedia.org/wiki/File:Sno_river_valley,_Caucasian_mountains,_Georgia.jpg) |
-| 79af8a82960e.jpg | AI-generated | Irishandys | CC0 | [File:Plaza Calderon in Binondo, Manila, Philippines late 180](https://commons.wikimedia.org/wiki/File:Plaza_Calderon_in_Binondo,_Manila,_Philippines_late_1800%27s_to_early_1900%27s.jpg) |
-| cd8fca17c7f6.jpg | AI-generated | gemini | Public domain | [File:Cabine balneari.jpg](https://commons.wikimedia.org/wiki/File:Cabine_balneari.jpg) |
-| eb9b7d51d61d.jpg | AI-generated | Midjourney; prompted by The masketta man | Public domain | [File:Green apple gen.png](https://commons.wikimedia.org/wiki/File:Green_apple_gen.png) |
-| cc46563e0668.jpg | AI-generated | Dalle 3.0 | Public domain | [File:Khasir Rejala Bangladesh.jpg](https://commons.wikimedia.org/wiki/File:Khasir_Rejala_Bangladesh.jpg) |
-| 24dfeb021b56.jpg | AI-generated | Craiyon algorithm | Public domain | [File:Leek on a white background.png](https://commons.wikimedia.org/wiki/File:Leek_on_a_white_background.png) |
-| 3bf3d45bb71c.jpg | AI-generated | Murani compositor | Public domain | [File:!º acto, introducción. "Oh luna lucente".jpg](https://commons.wikimedia.org/wiki/File:!%C2%BA_acto,_introducci%C3%B3n._%22Oh_luna_lucente%22.jpg) |
-| b69e9e8858fd.jpg | AI-generated | FLUX.1 [schnell]; prompted by Emdosis | Public domain | [File:Cute Hedgehog.jpg](https://commons.wikimedia.org/wiki/File:Cute_Hedgehog.jpg) |
-| bf9752342194.jpg | AI-generated | ChatGPT 5.5 | Public domain | [File:Esternosangaetano.png](https://commons.wikimedia.org/wiki/File:Esternosangaetano.png) |
-| 60c2743f3130.jpg | AI-generated | Leonardo AI | Public domain | [File:Japanese buildings and Turkish tulips.jpg](https://commons.wikimedia.org/wiki/File:Japanese_buildings_and_Turkish_tulips.jpg) |
-| c9c0a56c620e.jpg | AI-generated | Author:Gemini AI | Public domain | [File:Dosa IMAGE.png](https://commons.wikimedia.org/wiki/File:Dosa_IMAGE.png) |
-| ac625c778a60.jpg | Photograph | Basile Morin | CC BY-SA 4.0 | [File:Exterior facade of Residence Bassac at blue hour, town ](https://commons.wikimedia.org/wiki/File:Exterior_facade_of_Residence_Bassac_at_blue_hour,_town_of_Champasak,_Laos.jpg) |
-| fb1ff0b6a97d.jpg | Photograph | Jebulon | CC0 | [File:Parasols, Evening, Beach, Rincon de la Victoria, Andalu](https://commons.wikimedia.org/wiki/File:Parasols,_Evening,_Beach,_Rincon_de_la_Victoria,_Andalusia,_Spain.jpg) |
-| 7bb12d1723c7.jpg | Photograph | Michael Gäbler | CC BY-SA 3.0 | [File:Erinaceus europaeus (Linnaeus, 1758).jpg](https://commons.wikimedia.org/wiki/File:Erinaceus_europaeus_(Linnaeus,_1758).jpg) |
-| 32dfed510acc.jpg | Photograph | Vyacheslav Argenberg | CC BY 4.0 | [File:Andaman Islands, Full moon night, Forest by the sea at ](https://commons.wikimedia.org/wiki/File:Andaman_Islands,_Full_moon_night,_Forest_by_the_sea_at_night.jpg) |
-| a6499cd29190.jpg | Photograph | Dietmar Rabich | CC BY-SA 4.0 | [File:Melbourne (AU), Queen Victoria Market -- 2019 -- 1542.j](https://commons.wikimedia.org/wiki/File:Melbourne_(AU),_Queen_Victoria_Market_--_2019_--_1542.jpg) |
-| 3ce7bae3a765.jpg | Photograph | Samphotography | CC BY-SA 4.0 | [File:Indian Sambar.jpg](https://commons.wikimedia.org/wiki/File:Indian_Sambar.jpg) |
-| 1ac81826d931.jpg | Photograph | Touam (Hervé Agnoux) | CC BY-SA 4.0 | [File:Carottes et poireaux de la ferme Grandjard au marché de](https://commons.wikimedia.org/wiki/File:Carottes_et_poireaux_de_la_ferme_Grandjard_au_march%C3%A9_de_la_place_Albert_Thomas.jpg) |
-| da96373f7c16.jpg | Photograph | AgnosticPreachersKid | CC BY-SA 3.0 | [File:Facade - National City Christian Church.JPG](https://commons.wikimedia.org/wiki/File:Facade_-_National_City_Christian_Church.JPG) |
-| 3a6837119bc7.jpg | Photograph | Yosomono from Fukuoka, Japan | CC BY 2.0 | [File:Dosa (36400591833).jpg](https://commons.wikimedia.org/wiki/File:Dosa_(36400591833).jpg) |
-| d494181d4b55.jpg | Photograph | 663highland | CC BY 2.5 | [File:140510 Tamba Traditional Art Craft Park Sue no Sato Sas](https://commons.wikimedia.org/wiki/File:140510_Tamba_Traditional_Art_Craft_Park_Sue_no_Sato_Sasayama_Hyogo_pref_Japan02s3.jpg) |
+| 79af8a82960e.jpg | AI-generated | File:Plaza Calderon in Binondo, Manila, Philippines late 180 | Irishandys | CC0 | [source](https://commons.wikimedia.org/wiki/File:Plaza_Calderon_in_Binondo,_Manila,_Philippines_late_1800%27s_to_early_1900%27s.jpg) |
+| cd8fca17c7f6.jpg | AI-generated | File:Cabine balneari.jpg | gemini | Public domain | [source](https://commons.wikimedia.org/wiki/File:Cabine_balneari.jpg) |
+| eb9b7d51d61d.jpg | AI-generated | File:Green apple gen.png | Midjourney; prompted by The masketta man | Public domain | [source](https://commons.wikimedia.org/wiki/File:Green_apple_gen.png) |
+| cc46563e0668.jpg | AI-generated | File:Khasir Rejala Bangladesh.jpg | Dalle 3.0 | Public domain | [source](https://commons.wikimedia.org/wiki/File:Khasir_Rejala_Bangladesh.jpg) |
+| 24dfeb021b56.jpg | AI-generated | File:Leek on a white background.png | Craiyon algorithm | Public domain | [source](https://commons.wikimedia.org/wiki/File:Leek_on_a_white_background.png) |
+| 3bf3d45bb71c.jpg | AI-generated | File:!º acto, introducción. "Oh luna lucente".jpg | Murani compositor | Public domain | [source](https://commons.wikimedia.org/wiki/File:!%C2%BA_acto,_introducci%C3%B3n._%22Oh_luna_lucente%22.jpg) |
+| b69e9e8858fd.jpg | AI-generated | File:Cute Hedgehog.jpg | FLUX.1 [schnell]; prompted by Emdosis | Public domain | [source](https://commons.wikimedia.org/wiki/File:Cute_Hedgehog.jpg) |
+| bf9752342194.jpg | AI-generated | File:Esternosangaetano.png | ChatGPT 5.5 | Public domain | [source](https://commons.wikimedia.org/wiki/File:Esternosangaetano.png) |
+| 60c2743f3130.jpg | AI-generated | File:Japanese buildings and Turkish tulips.jpg | Leonardo AI | Public domain | [source](https://commons.wikimedia.org/wiki/File:Japanese_buildings_and_Turkish_tulips.jpg) |
+| c9c0a56c620e.jpg | AI-generated | File:Dosa IMAGE.png | Author:Gemini AI | Public domain | [source](https://commons.wikimedia.org/wiki/File:Dosa_IMAGE.png) |
+| ac625c778a60.jpg | Photograph | File:Exterior facade of Residence Bassac at blue hour, town  | Basile Morin | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Exterior_facade_of_Residence_Bassac_at_blue_hour,_town_of_Champasak,_Laos.jpg) |
+| fb1ff0b6a97d.jpg | Photograph | File:Parasols, Evening, Beach, Rincon de la Victoria, Andalu | Jebulon | CC0 | [source](https://commons.wikimedia.org/wiki/File:Parasols,_Evening,_Beach,_Rincon_de_la_Victoria,_Andalusia,_Spain.jpg) |
+| 7bb12d1723c7.jpg | Photograph | File:Erinaceus europaeus (Linnaeus, 1758).jpg | Michael Gäbler | CC BY-SA 3.0 | [source](https://commons.wikimedia.org/wiki/File:Erinaceus_europaeus_(Linnaeus,_1758) |
+| 32dfed510acc.jpg | Photograph | File:Andaman Islands, Full moon night, Forest by the sea at  | Vyacheslav Argenberg | CC BY 4.0 | [source](https://commons.wikimedia.org/wiki/File:Andaman_Islands,_Full_moon_night,_Forest_by_the_sea_at_night.jpg) |
+| a6499cd29190.jpg | Photograph | File:Melbourne (AU), Queen Victoria Market -- 2019 -- 1542.j | Dietmar Rabich | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Melbourne_(AU) |
+| 3ce7bae3a765.jpg | Photograph | File:Indian Sambar.jpg | Samphotography | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Indian_Sambar.jpg) |
+| 1ac81826d931.jpg | Photograph | File:Carottes et poireaux de la ferme Grandjard au marché de | Touam (Hervé Agnoux) | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Carottes_et_poireaux_de_la_ferme_Grandjard_au_march%C3%A9_de_la_place_Albert_Thomas.jpg) |
+| da96373f7c16.jpg | Photograph | File:Facade - National City Christian Church.JPG | AgnosticPreachersKid | CC BY-SA 3.0 | [source](https://commons.wikimedia.org/wiki/File:Facade_-_National_City_Christian_Church.JPG) |
+| 3a6837119bc7.jpg | Photograph | File:Dosa (36400591833).jpg | Yosomono from Fukuoka, Japan | CC BY 2.0 | [source](https://commons.wikimedia.org/wiki/File:Dosa_(36400591833) |
+| d494181d4b55.jpg | Photograph | File:140510 Tamba Traditional Art Craft Park Sue no Sato Sas | 663highland | CC BY 2.5 | [source](https://commons.wikimedia.org/wiki/File:140510_Tamba_Traditional_Art_Craft_Park_Sue_no_Sato_Sasayama_Hyogo_pref_Japan02s3.jpg) |
 
 ## Text sources (T2 text-authenticity items)
 
@@ -69,15 +69,15 @@ AI passages ("ai"-keyed text-authenticity items) are genuinely
 model-generated via OpenRouter (`openai/gpt-4o-mini`, 2026-08-21) using
 `instruments/2026.1/tracks/t2-discrimination/tools/gen-ai-passages.mjs`;
 each item's `provenance` records model, date, and the exact prompt.
-| f98af2483f40.jpg | AI-generated | Author: Perchance AI; prompted by John Doe | Public domain | [File:Flourdumplingsoup.jpg](https://commons.wikimedia.org/wiki/File:Flourdumplingsoup.jpg) |
-| c0112dc52e10.jpg | AI-generated | Dennis Sylvester Hurd | CC0 | [File:Generative AI can be used to create realistic images of](https://commons.wikimedia.org/wiki/File:Generative_AI_can_be_used_to_create_realistic_images_of_food_dishes.jpg) |
-| fcd27045eaab.jpg | AI-generated | Codex’s built-in OpenAI image-generation and editing engine | Public domain | [File:McAfrika rekonstruert med KI.jpg](https://commons.wikimedia.org/wiki/File:McAfrika_rekonstruert_med_KI.jpg) |
-| 4aad445d8709.jpg | AI-generated | Piersey | CC BY 2.0 | [File:Oven-baked veggie chips.jpg](https://commons.wikimedia.org/wiki/File:Oven-baked_veggie_chips.jpg) |
-| d9e10c4ce1bd.jpg | AI-generated | ChatGPT | Public domain | [File:Apoyacubiertos.png](https://commons.wikimedia.org/wiki/File:Apoyacubiertos.png) |
-| 8efac43f3d63.jpg | AI-generated | Bango Renders | CC0 | [File:Chocolate Donut With Sprinkles on it.jpg](https://commons.wikimedia.org/wiki/File:Chocolate_Donut_With_Sprinkles_on_it.jpg) |
-| 78bb42ab69f4.jpg | Photograph | CEphoto, Uwe Aranas | CC BY-SA 3.0 | [File:Singapore Korean-system-gastronomie-01.jpg](https://commons.wikimedia.org/wiki/File:Singapore_Korean-system-gastronomie-01.jpg) |
-| 369c4dcde8bd.jpg | Photograph | PattayaPatrol | CC BY-SA 4.0 | [File:DFC 1238 Plate of seasoned grilled meat topped with raw](https://commons.wikimedia.org/wiki/File:DFC_1238_Plate_of_seasoned_grilled_meat_topped_with_raw_onion_rings_served_with_a_baked_potato_topped_with_creamy_sauce_a_side_of_rice_or_cabbage_and_dipping_sauce.jpg) |
-| de474801736c.jpg | Photograph | Lauren Travis | CC BY 2.0 | [File:Doener Kebab (9682662957).jpg](https://commons.wikimedia.org/wiki/File:Doener_Kebab_(9682662957).jpg) |
-| be810838ac5d.jpg | Photograph | Adesolive | CC0 | [File:Tuna Salad with sweet corn.jpg](https://commons.wikimedia.org/wiki/File:Tuna_Salad_with_sweet_corn.jpg) |
-| 636f536bab7f.jpg | Photograph | Acabashi | CC BY-SA 4.0 | [File:Cutlery drawer.jpg](https://commons.wikimedia.org/wiki/File:Cutlery_drawer.jpg) |
-| f729f0c0bed1.jpg | Photograph | Sebastian Koppehel | CC BY 4.0 | [File:Berliner Pfannkuchen 5.jpg](https://commons.wikimedia.org/wiki/File:Berliner_Pfannkuchen_5.jpg) |
+| f98af2483f40.jpg | AI-generated | File:Flourdumplingsoup.jpg | Author: Perchance AI; prompted by John Doe | Public domain | [source](https://commons.wikimedia.org/wiki/File:Flourdumplingsoup.jpg) |
+| c0112dc52e10.jpg | AI-generated | File:Generative AI can be used to create realistic images of | Dennis Sylvester Hurd | CC0 | [source](https://commons.wikimedia.org/wiki/File:Generative_AI_can_be_used_to_create_realistic_images_of_food_dishes.jpg) |
+| fcd27045eaab.jpg | AI-generated | File:McAfrika rekonstruert med KI.jpg | Codex’s built-in OpenAI image-generation and editing engine | Public domain | [source](https://commons.wikimedia.org/wiki/File:McAfrika_rekonstruert_med_KI.jpg) |
+| 4aad445d8709.jpg | AI-generated | File:Oven-baked veggie chips.jpg | Piersey | CC BY 2.0 | [source](https://commons.wikimedia.org/wiki/File:Oven-baked_veggie_chips.jpg) |
+| d9e10c4ce1bd.jpg | AI-generated | File:Apoyacubiertos.png | ChatGPT | Public domain | [source](https://commons.wikimedia.org/wiki/File:Apoyacubiertos.png) |
+| 8efac43f3d63.jpg | AI-generated | File:Chocolate Donut With Sprinkles on it.jpg | Bango Renders | CC0 | [source](https://commons.wikimedia.org/wiki/File:Chocolate_Donut_With_Sprinkles_on_it.jpg) |
+| 78bb42ab69f4.jpg | Photograph | File:Singapore Korean-system-gastronomie-01.jpg | CEphoto, Uwe Aranas | CC BY-SA 3.0 | [source](https://commons.wikimedia.org/wiki/File:Singapore_Korean-system-gastronomie-01.jpg) |
+| 369c4dcde8bd.jpg | Photograph | File:DFC 1238 Plate of seasoned grilled meat topped with raw | PattayaPatrol | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:DFC_1238_Plate_of_seasoned_grilled_meat_topped_with_raw_onion_rings_served_with_a_baked_potato_topped_with_creamy_sauce_a_side_of_rice_or_cabbage_and_dipping_sauce.jpg) |
+| de474801736c.jpg | Photograph | File:Doener Kebab (9682662957).jpg | Lauren Travis | CC BY 2.0 | [source](https://commons.wikimedia.org/wiki/File:Doener_Kebab_(9682662957) |
+| be810838ac5d.jpg | Photograph | File:Tuna Salad with sweet corn.jpg | Adesolive | CC0 | [source](https://commons.wikimedia.org/wiki/File:Tuna_Salad_with_sweet_corn.jpg) |
+| 636f536bab7f.jpg | Photograph | File:Cutlery drawer.jpg | Acabashi | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Cutlery_drawer.jpg) |
+| f729f0c0bed1.jpg | Photograph | File:Berliner Pfannkuchen 5.jpg | Sebastian Koppehel | CC BY 4.0 | [source](https://commons.wikimedia.org/wiki/File:Berliner_Pfannkuchen_5.jpg) |
