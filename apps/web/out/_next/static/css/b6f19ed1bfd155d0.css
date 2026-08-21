@@ -1,0 +1,1 @@
+:root{--bg:#0b0d12;--fg:#e8eaf0;--muted:#9aa3b2;--accent:#5b8cff;--card:#141821;--border:#232a38}*{box-sizing:border-box}body,html{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}a{color:var(--accent);text-decoration:none}
