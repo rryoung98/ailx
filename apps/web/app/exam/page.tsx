@@ -19,7 +19,8 @@ import { trackConfig } from "../../lib/instrument";
 // stays in the frozen data contract (always "en" at attempt start).
 import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
 import { Annotation } from "../../lib/Annotation";
-import { ConnectPanel } from "../../lib/ConnectPanel";
+import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
+import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
 import { PillCTA } from "../../lib/PillCTA";
 import { Reveal } from "../../lib/Reveal";
 
@@ -50,6 +51,9 @@ export default function ExamPage() {
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
+  // Start gate: a run needs a connected model (key or custom base URL).
+  const [connected, setConnected] = useState(false);
+  const [connectAttention, setConnectAttention] = useState(0);
   const logRef = useRef<SequencedEntry[] | null>(null);
   logRef.current = log;
 
@@ -61,6 +65,28 @@ export default function ExamPage() {
       setPersistWarning(`stored run log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
     }
     setHydrated(true);
+  }, []);
+
+  // Track the model connection (key OR custom base URL) — the Start pill
+  // is gated on it. Re-read on ConnectPanel changes and cross-tab storage.
+  useEffect(() => {
+    const read = () => {
+      try {
+        setConnected(
+          Boolean(window.localStorage.getItem(OPENROUTER_KEY_STORAGE)?.trim()) ||
+          Boolean(window.localStorage.getItem(LLM_BASE_URL_STORAGE)?.trim()),
+        );
+      } catch {
+        setConnected(false);
+      }
+    };
+    read();
+    window.addEventListener(CONNECTION_CHANGED_EVENT, read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener(CONNECTION_CHANGED_EVENT, read);
+      window.removeEventListener("storage", read);
+    };
   }, []);
 
   // 1 Hz clock while an attempt is live.
@@ -193,7 +219,7 @@ export default function ExamPage() {
           <div style={{ textAlign: "right" }}><Annotation side="left">no accounts — just play</Annotation></div>
           {/* AI connection FIRST — users must see it before the Start pill
               (it was previously buried below the fold). */}
-          <ConnectPanel />
+          <ConnectPanel attention={connectAttention} />
           <ul className="rule-rows" style={{ margin: "1rem 0 1.5rem" }}>
             {TRACK_LIST.map((t) => (
               <Reveal as="li" key={t.id}>
@@ -209,13 +235,19 @@ export default function ExamPage() {
           </p>
           </Reveal>
           <PillCTA
+            disabled={!connected}
             onClick={() => {
+              if (!connected) {
+                // Redirect attention to the connect panel instead of starting.
+                setConnectAttention((a) => a + 1);
+                return;
+              }
               const ts = Date.now();
               const attemptId = `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;
               commit([{ type: "attempt_started", attemptId, config: cfg, ts }]);
             }}
           >
-            Start your run
+            {connected ? "Start your run" : "Connect a model to start"}
           </PillCTA>
         </div>
       </main>
@@ -345,7 +377,9 @@ export default function ExamPage() {
         </div>
       ) : null}
       
-      <div className="container" style={{ maxWidth: 820 }}>
+      {/* Full-width workspace while a track is live: the runners are
+          two-pane environments and need the room (~1400px). */}
+      <div className="container" style={{ maxWidth: 1400 }}>
         <div className="track-progress">
           {state.order.map((tid) => (
             <div key={tid} className={`seg${state.tracks[tid].status === "completed" ? " done" : tid === t ? " now" : ""}`} />

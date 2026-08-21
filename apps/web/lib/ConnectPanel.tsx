@@ -24,7 +24,19 @@ import {
   PKCE_VERIFIER_STORAGE,
 } from "@ailx/track-t1";
 
-export function ConnectPanel() {
+/** Fired on every key/base change so the same page (e.g. the start gate)
+ *  can re-read the connection state without prop drilling. */
+export const CONNECTION_CHANGED_EVENT = "ailx:connection-changed";
+
+function announceChange() {
+  try {
+    window.dispatchEvent(new Event(CONNECTION_CHANGED_EVENT));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const [orKey, setOrKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [ssoBusy, setSsoBusy] = useState(false);
@@ -88,6 +100,7 @@ export function ConnectPanel() {
     } catch {
       /* non-fatal */
     }
+    announceChange();
   };
 
   const updateBaseUrl = (value: string) => {
@@ -99,6 +112,7 @@ export function ConnectPanel() {
     } catch {
       /* non-fatal */
     }
+    announceChange();
   };
 
   const connect = async () => {
@@ -116,18 +130,26 @@ export function ConnectPanel() {
     }
   };
 
+  // Attention nudge: the start gate bumps this counter when the disabled
+  // Start pill is clicked — pulse the panel and open manual setup.
+  useEffect(() => {
+    if (attention > 0) setShowManual(true);
+  }, [attention]);
+
   const connected = orKey.trim().length > 0;
   const customBase = baseUrl.trim().length > 0 && normalizeBaseUrl(baseUrl) !== DEFAULT_BASE_URL;
 
   return (
     <section
       aria-label="AI connection"
+      className={attention > 0 ? "connect-attention" : undefined}
+      key={`attn-${attention}`}
       style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "1rem 1.2rem", margin: "1.4rem 0", display: "grid", gap: 8, boxShadow: "0 1px 2px rgba(26,26,26,0.05)" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <strong style={{ fontSize: 15 }}>Bring a real model</strong>
         <span className="small faint" style={{ flex: 1, minWidth: 220 }}>
-          Optional. T1 builds and T4 image generation use it; without it both run on the free offline demo simulators.
+          Required to start: T1 vibe coding and T4 image generation run on your model. If a call fails mid-run, the free offline demo simulators take over.
         </span>
         {connected ? (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>

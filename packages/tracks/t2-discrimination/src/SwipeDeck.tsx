@@ -13,6 +13,7 @@
  * verdict badges use the item's own option labels.
  */
 import {
+  Component,
   Suspense,
   lazy,
   useCallback,
@@ -22,6 +23,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { ReactNode } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from "react";
 import type { T2Item } from "./types.js";
 import { useSwipeCard } from "./swipe/useSwipeCard.js";
@@ -52,7 +54,9 @@ const cardFace: CSSProperties = {
   flexDirection: "column",
   gap: "0.6rem",
   overflow: "hidden",
-  boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
+  // Paper shadow, tight enough never to paint over the answer
+  // buttons below the deck (user screenshot regression).
+  boxShadow: "0 6px 16px rgba(26,26,26,0.14)",
 };
 
 function badgeStyle(side: "left" | "right", opacity: number): CSSProperties {
@@ -76,27 +80,108 @@ function badgeStyle(side: "left" | "right", opacity: number): CSSProperties {
   } as CSSProperties;
 }
 
+/** Self-contained answer-button styling (the package must not depend on an
+ *  app stylesheet). Standardized motion: background/color/border 150ms,
+ *  transform 120ms; hover FILLS with the accent green + white text. */
+const T2_DECK_CSS = `
+.t2-answer-btn {
+  flex: 1; min-width: 0; background: var(--card, #fff); border-radius: 8px;
+  padding: 0.5rem 0.7rem; font-size: 0.88rem; font-family: inherit; cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+.t2-answer-btn.tone-left { color: var(--bad, #b91c1c); border: 1px solid var(--bad, #b91c1c); }
+.t2-answer-btn.tone-right { color: var(--good, #15803d); border: 1px solid var(--good, #15803d); }
+.t2-answer-btn:hover:not(:disabled), .t2-option-btn:hover:not(:disabled) {
+  background: var(--accent, #0b6b47); color: #fff; border-color: var(--accent, #0b6b47);
+}
+.t2-answer-btn:active:not(:disabled), .t2-option-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.t2-answer-btn:focus-visible, .t2-option-btn:focus-visible { outline: 2px solid var(--accent, #0b6b47); outline-offset: 2px; }
+.t2-answer-btn:disabled, .t2-option-btn:disabled { opacity: 0.55; cursor: default; }
+.t2-option-btn {
+  background: var(--card, #fff); color: var(--fg, #1a1a1a); border: 1px solid var(--border, #e3ddd6);
+  border-radius: 8px; padding: 0.55rem 0.9rem; font-size: 0.92rem; font-family: inherit;
+  text-align: left; cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+`;
+
+/**
+ * Robust stimulus <img>: async decode, ONE automatic retry on load error,
+ * then a labeled fallback block instead of a broken-image glyph.
+ */
+function StimulusImg({ src, hide, slotRef }: { src: string; hide: boolean; slotRef?: Ref<HTMLImageElement> }) {
+  const [attempt, setAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setAttempt(0);
+    setFailed(false);
+  }, [src]);
+  if (failed) {
+    return (
+      <div
+        data-testid="stimulus-fallback"
+        role="img"
+        aria-label="exam material (image failed to load)"
+        style={{
+          flex: 1, minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--bg, #f7f4f2)", border: "1px dashed var(--border-strong, #c9c2b9)",
+          borderRadius: 8, color: "var(--muted, #595650)", fontSize: "0.85rem", padding: "0.75rem",
+        }}
+      >
+        Image failed to load — judge from the stem, or answer “can’t tell”.
+      </div>
+    );
+  }
+  return (
+    <img
+      key={attempt}
+      ref={slotRef}
+      src={src}
+      alt="exam material"
+      decoding="async"
+      draggable={false}
+      onError={() => (attempt === 0 ? setAttempt(1) : setFailed(true))}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        objectFit: "contain",
+        width: "100%",
+        borderRadius: 8,
+        opacity: hide ? 0 : 1,
+        userSelect: "none",
+      }}
+    />
+  );
+}
+
+/**
+ * WebGL texture loads suspend inside CardScene; a decode FAILURE would
+ * otherwise unwind the whole runner. Catch it here, report the url, and
+ * render nothing — the DOM <img> underneath stays visible as the fallback.
+ */
+class TextureErrorBoundary extends Component<
+  { onError: () => void; children?: ReactNode },
+  { errored: boolean }
+> {
+  state = { errored: false };
+  static getDerivedStateFromError() {
+    return { errored: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    return this.state.errored ? null : this.props.children;
+  }
+}
+
 function CardBody({ item, hideImage, slotRef, lang }: { item: T2Item; hideImage: boolean; slotRef?: Ref<HTMLImageElement>; lang?: string }) {
   const image = isImageMaterial(item.material);
   return (
     <>
       <p lang={lang} style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem" }}>{item.stem}</p>
       {image ? (
-        <img
-          ref={slotRef}
-          src={item.material}
-          alt="exam material"
-          draggable={false}
-          style={{
-            flex: 1,
-            minHeight: 0,
-            objectFit: "contain",
-            width: "100%",
-            borderRadius: 8,
-            opacity: hideImage ? 0 : 1,
-            userSelect: "none",
-          }}
-        />
+        <StimulusImg src={item.material} hide={hideImage} slotRef={slotRef} />
       ) : (
         <div
           lang={lang}
@@ -164,6 +249,8 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
     }
   }, []);
 
+  const itemUrlRef = useRef<string | null>(null);
+
   const parallax = useRef<ParallaxTarget>({ x: 0, y: 0 });
   const onDeckPointerMove = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
     const el = containerRef.current;
@@ -204,8 +291,29 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
     () => topIsImage || nextItems.some((n) => isImageMaterial(n.material)),
     [topIsImage, nextItems],
   );
+  // Preload + decode the next two stimuli so card advance never races a
+  // slow image fetch (glitchy/blank card regression).
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.Image !== "function") return;
+    for (const n of nextItems.slice(0, 2)) {
+      if (!isImageMaterial(n.material)) continue;
+      const im = new window.Image();
+      im.decoding = "async";
+      im.src = n.material;
+      void im.decode?.().catch(() => {
+        /* preload is best-effort; the card itself retries + falls back */
+      });
+    }
+  }, [nextItems]);
+  itemUrlRef.current = topIsImage ? item.material : null;
+  // GL texture failures per url: 1st failure retries once (remount by key),
+  // 2nd disables GL for that url — the DOM <img> stays as the stimulus.
+  const [glFails, setGlFails] = useState<Record<string, number>>({});
   const useGL = webgl && (deckHasImages ?? anyImageVisible);
-  const glImageUrl = useGL && topIsImage && !m.exited ? item.material : null;
+  const glImageUrl =
+    useGL && topIsImage && !m.exited && (glFails[item.material] ?? 0) < 2
+      ? item.material
+      : null;
   // Measure the DOM image slot so the WebGL plane aligns to it exactly
   // (the stem stays DOM-rendered above the plane; audit fix).
   const imgSlotRef = useRef<HTMLImageElement | null>(null);
@@ -237,6 +345,13 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
     setGlReadyUrl(url);
     onStimulusReady?.();
   }, [onStimulusReady]);
+  const handleTextureError = useCallback(() => {
+    const url = itemUrlRef.current;
+    if (!url) return;
+    setGlFails((f) => ({ ...f, [url]: (f[url] ?? 0) + 1 }));
+    // The DOM image is the visible stimulus now — anchor timing on it.
+    onStimulusReady?.();
+  }, [onStimulusReady]);
   // Non-GL stimuli (text cards, or GL disabled): visible on DOM commit.
   useEffect(() => {
     if (!glImageUrl) onStimulusReady?.();
@@ -248,6 +363,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
 
   return (
     <div data-testid="swipe-deck" data-webgl={useGL ? "1" : "0"}>
+      <style>{T2_DECK_CSS}</style>
       <div
         ref={containerRef}
         onPointerMove={onDeckPointerMove}
@@ -329,18 +445,23 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
         {/* Decorative for AT: the DOM card carries the equivalent content. */}
         {useGL && (
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none" }}>
-            <Suspense fallback={null}>
-              <CardScene
-                imageUrl={glImageUrl}
-                motion={motion}
-                parallax={parallax}
-                width={slot ? slot.w : cardSize.w - 32}
-                height={slot ? slot.h : cardSize.h - 32}
-                offsetX={slot ? slot.ox : 0}
-                offsetY={slot ? slot.oy : 0}
-                onTextureReady={handleTextureReady}
-              />
-            </Suspense>
+            <TextureErrorBoundary
+              key={`${glImageUrl ?? "none"}#${glImageUrl ? glFails[glImageUrl] ?? 0 : 0}`}
+              onError={handleTextureError}
+            >
+              <Suspense fallback={null}>
+                <CardScene
+                  imageUrl={glImageUrl}
+                  motion={motion}
+                  parallax={parallax}
+                  width={slot ? slot.w : cardSize.w - 32}
+                  height={slot ? slot.h : cardSize.h - 32}
+                  offsetX={slot ? slot.ox : 0}
+                  offsetY={slot ? slot.oy : 0}
+                  onTextureReady={handleTextureReady}
+                />
+              </Suspense>
+            </TextureErrorBoundary>
           </div>
         )}
       </div>
@@ -365,9 +486,9 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
           <span aria-hidden style={{ color: "var(--muted)", fontSize: "1.1rem" }}>←</span>
           <button
             lang={lang}
+            className="t2-answer-btn tone-left"
             onClick={() => flingForChoice(0)}
             disabled={!enabled}
-            style={legendBtn("var(--bad, #b91c1c)")}
           >
             {item.options[0]}
           </button>
@@ -376,9 +497,9 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
           </span>
           <button
             lang={lang}
+            className="t2-answer-btn tone-right"
             onClick={() => flingForChoice(1)}
             disabled={!enabled}
-            style={legendBtn("var(--good, #15803d)")}
           >
             {item.options[1]}
           </button>
@@ -390,18 +511,9 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             <button
               key={i}
               lang={lang}
+              className="t2-option-btn"
               onClick={() => onChoose(i)}
               disabled={!enabled}
-              style={{
-                background: "transparent",
-                color: "var(--fg)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: "0.55rem 0.9rem",
-                fontSize: "0.92rem",
-                textAlign: "left",
-                cursor: enabled ? "pointer" : "default",
-              }}
             >
               {opt}
             </button>
@@ -410,18 +522,4 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
       )}
     </div>
   );
-}
-
-function legendBtn(color: string): CSSProperties {
-  return {
-    flex: 1,
-    background: "transparent",
-    color,
-    border: `1px solid ${color}`,
-    borderRadius: 8,
-    padding: "0.5rem 0.7rem",
-    fontSize: "0.88rem",
-    cursor: "pointer",
-    minWidth: 0,
-  };
 }
