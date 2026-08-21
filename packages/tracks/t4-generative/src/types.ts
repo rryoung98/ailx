@@ -20,17 +20,32 @@ export interface T4Session {
   trackId: string;
 }
 
-/** One unlimited-model draft generation. Order matters for steering. */
+/**
+ * One unlimited-model draft generation. Order matters for steering.
+ * A draft carries EITHER `svg` (deterministic demo render / legacy data)
+ * OR `dataUri` (real OpenRouter model output, stored recompressed
+ * ≤ DRAFT_MAX_BYTES). At least one is always present; old checkpoints and
+ * artifacts (svg only, no modelId) decode unchanged.
+ */
 export interface T4Draft {
   /** 0-based draft index — order matters for steering efficiency. */
   index: number;
   prompt: string;
   /** Deterministic demo render (SVG markup) of the prompt. */
-  svg: string;
+  svg?: string;
+  /** Real-model render (data:image/... URI; drafts store ≤200KB copies). */
+  dataUri?: string;
+  /** Model that produced this draft (real id, or the labeled demo id). */
+  modelId?: string;
   clientTs: string;
 }
 
-/** A quota-consuming final render, promoted from a draft. */
+/**
+ * A quota-consuming final render, promoted from a draft. Carries EITHER
+ * `asset` (SVG markup — demo image, or the simulated video wrapper) OR
+ * `dataUri` (full-resolution real model image). Old data (asset only)
+ * decodes unchanged.
+ */
 export interface T4Final {
   kind: "image" | "video";
   /** Which draft was promoted. */
@@ -40,7 +55,11 @@ export interface T4Final {
    * image: SVG markup; video: animated-SVG markup (demo simulation of the
    * one-video quota — a labeled, animated still).
    */
-  asset: string;
+  asset?: string;
+  /** Full-resolution real-model image (finals keep the original bytes). */
+  dataUri?: string;
+  /** Model that produced this final (real id, or the labeled demo id). */
+  modelId?: string;
   clientTs: string;
 }
 

@@ -33,17 +33,26 @@ export function encodeT4Checkpoint(state: T4CheckpointState): T4CheckpointState 
   };
 }
 
+function optStr(v: unknown): v is string | undefined {
+  return v === undefined || typeof v === "string";
+}
+
+/** Accepts legacy demo drafts (svg only) AND real-model drafts (dataUri). */
 function isDraft(x: unknown): x is T4Draft {
   if (typeof x !== "object" || x === null) return false;
   const v = x as Record<string, unknown>;
   return (
     typeof v.index === "number" &&
     typeof v.prompt === "string" &&
-    typeof v.svg === "string" &&
+    (typeof v.svg === "string" || typeof v.dataUri === "string") &&
+    optStr(v.svg) &&
+    optStr(v.dataUri) &&
+    optStr(v.modelId) &&
     typeof v.clientTs === "string"
   );
 }
 
+/** Accepts legacy finals (asset only) AND real-model finals (dataUri). */
 function isFinal(x: unknown): x is T4Final {
   if (typeof x !== "object" || x === null) return false;
   const v = x as Record<string, unknown>;
@@ -51,7 +60,10 @@ function isFinal(x: unknown): x is T4Final {
     (v.kind === "image" || v.kind === "video") &&
     typeof v.fromDraftIndex === "number" &&
     typeof v.prompt === "string" &&
-    typeof v.asset === "string" &&
+    (typeof v.asset === "string" || typeof v.dataUri === "string") &&
+    optStr(v.asset) &&
+    optStr(v.dataUri) &&
+    optStr(v.modelId) &&
     typeof v.clientTs === "string"
   );
 }
