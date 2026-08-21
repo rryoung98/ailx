@@ -30,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="site-nav" aria-label="Primary">
               <NavLink href="/methodology">Methodology</NavLink>
               <NavLink href="/report">Report</NavLink>
+              <NavLink href="/gallery">Gallery</NavLink>
               <NavLink href="/validate">Validate</NavLink>
               {/* Compact pill twin of the bottom .pill-cta, aligned right. */}
               <NavLink href="/exam" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>

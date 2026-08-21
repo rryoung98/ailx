@@ -186,8 +186,8 @@ describe("header play pill", () => {
       if (props?.children !== undefined) walk(props.children);
     };
     walk((nav.props as { children?: ReactNode }).children);
-    expect(links.map((l) => l.href)).toEqual(["/methodology", "/report", "/validate", "/exam"]);
-    expect(links[3].className).toBe("nav-pill");
+    expect(links.map((l) => l.href)).toEqual(["/methodology", "/report", "/gallery", "/validate", "/exam"]);
+    expect(links[4].className).toBe("nav-pill");
     for (const l of links.slice(0, 3)) expect(l.className).toBeUndefined();
     // dot span inside the pill
     const pill = els().find((e) => (e.props as { className?: string }).className === "nav-pill")!;
@@ -255,7 +255,7 @@ describe("parent dogfood follow-ups", () => {
 
   it("nav links render through NavLink, which sets aria-current on the active page", () => {
     const layoutSrc = readFileSync(join(appDir, "layout.tsx"), "utf8");
-    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(4);
+    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(5);
     const navSrc = readFileSync(join(appDir, "..", "lib", "NavLink.tsx"), "utf8");
     expect(navSrc).toContain("usePathname");
     expect(navSrc).toContain('aria-current={current ? "page" : undefined}');

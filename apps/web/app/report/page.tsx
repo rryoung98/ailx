@@ -17,6 +17,64 @@ import { t2AnswerKeys } from "../../lib/instrument";
 import { TRACK_META } from "../../lib/tracks";
 import { Reveal } from "../../lib/Reveal";
 
+const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
+
+/**
+ * Opt-in share of the T4 chosen set to the public community wall.
+ * Uploads ONLY on click: recompressed finals + direction note + model id.
+ * Votes there are a human aesthetic signal, never part of the score.
+ */
+function ShareToGallery({ artifact }: { artifact: unknown }) {
+  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const a = artifact as {
+    finals?: { images?: { dataUri?: string; asset?: string; prompt?: string; modelId?: string }[] };
+    chosenSet?: number[];
+    note?: string;
+  } | null;
+  const chosen = (a?.chosenSet ?? []).map((i) => a?.finals?.images?.[i]).filter((f) => f?.dataUri);
+  if (chosen.length === 0) return null;
+  const share = async () => {
+    setState("busy");
+    try {
+      const { recompressDataUri } = await import("@ailx/track-t4");
+      const images = await Promise.all(
+        chosen.slice(0, 3).map(async (f) => {
+          const uri = f!.dataUri!;
+          return uri.length > 440 * 1024 ? await recompressDataUri(uri, 440 * 1024) : uri;
+        }),
+      );
+      const res = await fetch(GALLERY_API, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          images,
+          note: (a?.note ?? "").slice(0, 800),
+          model: chosen[0]?.modelId ?? "",
+        }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setState("done");
+    } catch {
+      setState("error");
+    }
+  };
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: "0.6rem", flexWrap: "wrap" }}>
+      {state === "done" ? (
+        <Link className="btn small-btn" href="/gallery">On the wall — see the gallery →</Link>
+      ) : (
+        <button className="btn small-btn" onClick={share} disabled={state === "busy"}>
+          {state === "busy" ? "Sharing…" : "Share this set to the public gallery"}
+        </button>
+      )}
+      {state === "error" ? <span className="small faint">Could not share — try again later.</span> : null}
+      <span className="small faint">
+        Opt-in and public. Uploads the chosen finals + direction note, nothing else.
+      </span>
+    </div>
+  );
+}
+
 function download(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -274,6 +332,7 @@ export default function ReportPage() {
                   </div>
                 );
               })}
+              {t === "t4" && !sample && <ShareToGallery artifact={ts.artifact} />}
               {t === "t2" && calBins.some((b) => b.n > 0) && (
                 <>
                   <h4 style={{ margin: "1rem 0 0", fontSize: "0.9rem" }}>Calibration — confidence vs observed accuracy</h4>
