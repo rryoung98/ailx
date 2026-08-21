@@ -552,7 +552,7 @@
             },
             {
               "difficulty": "hard",
-              "id": "afc954936e1d2b1f62ac0d3fbfa821ce593adb6865bfd3914e9bdce0282bf2ab",
+              "id": "99aa164bad9534302bf6410ec3fa57834867290ed3e5e2c0aed698c4af81b7fd",
               "key": "ai",
               "locale": "en",
               "material": {
@@ -572,8 +572,10 @@
               ],
               "provenance": {
                 "author": "Irishandys",
+                "commons_category": "AI-generated images of architecture",
                 "commons_title": "File:Plaza Calderon in Binondo, Manila, Philippines late 1800's to early 1900's.jpg",
                 "license": "CC0",
+                "note": "Commons page also carries a disputed-copyright maintenance tag; retained as a hard item with category-verified AI provenance.",
                 "retrieved": "2026-08-21",
                 "source": "Wikimedia Commons",
                 "source_url": "https://commons.wikimedia.org/wiki/File:Plaza_Calderon_in_Binondo,_Manila,_Philippines_late_1800%27s_to_early_1900%27s.jpg",
@@ -2573,7 +2575,7 @@
               "type": "provenance-reasoning"
             }
           ],
-          "sha256": "ec623c8987c388e8457b6fe0902e4376d0dfed8dfdcef29980cf67d1c90ce045"
+          "sha256": "256133b8a3c052b536df4872bb137a4e5c63f402882cd3dfe8edbd4b99d5d7f2"
         }
       },
       {

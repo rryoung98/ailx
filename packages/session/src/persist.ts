@@ -24,12 +24,49 @@ export const ATTEMPT_KEY = "ailx:attempt:v1";
 
 interface PersistedShape {
   formatVersion: 1;
+  /** Monotonic write revision — compare-and-swap token for multi-tab safety. */
+  rev?: number;
   log: SequencedEntry[];
 }
 
+/**
+ * Last revision this process observed per storage, keyed by the storage
+ * object itself. A second tab writes through its OWN process, bumping the
+ * stored rev; our next save then detects the foreign write and throws
+ * instead of silently overwriting the other tab's appends (audit A2/B1).
+ */
+const lastSeenRev = new WeakMap<object, number>();
+
+export class SaveConflictError extends Error {
+  constructor(public readonly storedRev: number, public readonly expectedRev: number) {
+    super(
+      `attempt log was modified by another tab (stored rev ${storedRev}, expected ${expectedRev}) — refusing to overwrite`,
+    );
+    this.name = "SaveConflictError";
+  }
+}
+
+function readStoredRev(storage: StorageLike): number {
+  try {
+    const raw = storage.getItem(ATTEMPT_KEY);
+    if (!raw) return 0;
+    const shape = JSON.parse(raw) as PersistedShape;
+    return typeof shape.rev === "number" ? shape.rev : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export function saveAttempt(storage: StorageLike, log: readonly SequencedEntry[]): void {
-  const shape: PersistedShape = { formatVersion: 1, log: [...log] };
+  const storedRev = readStoredRev(storage);
+  const expected = lastSeenRev.get(storage) ?? storedRev;
+  if (storedRev !== expected) {
+    throw new SaveConflictError(storedRev, expected);
+  }
+  const nextRev = storedRev + 1;
+  const shape: PersistedShape = { formatVersion: 1, rev: nextRev, log: [...log] };
   storage.setItem(ATTEMPT_KEY, JSON.stringify(shape));
+  lastSeenRev.set(storage, nextRev);
 }
 
 export interface ValidatedLog {
@@ -78,6 +115,7 @@ export function validateStoredLog(raw: readonly unknown[]): ValidatedLog {
  */
 export function loadAttemptValidated(storage: StorageLike): ValidatedLog | null {
   const raw = storage.getItem(ATTEMPT_KEY);
+  lastSeenRev.set(storage, readStoredRev(storage));
   if (raw === null) return null;
   let parsed: unknown;
   try {
@@ -105,4 +143,5 @@ export function loadAttempt(storage: StorageLike): SequencedEntry[] | null {
 
 export function clearAttempt(storage: StorageLike): void {
   storage.removeItem(ATTEMPT_KEY);
+  lastSeenRev.set(storage, 0);
 }

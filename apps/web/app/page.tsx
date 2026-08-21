@@ -19,7 +19,7 @@ export default function Home() {
               Benchmarks rate the models.<br />This one rates <em>you</em>.
             </h1>
             <p className="lede" style={{ fontSize: "1.05rem" }}>
-              Four performance tracks — build, detect, reason, and direct — are scored like a real instrument. This is the first cross-nationally normed exam of its kind.
+              Four performance tracks — build, detect, reason, and direct — are scored like a real instrument. Built to the AILX 2026.1 specification — a trilateral (US·JP·KR) instrument design; this site is its live demo build.
             </p>
             <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", marginTop: "1.4rem" }}>
               <Link className="btn primary" href="/exam">Start the exam</Link>
@@ -49,7 +49,7 @@ export default function Home() {
       <section className="container" style={{ marginTop: "3rem" }}>
         <div className="grid4">
           <div className="stat"><div className="value">4 × 100</div><div className="label">points; every track scored a different way, on purpose</div></div>
-          <div className="stat"><div className="value">0.1%</div><div className="label">of 2,000 people got every detection item right</div></div>
+          <div className="stat"><div className="value">d′</div><div className="label">detection is scored by sensitivity, not percent correct (see methodology)</div></div>
           <div className="stat"><div className="value">3</div><div className="label">languages — EN · JA · KO, translation provenance recorded</div></div>
           <div className="stat"><div className="value">1 : 2 : 3</div><div className="label">Distinction : Merit : Pass — IMO-style fixed quotas</div></div>
         </div>

@@ -5,7 +5,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "AILX — The AI Literacy Examination",
   description:
-    "The first cross-nationally normed, annually re-versioned, task-performance-based AI-literacy examination for adults. Four authentic tracks, 400 raw points, audit-grade scoring.",
+    "A task-performance-based AI-literacy examination for adults, built to the AILX 2026.1 specification: four authentic tracks, 400 raw points, audit-grade scoring. Live demo build.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
 import {
-  append, clearAttempt, loadAttempt, nextTrack, project, saveAttempt,
+  append, clearAttempt, loadAttemptValidated, nextTrack, project, saveAttempt,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
@@ -43,12 +43,17 @@ export default function ExamPage() {
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
+  const [persistWarning, setPersistWarning] = useState<string | null>(null);
   const logRef = useRef<SequencedEntry[] | null>(null);
   logRef.current = log;
 
   // Hydrate from localStorage (client-only; static export has no SSR data).
   useEffect(() => {
-    setLog(loadAttempt(window.localStorage));
+    const v = loadAttemptValidated(window.localStorage);
+    setLog(v && v.log.length > 0 ? v.log : null);
+    if (v && v.dropped > 0) {
+      setPersistWarning(`stored attempt log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
+    }
     setHydrated(true);
   }, []);
 
@@ -71,7 +76,15 @@ export default function ExamPage() {
     setLog((prev) => {
       let next = prev ?? [];
       for (const e of entries) next = append(next, e);
-      saveAttempt(window.localStorage, next);
+      try {
+        saveAttempt(window.localStorage, next);
+        setPersistWarning(null);
+      } catch (err) {
+        // Multi-tab conflict or storage quota/security failure: keep the
+        // in-memory log authoritative for this tab and warn loudly instead
+        // of silently overwriting another tab or losing writes (audit B1/M4).
+        setPersistWarning(err instanceof Error ? err.message : String(err));
+      }
       return next;
     });
   }, []);
@@ -144,7 +157,13 @@ export default function ExamPage() {
   }, []);
 
   if (!hydrated) {
-    return <main className="page"><div className="container"><p className="muted">Loading attempt…</p></div></main>;
+    return <main className="page">
+      {persistWarning ? (
+        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
+          ⚠ Persistence warning: {persistWarning}
+        </div>
+      ) : null}
+      <div className="container"><p className="muted">Loading attempt…</p></div></main>;
   }
 
   // ---- No attempt yet -----------------------------------------------------
@@ -152,6 +171,12 @@ export default function ExamPage() {
     const cfg = demoConfig();
     return (
       <main className="page">
+      {persistWarning ? (
+        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
+          ⚠ Persistence warning: {persistWarning}
+        </div>
+      ) : null}
+      
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">Demo sitting · AILX 2026.1</div>
           <h1>Four tracks. One attempt.</h1>
@@ -189,6 +214,12 @@ export default function ExamPage() {
   if (state.phase === "completed") {
     return (
       <main className="page">
+      {persistWarning ? (
+        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
+          ⚠ Persistence warning: {persistWarning}
+        </div>
+      ) : null}
+      
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Attempt complete</h1>
           <p className="lede">All four tracks are scored. The diagnostic report is the real reward.</p>
@@ -207,6 +238,12 @@ export default function ExamPage() {
     const done = state.order.filter((t) => state.tracks[t].status === "completed");
     return (
       <main className="page">
+      {persistWarning ? (
+        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
+          ⚠ Persistence warning: {persistWarning}
+        </div>
+      ) : null}
+      
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">Attempt {state.attemptId}</div>
           <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
@@ -287,6 +324,12 @@ export default function ExamPage() {
 
   return (
     <main className="page">
+      {persistWarning ? (
+        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
+          ⚠ Persistence warning: {persistWarning}
+        </div>
+      ) : null}
+      
       <div className="container" style={{ maxWidth: 820 }}>
         <div className="track-progress">
           {state.order.map((tid) => (

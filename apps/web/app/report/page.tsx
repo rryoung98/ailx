@@ -250,9 +250,10 @@ export default function ReportPage() {
 
         <h2>Event log</h2>
         <p className="faint small" style={{ marginTop: "-0.4rem" }}>
-          The verbatim audit trail — every persisted runner event, exactly as logged
-          (seq · verb · object · timing). Read-only: this is what scoring and the
-          exports are computed from.
+          Persisted runner events, shown read-only (seq · verb · object · timing).
+          Scores are computed from the stored artifacts and judgment rows; these
+          events are the behavioural record that accompanies them, and the research
+          export carries the same per-track event counts.
         </p>
         {TRACK_IDS.map((t) => {
           const startTs = log.find((e) => e.type === "track_started" && e.trackId === t)?.ts;

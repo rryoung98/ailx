@@ -207,12 +207,17 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
     }
     case "track_scored":
       if (s.tracks[e.trackId].status !== "completed") fail("track not completed");
+      if (s.tracks[e.trackId].score !== undefined) {
+        fail("track already scored — a re-score must be an explicit new attempt, never a silent replacement");
+      }
       return;
     case "attempt_completed":
       if (s.phase !== "between_tracks") fail("tracks still pending or running");
       if (s.order.some((t) => s.tracks[t].status !== "completed"))
         fail("not all tracks completed");
       return;
+    default:
+      fail(`unknown entry type ${String((e as { type?: unknown }).type)}`);
   }
 }
 
