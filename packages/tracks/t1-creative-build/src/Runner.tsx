@@ -1,11 +1,20 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import { demoAssist } from "./assist.js";
 import type { AssistReply } from "./assist.js";
 import { buildPreviewSrcdoc, SANDBOX_ATTR } from "./sandbox.js";
 import { decodeT1Checkpoint, encodeT1Checkpoint } from "./checkpoint.js";
+import {
+  buildVibeRequest,
+  CURATED_MODELS,
+  extractHtmlFence,
+  fetchModelIds,
+  OPENROUTER_KEY_STORAGE,
+  OpenRouterError,
+  requestVibeCompletion,
+} from "./openrouter.js";
 import { t1Plugin } from "./plugin.js";
 import type { PromptLogEntry } from "./types.js";
 
@@ -92,12 +101,63 @@ export function Runner(props: TrackUIProps) {
   );
   const [assistPrompt, setAssistPrompt] = useState("");
   const [assistReply, setAssistReply] = useState<AssistReply | null>(null);
+  // BYOK OpenRouter vibe coding — key lives ONLY in the candidate's browser.
+  const [orKey, setOrKey] = useState("");
+  const [model, setModel] = useState<string>(CURATED_MODELS[0]);
+  const [customModel, setCustomModel] = useState("");
+  const [modelOptions, setModelOptions] = useState<ReadonlyArray<string>>(CURATED_MODELS);
+  const [assistBusy, setAssistBusy] = useState(false);
+  const [assistError, setAssistError] = useState<string | null>(null);
   const [selfReport, setSelfReport] = useState(restored?.selfReport ?? "");
   const [submitted, setSubmitted] = useState(false);
   const promptLog = useRef<PromptLogEntry[]>(restored?.promptLog ?? []);
   const dirtySinceRun = useRef(false);
 
   const now = () => new Date().toISOString();
+  const effectiveModel = customModel.trim() || model;
+  const hasKey = orKey.trim().length > 0;
+
+  // Load the persisted key on mount (browser only — SSR safe).
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(OPENROUTER_KEY_STORAGE);
+      if (stored) setOrKey(stored);
+    } catch {
+      /* storage unavailable (private mode etc.) — BYOK simply not persisted */
+    }
+  }, []);
+
+  const updateKey = (value: string) => {
+    setOrKey(value);
+    setAssistError(null);
+    try {
+      if (value.trim().length > 0) {
+        window.localStorage.setItem(OPENROUTER_KEY_STORAGE, value.trim());
+      } else {
+        window.localStorage.removeItem(OPENROUTER_KEY_STORAGE);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  // With a key present, optionally populate the selector from /models.
+  useEffect(() => {
+    if (!hasKey) {
+      setModelOptions(CURATED_MODELS);
+      return;
+    }
+    let cancelled = false;
+    fetchModelIds(fetch, orKey.trim()).then((ids) => {
+      if (cancelled || ids.length === 0) return;
+      const merged = [...CURATED_MODELS, ...ids.filter((id) => !CURATED_MODELS.includes(id))];
+      setModelOptions(merged);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasKey, orKey]);
 
   // Checkpoint every meaningful mutation with explicit next values (state
   // setters have not committed yet when handlers run).
@@ -127,12 +187,10 @@ export function Runner(props: TrackUIProps) {
     checkpoint({});
   };
 
-  const askAssist = () => {
-    const p = assistPrompt.trim();
-    if (!p) return;
+  const askDemo = (p: string) => {
     const reply = demoAssist(p);
     setAssistReply(reply);
-    const entry: PromptLogEntry = { kind: "prompted", prompt: p, clientTs: now() };
+    const entry: PromptLogEntry = { kind: "prompted", prompt: p, modelId: reply.modelId, clientTs: now() };
     promptLog.current = [...promptLog.current, entry];
     props.onEvent({
       verb: "prompted",
@@ -142,6 +200,86 @@ export function Runner(props: TrackUIProps) {
       clientTs: entry.clientTs,
     });
     checkpoint({});
+  };
+
+  /**
+   * Real vibe-coding loop (BYOK): send brief + current document + request to
+   * OpenRouter, expect the COMPLETE updated document in one ```html fence,
+   * apply it to the editor and refresh the sandboxed preview. The CSP
+   * srcdoc wrapper is unchanged — the artifact stays a contained site.
+   * Errors surface inline and never crash the runner.
+   */
+  const askVibe = async (p: string) => {
+    setAssistBusy(true);
+    setAssistError(null);
+    const promptedEntry: PromptLogEntry = {
+      kind: "prompted",
+      prompt: p,
+      modelId: effectiveModel,
+      clientTs: now(),
+    };
+    promptLog.current = [...promptLog.current, promptedEntry];
+    props.onEvent({
+      verb: "prompted",
+      object: "t1/assist",
+      result: { modelId: effectiveModel },
+      context: { prompt: p },
+      clientTs: promptedEntry.clientTs,
+    });
+    checkpoint({});
+    try {
+      const payload = buildVibeRequest({
+        model: effectiveModel,
+        brief: cfg.brief,
+        currentHtml: html,
+        userPrompt: p,
+      });
+      const text = await requestVibeCompletion(fetch, orKey.trim(), payload);
+      const nextHtml = extractHtmlFence(text);
+      if (nextHtml === null) {
+        setAssistError("The model reply contained no ```html document fence. Try rephrasing.");
+        return;
+      }
+      setHtml(nextHtml);
+      setPreview(buildPreviewSrcdoc(nextHtml));
+      dirtySinceRun.current = false;
+      const revisedEntry: PromptLogEntry = {
+        kind: "revised",
+        modelId: effectiveModel,
+        clientTs: now(),
+      };
+      promptLog.current = [...promptLog.current, revisedEntry];
+      props.onEvent({
+        verb: "revised",
+        object: "t1/artifact",
+        result: { modelId: effectiveModel },
+        context: { bytes: nextHtml.length, via: "openrouter" },
+        clientTs: revisedEntry.clientTs,
+      });
+      setAssistReply({
+        title: `Document updated by ${effectiveModel}`,
+        code: "",
+        note: "The full updated document was applied to the editor and preview.",
+        modelId: effectiveModel,
+      });
+      checkpoint({ html: nextHtml });
+    } catch (e) {
+      setAssistError(
+        e instanceof OpenRouterError ? e.message : "Unexpected error calling OpenRouter.",
+      );
+    } finally {
+      setAssistBusy(false);
+    }
+  };
+
+  const askAssist = () => {
+    const p = assistPrompt.trim();
+    if (!p || assistBusy) return;
+    if (hasKey) {
+      void askVibe(p);
+    } else {
+      askDemo(p);
+    }
   };
 
   const submit = () => {
@@ -179,22 +317,75 @@ export function Runner(props: TrackUIProps) {
           </p>
         </section>
 
-        <section style={panel} aria-label="AI assist (demo)">
-          <h2 style={h2}>AI assist · demo simulator</h2>
+        <section style={panel} aria-label="AI assist">
+          <h2 style={h2}>
+            AI assist · {hasKey ? effectiveModel : "demo simulator"}
+          </h2>
           <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-            Deterministic offline demo — same prompt, same answer. Every prompt
-            is logged to your submission artefact.
+            {hasKey
+              ? "Real vibe coding via OpenRouter (your key, your browser only). " +
+                "The model returns the full updated document; every prompt is " +
+                "logged to your submission artefact with the model id."
+              : "demo simulator — paste an OpenRouter key for a real model. " +
+                "Deterministic offline demo: same prompt, same answer. Every " +
+                "prompt is logged to your submission artefact."}
           </p>
+          <input
+            aria-label="OpenRouter API key"
+            type="password"
+            autoComplete="off"
+            style={{ ...mono, resize: "none" }}
+            value={orKey}
+            onChange={(e) => updateKey(e.target.value)}
+            placeholder="OpenRouter API key (BYOK — stored only in this browser)"
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <select
+              aria-label="Assist model"
+              style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              disabled={!hasKey}
+            >
+              {modelOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <input
+              aria-label="Custom model override"
+              style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
+              value={customModel}
+              onChange={(e) => setCustomModel(e.target.value)}
+              placeholder="custom model id (optional)"
+              disabled={!hasKey}
+            />
+          </div>
           <textarea
             aria-label="Assist prompt"
             style={{ ...mono, minHeight: 56 }}
             value={assistPrompt}
             onChange={(e) => setAssistPrompt(e.target.value)}
-            placeholder="e.g. give me a responsive project grid"
+            placeholder={
+              hasKey
+                ? "e.g. make the hero section bolder and add a project grid"
+                : "e.g. give me a responsive project grid"
+            }
           />
-          <button type="button" style={btn} onClick={askAssist}>
-            Ask (logged)
+          <button
+            type="button"
+            style={{ ...btn, opacity: assistBusy ? 0.5 : 1 }}
+            onClick={askAssist}
+            disabled={assistBusy}
+          >
+            {assistBusy ? "Asking…" : "Ask (logged)"}
           </button>
+          {assistError && (
+            <p role="alert" style={{ margin: 0, color: "#f87171", fontSize: 12 }}>
+              {assistError}
+            </p>
+          )}
           {assistReply && (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <strong style={{ fontSize: 13 }}>{assistReply.title}</strong>
