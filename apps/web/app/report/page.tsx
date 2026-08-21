@@ -21,80 +21,153 @@ function download(filename: string, data: unknown) {
   URL.revokeObjectURL(url);
 }
 
+/** rAF count-up — the score reveal is the reward (§13). */
+function useCountUp(target: number, ms = 1400): number {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (target === 0) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / ms);
+      const eased = 1 - (1 - p) ** 3;
+      setV(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return v;
+}
+
+function Radar({ values }: { values: Record<(typeof TRACK_IDS)[number], number> }) {
+  const C = 110, R = 82;
+  const pts = TRACK_IDS.map((t, i) => {
+    const a = (Math.PI * 2 * i) / 4 - Math.PI / 2;
+    const r = (values[t] / 100) * R;
+    return [C + r * Math.cos(a), C + r * Math.sin(a)];
+  });
+  const ring = (f: number) =>
+    TRACK_IDS.map((_, i) => {
+      const a = (Math.PI * 2 * i) / 4 - Math.PI / 2;
+      return `${C + R * f * Math.cos(a)},${C + R * f * Math.sin(a)}`;
+    }).join(" ");
+  return (
+    <svg viewBox="0 0 220 220" style={{ width: "100%", maxWidth: 260 }} role="img" aria-label="Track score radar">
+      {[0.25, 0.5, 0.75, 1].map((f) => (
+        <polygon key={f} points={ring(f)} fill="none" stroke="var(--border)" strokeWidth="1" />
+      ))}
+      {TRACK_IDS.map((t, i) => {
+        const a = (Math.PI * 2 * i) / 4 - Math.PI / 2;
+        return (
+          <g key={t}>
+            <line x1={C} y1={C} x2={C + R * Math.cos(a)} y2={C + R * Math.sin(a)} stroke="var(--border)" strokeWidth="1" />
+            <text
+              x={C + (R + 16) * Math.cos(a)} y={C + (R + 16) * Math.sin(a) + 4}
+              textAnchor="middle" fill="var(--muted)" fontSize="11" fontFamily="var(--mono)"
+            >
+              {t.toUpperCase()}
+            </text>
+          </g>
+        );
+      })}
+      <polygon
+        points={pts.map((p) => p.join(",")).join(" ")}
+        fill="var(--accent)" fillOpacity="0.25" stroke="var(--accent)" strokeWidth="2"
+      />
+      {pts.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r="3.5" fill="var(--accent)" />)}
+    </svg>
+  );
+}
+
+function DistStrip({ cohort, mine }: { cohort: number[]; mine: number }) {
+  return (
+    <svg viewBox="0 0 400 56" className="dist-strip" role="img" aria-label="Cohort distribution">
+      <line x1="10" y1="40" x2="390" y2="40" stroke="var(--border-strong)" strokeWidth="1" />
+      {[0, 25, 50, 75, 100].map((x) => (
+        <text key={x} x={10 + x * 3.8} y="53" fontSize="9" fill="var(--faint)" textAnchor="middle" fontFamily="var(--mono)">{x}</text>
+      ))}
+      {cohort.map((c, i) => (
+        <circle key={i} cx={10 + c * 3.8} cy={40 - 6 - (i % 5) * 4} r="2.6"
+          fill={Math.abs(c - mine) < 0.01 ? "var(--accent)" : "var(--faint)"}
+          opacity={Math.abs(c - mine) < 0.01 ? 1 : 0.45} />
+      ))}
+      <line x1={10 + mine * 3.8} y1="6" x2={10 + mine * 3.8} y2="42" stroke="var(--accent)" strokeWidth="2" />
+      <text x={10 + mine * 3.8} y="4" fontSize="9" fill="var(--accent)" textAnchor="middle" fontFamily="var(--mono)" dominantBaseline="hanging">you</text>
+    </svg>
+  );
+}
+
 export default function ReportPage() {
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [showBand, setShowBand] = useState(false);
+  const [copied, setCopied] = useState(false);
   useEffect(() => {
     setLog(loadAttempt(window.localStorage));
     setHydrated(true);
+    const id = window.setTimeout(() => setShowBand(true), 1100);
+    return () => window.clearTimeout(id);
   }, []);
 
   const state = useMemo(() => (log ? project(log) : null), [log]);
   const summary = useMemo(() => (state ? candidateComposite(state) : null), [state]);
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
+  const counted = useCountUp(summary?.composite ?? 0);
 
   if (!hydrated) {
     return <main className="page"><div className="container"><p className="muted">Loading…</p></div></main>;
   }
 
-  if (!state || !log) {
+  if (!state || !log || !summary) {
+    const done = state ? TRACK_IDS.filter((t) => state.tracks[t].score).length : 0;
     return (
       <main className="page">
         <div className="container" style={{ maxWidth: 820 }}>
-          <h1>Diagnostic report</h1>
-          <p className="lede">No attempt found in this browser.</p>
-          <p><Link className="btn primary" href="/exam">Sit the examination →</Link></p>
-        </div>
-      </main>
-    );
-  }
-
-  if (!summary) {
-    const done = TRACK_IDS.filter((t) => state.tracks[t].score).length;
-    return (
-      <main className="page">
-        <div className="container" style={{ maxWidth: 820 }}>
-          <h1>Diagnostic report</h1>
-          <p className="lede">{done} of 4 tracks scored so far. The report unlocks when the attempt is complete.</p>
-          <p><Link className="btn primary" href="/exam">Continue the attempt →</Link></p>
+          <h1>The report is the reward</h1>
+          <p className="lede">{state ? `${done} of 4 tracks scored. Finish the attempt to unlock it.` : "No attempt in this browser yet."}</p>
+          <p><Link className="btn primary" href="/exam">{state ? "Continue →" : "Sit the exam →"}</Link></p>
         </div>
       </main>
     );
   }
 
   const pct = Math.round(summary.percentile * 1000) / 10;
+  const shareText =
+    `AILX 2026.1 (demo) — composite ${summary.composite.toFixed(1)}/100, ${summary.band}, ` +
+    `P${pct} of ${summary.cohortSize}. Tracks ${TRACK_IDS.map((t) => `${t.toUpperCase()} ${summary.trackRaw[t].toFixed(0)}`).join(" · ")}.`;
 
   return (
     <main className="page">
       <div className="container" style={{ maxWidth: 820 }}>
-        <div className="eyebrow">Individual tier · attempt {state.attemptId}</div>
-        <h1>Diagnostic report</h1>
-        <p className="muted">
-          <span className="badge demo">demo scoring</span>{" "}
-          Composite computed against a deterministic simulated cohort of 44 peers
-          (n = 45, matching the pilot). In production this is the real cohort.
-        </p>
-
-        <div className="grid4" style={{ margin: "2rem 0" }}>
-          <div className="stat">
-            <div className={`value band-${summary.band}`}>{summary.band}</div>
-            <div className="label">Performance band (Year-1 fixed quota)</div>
+        <div className="share-card" style={{ marginBottom: "2rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
+            <div>
+              <div className="eyebrow">attempt {state.attemptId} · n = {summary.cohortSize}</div>
+              <div style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                {counted.toFixed(1)}
+              </div>
+              <div className="muted small">composite · mean 50 · SD 15 · P{pct}</div>
+              {showBand ? (
+                <div className={`reveal-band pop-in band-${summary.band}`}>{summary.band}</div>
+              ) : (
+                <div className="reveal-band" style={{ opacity: 0.15 }}>····</div>
+              )}
+            </div>
+            <Radar values={summary.trackRaw} />
           </div>
-          <div className="stat">
-            <div className="value">{summary.composite.toFixed(1)}</div>
-            <div className="label">Composite (mean 50 · SD 15 · normalised)</div>
-          </div>
-          <div className="stat">
-            <div className="value">{pct}%</div>
-            <div className="label">Cohort percentile</div>
-          </div>
-          <div className="stat">
-            <div className="value">{summary.zComposite >= 0 ? "+" : ""}{summary.zComposite.toFixed(2)}</div>
-            <div className="label">Weighted z-composite (equal track weights)</div>
+          <DistStrip cohort={summary.cohortComposites} mine={summary.composite} />
+          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.6rem" }}>
+            <button className="btn small-btn" onClick={() => {
+              navigator.clipboard?.writeText(shareText).then(() => {
+                setCopied(true); window.setTimeout(() => setCopied(false), 1500);
+              });
+            }}>{copied ? "copied ✓" : "copy summary"}</button>
+            <span className="badge demo">demo cohort</span>
           </div>
         </div>
 
-        <h2>Track scores</h2>
+        <h2 style={{ marginTop: 0 }}>Track breakdown</h2>
         {TRACK_IDS.map((t) => {
           const meta = TRACK_META[t];
           const ts = state.tracks[t];
@@ -124,8 +197,7 @@ export default function ReportPage() {
           );
         })}
 
-        <h2>Process insights</h2>
-        <p className="faint small">Derived from the append-only event log — the things nobody else can tell you (spec §13).</p>
+        <h2>What the log says about you</h2>
         <div className="grid2">
           {narratives(insights).map((n) => (
             <div className="card" key={n.headline}>
@@ -134,36 +206,19 @@ export default function ReportPage() {
             </div>
           ))}
         </div>
-        <table style={{ marginTop: "1.2rem" }}>
-          <thead><tr><th>Track</th><th>Events</th><th>Active time</th><th>Budget used</th><th>Iteration / prompt</th><th>Verification</th></tr></thead>
-          <tbody>
-            {insights.map((i) => (
-              <tr key={i.trackId}>
-                <td className="mono">{i.trackId.toUpperCase()}</td>
-                <td className="mono">{i.eventCount}</td>
-                <td className="mono">{Math.floor(i.activeSeconds / 60)}m {i.activeSeconds % 60}s</td>
-                <td className="mono">{Math.round(i.timeUsedFrac * 100)}%{i.timedOut ? " (timed out)" : ""}</td>
-                <td className="mono">{i.iterationRatio === null ? "—" : i.iterationRatio.toFixed(2)}</td>
-                <td className="mono">{i.verificationEvents}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
 
-        <h2>Export</h2>
-        <p className="muted small" style={{ maxWidth: "44rem" }}>
-          Export is a first-class product surface (spec §16). The individual tier is the
-          candidate’s own record; the research tier is the de-identified, item-level shape
-          a lab can audit — keyed to a hashed <span className="mono">pid</span>, never a name,
-          with rubric versions and model manifests attached to every score.
-        </p>
+        <h2>Take it with you</h2>
         <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
           <button className="btn primary" onClick={() => download(`ailx-individual-${state.attemptId}.json`, participantExport(state, summary))}>
-            Download individual tier (JSON)
+            Individual tier (JSON)
           </button>
           <button className="btn" onClick={() => download(`ailx-research-${state.attemptId}.json`, researchExport(state, log, summary))}>
-            Download research tier (JSON)
+            Research tier (JSON)
           </button>
+        </p>
+        <p className="faint small">
+          De-identified, item-level, audit-ready — rubric versions and model manifests on
+          every score (spec §16). Keyed to a hashed pid, never a name.
         </p>
       </div>
     </main>

@@ -116,30 +116,23 @@ export default function ExamPage() {
       <main className="page">
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">Demo sitting · AILX 2026.1</div>
-          <h1>Sit the examination</h1>
+          <h1>Four tracks. One attempt.</h1>
           <p className="lede">
-            One attempt, four tracks in fixed order T1 → T4, per-track time budgets,
-            pause/resume, and an append-only event log persisted locally. Budgets are
-            compressed for the demo; the real sitting is 4 h 20 m plus a 48-hour T1
-            build window.
+            T1 → T4 in order, each on its own clock. Pause between moves, never mid-swipe.
+            Your event log stays in this browser.
           </p>
-          <table style={{ margin: "1.5rem 0" }}>
-            <thead><tr><th>Track</th><th>Demo budget</th><th>Spec budget</th><th>Scored by</th></tr></thead>
-            <tbody>
-              {TRACK_LIST.map((t) => (
-                <tr key={t.id}>
-                  <td><span className="mono" style={{ color: "var(--accent)" }}>{t.code}</span> {t.name}</td>
-                  <td className="mono">{fmt(t.demoBudgetSeconds)}</td>
-                  <td className="mono">{t.id === "t1" ? "48 h" : fmt(t.specBudgetSeconds)}</td>
-                  <td className="muted small">{t.id === "t2" ? "Automatic (SDT) — no model in the loop" : "Gates + demo jury (deterministic)"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ul className="checklist" style={{ margin: "1.5rem 0" }}>
+            {TRACK_LIST.map((t) => (
+              <li key={t.id}>
+                <span className="mono" style={{ color: "var(--accent)", minWidth: "2rem" }}>{t.code}</span>
+                <span style={{ flex: 1 }}>{t.name}</span>
+                <span className="faint small mono">{fmt(t.demoBudgetSeconds)}</span>
+              </li>
+            ))}
+          </ul>
           <p className="small faint">
-            <span className="badge demo">demo</span> Scoring in this static build uses
-            deterministic simulators seeded by SHA-256 of your artefacts — same inputs,
-            same score, forever. No data leaves your browser.
+            <span className="badge demo">demo</span> Deterministic scoring, seeded by
+            SHA-256 of what you actually do. Same play, same score, forever.
           </p>
           <button
             className="btn primary"
@@ -237,9 +230,17 @@ export default function ExamPage() {
     secondsRemaining: remaining,
   };
 
+  const budget = state.config!.budgets[t];
+  const timeFrac = budget > 0 ? remaining / budget : 0;
+
   return (
     <main className="page">
       <div className="container" style={{ maxWidth: 820 }}>
+        <div className="track-progress">
+          {state.order.map((tid) => (
+            <div key={tid} className={`seg${state.tracks[tid].status === "completed" ? " done" : tid === t ? " now" : ""}`} />
+          ))}
+        </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.6rem" }}>
           <div>
             <div className="eyebrow">{meta.code} · {meta.name}</div>
@@ -266,9 +267,11 @@ export default function ExamPage() {
             <p className="muted">Loading track runner…</p>
           )}
         </div>
+        <div className={`time-bar${remaining <= 60 ? " low" : ""}`}>
+          <div style={{ width: `${Math.max(0, Math.min(1, timeFrac)) * 100}%` }} />
+        </div>
         <p className="faint small" style={{ marginTop: "0.8rem" }}>
-          No visible score during a scored block (spec §13). Events append to the local
-          log; the budget clock only runs while the track is active.
+          No visible score mid-block (spec §13) — reveals come between rounds.
         </p>
       </div>
     </main>

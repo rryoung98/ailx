@@ -91,7 +91,11 @@ export function researchExport(state: SessionState, log: readonly SequencedEntry
         tRelMs: e.ts - t0,
         latencyMs: i > 0 ? e.ts - arr[i - 1].ts : null,
       })),
-    sessionLog: log.map((e) => ({ ...e, ts: e.ts - t0 })),
+    sessionLog: log.map((e) =>
+      e.type === "attempt_started"
+        ? { ...e, attemptId: pid, ts: e.ts - t0 }   // structural de-identification
+        : { ...e, ts: e.ts - t0 },
+    ),
     scores: TRACK_IDS.map((t) => ({
       trackId: t,
       raw: state.tracks[t].score?.raw ?? null,
