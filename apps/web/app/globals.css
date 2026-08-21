@@ -1223,6 +1223,8 @@ html[data-ailx-loaded="1"] .loader { display: none; }
 }
 .site-nav a.nav-pill[aria-current="page"] {
   text-decoration: none; border-color: color-mix(in oklch, var(--accent) 60%, #ffffff);
+}
+
 /* ---- Start gate (OpenRouter connect required) ---------------------------- */
 .pill-cta.disabled {
   background: #6b665f; cursor: not-allowed;
