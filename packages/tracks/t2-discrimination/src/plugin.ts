@@ -93,6 +93,9 @@ export const plugin: TrackPlugin<T2Config, T2Session, T2Artifact, T2Score> = {
     const { raw, scaled } = scoreT2(inputs.artifact, cfg);
     return { raw: raw as unknown as Record<string, number>, scaled };
   },
+
+  /** Lazy UI loader (F11) — the platform must not hardcode track imports. */
+  ui: () => import("./Runner.js").then((m) => ({ Runner: m.Runner })),
 };
 
 export type { T2Raw };
