@@ -12,15 +12,40 @@
  */
 
 export const OPENROUTER_KEY_STORAGE = "ailx:openrouter-key";
-export const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
-export const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
+/** Persisted OpenAI-compatible API base (Ollama/vLLM/etc. for local models). */
+export const LLM_BASE_URL_STORAGE = "ailx:llm-base-url";
+export const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
+export const OPENROUTER_CHAT_URL = `${DEFAULT_BASE_URL}/chat/completions`;
+export const OPENROUTER_MODELS_URL = `${DEFAULT_BASE_URL}/models`;
+
+/**
+ * Normalize a user-entered base URL: trim, drop trailing slashes, fall back
+ * to the OpenRouter default when empty. Pure.
+ */
+export function normalizeBaseUrl(base: string | null | undefined): string {
+  const trimmed = (base ?? "").trim().replace(/\/+$/, "");
+  return trimmed.length > 0 ? trimmed : DEFAULT_BASE_URL;
+}
+
+/** chat-completions endpoint for any OpenAI-compatible base. Pure. */
+export function chatCompletionsUrl(baseUrl?: string): string {
+  return `${normalizeBaseUrl(baseUrl)}/chat/completions`;
+}
+
+/** models endpoint for any OpenAI-compatible base. Pure. */
+export function modelsUrl(baseUrl?: string): string {
+  return `${normalizeBaseUrl(baseUrl)}/models`;
+}
 
 /** Curated defaults; the UI also accepts a free-text override. */
 export const CURATED_MODELS: ReadonlyArray<string> = [
-  "openai/gpt-4o-mini",
-  "anthropic/claude-3.5-haiku",
-  "google/gemini-2.0-flash-001",
-  "meta-llama/llama-3.3-70b-instruct",
+  "openai/gpt-4.1-nano",
+  "openai/gpt-4.1-mini",
+  "anthropic/claude-sonnet-5",
+  "google/gemini-3.5-flash-lite",
+  "deepseek/deepseek-v4-flash",
+  "moonshotai/kimi-k3",
+  "z-ai/glm-5.2:free",
 ];
 
 export interface VibeRequestInput {
@@ -61,14 +86,17 @@ export function buildVibeRequest(input: VibeRequestInput): ChatPayload {
   };
 }
 
-/** Request init (headers/body) for fetch. Pure — key is passed in. */
+/**
+ * Request init (headers/body) for fetch. Pure — key is passed in.
+ * An empty key omits the Authorization header entirely: local
+ * OpenAI-compatible servers (Ollama/vLLM) usually need no key.
+ */
 export function buildFetchInit(apiKey: string, payload: ChatPayload): RequestInit {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (apiKey.trim().length > 0) headers.Authorization = `Bearer ${apiKey.trim()}`;
   return {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(payload),
   };
 }
@@ -119,12 +147,13 @@ export async function requestVibeCompletion(
   fetchImpl: FetchLike,
   apiKey: string,
   payload: ChatPayload,
+  baseUrl?: string,
 ): Promise<string> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
-    res = await fetchImpl(OPENROUTER_CHAT_URL, buildFetchInit(apiKey, payload));
+    res = await fetchImpl(chatCompletionsUrl(baseUrl), buildFetchInit(apiKey, payload));
   } catch {
-    throw new OpenRouterError("Network error reaching OpenRouter.", null);
+    throw new OpenRouterError("Network error reaching the model endpoint.", null);
   }
   if (!res.ok) {
     const msg =
@@ -159,15 +188,16 @@ export function parseModelsResponse(json: unknown): string[] {
     .sort();
 }
 
-/** Fetch the model list (key optional per OpenRouter, but we gate on it). */
+/** Fetch the model list from any OpenAI-compatible base (key optional). */
 export async function fetchModelIds(
   fetchImpl: FetchLike,
   apiKey: string,
+  baseUrl?: string,
 ): Promise<string[]> {
   try {
-    const res = await fetchImpl(OPENROUTER_MODELS_URL, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
+    const headers: Record<string, string> = {};
+    if (apiKey.trim().length > 0) headers.Authorization = `Bearer ${apiKey.trim()}`;
+    const res = await fetchImpl(modelsUrl(baseUrl), { headers });
     if (!res.ok) return [];
     return parseModelsResponse(await res.json());
   } catch {

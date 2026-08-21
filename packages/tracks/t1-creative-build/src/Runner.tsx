@@ -9,12 +9,24 @@ import { decodeT1Checkpoint, encodeT1Checkpoint } from "./checkpoint.js";
 import {
   buildVibeRequest,
   CURATED_MODELS,
+  DEFAULT_BASE_URL,
   extractHtmlFence,
   fetchModelIds,
+  LLM_BASE_URL_STORAGE,
+  normalizeBaseUrl,
   OPENROUTER_KEY_STORAGE,
   OpenRouterError,
   requestVibeCompletion,
 } from "./openrouter.js";
+import {
+  buildAuthUrl,
+  cleanCallbackUrl,
+  computeCodeChallenge,
+  exchangeCodeForKey,
+  extractCallbackCode,
+  generateCodeVerifier,
+  PKCE_VERIFIER_STORAGE,
+} from "./sso.js";
 import { t1Plugin } from "./plugin.js";
 import type { PromptLogEntry } from "./types.js";
 
@@ -103,6 +115,8 @@ export function Runner(props: TrackUIProps) {
   const [assistReply, setAssistReply] = useState<AssistReply | null>(null);
   // BYOK OpenRouter vibe coding — key lives ONLY in the candidate's browser.
   const [orKey, setOrKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
+  const [ssoBusy, setSsoBusy] = useState(false);
   const [model, setModel] = useState<string>(CURATED_MODELS[0]);
   const [customModel, setCustomModel] = useState("");
   const [modelOptions, setModelOptions] = useState<ReadonlyArray<string>>(CURATED_MODELS);
@@ -116,16 +130,95 @@ export function Runner(props: TrackUIProps) {
   const now = () => new Date().toISOString();
   const effectiveModel = customModel.trim() || model;
   const hasKey = orKey.trim().length > 0;
+  const effectiveBase = normalizeBaseUrl(baseUrl);
+  const customBase = effectiveBase !== DEFAULT_BASE_URL;
+  // Real mode: a key (pasted or via SSO), OR a custom local/self-hosted
+  // endpoint (key optional for e.g. Ollama/vLLM).
+  const realMode = hasKey || customBase;
 
-  // Load the persisted key on mount (browser only — SSR safe).
+  // Load persisted key + base URL on mount (browser only — SSR safe).
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(OPENROUTER_KEY_STORAGE);
       if (stored) setOrKey(stored);
+      const storedBase = window.localStorage.getItem(LLM_BASE_URL_STORAGE);
+      if (storedBase) setBaseUrl(storedBase);
     } catch {
       /* storage unavailable (private mode etc.) — BYOK simply not persisted */
     }
   }, []);
+
+  // OAuth PKCE callback: ?code= in the URL + a stored verifier -> exchange
+  // for a user-scoped key, then clean the URL. Client-side only.
+  useEffect(() => {
+    const code = extractCallbackCode(window.location.search);
+    if (!code) return;
+    let verifier: string | null = null;
+    try {
+      verifier = window.localStorage.getItem(PKCE_VERIFIER_STORAGE);
+    } catch {
+      /* ignore */
+    }
+    if (!verifier) return;
+    let cancelled = false;
+    setSsoBusy(true);
+    exchangeCodeForKey(fetch, code, verifier)
+      .then((key) => {
+        if (cancelled) return;
+        updateKey(key);
+        setAssistError(null);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setAssistError(
+          e instanceof OpenRouterError ? e.message : "OpenRouter sign-in failed.",
+        );
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setSsoBusy(false);
+        try {
+          window.localStorage.removeItem(PKCE_VERIFIER_STORAGE);
+        } catch {
+          /* ignore */
+        }
+        window.history.replaceState(null, "", cleanCallbackUrl(window.location.href));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** 'Connect OpenRouter' — start the PKCE round-trip. */
+  const connectOpenRouter = async () => {
+    if (ssoBusy) return;
+    setSsoBusy(true);
+    setAssistError(null);
+    try {
+      const verifier = generateCodeVerifier((a) => window.crypto.getRandomValues(a));
+      window.localStorage.setItem(PKCE_VERIFIER_STORAGE, verifier);
+      const challenge = await computeCodeChallenge(verifier, window.crypto.subtle);
+      window.location.href = buildAuthUrl(cleanCallbackUrl(window.location.href), challenge);
+    } catch {
+      setSsoBusy(false);
+      setAssistError("Could not start OpenRouter sign-in in this browser.");
+    }
+  };
+
+  const updateBaseUrl = (value: string) => {
+    setBaseUrl(value);
+    setAssistError(null);
+    try {
+      if (normalizeBaseUrl(value) !== DEFAULT_BASE_URL) {
+        window.localStorage.setItem(LLM_BASE_URL_STORAGE, value.trim());
+      } else {
+        window.localStorage.removeItem(LLM_BASE_URL_STORAGE);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  };
 
   const updateKey = (value: string) => {
     setOrKey(value);
@@ -141,14 +234,14 @@ export function Runner(props: TrackUIProps) {
     }
   };
 
-  // With a key present, optionally populate the selector from /models.
+  // In real mode, optionally populate the selector from GET /models.
   useEffect(() => {
-    if (!hasKey) {
+    if (!realMode) {
       setModelOptions(CURATED_MODELS);
       return;
     }
     let cancelled = false;
-    fetchModelIds(fetch, orKey.trim()).then((ids) => {
+    fetchModelIds(fetch, orKey.trim(), effectiveBase).then((ids) => {
       if (cancelled || ids.length === 0) return;
       const merged = [...CURATED_MODELS, ...ids.filter((id) => !CURATED_MODELS.includes(id))];
       setModelOptions(merged);
@@ -157,7 +250,7 @@ export function Runner(props: TrackUIProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasKey, orKey]);
+  }, [realMode, orKey, effectiveBase]);
 
   // Checkpoint every meaningful mutation with explicit next values (state
   // setters have not committed yet when handlers run).
@@ -234,7 +327,7 @@ export function Runner(props: TrackUIProps) {
         currentHtml: html,
         userPrompt: p,
       });
-      const text = await requestVibeCompletion(fetch, orKey.trim(), payload);
+      const text = await requestVibeCompletion(fetch, orKey.trim(), payload, effectiveBase);
       const nextHtml = extractHtmlFence(text);
       if (nextHtml === null) {
         setAssistError("The model reply contained no ```html document fence. Try rephrasing.");
@@ -275,7 +368,7 @@ export function Runner(props: TrackUIProps) {
   const askAssist = () => {
     const p = assistPrompt.trim();
     if (!p || assistBusy) return;
-    if (hasKey) {
+    if (realMode) {
       void askVibe(p);
     } else {
       askDemo(p);
@@ -319,17 +412,42 @@ export function Runner(props: TrackUIProps) {
 
         <section style={panel} aria-label="AI assist">
           <h2 style={h2}>
-            AI assist · {hasKey ? effectiveModel : "demo simulator"}
+            AI assist · {realMode ? effectiveModel : "demo simulator"}
           </h2>
           <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-            {hasKey
-              ? "Real vibe coding via OpenRouter (your key, your browser only). " +
-                "The model returns the full updated document; every prompt is " +
+            {realMode
+              ? "Real vibe coding (your key/endpoint, your browser only). The " +
+                "model returns the full updated document; every prompt is " +
                 "logged to your submission artefact with the model id."
-              : "demo simulator — paste an OpenRouter key for a real model. " +
-                "Deterministic offline demo: same prompt, same answer. Every " +
-                "prompt is logged to your submission artefact."}
+              : "demo simulator — connect OpenRouter or paste a key for a real " +
+                "model. Deterministic offline demo: same prompt, same answer. " +
+                "Every prompt is logged to your submission artefact."}
           </p>
+          {hasKey ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 12, color: "#4ade80" }}>
+                ● Connected — key stored only in this browser
+              </span>
+              <button
+                type="button"
+                style={{ ...btn, background: "transparent", color: "var(--fg)", border: "1px solid var(--border)", padding: "4px 10px", fontSize: 12 }}
+                onClick={() => updateKey("")}
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            !customBase && (
+              <button
+                type="button"
+                style={{ ...btn, opacity: ssoBusy ? 0.5 : 1 }}
+                onClick={() => void connectOpenRouter()}
+                disabled={ssoBusy}
+              >
+                {ssoBusy ? "Connecting…" : "Connect OpenRouter (quick SSO)"}
+              </button>
+            )
+          )}
           <input
             aria-label="OpenRouter API key"
             type="password"
@@ -337,7 +455,15 @@ export function Runner(props: TrackUIProps) {
             style={{ ...mono, resize: "none" }}
             value={orKey}
             onChange={(e) => updateKey(e.target.value)}
-            placeholder="OpenRouter API key (BYOK — stored only in this browser)"
+            placeholder="…or paste an OpenRouter API key (stored only in this browser)"
+          />
+          <input
+            aria-label="API base URL"
+            style={{ ...mono, resize: "none" }}
+            value={baseUrl}
+            onChange={(e) => updateBaseUrl(e.target.value)}
+            placeholder={DEFAULT_BASE_URL}
+            title="Any OpenAI-compatible endpoint — e.g. http://localhost:11434/v1 for Ollama (key optional for local servers)"
           />
           <div style={{ display: "flex", gap: 8 }}>
             <select
@@ -345,7 +471,7 @@ export function Runner(props: TrackUIProps) {
               style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              disabled={!hasKey}
+              disabled={!realMode}
             >
               {modelOptions.map((m) => (
                 <option key={m} value={m}>
@@ -359,7 +485,7 @@ export function Runner(props: TrackUIProps) {
               value={customModel}
               onChange={(e) => setCustomModel(e.target.value)}
               placeholder="custom model id (optional)"
-              disabled={!hasKey}
+              disabled={!realMode}
             />
           </div>
           <textarea
@@ -368,7 +494,7 @@ export function Runner(props: TrackUIProps) {
             value={assistPrompt}
             onChange={(e) => setAssistPrompt(e.target.value)}
             placeholder={
-              hasKey
+              realMode
                 ? "e.g. make the hero section bolder and add a project grid"
                 : "e.g. give me a responsive project grid"
             }
