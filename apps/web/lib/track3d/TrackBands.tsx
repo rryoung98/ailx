@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { TRACK_LIST } from "../tracks";
 import { TrackScene } from "./TrackScene";
+import { Reveal } from "../Reveal";
 
 /** "T2 — can you spot the fakes?" -> "Can you spot the fakes?" */
 export function supportLine(hype: string): string {
@@ -21,8 +22,8 @@ export function TrackBands() {
   return (
     <section className="track-bands" aria-label="The four tracks">
       {TRACK_LIST.map((t, i) => (
+        <Reveal as="div" key={t.code}>
         <Link
-          key={t.code}
           href="/exam"
           className={`track-band${i % 2 === 1 ? " flip" : ""}`}
           aria-label={`${t.code} ${t.name}: ${supportLine(t.hype)}`}
@@ -36,6 +37,7 @@ export function TrackBands() {
             <p className="track-band-line">{supportLine(t.hype)}</p>
           </div>
         </Link>
+        </Reveal>
       ))}
     </section>
   );
