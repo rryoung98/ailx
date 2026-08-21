@@ -103,6 +103,12 @@ const T2_DECK_CSS = `
   text-align: left; cursor: pointer;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 120ms ease;
 }
+/* Mobile containment: answer/option pills stay tappable (>= 44px) and can
+   never force the deck wider than the phone viewport. */
+.t2-answer-btn, .t2-option-btn { max-width: 100%; box-sizing: border-box; }
+@media (pointer: coarse) {
+  .t2-answer-btn, .t2-option-btn { min-height: 44px; }
+}
 `;
 
 /**

@@ -35,6 +35,23 @@ const ghost: CSSProperties = {
 };
 const tiny: CSSProperties = { fontSize: "0.8rem", padding: "0.25rem 0.6rem" };
 
+/** Mobile containment (same bug class as the T1 submit-button escape):
+ *  cards may never leak controls, rows must wrap, grid children must be
+ *  shrinkable, and inputs render >= 16px so iOS Safari does not zoom-jump. */
+const T3_CSS = `
+.t3-shell { min-width: 0; }
+.t3-shell * { box-sizing: border-box; }
+.t3-shell textarea, .t3-shell input { max-width: 100%; min-width: 0; }
+@media (max-width: 900px) {
+  .t3-shell textarea, .t3-shell input, .t3-shell select { font-size: 16px !important; }
+}
+.t3-shell textarea { max-height: 60vh; }
+@media (pointer: coarse) {
+  .t3-shell button { min-height: 44px; }
+  .t3-shell textarea { resize: none !important; }
+}
+`;
+
 type ChatMsg = T3ChatMsg;
 
 export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoint, onCheckpoint }: TrackUIProps) {
@@ -324,7 +341,8 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   }
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gap: "1rem" }}>
+    <div className="t3-shell" style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gap: "1rem" }}>
+      <style>{T3_CSS}</style>
       {/* Task brief — ALWAYS visible while working (user report: "the brief
           is not visible" — it used to exist only on the pre-Begin screen,
           so it vanished the moment work started). */}
@@ -378,7 +396,10 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
             </div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+        {/* flexWrap + minWidth: 0 keep this row from forcing the page wider
+            than the phone viewport (min-content of input + two buttons was
+            403px at a 390px viewport — horizontal-scroll bug). */}
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <input
             aria-label="Prompt the assistant"
             value={input}
@@ -386,7 +407,8 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder="Prompt the assistant…"
             style={{
-              flex: 1, background: "var(--bg)", color: "var(--fg)",
+              flex: "1 1 160px", minWidth: 0, boxSizing: "border-box",
+              background: "var(--bg)", color: "var(--fg)",
               border: "1px solid var(--border)", borderRadius: 8, padding: "0.55rem 0.8rem",
             }}
           />
@@ -439,12 +461,13 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
             rows={14}
             placeholder="Take and defend a position the stakeholder can act on…"
             style={{
-              width: "100%", marginTop: "0.6rem", background: "var(--bg)", color: "var(--fg)",
+              width: "100%", maxWidth: "100%", boxSizing: "border-box", minWidth: 0,
+              marginTop: "0.6rem", background: "var(--bg)", color: "var(--fg)",
               border: "1px solid var(--border)", borderRadius: 8, padding: "0.7rem",
               fontFamily: "inherit", fontSize: "0.95rem", resize: "vertical",
             }}
           />
-          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
             <button style={ghost} onClick={saveDraft} disabled={draft === savedDraft}>
               Save revision
             </button>

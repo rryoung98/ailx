@@ -72,7 +72,27 @@ const T1_CSS = `
 .t1-shell .t1-tab[aria-selected="true"] { color: var(--accent, #0b6b47); border-bottom-color: var(--accent, #0b6b47); }
 .t1-shell .t1-tab:focus-visible { outline: 2px solid var(--accent, #0b6b47); outline-offset: 2px; }
 .t1-grid { display: grid; grid-template-columns: minmax(300px, 5fr) minmax(0, 7fr); gap: 12px; padding: 12px; align-items: stretch; }
-@media (max-width: 900px) { .t1-grid { grid-template-columns: 1fr; } }
+.t1-grid > .t1-pane { min-width: 0; }
+/* Pane height caps live in CSS (not inline) so the phone layout can lift
+   them: a capped pane with visible overflow lets the submit button escape
+   the card and land under the neighbouring pane's tab bar (mobile bug). */
+.t1-pane { max-height: 78vh; min-height: 480px; }
+@media (max-width: 900px) {
+  .t1-grid { grid-template-columns: 1fr; }
+  .t1-pane { max-height: none; min-height: 0; }
+  /* Chat log keeps an internal scroll on phones instead of stretching the
+     page; the pane itself grows so no control can overflow the card. */
+  .t1-pane [role="log"] { max-height: 45vh; }
+  /* >= 16px stops iOS Safari zoom-jump on focus (inline styles use 13px). */
+  .t1-shell textarea, .t1-shell input, .t1-shell select { font-size: 16px !important; }
+}
+/* Resizable textareas are clamped so the drag handle can never pull them
+   past the card; touch devices get no drag handle at all. */
+.t1-shell textarea { max-height: 60vh; }
+@media (pointer: coarse) {
+  .t1-shell .t1-btn, .t1-shell .t1-tab { min-height: 44px; }
+  .t1-shell textarea { resize: none !important; }
+}
 `;
 
 const panel: CSSProperties = {
@@ -429,10 +449,7 @@ export function Runner(props: TrackUIProps) {
       <style>{T1_CSS}</style>
 
       {/* LEFT — the conversation pane (Claude-Code style). */}
-      <section
-        aria-label="Build conversation"
-        style={{ ...panel, maxHeight: "78vh", minHeight: 480 }}
-      >
+      <section aria-label="Build conversation" className="t1-pane" style={panel}>
         {/* Brief pinned on top as a compact card. */}
         <div
           aria-label="Brief"
@@ -503,7 +520,7 @@ export function Runner(props: TrackUIProps) {
         )}
 
         {/* Model row (kept compact above the input). */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <select
             aria-label="Assist model"
             style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
@@ -541,7 +558,7 @@ export function Runner(props: TrackUIProps) {
         <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
           <textarea
             aria-label="Assist prompt"
-            style={{ ...mono, minHeight: 44, flex: 1 }}
+            style={{ ...mono, minHeight: 44, flex: 1, minWidth: 0 }}
             value={assistPrompt}
             onChange={(e) => setAssistPrompt(e.target.value)}
             onKeyDown={(e) => {
@@ -603,7 +620,7 @@ export function Runner(props: TrackUIProps) {
       </section>
 
       {/* RIGHT — the live page (preview default; code behind a tab). */}
-      <section style={{ ...panel, maxHeight: "78vh", minHeight: 480 }} aria-label="Live page">
+      <section className="t1-pane" style={panel} aria-label="Live page">
         <div role="tablist" aria-label="Preview or code" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
           <button
             type="button"

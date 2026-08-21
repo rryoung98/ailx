@@ -1,0 +1,55 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+/**
+ * Shared mobile containment layer — regression for the live-dogfood report:
+ * at 390x844 the T1 design-rationale textarea overflowed its card and the
+ * submit button escaped the card entirely (landing over the footer rule and
+ * the spec §13 disclaimer). The app layer now guarantees, for EVERY runner
+ * and page: form controls stay inside their card, grid/flex children are
+ * shrinkable, phone inputs render >= 16px (no iOS zoom-jump), and coarse
+ * pointers get >= 44px targets.
+ */
+const css = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../app/globals.css"),
+  "utf8",
+);
+
+describe("globals.css shared mobile containment layer", () => {
+  it("form controls inside main are box-sized and capped to their container", () => {
+    const layer = css.slice(css.indexOf("Mobile card containment (shared layer)"));
+    expect(layer).toContain("max-width: 100%;");
+    expect(layer).toContain("box-sizing: border-box;");
+    expect(layer).toContain("min-width: 0;");
+    expect(layer).toMatch(/main textarea,\s*main input,\s*main select \{/);
+  });
+
+  it("sections and cards are shrinkable grid/flex children", () => {
+    const layer = css.slice(css.indexOf("Mobile card containment (shared layer)"));
+    expect(layer).toMatch(/main section,\s*main \.card \{\s*min-width: 0;/);
+  });
+
+  it("phone inputs render >= 16px so iOS Safari does not zoom-jump", () => {
+    const layer = css.slice(css.indexOf("Mobile card containment (shared layer)"));
+    const mobile = layer.slice(layer.indexOf("@media (max-width: 900px)"));
+    expect(mobile).toContain("font-size: 16px !important;");
+  });
+
+  it("resizable textareas are clamped and lose the drag handle on touch", () => {
+    const layer = css.slice(css.indexOf("Mobile card containment (shared layer)"));
+    expect(layer).toMatch(/main textarea \{\s*resize: vertical;\s*max-height: 60vh;/);
+    expect(layer).toContain("resize: none !important;");
+  });
+
+  it("coarse pointers get >= 44px buttons", () => {
+    const layer = css.slice(css.indexOf("Mobile card containment (shared layer)"));
+    const coarse = layer.slice(layer.indexOf("@media (pointer: coarse)"));
+    expect(coarse).toContain("min-height: 44px;");
+  });
+
+  it("runner grids still collapse to one column on phones (app-layer override)", () => {
+    expect(css).toContain('.runner-frame [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }');
+  });
+});

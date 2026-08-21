@@ -76,7 +76,25 @@ const T4_CSS = `
 .t4-shell .t4-btn.ghost { background: var(--card, #fff); color: var(--fg, #1a1a1a); border: 1px solid var(--border-strong, #c9c2b9); }
 .t4-shell .t4-btn.ghost:hover:not(:disabled) { background: var(--accent, #0b6b47); color: #fff; border-color: var(--accent, #0b6b47); }
 .t4-grid { display: grid; grid-template-columns: minmax(300px, 5fr) minmax(0, 7fr); gap: 12px; padding: 12px; }
-@media (max-width: 900px) { .t4-grid { grid-template-columns: 1fr; } }
+.t4-grid > div { min-width: 0; }
+/* Pane height caps live in CSS (not inline) so the phone layout can lift
+   them: a capped pane with visible overflow lets buttons escape their card
+   (same bug class as the T1 submit-button escape). */
+.t4-pane { max-height: 78vh; min-height: 480px; }
+@media (max-width: 900px) {
+  .t4-grid { grid-template-columns: 1fr; }
+  .t4-pane { max-height: none; min-height: 0; }
+  /* >= 16px stops iOS Safari zoom-jump on focus (inline styles use 13px). */
+  .t4-shell textarea, .t4-shell input, .t4-shell select { font-size: 16px !important; }
+}
+/* Resizable textareas are clamped so the drag handle can never pull them
+   past the card (user report: the prompt box dragged over the Direction
+   note); touch devices get no drag handle at all. */
+.t4-shell textarea { max-height: 60vh; }
+@media (pointer: coarse) {
+  .t4-shell .t4-btn { min-height: 44px; }
+  .t4-shell textarea { resize: none !important; }
+}
 `;
 
 const h2: CSSProperties = {
@@ -471,7 +489,7 @@ export function Runner(props: TrackUIProps) {
       {/* LEFT — the conversation pane: brief pinned on top, then the
           prompt/generation history as chat bubbles, input at the bottom
           (same chat language as T1; ai-sdk-chatbot-style layout, no dep). */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxHeight: "78vh", minHeight: 480 }}>
+      <div className="t4-pane" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
         <section style={{ ...panel, flex: 1, minHeight: 0 }} aria-label="Prompt">
           <div
             role="note"
@@ -556,7 +574,7 @@ export function Runner(props: TrackUIProps) {
           )}
 
           {hasKey ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <select
                 aria-label="Image model"
                 style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
@@ -591,7 +609,7 @@ export function Runner(props: TrackUIProps) {
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <textarea
               aria-label="Image prompt"
-              style={{ ...mono, minHeight: 44, flex: 1 }}
+              style={{ ...mono, minHeight: 44, flex: 1, minWidth: 0 }}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={(e) => {
