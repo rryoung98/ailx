@@ -71,4 +71,7 @@ export interface TrackPlugin<Config, Session, Artifact, Score extends TrackScore
   pipeline(cfg: Config): StageSpec[];
   /** PURE. No network, no clock, no randomness. Same inputs -> same score. */
   score(inputs: ScoreInputs<Artifact>, cfg: Config): Score;
+
+  /** Lazy UI loader — the platform must not hardcode track imports. */
+  ui?: () => Promise<{ Runner: unknown }>;
 }

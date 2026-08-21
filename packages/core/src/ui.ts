@@ -15,6 +15,15 @@ export interface TrackUIProps {
   onComplete(artifact: unknown): void;
   /** Seconds remaining, managed by the session engine. */
   secondsRemaining: number;
+  /**
+   * Checkpoint persistence. The runner MUST call onCheckpoint with a
+   * JSON-serializable snapshot of its in-progress state after every
+   * meaningful mutation, and MUST rehydrate from `checkpoint` when
+   * remounting (pause veil, reload, resume). A timed-out track is scored
+   * from the last checkpoint, never from a sentinel.
+   */
+  checkpoint?: unknown;
+  onCheckpoint?(state: unknown): void;
 }
 
 /**
@@ -37,7 +46,12 @@ export interface JudgeRequest {
 }
 
 export interface JudgeResponse {
-  value: number;        // rubric band value
+  /**
+   * Normalized rubric value in [0, 1]. Adapters that think in bands must
+   * divide by their band maximum before returning. Consumers reject values
+   * outside [0, 1].
+   */
+  value: number;
   evidence: string;
   modelId: string;      // e.g. 'demo-judge@1' or 'gemini-3.1-pro@20260801'
 }
