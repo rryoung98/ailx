@@ -1,0 +1,28 @@
+{
+  "name": "@ailx/content-tools",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "ailx-hash-bank": "dist/cli/hash-bank.js",
+    "ailx-rubric-version": "dist/cli/rubric-version.js",
+    "ailx-build-snapshot": "dist/cli/build-snapshot.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "hash-bank": "node dist/cli/hash-bank.js",
+    "rubric-version": "node dist/cli/rubric-version.js",
+    "build-snapshot": "node dist/cli/build-snapshot.js"
+  },
+  "dependencies": {
+    "@ailx/core": "workspace:*",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0"
+  }
+}
