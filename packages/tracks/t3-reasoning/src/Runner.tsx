@@ -13,6 +13,7 @@ import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import { assistantReply, DEMO_ASSISTANT_ID } from "./assistant.js";
 import { validateT3Config } from "./plugin.js";
+import { decodeT3Checkpoint, encodeT3Checkpoint, type T3ChatMsg } from "./checkpoint.js";
 import type { T3Config, T3Turn } from "./types.js";
 
 type Phase = "brief" | "work" | "reveal";
@@ -32,28 +33,50 @@ const ghost: CSSProperties = {
 };
 const tiny: CSSProperties = { fontSize: "0.8rem", padding: "0.25rem 0.6rem" };
 
-interface ChatMsg {
-  role: "user" | "assistant";
-  text: string;
-  claimIds: string[];
-  object: string;
-}
+type ChatMsg = T3ChatMsg;
 
-export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackUIProps) {
+export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoint, onCheckpoint }: TrackUIProps) {
   const cfg: T3Config = useMemo(() => validateT3Config(config), [config]);
-  const [phase, setPhase] = useState<Phase>("brief");
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  // Rehydrate from the persisted checkpoint on (re)mount — F2.
+  const restored = useMemo(() => decodeT3Checkpoint(checkpoint), []);
+  const [phase, setPhase] = useState<Phase>(restored?.phase ?? "brief");
+  const [messages, setMessages] = useState<ChatMsg[]>(restored?.messages ?? []);
   const [input, setInput] = useState("");
-  const [draft, setDraft] = useState("");
-  const [savedDraft, setSavedDraft] = useState("");
+  const [draft, setDraft] = useState(restored?.draft ?? "");
+  const [savedDraft, setSavedDraft] = useState(restored?.savedDraft ?? "");
   const [showSource, setShowSource] = useState(false);
-  const [stances, setStances] = useState<Record<string, "challenged" | "accepted">>({});
-  const transcript = useRef<T3Turn[]>([]);
-  const seq = useRef(0);
-  const promptSeq = useRef(0);
-  const draftRev = useRef(0);
+  const [stances, setStances] = useState<Record<string, "challenged" | "accepted">>(restored?.stances ?? {});
+  const transcript = useRef<T3Turn[]>(restored?.transcript ?? []);
+  const seq = useRef(restored?.seq ?? 0);
+  const promptSeq = useRef(restored?.promptSeq ?? 0);
+  const draftRev = useRef(restored?.draftRev ?? 0);
   const regenNonce = useRef(0);
   const completed = useRef(false);
+
+  // Latest values for checkpointing from inside handlers (state setters
+  // have not committed yet when handlers run).
+  const latest = useRef({ phase, messages, draft, savedDraft, stances });
+  latest.current = { phase, messages, draft, savedDraft, stances };
+
+  const saveCheckpoint = useCallback(
+    (next: Partial<typeof latest.current> = {}) => {
+      const cur = { ...latest.current, ...next };
+      onCheckpoint?.(
+        encodeT3Checkpoint({
+          phase: cur.phase,
+          transcript: transcript.current,
+          messages: cur.messages,
+          draft: cur.draft,
+          savedDraft: cur.savedDraft,
+          stances: cur.stances,
+          seq: seq.current,
+          promptSeq: promptSeq.current,
+          draftRev: draftRev.current,
+        }),
+      );
+    },
+    [onCheckpoint],
+  );
 
   const claimText = useMemo(() => {
     const m = new Map<string, string>();
@@ -105,13 +128,15 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackU
     emit({ verb: "prompted", object: pObj, text });
     const reply = assistantReply(cfg, text, promptSeq.current, surfacedSet(), 0);
     emit({ verb: "assisted", object: `assist:${promptSeq.current}`, text: reply.text, claimIds: reply.claimIds });
-    setMessages((m) => [
-      ...m,
+    const nextMessages: ChatMsg[] = [
+      ...messages,
       { role: "user", text, claimIds: [], object: pObj },
-      { role: "assistant", text: reply.text, claimIds: reply.claimIds, object: `assist:${promptSeq.current}` },
-    ]);
+      { role: "assistant", text: reply.text, claimIds: [...reply.claimIds], object: `assist:${promptSeq.current}` },
+    ];
+    setMessages(nextMessages);
     setInput("");
-  }, [cfg, emit, input]);
+    saveCheckpoint({ messages: nextMessages });
+  }, [cfg, emit, input, messages, saveCheckpoint]);
 
   const regenerate = useCallback(() => {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -126,17 +151,16 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackU
       claimIds: reply.claimIds,
       revisionOf: prior,
     });
-    setMessages((m) => {
-      const out = [...m];
-      for (let i = out.length - 1; i >= 0; i--) {
-        if (out[i].role === "assistant") {
-          out[i] = { ...out[i], text: reply.text, claimIds: reply.claimIds };
-          break;
-        }
+    const out = [...messages];
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (out[i].role === "assistant") {
+        out[i] = { ...out[i], text: reply.text, claimIds: [...reply.claimIds] };
+        break;
       }
-      return out;
-    });
-  }, [cfg, emit, messages]);
+    }
+    setMessages(out);
+    saveCheckpoint({ messages: out });
+  }, [cfg, emit, messages, saveCheckpoint]);
 
   const saveDraft = useCallback(() => {
     if (draft === savedDraft) return;
@@ -149,7 +173,8 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackU
       revisionOf: prev > 0 ? `draft:rev-${prev}` : undefined,
     });
     setSavedDraft(draft);
-  }, [draft, emit, savedDraft]);
+    saveCheckpoint({ savedDraft: draft });
+  }, [draft, emit, savedDraft, saveCheckpoint]);
 
   const checkSource = useCallback(() => {
     setShowSource((v) => {
@@ -161,9 +186,11 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackU
   const setStance = useCallback(
     (id: string, verb: "challenged" | "accepted") => {
       emit({ verb, object: `claim:${id}` });
-      setStances((s) => ({ ...s, [id]: verb }));
+      const next = { ...latest.current.stances, [id]: verb };
+      setStances(next);
+      saveCheckpoint({ stances: next });
     },
-    [emit],
+    [emit, saveCheckpoint],
   );
 
   const submit = useCallback(() => {
@@ -182,7 +209,8 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackU
     emit({ verb: "submitted", object: "t3-reasoning:final", text: draft });
     onComplete({ transcript: transcript.current, finalAnswer: draft });
     setPhase("reveal");
-  }, [draft, emit, onComplete, savedDraft]);
+    saveCheckpoint({ phase: "reveal", savedDraft: draft });
+  }, [draft, emit, onComplete, savedDraft, saveCheckpoint]);
 
   const words = draft.trim() ? draft.trim().split(/\s+/).length : 0;
 
@@ -200,7 +228,15 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackU
             some of what it tells you is wrong. Challenge what you doubt; accept what
             you verify. Target {cfg.minWords} words.
           </p>
-          <button style={btn} onClick={() => setPhase("work")}>Begin</button>
+          <button
+            style={btn}
+            onClick={() => {
+              setPhase("work");
+              saveCheckpoint({ phase: "work" });
+            }}
+          >
+            Begin
+          </button>
         </div>
       </div>
     );
@@ -314,7 +350,10 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining }: TrackU
           </div>
           <textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              saveCheckpoint({ draft: e.target.value });
+            }}
             rows={14}
             placeholder="Take and defend a position the stakeholder can act on…"
             style={{
