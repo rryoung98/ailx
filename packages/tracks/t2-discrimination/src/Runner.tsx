@@ -10,6 +10,7 @@ import type { TrackUIProps } from "@ailx/core";
 import type { T2Config, T2Item, T2Response } from "./types.js";
 import { validateT2Config } from "./plugin.js";
 import { decodeT2Checkpoint, encodeT2Checkpoint, type T2Phase } from "./checkpoint.js";
+import { SwipeDeck, isImageMaterial } from "./SwipeDeck.js";
 
 type Phase = T2Phase;
 
@@ -77,6 +78,8 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   const [responses, setResponses] = useState<T2Response[]>(restored?.responses ?? []);
   const [replayIdx, setReplayIdx] = useState(restored?.replayIdx ?? 0);
   const shownAt = useRef(0);
+  const decisionLatency = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const completed = useRef(false);
 
   // Checkpoint every meaningful mutation with explicit next values (state
@@ -95,13 +98,29 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     [idx, onCheckpoint, phase, replayIdx, responses],
   );
 
+  // Bring the confidence sheet into view when it slides up.
+  useEffect(() => {
+    if (choice !== null && typeof sheetRef.current?.scrollIntoView === "function") {
+      sheetRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [choice]);
+
   const item = cfg.items[idx];
+  const deckHasImages = useMemo(
+    () => cfg.items.some((i) => isImageMaterial(i.material)),
+    [cfg.items],
+  );
   const untimed = !item || item.type === "provenance";
   const exposure = item?.exposureSeconds ?? (untimed ? 0 : 15);
 
   const record = useCallback(
     (choiceIdx: number, conf: number) => {
-      const latencyMs = Math.max(0, Math.round(performance.now() - shownAt.current));
+      // Latency is anchored at card reveal and captured at the moment of the
+      // swipe decision (not at confidence lock-in); a lapse falls back to
+      // the full exposure elapsed.
+      const latencyMs =
+        decisionLatency.current ?? Math.max(0, Math.round(performance.now() - shownAt.current));
+      decisionLatency.current = null;
       const r: T2Response = { itemId: item.id, choice: choiceIdx, confidence: conf, latencyMs };
       onEvent({
         verb: "responded",
@@ -129,6 +148,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   useEffect(() => {
     if (phase !== "deck" || !item) return;
     shownAt.current = performance.now();
+    decisionLatency.current = null;
     if (untimed) {
       setSecondsLeft(null);
       return;
@@ -170,7 +190,8 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
         <div style={card}>
           <h2 style={{ marginTop: 0 }}>T2 · Authenticity Discrimination</h2>
           <p style={{ color: "var(--muted)" }}>
-            {cfg.items.length} items. Timed items have a fixed exposure — a declared
+            {cfg.items.length} items. Swipe the card (or use ← / →, or the labeled
+            buttons) to make the call. Timed items have a fixed exposure — a declared
             measurement decision. For each: make the call, then set how sure you are
             (0–100). Confidence is scored: being confidently wrong costs more than
             being uncertainly wrong. After the deck, a replay teaches each item&apos;s
@@ -191,8 +212,9 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   }
 
   if (phase === "deck" && item) {
+    const sheetOpen = choice !== null;
     return (
-      <div style={{ maxWidth: 720, margin: "0 auto", display: "grid", gap: "1rem" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", display: "grid", gap: "0.8rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
           <span>
             Item {idx + 1} / {cfg.items.length} · {item.type}
@@ -201,41 +223,47 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             {untimed ? "untimed" : `${Math.max(0, secondsLeft ?? exposure)}s`}
           </span>
         </div>
-        <div style={card}>
-          <p style={{ marginTop: 0, fontWeight: 600 }}>{item.stem}</p>
-          <Material item={item} />
-          <div style={{ display: "flex", gap: "0.6rem", marginTop: "1rem", flexWrap: "wrap" }}>
-            {item.options.map((opt, i) => (
-              <button
-                key={i}
-                onClick={() => setChoice(i)}
-                style={{
-                  ...ghostBtn,
-                  borderColor: choice === i ? "var(--accent)" : "var(--border)",
-                  background: choice === i ? "var(--accent)" : "transparent",
-                  color: choice === i ? "#fff" : "var(--fg)",
-                }}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-          <div style={{ marginTop: "1rem" }}>
-            <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-              How sure? {confidence}
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={confidence}
-                onChange={(e) => setConfidence(Number(e.target.value))}
-                style={{ width: "100%", accentColor: "var(--accent)" }}
-              />
-            </label>
-          </div>
+        <SwipeDeck
+          item={item}
+          nextItems={cfg.items.slice(idx + 1, idx + 3)}
+          deckHasImages={deckHasImages}
+          enabled={!sheetOpen}
+          onChoose={(i) => {
+            if (choice !== null) return;
+            decisionLatency.current = Math.max(0, Math.round(performance.now() - shownAt.current));
+            setChoice(i);
+          }}
+        />
+        {/* Confidence sheet — slides up under the deck after each swipe. */}
+        <div
+          ref={sheetRef}
+          data-testid="confidence-sheet"
+          aria-hidden={!sheetOpen}
+          style={{
+            ...card,
+            transform: sheetOpen ? "translateY(0)" : "translateY(115%)",
+            opacity: sheetOpen ? 1 : 0,
+            transition: "transform 260ms cubic-bezier(0.2, 1.2, 0.4, 1), opacity 200ms ease",
+            pointerEvents: sheetOpen ? "auto" : "none",
+          }}
+        >
+          <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>
+            Your call: {choice !== null ? item.options[choice] : "—"}
+          </p>
+          <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+            How sure? {confidence}
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={confidence}
+              onChange={(e) => setConfidence(Number(e.target.value))}
+              style={{ width: "100%", accentColor: "var(--accent)" }}
+            />
+          </label>
           <button
-            style={{ ...btn, marginTop: "0.8rem", opacity: choice === null ? 0.5 : 1 }}
-            disabled={choice === null}
+            style={{ ...btn, marginTop: "0.8rem", opacity: sheetOpen ? 1 : 0.5 }}
+            disabled={!sheetOpen}
             onClick={() => record(choice ?? -1, confidence)}
           >
             Lock in

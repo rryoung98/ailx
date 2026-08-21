@@ -12,7 +12,10 @@
     "react": "^19.0.0"
   },
   "dependencies": {
-    "@ailx/core": "workspace:*"
+    "@ailx/core": "workspace:*",
+    "three": "^0.182.0",
+    "@react-three/fiber": "^9.0.0",
+    "@react-three/drei": "^10.0.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
@@ -20,6 +23,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@types/three": "^0.182.0",
+    "jsdom": "^25.0.1"
   }
 }
