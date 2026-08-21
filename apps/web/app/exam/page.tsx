@@ -262,8 +262,12 @@ export default function ExamPage() {
     config: trackConfig(t),
     onEvent: (event: TrackEvent) => {
       const cur = logRef.current ? project(logRef.current) : null;
-      // Drop late events once the budget is exhausted (machine enforces too).
-      if (!cur || cur.phase !== "in_track" || cur.currentTrack !== t) return;
+      // Accept while in_track AND paused: runners stay mounted under the
+      // pause veil, so runner-internal timers can emit mid-pause. Dropping
+      // those would silently desync the event log from the artifact.
+      // Only budget-exhausted (late) events are rejected — the machine
+      // enforces the same rule at append time.
+      if (!cur || (cur.phase !== "in_track" && cur.phase !== "paused") || cur.currentTrack !== t) return;
       const ts = stamp();
       if (secondsRemaining(cur, t, ts) <= 0) return;
       commit([{ type: "track_event", trackId: t, event, ts }]);

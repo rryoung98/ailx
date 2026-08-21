@@ -6,7 +6,8 @@
  *
  * Invariants enforced at append time (F13):
  *  - timestamps are nondecreasing across the whole log;
- *  - track_event is rejected once the track budget is exhausted;
+ *  - track_event is rejected once the track budget is exhausted (but is
+ *    ACCEPTED while paused — mounted runners may emit under the pause veil);
  *  - track_completed.timedOut must AGREE with budget accounting
  *    (timedOut === activeMs-at-ts >= budget) — the flag is derived, never
  *    trusted from the caller;
@@ -182,7 +183,11 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
       if (s.phase !== "paused") fail("not paused");
       return;
     case "track_event":
-      if (s.phase !== "in_track" || s.currentTrack !== e.trackId)
+      // Accepted while in_track AND while paused: runners stay mounted under
+      // the pause veil, so runner-internal timers (e.g. a T2 exposure lapse)
+      // can legitimately emit during a pause. Dropping them would make the
+      // event log disagree with the artifact (audit: silent data loss).
+      if ((s.phase !== "in_track" && s.phase !== "paused") || s.currentTrack !== e.trackId)
         fail("track not active");
       if (budgetExhaustedAt(s, e.trackId, e.ts))
         fail("budget exhausted — no further track events accepted");

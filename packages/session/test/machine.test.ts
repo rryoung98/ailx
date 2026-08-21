@@ -201,3 +201,47 @@ describe("timestamp + budget invariants (F13)", () => {
     expect(project(inTime).tracks.t1.timedOut).toBe(false);
   });
 });
+
+describe("paused-phase event persistence (audit: no silent drop)", () => {
+  it("accepts track_event while paused for the current track", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", ts: T0 + 5_000 });
+    // A mounted runner's internal timer fires under the pause veil.
+    log = append(log, {
+      type: "track_event", trackId: "t1",
+      event: { verb: "responded", object: "item:x", clientTs: new Date(T0 + 6_000).toISOString() },
+      ts: T0 + 6_000,
+    });
+    const s = project(log);
+    expect(s.phase).toBe("paused");
+    expect(s.tracks.t1.events).toHaveLength(1);
+    // Paused time still does not consume budget.
+    expect(secondsRemaining(s, "t1", T0 + 500_000)).toBe(595);
+  });
+
+  it("still rejects paused track_event for a NON-current track", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", ts: T0 + 5_000 });
+    expect(() =>
+      append(log, {
+        type: "track_event", trackId: "t2",
+        event: { verb: "x", object: "y", clientTs: "" }, ts: T0 + 6_000,
+      }),
+    ).toThrow(TransitionError);
+  });
+
+  it("still rejects paused track_event once the budget is exhausted", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    // exhaust the 600 s budget while running, then pause
+    log = append(log, { type: "paused", ts: T0 + 700_000 });
+    expect(() =>
+      append(log, {
+        type: "track_event", trackId: "t1",
+        event: { verb: "late", object: "z", clientTs: "" }, ts: T0 + 700_001,
+      }),
+    ).toThrow(TransitionError);
+  });
+});
