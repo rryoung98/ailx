@@ -3,10 +3,10 @@ import { runAllChecks } from "../lib/validateChecks";
 
 describe("/validate checks (same code the page runs in-browser)", () => {
   const results = runAllChecks();
-  it("runs all seven checks", () => {
+  it("runs all eight checks", () => {
     expect(results.map((r) => r.id)).toEqual([
       "sha256", "content-addressing", "rubric-version", "purity",
-      "golden", "reproducibility", "sample-attempt",
+      "plugin-golden", "golden", "reproducibility", "sample-attempt",
     ]);
   });
   for (const r of runAllChecks()) {

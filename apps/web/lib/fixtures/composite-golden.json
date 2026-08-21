@@ -129,6 +129,11 @@
       "Participation",
       "Participation",
       "Merit"
-    ]
+    ],
+    "bandCutlines": {
+      "Distinction": 75.975,
+      "Merit": 62.183,
+      "Pass": 51.57
+    }
   }
 }

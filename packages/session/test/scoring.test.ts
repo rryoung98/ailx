@@ -5,6 +5,7 @@ import { runPure } from "@ailx/core";
 import {
   bandFromComposite, demoCohort, mean, midRankPercentiles, probit,
   quotaBands, scoreCohort, stdev, zScores, TRACK_WEIGHTS,
+  seededUniform,
   type TrackRawScores,
 } from "../src/index.js";
 
@@ -102,6 +103,75 @@ describe("performance bands (spec \u00a704)", () => {
     expect(bandFromComposite(60.9)).toBe("Pass");
     expect(bandFromComposite(50)).toBe("Pass");
     expect(bandFromComposite(49.9)).toBe("Participation");
+  });
+});
+
+describe("tie policy + realized cutlines (F14)", () => {
+  /** Deterministic pseudo-shuffle driven by seededUniform (no Math.random). */
+  function shuffled<T>(xs: readonly T[], seed: string): { arr: T[]; perm: number[] } {
+    const perm = xs.map((_, i) => i);
+    for (let i = perm.length - 1; i > 0; i--) {
+      const j = Math.floor(seededUniform(seed, i) * (i + 1));
+      [perm[i], perm[j]] = [perm[j], perm[i]];
+    }
+    return { arr: perm.map((i) => xs[i]), perm };
+  }
+
+  it("breaks quota ties by higher T3, then T2, T1, T4, then attempt hash", () => {
+    // 12 candidates → 1 Distinction seat. The top three scores are exactly
+    // tied; the documented policy must pick the higher-T3 profile.
+    const scores = [5, 5, 5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5, 0];
+    const keys = scores.map((_, i) =>
+      [50, 50, 50, 50, `hash-${String(i).padStart(2, "0")}`] as const);
+    // candidate 2 has the highest T3 among the tied trio
+    (keys as unknown as (number | string)[][])[0] = [60, 90, 50, 50, "hash-00"];
+    (keys as unknown as (number | string)[][])[1] = [60, 80, 50, 50, "hash-01"];
+    (keys as unknown as (number | string)[][])[2] = [70, 10, 50, 50, "hash-02"];
+    const bands = quotaBands(scores, keys as never);
+    expect(bands[2]).toBe("Distinction");   // highest T3 wins the tie
+    expect(bands[0]).toBe("Merit");         // then T2 orders the rest
+    expect(bands[1]).toBe("Merit");
+    // equal numeric keys → lexicographic attempt hash (ascending) decides
+    const flat = [1, 1, 0];
+    const flatKeys = [
+      [5, 5, 5, 5, "bbbb"],
+      [5, 5, 5, 5, "aaaa"],
+      [5, 5, 5, 5, "cccc"],
+    ] as const;
+    const flatBands = quotaBands(flat, flatKeys as never);
+    // 3 candidates → 0 Distinction, 1 Merit (round(3/6)=1): "aaaa" outranks "bbbb"
+    expect(flatBands[1]).toBe("Merit");
+    expect(flatBands[0]).toBe("Pass");
+  });
+
+  it("bands are invariant under shuffled input order (property test)", () => {
+    // Include deliberate exact ties to exercise the tie policy.
+    const base = demoCohort("tie-prop", 40);
+    const cohort = [...base, { ...base[3] }, { ...base[17] }, { ...base[3] }];
+    const ids = cohort.map((_, i) => `attempt-${i}`);
+    const r0 = scoreCohort(cohort, ids);
+    for (const seed of ["s1", "s2", "s3", "s4", "s5"]) {
+      const { perm } = shuffled(cohort, seed);
+      const rs = scoreCohort(perm.map((i) => cohort[i]), perm.map((i) => ids[i]));
+      for (let k = 0; k < perm.length; k++) {
+        expect(rs.band[k]).toBe(r0.band[perm[k]]);
+        expect(rs.composite[k]).toBe(r0.composite[perm[k]]);
+      }
+    }
+  });
+
+  it("reports realized quota cutlines on the composite scale", () => {
+    const cohort = demoCohort("cutlines", 45);
+    const r = scoreCohort(cohort);
+    const minIn = (band: string) =>
+      Math.min(...r.composite.filter((_, i) => r.band[i] === band));
+    expect(r.bandCutlines.Distinction).toBe(minIn("Distinction"));
+    expect(r.bandCutlines.Merit).toBe(minIn("Merit"));
+    expect(r.bandCutlines.Pass).toBe(minIn("Pass"));
+    // Quotas are authoritative: every Distinction composite ≥ its cutline,
+    // and the cutlines are ordered.
+    expect(r.bandCutlines.Distinction!).toBeGreaterThan(r.bandCutlines.Merit!);
+    expect(r.bandCutlines.Merit!).toBeGreaterThan(r.bandCutlines.Pass!);
   });
 });
 

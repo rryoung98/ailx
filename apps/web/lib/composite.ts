@@ -14,6 +14,8 @@ export interface CandidateComposite extends CompositeSummary {
   cohortSize: number;
   trackRaw: TrackRawScores;
   cohortComposites: number[];
+  /** Realized quota-derived band cutlines for THIS cohort (spec §04). */
+  bandCutlines: Record<"Distinction" | "Merit" | "Pass", number | null>;
 }
 
 export function candidateComposite(state: SessionState): CandidateComposite | null {
@@ -35,5 +37,6 @@ export function candidateComposite(state: SessionState): CandidateComposite | nu
     cohortSize: all.length,
     trackRaw,
     cohortComposites: r.composite,
+    bandCutlines: r.bandCutlines,
   };
 }

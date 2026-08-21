@@ -1,13 +1,21 @@
 /**
  * Export tiers — spec §16. The static showcase produces the two
  * candidate-facing shapes:
- *  - Individual (participant) tier: scores, composite, percentile, band,
- *    process diagnostics.
- *  - Research tier: de-identified item-level events with latencies, rubric
- *    versions and model manifests, keyed by pid — never a name.
+ *
+ *  - INDIVIDUAL (participant) tier: the candidate's OWN data — scores,
+ *    composite, percentile, band, process diagnostics, and their full
+ *    artifacts. Explicitly labelled: this file is not de-identified.
+ *
+ *  - RESEARCH tier: built from an explicit ALLOWLIST schema
+ *    (ailx.research.v2). It carries scores, subscores, rubric/scoring
+ *    digests, judgment rows, event VERBS + timings (no free-text payloads),
+ *    and T2 item ids + responses. It never copies raw artifacts, HTML,
+ *    transcripts, notes, or arbitrary event result/context fields (F15).
  */
 
-import type { SequencedEntry, SessionState, TrackId } from "@ailx/session";
+import type {
+  JudgmentRecord, SequencedEntry, SessionState, TrackId,
+} from "@ailx/session";
 import { TRACK_IDS, sha256Hex } from "@ailx/session";
 import { trackInsights } from "./insights";
 import { TRACK_META } from "./tracks";
@@ -22,13 +30,20 @@ export interface CompositeSummary {
 export function participantExport(state: SessionState, summary: CompositeSummary) {
   return {
     tier: "individual" as const,
+    label:
+      "Individual tier — the candidate's own data, including full artifacts. NOT de-identified; do not share as research data.",
     instrument: state.config?.instrument ?? "ailx",
     version: state.config?.version ?? "2026.1",
     generator: "ailx-web static showcase (deterministic demo scoring)",
     attemptId: state.attemptId,
     locale: state.config?.locale,
     demo: state.config?.demo === true,
-    tracks: TRACK_IDS.map((t) => trackBlock(state, t)),
+    tracks: TRACK_IDS.map((t) => ({
+      ...trackBlock(state, t),
+      /** The candidate's own submitted artifact (their data — spec §16). */
+      artifact: state.tracks[t].artifact ?? null,
+      judgments: state.tracks[t].judgments ?? null,
+    })),
     composite: {
       scale: "normalised area transformation: rank → percentile → inverse-normal → mean 50 SD 15, truncated [0,100]",
       value: summary.composite,
@@ -57,13 +72,47 @@ function trackBlock(state: SessionState, t: TrackId) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Research tier — explicit allowlist schema (ailx.research.v2)
+// ---------------------------------------------------------------------------
+
+/** Allowlisted judgment row: numeric value + ids, no free-text evidence. */
+function allowJudgment(j: JudgmentRecord) {
+  return {
+    dimension: j.dimension,
+    sample: j.sample,
+    value: j.value,
+    modelId: j.modelId,
+  };
+}
+
+/** Allowlisted T2 response row: item id + structured response only. */
+interface T2ResponseLike {
+  itemId?: unknown; choice?: unknown; confidence?: unknown; latencyMs?: unknown;
+}
+
+function allowT2Responses(artifact: unknown) {
+  if (artifact === null || typeof artifact !== "object") return [];
+  const rs = (artifact as { responses?: unknown }).responses;
+  if (!Array.isArray(rs)) return [];
+  return rs
+    .filter((r): r is T2ResponseLike => r !== null && typeof r === "object")
+    .map((r) => ({
+      itemId: typeof r.itemId === "string" ? r.itemId : null,
+      choice: typeof r.choice === "number" ? r.choice : null,
+      confidence: typeof r.confidence === "number" ? r.confidence : null,
+      latencyMs: typeof r.latencyMs === "number" ? r.latencyMs : null,
+    }));
+}
+
 export function researchExport(state: SessionState, log: readonly SequencedEntry[], summary: CompositeSummary) {
-  // De-identification is structural: pid derived by hash, names never enter.
+  // De-identification is structural: pid derived by hash, names never enter,
+  // and the schema is an allowlist — nothing outside it is copied.
   const pid = `pid-${sha256Hex(`ailx:${state.attemptId ?? "unknown"}`).slice(0, 16)}`;
   const t0 = log.length > 0 ? log[0].ts : 0;
   return {
     tier: "research" as const,
-    schema: "ailx.research.v1",
+    schema: "ailx.research.v2",
     generator: "ailx-web static showcase (deterministic demo scoring)",
     demo: state.config?.demo === true,
     instrument: {
@@ -80,27 +129,32 @@ export function researchExport(state: SessionState, log: readonly SequencedEntry
       scoringDigest: state.tracks[t].scoringDigest ?? null,
       modelManifest: state.tracks[t].modelManifest ?? null,
     })),
-    /** xAPI-shaped statements, relative-timestamped, append-only order preserved. */
+    /** Event VERBS + timings only — objects, results, context are dropped. */
     statements: log
       .filter((e) => e.type === "track_event")
       .map((e, i, arr) => ({
         seq: e.seq,
         trackId: e.type === "track_event" ? e.trackId : undefined,
         verb: e.type === "track_event" ? e.event.verb : undefined,
-        object: e.type === "track_event" ? e.event.object : undefined,
         tRelMs: e.ts - t0,
         latencyMs: i > 0 ? e.ts - arr[i - 1].ts : null,
       })),
-    sessionLog: log.map((e) =>
-      e.type === "attempt_started"
-        ? { ...e, attemptId: pid, ts: e.ts - t0 }   // structural de-identification
-        : { ...e, ts: e.ts - t0 },
-    ),
+    /** Session milestones: entry types + relative timings, no payloads. */
+    timeline: log.map((e) => ({
+      seq: e.seq,
+      type: e.type,
+      trackId: "trackId" in e ? e.trackId : null,
+      tRelMs: e.ts - t0,
+    })),
     scores: TRACK_IDS.map((t) => ({
       trackId: t,
       raw: state.tracks[t].score?.raw ?? null,
       scaled: state.tracks[t].score?.scaled ?? null,
+      timedOut: state.tracks[t].timedOut === true,
+      judgments: (state.tracks[t].judgments ?? []).map(allowJudgment),
     })),
+    /** T2 is structured response data — item ids + responses are shareable. */
+    t2Responses: allowT2Responses(state.tracks.t2.artifact),
     composite: summary,
     consent: { researchRelease: "demo-granted", revocable: true },
   };

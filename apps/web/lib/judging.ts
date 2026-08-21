@@ -3,6 +3,11 @@
  * static showcase. Deterministic (sha256-seeded), so re-judging identical
  * artifacts yields identical Judgment rows; score() consumes only these
  * stored rows, matching the platform architecture (§11/§14).
+ *
+ * All judgment values are NORMALIZED to [0, 1] (core JudgeResponse
+ * contract). Empty artifacts judge to exactly 0 on every dimension — an
+ * empty checkpoint therefore scores a legitimate zero, never seeded
+ * pseudo-points (F1).
  */
 import type { Judgment } from "@ailx/core";
 import { sha256Hex } from "@ailx/track-t1";
@@ -23,9 +28,20 @@ function tri(dimension: string, base: number, seedRoot: string): Judgment[] {
   });
 }
 
+/** Three explicit-zero samples: empty work judges to zero, deterministically. */
+function zeroTri(dimension: string): Judgment[] {
+  return [0, 1, 2].map((s) => mk(dimension, s, 0));
+}
+
 function clamp01(x: number): number { return x < 0 ? 0 : x > 1 ? 1 : x; }
 
 export function judgeT1(artifact: { html: string; promptLog: unknown[]; selfReport: string }): Judgment[] {
+  if (artifact.html.trim().length === 0) {
+    return [
+      ...zeroTri("functional"), ...zeroTri("comparative"),
+      ...zeroTri("ambition"), ...zeroTri("rationale"),
+    ];
+  }
   const seed = sha256Hex(artifact.html + "|" + artifact.selfReport);
   const size = clamp01(artifact.html.length / 2500);
   const hasStructure = /<(header|main|section|nav|h1)/i.test(artifact.html) ? 0.25 : 0;
@@ -36,22 +52,33 @@ export function judgeT1(artifact: { html: string; promptLog: unknown[]; selfRepo
     ...tri("functional", clamp01(base + 0.1), seed),
     ...tri("comparative", base, seed),
     ...tri("ambition", clamp01(0.2 + 0.4 * size + hasScript + hasStyle), seed),
-    ...tri("rationale", clamp01(0.2 + 0.6 * clamp01(artifact.selfReport.length / 400)), seed),
+    ...tri("rationale", artifact.selfReport.trim().length === 0
+      ? 0
+      : clamp01(0.2 + 0.6 * clamp01(artifact.selfReport.length / 400)), seed),
   ];
 }
 
 export function judgeT3(artifact: { transcript: unknown[]; finalAnswer: string }): Judgment[] {
+  if (artifact.finalAnswer.trim().length === 0) return zeroTri("analysis");
   const seed = sha256Hex(artifact.finalAnswer);
   const lengthBand = Math.min(3, Math.floor(artifact.finalAnswer.length / 400));
   return [0, 1, 2].map((s) => {
     const jitter = Math.floor(seeded01(`${seed}|analysis|${s}`) * 3) - 1; // -1..+1
-    return mk("analysis", s, Math.max(0, Math.min(5, 2 + lengthBand + jitter)));
+    // Band 0–5, NORMALIZED to [0,1] per the core judgment contract.
+    const band = Math.max(0, Math.min(5, 2 + lengthBand + jitter));
+    return mk("analysis", s, band / 5);
   });
 }
 
 interface T4Gen { prompt: string; [k: string]: unknown }
 
 export function judgeT4(artifact: { generations: T4Gen[]; chosenIndex: number; note: string }): Judgment[] {
+  if (artifact.generations.length === 0) {
+    return [
+      ...zeroTri("brief-fit"), ...zeroTri("comparative"),
+      ...zeroTri("direction-note"), ...zeroTri("provenance"),
+    ];
+  }
   const seed = sha256Hex(JSON.stringify(artifact.generations.map((g) => g.prompt)) + artifact.note);
   const out: Judgment[] = [];
   // Per-generation 'generation' values: richer prompts judge higher (deterministic).

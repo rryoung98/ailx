@@ -11,7 +11,7 @@
  * All functions here are PURE: no I/O, no clock, no Math.random.
  */
 
-import { seededUniform } from "./hash.js";
+import { canonicalJson, seededUniform, sha256Hex } from "./hash.js";
 
 export const TRACK_IDS = ["t1", "t2", "t3", "t4"] as const;
 export type TrackId = (typeof TRACK_IDS)[number];
@@ -126,6 +126,37 @@ export interface CompositeResult {
   composite: number[];
   /** Band per candidate, assigned by Year-1 fixed quota. */
   band: Band[];
+  /**
+   * REALIZED band cutlines on the composite scale: the minimum composite
+   * actually placed in each band by the quotas this cohort produced (null
+   * when a quota rounds to zero members). Bands are QUOTA-authoritative
+   * (spec §04); the fixed thresholds in `bandFromComposite` are indicative
+   * only, so reports must show these realized cutlines instead of implying
+   * fixed ones.
+   */
+  bandCutlines: Record<"Distinction" | "Merit" | "Pass", number | null>;
+}
+
+/**
+ * Deterministic tie key for quota banding (documented policy, F14):
+ * candidates tied on the z-composite are ordered by higher T3, then higher
+ * T2, then higher T1, then higher T4 scaled score, then by the LEXICOGRAPHIC
+ * attempt hash (ascending). With distinct attempt ids this is a total order,
+ * so banding is invariant under input order. Without ids the hash falls back
+ * to the canonical JSON of the raw score row; fully identical rows without
+ * distinct ids are the only residual index-order case.
+ */
+export type TieKey = readonly [number, number, number, number, string];
+
+export function tieKeyFor(row: TrackRawScores, attemptHash: string): TieKey {
+  return [row.t3, row.t2, row.t1, row.t4, attemptHash];
+}
+
+function compareTieKeys(a: TieKey, b: TieKey): number {
+  for (let k = 0; k < 4; k++) {
+    if (a[k] !== b[k]) return (b[k] as number) - (a[k] as number); // higher first
+  }
+  return a[4] < b[4] ? -1 : a[4] > b[4] ? 1 : 0; // hash ascending
 }
 
 /**
@@ -133,7 +164,11 @@ export interface CompositeResult {
  * raw track scores (0–100 each). Order of candidates does not affect any
  * candidate’s outputs (verified by tests) — reproducibility requirement.
  */
-export function scoreCohort(cohort: readonly TrackRawScores[]): CompositeResult {
+export function scoreCohort(
+  cohort: readonly TrackRawScores[],
+  /** Optional stable candidate ids (attempt ids); hashed into the tie key. */
+  attemptIds?: readonly string[],
+): CompositeResult {
   const n = cohort.length;
   if (n < 2) throw new Error("composite scoring needs a cohort of ≥ 2");
   const zByTrack = TRACK_IDS.map((t) => zScores(cohort.map((c) => c[t])));
@@ -144,23 +179,57 @@ export function scoreCohort(cohort: readonly TrackRawScores[]): CompositeResult 
   const composite = percentile.map((p) =>
     round3(clamp(50 + 15 * probit(p), 0, 100)),
   );
-  const band = quotaBands(zComposite);
-  return { zComposite: zComposite.map(round6), percentile: percentile.map(round6), composite, band };
+  const tieKeys = cohort.map((row, i) =>
+    tieKeyFor(row, sha256Hex(attemptIds?.[i] ?? canonicalJson(row))),
+  );
+  const band = quotaBands(zComposite, tieKeys);
+  const bandCutlines = realizedCutlines(band, composite);
+  return {
+    zComposite: zComposite.map(round6),
+    percentile: percentile.map(round6),
+    composite,
+    band,
+    bandCutlines,
+  };
+}
+
+/** Minimum composite actually placed in each awarded band (null if empty). */
+export function realizedCutlines(
+  band: readonly Band[],
+  composite: readonly number[],
+): Record<"Distinction" | "Merit" | "Pass", number | null> {
+  const min = (b: Band): number | null => {
+    let m: number | null = null;
+    band.forEach((x, i) => {
+      if (x === b && (m === null || composite[i] < m)) m = composite[i];
+    });
+    return m;
+  };
+  return { Distinction: min("Distinction"), Merit: min("Merit"), Pass: min("Pass") };
 }
 
 /**
  * Norm-referenced Year-1 bands with fixed quotas (spec §04):
  * top 1/12 Distinction, next 1/6 Merit, next 1/4 Pass, remainder Participation.
  */
-export function quotaBands(scores: readonly number[]): Band[] {
+export function quotaBands(
+  scores: readonly number[],
+  /** Documented tie policy (see TieKey). Omitted → legacy index tiebreak. */
+  tieKeys?: readonly TieKey[],
+): Band[] {
   const n = scores.length;
   const nDistinction = Math.round(n * BAND_QUOTAS.Distinction);
   const nMerit = Math.round(n * BAND_QUOTAS.Merit);
   const nPass = Math.round(n * BAND_QUOTAS.Pass);
-  // Stable descending order; ties broken by original index for determinism.
+  // Descending order; ties broken by the documented tie policy when keys
+  // are supplied (higher T3 → T2 → T1 → T4 → attempt hash), else by index.
   const order = scores
     .map((v, i) => ({ v, i }))
-    .sort((a, b) => b.v - a.v || a.i - b.i);
+    .sort((a, b) =>
+      b.v - a.v ||
+      (tieKeys ? compareTieKeys(tieKeys[a.i], tieKeys[b.i]) : 0) ||
+      a.i - b.i,
+    );
   const bands = new Array<Band>(n);
   order.forEach(({ i }, rank) => {
     bands[i] =
@@ -172,7 +241,11 @@ export function quotaBands(scores: readonly number[]): Band[] {
   return bands;
 }
 
-/** Composite-scale band boundaries (spec §04 table): ≥70 / 61–69 / 50–60 / <50. */
+/**
+ * INDICATIVE composite-scale band boundaries (spec §04 table): ≥70 / 61–69 /
+ * 50–60 / <50. Quotas are AUTHORITATIVE for awarded bands; use
+ * `CompositeResult.bandCutlines` for the realized thresholds of a cohort.
+ */
 export function bandFromComposite(composite: number): Band {
   if (composite >= 70) return "Distinction";
   if (composite >= 61) return "Merit";

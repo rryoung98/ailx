@@ -157,6 +157,13 @@ export default function ReportPage() {
             <Radar values={summary.trackRaw} />
           </div>
           <DistStrip cohort={summary.cohortComposites} mine={summary.composite} />
+          <p className="faint small mono" style={{ margin: "0.4rem 0 0" }}>
+            quota-derived band cutlines (this cohort):{" "}
+            {(["Distinction", "Merit", "Pass"] as const)
+              .map((b) => `${b} ≥ ${summary.bandCutlines[b]?.toFixed(1) ?? "—"}`)
+              .join(" · ")}{" "}
+            — bands are quota-authoritative (spec §04), not fixed thresholds.
+          </p>
           <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.6rem" }}>
             <button className="btn small-btn" onClick={() => {
               navigator.clipboard?.writeText(shareText).then(() => {
@@ -197,9 +204,36 @@ export default function ReportPage() {
               })}
               <p className="faint small mono" style={{ marginBottom: 0 }}>
                 rubric {ts.rubricVersion?.slice(0, 12)}… · scoring {ts.scoringDigest?.slice(0, 12)}… ·{" "}
-                {ts.modelManifest?.screening ? `judge ${ts.modelManifest.screening}` : ts.modelManifest?.note}
+                {ts.modelManifest?.screening ? `judge ${ts.modelManifest.screening}` : ts.modelManifest?.pipeline ?? ts.modelManifest?.note}
                 {ts.timedOut ? " · ended on the clock" : ""}
               </p>
+              {ts.judgments && ts.judgments.length > 0 && (
+                <details className="small" style={{ marginTop: "0.5rem" }}>
+                  <summary className="faint mono">
+                    {ts.judgments.length} stored judgment rows (score() replays exactly these)
+                  </summary>
+                  <table className="small mono" style={{ marginTop: "0.4rem", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "left", paddingRight: "1rem" }}>dimension</th>
+                        <th style={{ textAlign: "right", paddingRight: "1rem" }}>sample</th>
+                        <th style={{ textAlign: "right", paddingRight: "1rem" }}>value</th>
+                        <th style={{ textAlign: "left" }}>model</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ts.judgments.map((j, ji) => (
+                        <tr key={ji}>
+                          <td style={{ paddingRight: "1rem" }}>{j.dimension}</td>
+                          <td style={{ textAlign: "right", paddingRight: "1rem" }}>{j.sample}</td>
+                          <td style={{ textAlign: "right", paddingRight: "1rem" }}>{j.value.toFixed(3)}</td>
+                          <td>{j.modelId}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              )}
             </div>
           );
         })}
