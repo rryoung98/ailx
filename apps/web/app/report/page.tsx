@@ -179,7 +179,14 @@ export default function ReportPage() {
                 <span className="mono">{score.scaled.toFixed(1)} <span className="faint">/ 100</span></span>
               </div>
               {meta.components.map((c) => {
-                const v = score.raw[c.key] ?? 0;
+                const ALIASES: Record<string, string[]> = {
+                  gates: ["gates", "functional"],
+                  dprime: ["dprime", "sensitivity"],
+                  brief: ["brief", "brief-fit"],
+                  direction: ["direction", "craft"],
+                };
+                const keys = ALIASES[c.key] ?? [c.key];
+                const v = keys.map((k) => score.raw[k]).find((x) => typeof x === "number") ?? 0;
                 return (
                   <div key={c.key} style={{ display: "grid", gridTemplateColumns: "minmax(10rem, 1fr) 2fr 6.5rem", gap: "0.8rem", alignItems: "center", margin: "0.35rem 0" }}>
                     <span className="small muted">{c.label}</span>
