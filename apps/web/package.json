@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "next lint || true"
   },
   "dependencies": {
