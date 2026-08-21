@@ -90,9 +90,8 @@ describe("T2 demo bank", () => {
   it("items are self-contained (media inline or bundled repo-local assets)", () => {
     for (const item of bank.items) {
       const m = item.material as { kind?: string; data_uri?: string; src?: string };
-      if (m.kind === "svg") {
-        expect(m.data_uri).toMatch(/^data:image\/svg\+xml;base64,/);
-      }
+      // The mock hand-drawn SVG scenes are retired: real Commons media only.
+      expect(m.kind).not.toBe("svg");
       if (m.kind === "image") {
         // Bundled static asset: relative path under apps/web/public, never a
         // remote URL (network fetches at exam time would break containment).

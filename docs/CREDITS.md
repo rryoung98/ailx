@@ -53,3 +53,19 @@ Commons under a free license; "Photograph" rows are genuine camera photographs.
 | da96373f7c16.jpg | Photograph | AgnosticPreachersKid | CC BY-SA 3.0 | [File:Facade - National City Christian Church.JPG](https://commons.wikimedia.org/wiki/File:Facade_-_National_City_Christian_Church.JPG) |
 | 3a6837119bc7.jpg | Photograph | Yosomono from Fukuoka, Japan | CC BY 2.0 | [File:Dosa (36400591833).jpg](https://commons.wikimedia.org/wiki/File:Dosa_(36400591833).jpg) |
 | d494181d4b55.jpg | Photograph | 663highland | CC BY 2.5 | [File:140510 Tamba Traditional Art Craft Park Sue no Sato Sas](https://commons.wikimedia.org/wiki/File:140510_Tamba_Traditional_Art_Craft_Park_Sue_no_Sato_Sasayama_Hyogo_pref_Japan02s3.jpg) |
+
+## Text sources (T2 text-authenticity items)
+
+Human-written passages are genuine pre-generative-era human text:
+
+| Bank item | Work | Author | License | Source |
+|---|---|---|---|---|
+| text-authenticity · en · easy · human | *Three Men in a Boat* (1889), ch. 1 | Jerome K. Jerome | Public domain | [Project Gutenberg #308](https://www.gutenberg.org/ebooks/308) |
+| text-authenticity · en · medium · human | "Kettle", English Wikipedia, rev. 633946319 (2014-11-15) | Wikipedia contributors | CC BY-SA 3.0 | [oldid=633946319](https://en.wikipedia.org/w/index.php?oldid=633946319) |
+| text-authenticity · en · hard · human | "London congestion charge", English Wikipedia, rev. 638187193 (2014-12-15) | Wikipedia contributors | CC BY-SA 3.0 | [oldid=638187193](https://en.wikipedia.org/w/index.php?oldid=638187193) |
+| text-authenticity · ko · medium · human | "라면", Korean Wikipedia, rev. 13326844 (2014-12-21) | Wikipedia contributors | CC BY-SA 3.0 | [oldid=13326844](https://ko.wikipedia.org/w/index.php?oldid=13326844) |
+
+AI passages ("ai"-keyed text-authenticity items) are genuinely
+model-generated via OpenRouter (`openai/gpt-4o-mini`, 2026-08-21) using
+`instruments/2026.1/tracks/t2-discrimination/tools/gen-ai-passages.mjs`;
+each item's `provenance` records model, date, and the exact prompt.

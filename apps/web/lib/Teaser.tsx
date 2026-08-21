@@ -1,10 +1,20 @@
 "use client";
 
-/** Landing-page teaser: three real T2 items, playable in place. */
+/**
+ * Landing-page teaser: three REAL items from the committed instrument
+ * snapshot — a photo-pair member, an AI-vs-human passage, and a hostile
+ * message — so the demo is the real instrument, not separate toy content.
+ */
 
 import { useState } from "react";
 import Link from "next/link";
-import { TEASER_ITEMS } from "./demoItems";
+import { TEASER_ITEMS, type TeaserItem } from "./demoItems";
+
+const LABELS: Record<TeaserItem["kind"], { authentic: string; synthetic: string }> = {
+  media: { authentic: "Real photo", synthetic: "AI-generated" },
+  text: { authentic: "Human", synthetic: "AI" },
+  message: { authentic: "Legit", synthetic: "Hostile" },
+};
 
 export function Teaser() {
   const items = TEASER_ITEMS;
@@ -26,7 +36,7 @@ export function Teaser() {
       <div className="hero-play pop-in">
         <div className="eyebrow">round complete</div>
         <p style={{ fontSize: "1.3rem", margin: "0.2rem 0" }}>
-          <strong>{score} / {items.length}</strong> — {score === items.length ? "sharp. The real deck is 120 items with confidence scoring." : "in a 2,000-person study, 0.1% got everything right."}
+          <strong>{score} / {items.length}</strong> — {score === items.length ? "sharp. The full deck adds confidence scoring and timed exposure." : "these three come straight from the exam's item bank — the full deck adds confidence scoring and timed exposure."}
         </p>
         {last && <p className="muted small">{last.tell}</p>}
         <Link className="btn primary" href="/exam">Sit the full exam →</Link>
@@ -46,15 +56,16 @@ export function Teaser() {
         </p>
       )}
       <div className="swipe-card" key={item.id} style={{ marginTop: "0.6rem" }}>
-        {item.svg ? (
-          <div className="photo" dangerouslySetInnerHTML={{ __html: item.svg }} />
+        {item.imgSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="photo" src={item.imgSrc} alt={item.imgAlt ?? "photo"} style={{ width: "100%", borderRadius: 8, display: "block" }} />
         ) : (
           <blockquote style={{ margin: 0, fontSize: "0.92rem" }}><strong>{item.title}.</strong> {item.text}</blockquote>
         )}
       </div>
       <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.8rem" }}>
-        <button className="btn choice" onClick={() => answer("authentic")}>{item.kind === "media" ? "Real" : "Legit"}</button>
-        <button className="btn choice" onClick={() => answer("synthetic")}>{item.kind === "media" ? "Fake" : "Hostile"}</button>
+        <button className="btn choice" onClick={() => answer("authentic")}>{LABELS[item.kind].authentic}</button>
+        <button className="btn choice" onClick={() => answer("synthetic")}>{LABELS[item.kind].synthetic}</button>
       </div>
     </div>
   );
