@@ -271,8 +271,16 @@ export function demoCohort(seed: string, size: number): TrackRawScores[] {
       for (let k = 0; k < 12; k++) {
         s += seededUniform(`${seed}:${t}`, i * 12 + k);
       }
-      // Irwin-Hall(12): mean 6, sd 1. Centre ~58 raw pts, sd ~13, per-track offset.
-      const raw = 58 + [-4, 2, -1, 3][ti] + (s - 6) * 13;
+      // Irwin-Hall(12): mean 6, sd 1. Mixture of peers: every third one is a
+      // casual player (centre ~32, wider spread), the rest prepared (~58).
+      // Without the casual tail, real first runs fell below ALL 44 peers and
+      // the rank->probit transform pinned every report at the same floor
+      // (15.7) regardless of raw scores — observed live.
+      // three tiers: drop-ins (~15), casual (~34), prepared (~58)
+      const tier = i % 5 === 0 ? 0 : i % 3 === 0 ? 1 : 2;
+      const centre = [15, 34, 58][tier];
+      const spread = [10, 14, 12][tier];
+      const raw = centre + [-4, 2, -1, 3][ti] + (s - 6) * spread;
       row[t] = round1(clamp(raw, 0, 100));
     });
     out.push(row);

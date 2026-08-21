@@ -269,6 +269,15 @@ export default function ReportPage() {
                   : ""}
               </span>
               <div className="muted small">composite · mean 50 · SD 15 · P{pct}</div>
+              <div className="muted small">
+                raw {TRACK_IDS.reduce((a, t) => a + summary.trackRaw[t], 0).toFixed(1)} / 400
+              </div>
+              {summary.percentile <= 0.5 / summary.cohortSize + 1e-9 ? (
+                <div className="faint small" style={{ maxWidth: "34ch" }}>
+                  Floor of this demo cohort: every run below all {summary.cohortSize - 1} synthetic
+                  peers lands on the same standardized value. The raw points above still move.
+                </div>
+              ) : null}
               {showBand ? (
                 <div aria-hidden="true" className={`reveal-band pop-in band-${summary.band}`}>{summary.band}</div>
               ) : (
