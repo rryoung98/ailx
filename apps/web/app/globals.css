@@ -554,8 +554,8 @@ summary { cursor: pointer; }
   text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 .track-band-title {
-  margin: 0.6rem 0 0.35rem; font-size: clamp(1.25rem, 2.6vw, 1.7rem);
-  font-weight: 700; letter-spacing: -0.02em;
+  margin: 0.6rem 0 0.35rem; font-size: clamp(1.4rem, 2.8vw, 1.9rem);
+  font-family: var(--serif); font-weight: 520; letter-spacing: -0.01em;
 }
 .track-band-line { margin: 0; color: var(--muted); font-size: 1.02rem; max-width: 26rem; }
 .track-band.flip .track-band-line { margin-left: auto; }
