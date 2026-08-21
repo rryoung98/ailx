@@ -2,42 +2,47 @@ import type { Judgment } from "@ailx/core";
 import type { T3Config, T3Turn } from "../src/types.js";
 
 export const config: T3Config = {
-  title: "Grid interconnection queue reform",
+  title: "Trilateral AI workforce readiness memorandum",
   brief:
-    "Advise the state energy commissioner: should the interconnection queue move to a first-ready-first-served cluster study process in 2027? Take a position a regulator could act on.",
-  sourceTitle: "Docket 26-EL-041: Interconnection Queue Reform — Staff Technical Report",
+    "Advise the U.S. delegation lead: should the three governments adopt the shared AI-skills certification track in 2027? Take a position a negotiator could act on.",
+  sourceTitle: "US\u2013Japan\u2013Korea Trilateral AI Workforce Readiness Memorandum (2026) \u2014 Staff Review Draft",
   sourceExcerpt:
-    "Section 3.2: The median queue wait reached 38 months in 2025. Cluster studies reduced median study time by 41% in the two pilot regions. Section 4.1: Withdrawal penalties of $2/kW deterred speculative applications; withdrawal rates fell from 62% to 29%. Section 5.3: Small (<20 MW) community projects saw study costs rise 18% under clustering, a regressive effect staff recommend offsetting with a fee cap.",
+    "Prepared by the trilateral working group on AI workforce readiness (Washington \u00b7 Tokyo \u00b7 Seoul). Status: staff review draft \u2014 not yet adopted by any of the three governments.\n\nSection 2.1 \u2014 Scope. The memorandum covers public-sector AI reskilling programs in the United States, Japan, and the Republic of Korea, and a proposed shared AI-skills certification track to open in 2027.\n\nSection 3.2 \u2014 Certification backlog. The median wait for advanced AI-role certification reached 38 months in 2025 across the three countries. In the two pilot ministries that pooled their assessor panels, shared assessment cut median processing time by 41%.\n\nSection 4.1 \u2014 Withdrawal from training. A completion bond of $2 per enrolled training hour, refunded on completion, deterred speculative enrollment; program withdrawal rates fell from 62% to 29%.\n\nSection 5.3 \u2014 Small employers. Firms under 20 employees saw compliance and assessment costs rise 18% under the pooled model, a regressive effect the working group recommends offsetting with a fee cap. The fee cap is a staff recommendation; no adopted instrument mandates it.",
   plantedErrors: [
     {
       id: "pe-figure",
-      topic: "queue wait median",
-      claim: "The staff report puts the median queue wait at 61 months in 2025.",
+      topic: "certification backlog median wait",
+      claim: "The memorandum puts the median certification wait at 61 months in 2025.",
       truth: "Section 3.2 states the median wait was 38 months in 2025.",
     },
     {
       id: "pe-causal",
-      topic: "withdrawal penalties speculative",
-      claim: "Withdrawal rates fell mainly because interest rates rose, not because of the $2/kW penalty — the report concludes the penalty had no measurable effect.",
-      truth: "Section 4.1 attributes the fall from 62% to 29% to the penalty; the report draws no interest-rate conclusion.",
+      topic: "withdrawal completion bond speculative",
+      claim:
+        "Withdrawal rates fell mainly because labor markets tightened, not because of the $2 completion bond \u2014 the memorandum concludes the bond had no measurable effect.",
+      truth:
+        "Section 4.1 attributes the fall from 62% to 29% to the completion bond; the memorandum draws no labor-market conclusion.",
     },
     {
       id: "pe-citation",
-      topic: "FERC order 2023 compliance",
-      claim: "FERC Order 2023-B, issued March 2026, already mandates fee caps for community projects, so Section 5.3 is moot.",
-      truth: "No such order exists in the record; the fee cap is a staff recommendation, not a mandate.",
+      topic: "OECD annex 2023 compliance mandate",
+      claim:
+        "OECD Council Annex 2023-B, adopted March 2026, already mandates fee caps for small employers, so Section 5.3 is moot.",
+      truth: "No such annex exists in the record; the fee cap is a staff recommendation, not a mandate.",
     },
   ],
   correctAdvice: [
     {
       id: "ca-cluster",
-      topic: "cluster study time",
-      claim: "Cluster studies cut median study time by 41% in both pilot regions (Section 3.2) — strong evidence for the reform.",
+      topic: "shared assessment processing time",
+      claim:
+        "Pooled assessor panels cut median processing time by 41% in both pilot ministries (Section 3.2) \u2014 strong evidence for the shared track.",
     },
     {
       id: "ca-equity",
-      topic: "community projects fee",
-      claim: "Section 5.3 flags an 18% study-cost increase for sub-20 MW community projects; a fee cap offsets the regressive effect.",
+      topic: "small employers fee",
+      claim:
+        "Section 5.3 flags an 18% cost increase for firms under 20 employees; a fee cap offsets the regressive effect.",
     },
   ],
   minWords: 120,
@@ -58,17 +63,17 @@ export const turn = (t: Omit<T3Turn, "seq" | "clientTs">): T3Turn => ({
  * revises the draft through a 2-link chain, verifies the source twice.
  */
 export const goodTranscript: T3Turn[] = [
-  turn({ verb: "prompted", object: "prompt:1", text: "Summarise the median queue wait and cluster study time findings." }),
+  turn({ verb: "prompted", object: "prompt:1", text: "Summarise the median certification wait and shared assessment processing time findings." }),
   turn({ verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster", "pe-figure"] }),
   turn({ verb: "verified", object: "source" }),
   turn({ verb: "challenged", object: "claim:pe-figure" }),
   turn({ verb: "accepted", object: "claim:ca-cluster" }),
-  turn({ verb: "prompted", object: "prompt:2", text: "What about withdrawal penalties and speculative applications?" }),
+  turn({ verb: "prompted", object: "prompt:2", text: "What about the completion bond and speculative enrollment withdrawal?" }),
   turn({ verb: "assisted", object: "assist:2", text: "…", claimIds: ["pe-causal"] }),
   turn({ verb: "verified", object: "source" }),
   turn({ verb: "challenged", object: "claim:pe-causal" }),
   turn({ verb: "revised", object: "draft:rev-1", text: "First draft…" }),
-  turn({ verb: "prompted", object: "prompt:3", text: "Any FERC compliance angle on community projects fee caps?" }),
+  turn({ verb: "prompted", object: "prompt:3", text: "Any OECD annex compliance mandate on small employers fee caps?" }),
   turn({ verb: "assisted", object: "assist:3", text: "…", claimIds: ["ca-equity", "pe-citation"] }),
   turn({ verb: "verified", object: "source" }),
   turn({ verb: "challenged", object: "claim:pe-citation" }),
@@ -83,7 +88,7 @@ export const goodTranscript: T3Turn[] = [
  * (including planted errors), never verifies, never revises.
  */
 export const credulousTranscript: T3Turn[] = [
-  turn({ verb: "prompted", object: "prompt:1", text: "Write my analysis about the queue wait and withdrawal penalties and fee caps." }),
+  turn({ verb: "prompted", object: "prompt:1", text: "Write my analysis about the certification wait and the completion bond and fee caps." }),
   turn({ verb: "assisted", object: "assist:1", text: "…", claimIds: ["pe-figure", "pe-causal", "ca-cluster"] }),
   turn({ verb: "accepted", object: "claim:pe-figure" }),
   turn({ verb: "accepted", object: "claim:pe-causal" }),
@@ -97,10 +102,10 @@ export const overRejectTranscript: T3Turn[] = goodTranscript.map((t) =>
 );
 
 const para =
-  "The commissioner should adopt first-ready-first-served cluster studies in 2027, paired with the staff fee cap for sub-20 MW community projects. The pilot evidence is direct: cluster studies cut median study time by 41 percent, and the 2 dollar per kilowatt withdrawal penalty drove withdrawal rates from 62 to 29 percent, clearing speculative volume that inflated the 38 month median wait. ";
+  "The delegation should adopt the shared AI-skills certification track in 2027, paired with the staff fee cap for firms under 20 employees. The pilot evidence is direct: pooled assessor panels cut median processing time by 41 percent, and the 2 dollar per training hour completion bond drove withdrawal rates from 62 to 29 percent, clearing speculative enrollment that inflated the 38 month median wait. ";
 export const goodAnswer = (para + para + para).trim(); // ~180 words > minWords
 
-export const shortAnswer = "Adopt cluster studies."; // far under minWords
+export const shortAnswer = "Adopt shared track."; // far under minWords
 
 /**
  * Stored heterogeneous-jury judgments (three demo models, dimension

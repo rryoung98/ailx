@@ -66,16 +66,16 @@ function fixtureArtifact(trackId: TrackId): unknown {
     case "t3":
       return {
         transcript: [
-          { seq: 0, verb: "prompted", object: "prompt:1", text: "Summarise the staff report position.", clientTs: iso(T0) },
+          { seq: 0, verb: "prompted", object: "prompt:1", text: "Summarise the memorandum position.", clientTs: iso(T0) },
           { seq: 1, verb: "assisted", object: "assist:1", claimIds: ["pe-figure", "ca-cluster"], clientTs: iso(T0 + 1000) },
           { seq: 2, verb: "challenged", object: "claim:pe-figure", clientTs: iso(T0 + 2000) },
           { seq: 3, verb: "verified", object: "source", clientTs: iso(T0 + 3000) },
-          { seq: 4, verb: "prompted", object: "prompt:2", text: "What about community projects?", clientTs: iso(T0 + 4000) },
+          { seq: 4, verb: "prompted", object: "prompt:2", text: "What about small employers?", clientTs: iso(T0 + 4000) },
           { seq: 5, verb: "accepted", object: "claim:ca-cluster", clientTs: iso(T0 + 5000) },
         ],
         finalAnswer:
-          ("The commissioner should adopt the cluster study process with a small-project fee cap. " +
-            "The staff report's 41% study-time reduction and the fall in withdrawal rates justify the reform, " +
+          ("The delegation should adopt the shared certification track with a small-employer fee cap. " +
+            "The memorandum's 41% processing-time reduction and the fall in withdrawal rates justify the reform, " +
             "while Section 5.3's regressive cost effect is offset by the cap. ").repeat(3),
       };
     case "t4":

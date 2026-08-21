@@ -76,7 +76,7 @@ describe("export tiers (spec §16 shapes)", () => {
     // The fixture's artifacts contain these strings — none may survive.
     const json = JSON.stringify(x);
     expect(json).not.toContain("Avery Chen");                    // t1 html
-    expect(json).not.toContain("cluster study process");         // t3 finalAnswer
+    expect(json).not.toContain("shared certification track");    // t3 finalAnswer
     expect(json).not.toContain("warm dawn palette");             // t4 prompts
   });
 

@@ -232,27 +232,55 @@ export function t2AnswerKeys(locale: string = "en"): Record<string, number> {
  * hash pinned as T3_SCENARIO_SHA256 and asserted by tests.
  */
 export const T3_SCENARIO = {
-  title: "Grid interconnection queue reform",
+  title: "Trilateral AI workforce readiness memorandum",
   brief:
-    "Advise the state energy commissioner: should the interconnection queue move to a first-ready-first-served cluster study process in 2027? Take a position a regulator could act on.",
-  sourceTitle: "Docket 26-EL-041: Interconnection Queue Reform — Staff Technical Report",
+    "Advise the U.S. delegation lead: should the three governments adopt the shared AI-skills certification track in 2027? Take a position a negotiator could act on.",
+  sourceTitle: "US\u2013Japan\u2013Korea Trilateral AI Workforce Readiness Memorandum (2026) \u2014 Staff Review Draft",
   sourceExcerpt:
-    "Section 3.2: The median queue wait reached 38 months in 2025. Cluster studies reduced median study time by 41% in the two pilot regions. Section 4.1: Withdrawal penalties of $2/kW deterred speculative applications; withdrawal rates fell from 62% to 29%. Section 5.3: Small (<20 MW) community projects saw study costs rise 18% under clustering, a regressive effect staff recommend offsetting with a fee cap.",
+    "Prepared by the trilateral working group on AI workforce readiness (Washington \u00b7 Tokyo \u00b7 Seoul). Status: staff review draft \u2014 not yet adopted by any of the three governments.\n\nSection 2.1 \u2014 Scope. The memorandum covers public-sector AI reskilling programs in the United States, Japan, and the Republic of Korea, and a proposed shared AI-skills certification track to open in 2027.\n\nSection 3.2 \u2014 Certification backlog. The median wait for advanced AI-role certification reached 38 months in 2025 across the three countries. In the two pilot ministries that pooled their assessor panels, shared assessment cut median processing time by 41%.\n\nSection 4.1 \u2014 Withdrawal from training. A completion bond of $2 per enrolled training hour, refunded on completion, deterred speculative enrollment; program withdrawal rates fell from 62% to 29%.\n\nSection 5.3 \u2014 Small employers. Firms under 20 employees saw compliance and assessment costs rise 18% under the pooled model, a regressive effect the working group recommends offsetting with a fee cap. The fee cap is a staff recommendation; no adopted instrument mandates it.",
   plantedErrors: [
-    { id: "pe-figure", topic: "queue wait median", claim: "The staff report puts the median queue wait at 61 months in 2025.", truth: "Section 3.2 states the median wait was 38 months in 2025." },
-    { id: "pe-causal", topic: "withdrawal penalties speculative", claim: "Withdrawal rates fell mainly because interest rates rose, not because of the $2/kW penalty — the report concludes the penalty had no measurable effect.", truth: "Section 4.1 attributes the fall from 62% to 29% to the penalty; the report draws no interest-rate conclusion." },
-    { id: "pe-citation", topic: "FERC order 2023 compliance", claim: "FERC Order 2023-B, issued March 2026, already mandates fee caps for community projects, so Section 5.3 is moot.", truth: "No such order exists in the record; the fee cap is a staff recommendation, not a mandate." },
+    {
+      id: "pe-figure",
+      topic: "certification backlog median wait",
+      claim: "The memorandum puts the median certification wait at 61 months in 2025.",
+      truth: "Section 3.2 states the median wait was 38 months in 2025.",
+    },
+    {
+      id: "pe-causal",
+      topic: "withdrawal completion bond speculative",
+      claim:
+        "Withdrawal rates fell mainly because labor markets tightened, not because of the $2 completion bond \u2014 the memorandum concludes the bond had no measurable effect.",
+      truth:
+        "Section 4.1 attributes the fall from 62% to 29% to the completion bond; the memorandum draws no labor-market conclusion.",
+    },
+    {
+      id: "pe-citation",
+      topic: "OECD annex 2023 compliance mandate",
+      claim:
+        "OECD Council Annex 2023-B, adopted March 2026, already mandates fee caps for small employers, so Section 5.3 is moot.",
+      truth: "No such annex exists in the record; the fee cap is a staff recommendation, not a mandate.",
+    },
   ],
   correctAdvice: [
-    { id: "ca-cluster", topic: "cluster study time", claim: "Cluster studies cut median study time by 41% in both pilot regions (Section 3.2) — strong evidence for the reform." },
-    { id: "ca-equity", topic: "community projects fee", claim: "Section 5.3 flags an 18% study-cost increase for sub-20 MW community projects; a fee cap offsets the regressive effect." },
+    {
+      id: "ca-cluster",
+      topic: "shared assessment processing time",
+      claim:
+        "Pooled assessor panels cut median processing time by 41% in both pilot ministries (Section 3.2) \u2014 strong evidence for the shared track.",
+    },
+    {
+      id: "ca-equity",
+      topic: "small employers fee",
+      claim:
+        "Section 5.3 flags an 18% cost increase for firms under 20 employees; a fee cap offsets the regressive effect.",
+    },
   ],
   minWords: 120,
 };
 
 /** Pinned sha256(canonicalJson(T3_SCENARIO)) — asserted at test time. */
 export const T3_SCENARIO_SHA256 =
-  "38d7bdb42bae91e6377cfd586242e8db1e43ba194de0534ce3cfa90f46dff3dd";
+  "c2419a3cbf6f813f0999afece626f2c3570292d0cfb06239870993b01590c40e";
 
 /**
 

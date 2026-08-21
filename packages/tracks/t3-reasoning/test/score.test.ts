@@ -164,7 +164,7 @@ describe("T3 score()", () => {
           "revisionChainLength": 2,
           "rsr": 25,
           "verificationCount": 3,
-          "wordCount": 180,
+          "wordCount": 192,
         },
         "scaled": 88,
       }
@@ -191,7 +191,7 @@ describe("T3 score()", () => {
           "revisionChainLength": 0,
           "rsr": 0,
           "verificationCount": 0,
-          "wordCount": 180,
+          "wordCount": 192,
         },
         "scaled": 44.667,
       }
