@@ -642,3 +642,234 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
 
 /* Large rounded media panels for scenes/teaser. */
 .media-panel { border-radius: clamp(20px, 3.5vw, 40px); overflow: hidden; background: var(--bg-raised); }
+
+/* ---- scroll cinema: pinned scrubbed hero ------------------------------ */
+/* Baseline (no scroll-driven animations, or reduced motion): the wrapper
+   collapses to normal flow, phase A renders statically, phase B and the
+   parallax artifacts stay display:none. Zero pin, zero CLS. */
+.hero-cinema { position: relative; }
+.hero-stage { position: relative; }
+.hero-phase-b { display: none; }
+.hero-artifacts { display: none; }
+.hero-line { display: inline-block; }
+.track-bands-landing { margin-top: 4.5rem; }
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* The 240vh wrapper is the scrubber; the sticky 100vh stage is the
+       screen. All phases key off one named view-timeline; contain 0%..100%
+       spans exactly the pinned scroll distance. */
+    .hero-cinema { height: 240vh; view-timeline: --hero-scrub block; }
+    .hero-stage {
+      position: sticky; top: 0; height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column; justify-content: center;
+      transform-origin: 50% 80%;
+      animation: heroSettle linear both;
+      animation-timeline: --hero-scrub;
+      animation-range: contain 72% contain 100%;
+    }
+    .hero-phase-a { position: relative; }
+
+    /* Phase A -> B: headline lines lift out staggered; supporting copy fades. */
+    .hero-line {
+      animation: heroLineOut linear both;
+      animation-timeline: --hero-scrub;
+    }
+    .hero-line-1 { animation-range: contain 6% contain 24%; }
+    .hero-line-2 { animation-range: contain 11% contain 29%; }
+    .hero-fade {
+      display: block;
+      animation: heroFadeOut linear both;
+      animation-timeline: --hero-scrub;
+      animation-range: contain 8% contain 26%;
+    }
+    span.hero-fade { display: inline-block; }
+
+    /* Phase B: center-stage interstitial, in then out on the same timeline. */
+    .hero-phase-b {
+      display: grid; place-items: center; text-align: center;
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      animation: heroPhaseB linear both;
+      animation-timeline: --hero-scrub;
+      animation-range: contain 30% contain 70%;
+    }
+    .hero-phase-b-copy {
+      margin: 0; padding: 0 1.5rem;
+      font-family: var(--serif); font-weight: 480;
+      font-size: clamp(1.9rem, 1rem + 3.4vw, 3.1rem);
+      letter-spacing: -0.02em; line-height: 1.25; text-wrap: balance;
+    }
+    .hero-phase-b-line { display: block; }
+
+    /* Parallax paper artifacts: three layers, three scroll rates. */
+    .hero-artifacts {
+      display: block; position: absolute; inset: 0;
+      pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .hero-artifact {
+      position: absolute;
+      animation: linear both;
+      animation-timeline: --hero-scrub;
+      animation-range: contain 0% contain 100%;
+    }
+    .artifact-scrap {
+      width: clamp(90px, 11vw, 150px); height: auto;
+      right: 6%; top: 12%; opacity: 0.85;
+      animation-name: heroDriftSlow;
+      filter: drop-shadow(0 4px 10px rgba(26, 26, 26, 0.08));
+    }
+    .artifact-pencil {
+      width: clamp(150px, 20vw, 260px); height: auto;
+      left: 4%; bottom: 18%; opacity: 0.9;
+      animation-name: heroDriftMid;
+    }
+    .artifact-grid {
+      width: clamp(120px, 15vw, 200px); aspect-ratio: 1;
+      left: 55%; top: 6%; opacity: 0.5;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 20px 20px;
+      mask-image: radial-gradient(closest-side, #000 55%, transparent);
+      -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
+      animation-name: heroDriftFast;
+    }
+  }
+}
+
+@keyframes heroLineOut {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-2.2em); }
+}
+@keyframes heroFadeOut {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-1.4rem); }
+}
+@keyframes heroPhaseB {
+  0% { opacity: 0; transform: translateY(2.4rem); }
+  30% { opacity: 1; transform: none; }
+  72% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-1.8rem) scale(0.97); }
+}
+@keyframes heroSettle {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-5vh) scale(0.92); }
+}
+@keyframes heroDriftSlow {
+  from { transform: translateY(9vh) rotate(-4deg); }
+  to { transform: translateY(-13vh) rotate(3deg); }
+}
+@keyframes heroDriftMid {
+  from { transform: translateY(16vh) rotate(2deg); }
+  to { transform: translateY(-22vh) rotate(-2deg); }
+}
+@keyframes heroDriftFast {
+  from { transform: translateY(26vh); }
+  to { transform: translateY(-34vh); }
+}
+
+/* ---- scroll cinema: reveal stagger + self-drawing annotations --------- */
+/* Stagger hooks: native path shifts the view-timeline entry range by
+   --reveal-shift; the IO fallback delays its transition by --reveal-delay. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation-range: entry var(--reveal-shift, 0%) entry calc(42% + var(--reveal-shift, 0%));
+  }
+}
+@supports not (animation-timeline: view()) {
+  .reveal[data-reveal="shown"] { transition-delay: var(--reveal-delay, 0ms); }
+}
+/* Rule rows (and any .rule-stagger list) reveal row-by-row. */
+.rule-rows > li:nth-child(2), .rule-stagger > li:nth-child(2) { --reveal-shift: 5%; --reveal-delay: 90ms; }
+.rule-rows > li:nth-child(3), .rule-stagger > li:nth-child(3) { --reveal-shift: 10%; --reveal-delay: 180ms; }
+.rule-rows > li:nth-child(4), .rule-stagger > li:nth-child(4) { --reveal-shift: 15%; --reveal-delay: 270ms; }
+.rule-rows > li:nth-child(n + 5), .rule-stagger > li:nth-child(n + 5) { --reveal-shift: 20%; --reveal-delay: 360ms; }
+
+/* Self-drawing annotation: the arrow stroke scrubs 1 -> 0 as it enters the
+   viewport (paths carry pathLength="1"); the script text fades in after.
+   Baseline + reduced motion: fully drawn, fully visible. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .annotation svg path {
+      stroke-dasharray: 1; stroke-dashoffset: 1;
+      animation: annotationDraw linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 70%;
+    }
+    .annotation svg path + path { animation-range: entry 45% entry 85%; }
+    .annotation > span {
+      animation: annotationInk linear both;
+      animation-timeline: view();
+      animation-range: entry 35% entry 95%;
+    }
+  }
+}
+@keyframes annotationDraw { to { stroke-dashoffset: 0; } }
+@keyframes annotationInk { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .annotation svg path, .annotation > span { animation: none; stroke-dashoffset: 0; opacity: 1; }
+  .hero-line, .hero-fade, .hero-stage, .hero-artifact, .desk-panel { animation: none !important; }
+}
+
+/* ---- scroll cinema: expanding desk panel (Zero campus-render move) ---- */
+/* Base/fallback: static rounded panel at ~70% width, content in normal flow
+   below it. The AI-generated backdrop is decorative (alt="", aria-hidden;
+   disclosed in docs/CREDITS.md). width/height attrs on the img = zero CLS. */
+.desk-cinema { position: relative; margin-top: 4.5rem; }
+.desk-stage { display: grid; place-items: center; }
+.desk-panel { position: relative; width: min(70%, 980px); }
+.desk-panel img { display: block; width: 100%; height: auto; }
+.desk-scrim {
+  position: absolute; inset: 0; pointer-events: none;
+  /* Cream scrim keeps overlaid text readable at every scrub position:
+     the quote panel below adds rgba(247,244,242,0.92), which holds >= 13:1
+     for --fg even over a pure-black pixel (contrast test pins this). */
+  background: linear-gradient(
+    180deg,
+    rgba(247, 244, 242, 0.6),
+    rgba(247, 244, 242, 0.08) 38%,
+    rgba(247, 244, 242, 0.45) 100%
+  );
+}
+.desk-overlay { position: relative; z-index: 2; padding-block: 2.5rem; }
+.desk-quote-wrap { display: flex; justify-content: center; }
+.desk-quote {
+  margin: 0; width: fit-content; text-align: center;
+  font-family: var(--serif); font-weight: 480;
+  font-size: clamp(1.7rem, 1rem + 2.6vw, 2.6rem);
+  letter-spacing: -0.02em; line-height: 1.3; text-wrap: balance;
+  background: rgba(247, 244, 242, 0.92);
+  border-radius: 18px; padding: 1.4rem 2rem;
+  box-shadow: 0 12px 40px rgba(26, 26, 26, 0.1);
+}
+.desk-cards {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem; margin-top: 1.6rem;
+}
+.desk-card {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1rem 1.2rem;
+  box-shadow: 0 8px 28px rgba(26, 26, 26, 0.08);
+}
+.desk-card-code { color: var(--accent); font-weight: 700; }
+.desk-card-line { font-size: 0.95rem; line-height: 1.45; }
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .desk-cinema { view-timeline: --desk block; }
+    .desk-stage { position: sticky; top: 0; height: 100vh; overflow: clip; align-content: center; }
+    .desk-panel {
+      overflow: hidden;
+      animation: deskExpand linear both;
+      animation-timeline: --desk;
+      animation-range: entry 35% contain 30%;
+    }
+    /* Content floats over the pinned full-bleed image, Zero-style. */
+    .desk-overlay { margin-top: -62vh; padding-block: 0 14vh; }
+  }
+}
+@keyframes deskExpand {
+  from { width: min(70%, 980px); border-radius: clamp(20px, 3.5vw, 40px); }
+  to { width: 100%; border-radius: 0; }
+}
