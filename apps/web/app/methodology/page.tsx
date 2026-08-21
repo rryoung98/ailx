@@ -10,13 +10,13 @@ export default function Methodology() {
         <div className="eyebrow">AILX 2026.1 · Methodology</div>
         <h1>What is measured, how it is scored, and what is honestly not yet known</h1>
         <p className="lede">
-          The key elements of the instrument specification include the construct, the psychometric approach with a sample size of 45, judge governance, and the modularity rules that ensure every score remains reproducible indefinitely.
+          The key elements of the instrument specification are the construct, the psychometric approach with a sample size of 45, judge governance, and the modularity rules that ensure scores are reproducible indefinitely.
         </p>
 
         <section className="reveal">
         <h2 id="construct">Construct definition (§03)</h2>
         <p>
-          AILX defines <strong>applied AI literacy</strong> A person's ability to produce positive outcomes in an information environment saturated with generative systems can be defined precisely enough to be tested. This ability breaks down into four measurable capabilities, each representing a different track.
+          AILX defines <strong>applied AI literacy</strong> A person's ability to achieve positive outcomes in an environment filled with generative systems can be defined clearly enough to test. This ability consists of four measurable skills, each representing a different aspect.
         </p>
         <table>
           <thead><tr><th>Track</th><th>Capability</th><th>Failure it detects</th></tr></thead>
@@ -29,8 +29,8 @@ export default function Methodology() {
         </table>
         <p>
           Construct-validity levels are <em>declared</em>, per NIST AI 800-2, rather than
-          left to be inferred: T2 is a <strong>direct</strong> Measurement (where discrimination accuracy is the construct): T3 directly measures its planted error component and serves as a proxy for its rubric component. T1 and T4 are... <strong>proxy</strong> Claims that the quality of an artifact serves as a proxy for creative capability, using comparative human judgment as the criterion, not a model score. The composite measure includes this factor.
-          <strong> predictive — unvalidated</strong> There is no claim yet that it predicts real-world outcomes. Establishing this will require longitudinal follow-up as outlined in the roadmap for 2028.
+          left to be inferred: T2 is a <strong>direct</strong> Measurement (where discrimination accuracy is the construct): T3 directly measures its planted error component and acts as a proxy for its rubric component. T1 and T4 are... <strong>proxy</strong> The quality of an artifact is used as a proxy for creative capability, based on comparative human judgment rather than a model score. This factor is included in the composite measure.
+          <strong> predictive — unvalidated</strong> There is no claim yet that it predicts real-world outcomes. To establish this, longitudinal follow-up is required, as outlined in the roadmap for 2028.
         </p>
 
         </section>
@@ -38,14 +38,14 @@ export default function Methodology() {
         <section className="reveal">
         <h2 id="psychometrics">Psychometric honesty at n = 45 (§09)</h2>
         <blockquote>
-          <strong>The Year-1 posture, stated plainly.</strong> The 2026 cohort serves as a calibration and item-development group. Rasch analysis is used to rank item difficulty and eliminate misfitting items at ±1 logit. This approach is supported by n = 45. Person-ability logits are then determined. <em>not</em> 2PL and 3PL models are not being used. For the 2PL model, GLAT required a sample size of 355, while AICOS needed 514 for the 3PL model. Absolute cut scores and certification claims will be deferred until the combined sample size exceeds 250. In Year 1, reports include percentiles and bands instead of competence certifications.
+          <strong>The Year-1 posture, stated plainly.</strong> The 2026 cohort helps calibrate and develop test items. Rasch analysis ranks item difficulty and removes misfitting items at ±1 logit. This method is based on n = 45 participants. Person abilities are then calculated in logits. <em>not</em> The 2PL and 3PL models are not currently in use. For the 2PL model, GLAT requires a sample size of 355, whereas AICOS needs 514 for the 3PL model. Absolute cut scores and certification claims will be postponed until the combined sample size exceeds 250. In Year 1, reports will include percentiles and bands instead of competence certifications.
         </blockquote>
         <ul>
           <li>
-            <strong>The anchor-block move.</strong> An embedded block of published, externally normed items (AICOS-SV, 18 items, normed on n = 514 adults) takes about eight minutes of testing time. This provides a comparison against a real external norm group and creates the cross-form linkage needed to make Year 2 comparable to Year 1.
+            <strong>The anchor-block move.</strong> An embedded block of 18 published items from the AICOS-SV, normed on 514 adults, takes about eight minutes to complete. This allows for a comparison with a real external norm group and establishes the necessary cross-form linkage to ensure Year 2 is comparable to Year 1.
           </li>
           <li>
-            <strong>The composite forces a normal distribution</strong> Instead of relying on hope, use (rank → percentile → inverse-normal → mean 50, SD 15). At n = 45, an empirically normal raw distribution is unlikely. This is clearly stated in every export, and the raw-distribution shape is preserved separately in the data.
+            <strong>The composite forces a normal distribution</strong> Instead of relying on hope, use (rank → percentile → inverse-normal → mean 50, SD 15). With n = 45, an empirically normal raw distribution is unlikely. This is clearly stated in every export, and the raw-distribution shape is preserved separately in the data.
           </li>
           <li>
             <strong>Reliability is reported with the right statistics:</strong>{" "}
@@ -56,10 +56,10 @@ export default function Methodology() {
           </li>
           <li>
             <strong>Standard setting is Modified Angoff</strong> — 8–10 subject-matter
-            experts, two rounds — the only method defensible <em>without examinee data</em>The bookmark method is ruled out because it requires IRT parameters with n = 45, which cannot be produced. The contrasting groups method is also not viable due to bias towards the smaller group at this sample size.
+            experts, two rounds — the only method defensible <em>without examinee data</em>The bookmark method is not feasible because it requires IRT parameters with n = 45, which cannot be obtained. Additionally, the contrasting groups method is unreliable at this sample size due to bias toward the smaller group.
           </li>
           <li>
-            <strong>Cross-year comparability uses the AP model with ARC-AGI’s calibration discipline.</strong> Year 1 uses a quota-based norm reference, while a secure anchor block is established from the start. This allows Year 2 and beyond to be equated. The standard, set by Angoff, remains fixed, while the raw cut score adjusts. The annual tracking of the performance gap between public and secure assessments serves as contamination telemetry.
+            <strong>Cross-year comparability uses the AP model with ARC-AGI’s calibration discipline.</strong> In Year 1, a quota-based norm reference is used, and a secure anchor block is established from the start. This enables Year 2 and subsequent years to be equated. The standard, set by Angoff, stays fixed, while the raw cut score adjusts annually. The performance gap between public and secure assessments is tracked each year to serve as contamination telemetry.
           </li>
         </ul>
 
@@ -82,11 +82,11 @@ export default function Methodology() {
             <tr>
               <td><strong>Formatting / style</strong> — the largest single effect</td>
               <td className="muted">GPT-4 win rate for bold text: 89.5%; links 87.3%; lists 75.8%</td>
-              <td className="muted">The formatting-invariance ablation was published. T3 was judged based on both stripped and formatted renderings, with the differences reported.</td>
+              <td className="muted">The formatting-invariance ablation was published. T3 was evaluated using both stripped and formatted renderings, with the differences reported.</td>
             </tr>
             <tr>
               <td><strong>Position / order</strong></td>
-              <td className="muted">GPT-4 has a consistency rate of 65.0%, while Claude-v1 has a rate of 23.8%. This method works best when the candidates are similar in quality.</td>
+              <td className="muted">GPT-4 has a consistency rate of 65.0%, while Claude-v1 has a rate of 23.8%. This method performs best when the candidates are similar in quality.</td>
               <td className="muted">Randomised position within every pair; swap used only as part of a combined strategy</td>
             </tr>
             <tr>
@@ -104,14 +104,14 @@ export default function Methodology() {
         <p>The judging protocol, in order:</p>
         <ol>
           <li><strong>Lock</strong> — frozen rubric bundle; changing a prompt is a version bump, not a config tweak.</li>
-          <li><strong>Judge</strong> Combined mitigation for a heterogeneous three-family jury involves position swaps, chain-of-thought explanations before scoring, and a detailed rubric.</li>
+          <li><strong>Judge</strong> Combining mitigation for a heterogeneous three-family jury involves position swaps, chain-of-thought explanations before scoring, and a detailed rubric.</li>
           <li><strong>Anchor</strong> Every decision must cite verbatim, mechanically verified evidence. Unverifiable evidence invalidates the judgment.</li>
           <li><strong>Calibrate</strong> Distribution calibration on about 200 human-labelled examples improved the published essay-scoring QWK from around 0.5 to 0.71.</li>
           <li><strong>Correct</strong> The bias-corrected estimator θ̂ = (p̂ + q₀ − 1)/(q₀ + q₁ − 1) is never a raw judge score, and confidence intervals are propagated.</li>
-          <li><strong>Defer</strong> Route jury disagreements and low-confidence cases to humans based on a published trust curve. Include known-wrong items to verify reviewer engagement.</li>
+          <li><strong>Defer</strong> Route jury disagreements and low-confidence cases to humans using a published trust curve. Include known-wrong items to ensure reviewer engagement.</li>
         </ol>
         <p>
-          Two things are published <em>before</em> The exam includes an adversarial red-team assessment by our own judges, using a measured attack success rate. We also conduct a formatting-invariance ablation test, tracking the delta.
+          Two things are published <em>before</em> The exam includes an adversarial red-team assessment by our judges, using a measured attack success rate. We also conduct a formatting-invariance ablation test, tracking the changes.
         </p>
 
         </section>
@@ -131,10 +131,9 @@ export default function Methodology() {
           <li><strong>Locales live beside the item</strong>Translation provenance is recorded because the claim that scores can be compared across languages will be challenged.</li>
         </ul>
         <p>
-          <code>score()</code> being <strong>pure</strong> The lack of a network, clock, and randomness is the key constraint of the entire architecture. Model calls occur within pipeline stages, and their outputs are stored as inputs.
+          <code>score()</code> being <strong>pure</strong> The main constraint of the architecture is the lack of a network, clock, and randomness. Model calls happen within pipeline stages, and their outputs are stored as inputs.
           <code> score()</code> The system consumes stored judgments and returns a number. Purity is enforced in continuous integration by running tests. <code>score()</code> in a sandbox where{" "}
-          <code>fetch</code>, <code>Date.now</code> and <code>Math.random</code> Throw, with golden fixtures per track failing the build on any drift. Re-scores are inserts linked by <code>superseded_by</code>To ensure no history is lost, the stored model manifest allows us to prove which model version produced a 2026 certificate in 2029.
-        </p>
+          <code>fetch</code>, <code>Date.now</code> and <code>Math.random</code> Throw, with golden fixtures per track failing the build on any drift. Re-scores are inserts linked by <code>superseded_by</code>The stored model manifest ensures that no history is lost, allowing us to prove which model version produced a 2026 certificate in 2029.</p>
         <p className="faint small">
           This showcase build exercises the same contracts client-side: the purity
           harness, content-addressing and golden-fixture checks on the{" "}
