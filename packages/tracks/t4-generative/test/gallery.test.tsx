@@ -139,3 +139,16 @@ describe("T4 checkpoint submitted flag", () => {
     expect(decodeT4Checkpoint(JSON.parse(JSON.stringify(legacy)))?.submitted).toBe(false);
   });
 });
+
+describe("T4 gallery a11y", () => {
+  it("moves focus to the gallery heading on submit (focus management)", () => {
+    const c = mount(checkpoint, vi.fn());
+    act(() => buttons(c)["Submit final set + note"].click());
+    const heading = [...c.querySelectorAll("h2")].find((h) =>
+      (h.textContent ?? "").includes("Final set"),
+    );
+    expect(heading).toBeDefined();
+    expect(heading!.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(heading);
+  });
+});

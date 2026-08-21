@@ -76,11 +76,11 @@ function badgeStyle(side: "left" | "right", opacity: number): CSSProperties {
   } as CSSProperties;
 }
 
-function CardBody({ item, hideImage, slotRef }: { item: T2Item; hideImage: boolean; slotRef?: Ref<HTMLImageElement> }) {
+function CardBody({ item, hideImage, slotRef, lang }: { item: T2Item; hideImage: boolean; slotRef?: Ref<HTMLImageElement>; lang?: string }) {
   const image = isImageMaterial(item.material);
   return (
     <>
-      <p style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem" }}>{item.stem}</p>
+      <p lang={lang} style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem" }}>{item.stem}</p>
       {image ? (
         <img
           ref={slotRef}
@@ -99,6 +99,7 @@ function CardBody({ item, hideImage, slotRef }: { item: T2Item; hideImage: boole
         />
       ) : (
         <div
+          lang={lang}
           style={{
             flex: 1,
             minHeight: 0,
@@ -135,9 +136,11 @@ export interface SwipeDeckProps {
   deckHasImages?: boolean;
   /** Fired when the current top card's stimulus is actually visible. */
   onStimulusReady?: () => void;
+  /** BCP-47 language of localized ITEM content (stem/material/options). */
+  lang?: string;
 }
 
-export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady }: SwipeDeckProps) {
+export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang }: SwipeDeckProps) {
   const swipeable = item.options.length === 2;
   const [webgl, setWebgl] = useState(false);
   useEffect(() => {
@@ -293,7 +296,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             touchAction: swipeable ? "none" : "auto",
           }}
         >
-          <CardBody item={item} hideImage={Boolean(glImageUrl) && glReadyUrl === glImageUrl} slotRef={imgSlotRef} />
+          <CardBody item={item} hideImage={Boolean(glImageUrl) && glReadyUrl === glImageUrl} slotRef={imgSlotRef} lang={lang} />
         </div>
 
         {/* Verdict badges: own overlay ABOVE the WebGL layer, glued to the
@@ -323,8 +326,9 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
         )}
 
         {/* Persistent WebGL layer for the whole deck (image cards only). */}
+        {/* Decorative for AT: the DOM card carries the equivalent content. */}
         {useGL && (
-          <div style={{ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none" }}>
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 5, pointerEvents: "none" }}>
             <Suspense fallback={null}>
               <CardScene
                 imageUrl={glImageUrl}
@@ -355,6 +359,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
         >
           <span aria-hidden style={{ color: "var(--muted)", fontSize: "1.1rem" }}>←</span>
           <button
+            lang={lang}
             onClick={() => flingForChoice(0)}
             disabled={!enabled}
             style={legendBtn("#f87171")}
@@ -365,6 +370,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             swipe or ← / →
           </span>
           <button
+            lang={lang}
             onClick={() => flingForChoice(1)}
             disabled={!enabled}
             style={legendBtn("#4ade80")}
@@ -378,6 +384,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
           {item.options.map((opt, i) => (
             <button
               key={i}
+              lang={lang}
               onClick={() => onChoose(i)}
               disabled={!enabled}
               style={{

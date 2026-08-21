@@ -53,7 +53,7 @@ const vars: CSSProperties = {
   ["--bg" as string]: "#0b0d12",
   ["--fg" as string]: "#e6e9f0",
   ["--muted" as string]: "#8b93a7",
-  ["--accent" as string]: "#7c5cff",
+  ["--accent" as string]: "#6b46f2", /* AA: 5.55:1 under white button text (was #7c5cff at 4.35:1) */
   ["--card" as string]: "#121622",
   ["--border" as string]: "#232a3d",
 };

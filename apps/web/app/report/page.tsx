@@ -152,18 +152,26 @@ export default function ReportPage() {
   return (
     <main className="page">
       <div className="container" style={{ maxWidth: 820 }}>
+        <h1 className="sr-only">Diagnostic report</h1>
         <div className="share-card" style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
             <div>
               <div className="eyebrow">attempt {state.attemptId} · n = {summary.cohortSize}</div>
-              <div className="composite-number" style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              {/* The rAF count-up is decorative for AT: hide the animated
+                  number and expose the final value + band once, politely. */}
+              <div aria-hidden="true" className="composite-number" style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                 {counted.toFixed(1)}
               </div>
+              <span className="sr-only" role="status">
+                {showBand
+                  ? `Composite score ${summary.composite.toFixed(1)} out of 100. Band: ${summary.band}.`
+                  : ""}
+              </span>
               <div className="muted small">composite · mean 50 · SD 15 · P{pct}</div>
               {showBand ? (
-                <div className={`reveal-band pop-in band-${summary.band}`}>{summary.band}</div>
+                <div aria-hidden="true" className={`reveal-band pop-in band-${summary.band}`}>{summary.band}</div>
               ) : (
-                <div className="reveal-band" style={{ opacity: 0.15 }}>····</div>
+                <div aria-hidden="true" className="reveal-band" style={{ opacity: 0.15 }}>····</div>
               )}
             </div>
             <Radar values={summary.trackRaw} />

@@ -155,3 +155,24 @@ describe("T3 Runner reveal flow", () => {
     expect((onComplete.mock.calls[0][0] as { finalAnswer: string }).finalAnswer).toBe(workCheckpoint.draft);
   });
 });
+
+describe("T3 reveal a11y", () => {
+  it("moves focus to the reveal heading on submit (focus management)", () => {
+    const c = mount(workCheckpoint, vi.fn());
+    act(() => buttons(c)["Submit final"].click());
+    const heading = c.querySelector("h2");
+    expect(heading).not.toBeNull();
+    expect(heading!.textContent).toContain("planted errors");
+    expect(heading!.getAttribute("tabindex")).toBe("-1");
+    expect(document.activeElement).toBe(heading);
+  });
+
+  it("chat log is exposed as a labeled log landmark and inputs are labeled", () => {
+    const c = mount(workCheckpoint, vi.fn());
+    const log = c.querySelector('[role="log"]');
+    expect(log).not.toBeNull();
+    expect(log!.getAttribute("aria-label")).toBe("Assistant conversation");
+    expect(c.querySelector('input[aria-label="Prompt the assistant"]')).not.toBeNull();
+    expect(c.querySelector('textarea[aria-label="Your analysis draft"]')).not.toBeNull();
+  });
+});

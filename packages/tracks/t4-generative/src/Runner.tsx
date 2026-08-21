@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import { generateImage, simulateVideo, svgDataUrl, IMAGE_MODEL_ID, VIDEO_MODEL_ID } from "./imageModel.js";
@@ -11,7 +11,7 @@ const vars: CSSProperties = {
   ["--bg" as string]: "#0b0d12",
   ["--fg" as string]: "#e6e9f0",
   ["--muted" as string]: "#8b93a7",
-  ["--accent" as string]: "#7c5cff",
+  ["--accent" as string]: "#6b46f2", /* AA: 5.55:1 under white button text (was #7c5cff at 4.35:1) */
   ["--card" as string]: "#121622",
   ["--border" as string]: "#232a3d",
 };
@@ -89,6 +89,13 @@ export function Runner(props: TrackUIProps) {
   const completed = useRef(false);
   const latest = useRef<T4CheckpointState>({ drafts, finals, chosenSet, note, disclosed, submitted });
   latest.current = { drafts, finals, chosenSet, note, disclosed, submitted };
+  const galleryHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  // A11y: submit replaces the workspace with the finals gallery — move
+  // focus to its heading so keyboard/AT users land on the outcome.
+  useEffect(() => {
+    if (submitted) galleryHeadingRef.current?.focus();
+  }, [submitted]);
 
   const now = () => new Date().toISOString();
   const imagesLeft = cfg.finalImageQuota - finals.images.length;
@@ -225,7 +232,9 @@ export function Runner(props: TrackUIProps) {
         }}
       >
         <section style={panel} aria-label="Final set">
-          <h2 style={h2}>Final set · delivered to {cfg.audience}</h2>
+          <h2 ref={galleryHeadingRef} tabIndex={-1} style={{ ...h2, outline: "none" }}>
+            Final set · delivered to {cfg.audience}
+          </h2>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <span
               style={{

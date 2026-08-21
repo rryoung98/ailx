@@ -346,11 +346,16 @@ export default function ExamPage() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.6rem" }}>
           <div>
-            <div className="eyebrow">{meta.code} · {meta.name}</div>
+            <h1 className="eyebrow" style={{ margin: 0 }}>{meta.code} · {meta.name}</h1>
             <div className="faint small mono">plugin {meta.pluginId} · 100 pts</div>
           </div>
           <div style={{ display: "flex", gap: "0.9rem", alignItems: "center" }}>
-            <span className={`timer${remaining <= 60 ? " low" : ""}`}>{fmt(remaining)}</span>
+            {/* Screen-reader timer warning: announced once when the track
+                clock crosses the final minute (no per-second chatter). */}
+            <span className="sr-only" role="status">
+              {remaining <= 60 && remaining > 0 ? "Less than one minute remaining on the track clock." : ""}
+            </span>
+            <span className={`timer${remaining <= 60 ? " low" : ""}`} role="timer" aria-label={`Time remaining ${fmt(remaining)}`}>{fmt(remaining)}</span>
             {paused ? (
               <button className="btn" onClick={() => commit([{ type: "resumed", ts: stamp() }])}>Resume</button>
             ) : (
