@@ -83,4 +83,15 @@ describe("ConnectPanel", () => {
     expect(host.textContent).toContain("Connected — key stays in this browser");
     expect([...host.querySelectorAll("button")].map((b) => b.textContent)).not.toContain("Connect OpenRouter");
   });
+
+  it("shared demo connect sets the capped proxy base + marker token; disconnect clears both", () => {
+    mount();
+    click("Try the shared demo model");
+    expect(window.localStorage.getItem("ailx:llm-base-url")).toBe("https://ailx-shared-demo.vercel.app/api/v1");
+    expect(window.localStorage.getItem("ailx:openrouter-key")).toBe("shared-demo");
+    expect(host.textContent).toContain("Shared demo model");
+    click("Disconnect");
+    expect(window.localStorage.getItem("ailx:openrouter-key")).toBeNull();
+    expect(window.localStorage.getItem("ailx:llm-base-url")).toBeNull();
+  });
 });

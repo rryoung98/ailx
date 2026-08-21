@@ -36,6 +36,11 @@ function announceChange() {
   }
 }
 
+/** Capped proxy that fronts the operator's OpenRouter key (shared demo). */
+export const SHARED_DEMO_BASE_URL = "https://ailx-shared-demo.vercel.app/api/v1";
+/** Marker token — the proxy ignores auth; this just satisfies "connected". */
+export const SHARED_DEMO_TOKEN = "shared-demo";
+
 export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const [orKey, setOrKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -138,6 +143,14 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
 
   const connected = orKey.trim().length > 0;
   const customBase = baseUrl.trim().length > 0 && normalizeBaseUrl(baseUrl) !== DEFAULT_BASE_URL;
+  const sharedDemo = customBase && normalizeBaseUrl(baseUrl) === SHARED_DEMO_BASE_URL;
+
+  // Shared demo: the operator's OpenRouter key lives behind a capped proxy
+  // (model allowlist, per-IP rate limit, weekly budget). Nothing to paste.
+  const useSharedDemo = () => {
+    updateBaseUrl(SHARED_DEMO_BASE_URL);
+    updateKey(SHARED_DEMO_TOKEN);
+  };
 
   return (
     <section
@@ -154,8 +167,8 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
         </span>
         {connected ? (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--good)" }}>● Connected — key stays in this browser</span>
-            <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => updateKey("")}>
+            <span style={{ fontSize: 12, color: "var(--good)" }}>{sharedDemo ? "● Shared demo model — capped, no key needed" : "● Connected — key stays in this browser"}</span>
+            <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => { updateKey(""); if (sharedDemo) updateBaseUrl(""); }}>
               Disconnect
             </button>
           </span>
@@ -163,6 +176,9 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
             <button type="button" className="btn primary" style={{ padding: "6px 14px", fontSize: 13, opacity: ssoBusy ? 0.5 : 1 }} onClick={() => void connect()} disabled={ssoBusy}>
               {ssoBusy ? "Connecting…" : "Connect OpenRouter"}
+            </button>
+            <button type="button" className="btn" style={{ padding: "6px 10px", fontSize: 12 }} onClick={useSharedDemo}>
+              Try the shared demo model
             </button>
             <button type="button" className="btn" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setShowManual((s) => !s)}>
               {showManual ? "Hide manual setup" : "Manual setup"}
