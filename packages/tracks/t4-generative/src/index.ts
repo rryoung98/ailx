@@ -14,6 +14,9 @@ export {
   readPrompt,
   svgDataUrl,
   simulateVideo,
+  simulateVideoFromImage,
+  draftImageSrc,
+  finalImageSrc,
   IMAGE_MODEL_ID,
   VIDEO_MODEL_ID,
   COLOR_VOCAB,
@@ -21,5 +24,21 @@ export {
   COMPOSITION_VOCAB,
   MOOD_VOCAB,
 } from "./imageModel.js";
+export {
+  OPENROUTER_KEY_STORAGE,
+  LLM_BASE_URL_STORAGE,
+  DEFAULT_BASE_URL,
+  CURATED_IMAGE_MODELS,
+  buildImageRequest,
+  buildImageFetchInit,
+  parseImageResponse,
+  requestImage,
+  ImageGenError,
+  DRAFT_MAX_BYTES,
+  dataUriByteSize,
+  draftNeedsRecompress,
+  chooseDraftAsset,
+} from "./imagegen.js";
+export { recompressDataUri } from "./recompress.js";
 export { sha256Hex } from "./sha256.js";
 export * from "./types.js";

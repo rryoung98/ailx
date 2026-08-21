@@ -191,6 +191,14 @@ export function svgDataUrl(svg: string): string {
 
 export const VIDEO_MODEL_ID = "demo-video@1";
 
+const VIDEO_OVERLAY =
+  `<g><rect x="8" y="8" rx="4" width="132" height="24" fill="#000" opacity="0.55">` +
+  `<animate attributeName="opacity" values="0.55;0.25;0.55" dur="2s" repeatCount="indefinite"/>` +
+  `</rect>` +
+  `<text x="16" y="25" font-family="system-ui,sans-serif" font-size="14" fill="#fff">▶ VIDEO · simulated</text>` +
+  `<animateTransform attributeName="transform" type="translate" values="0 0; 4 0; 0 0" dur="6s" repeatCount="indefinite"/>` +
+  `</g>`;
+
 /**
  * DEMO video model — simulates the one-video final quota (spec §T4) as an
  * ANIMATED SVG derived from a draft render: a drifting pan plus a clearly
@@ -198,15 +206,33 @@ export const VIDEO_MODEL_ID = "demo-video@1";
  * animated markup out.
  */
 export function simulateVideo(draftSvg: string): string {
-  const overlay =
-    `<g><rect x="8" y="8" rx="4" width="132" height="24" fill="#000" opacity="0.55">` +
-    `<animate attributeName="opacity" values="0.55;0.25;0.55" dur="2s" repeatCount="indefinite"/>` +
-    `</rect>` +
-    `<text x="16" y="25" font-family="system-ui,sans-serif" font-size="14" fill="#fff">▶ VIDEO · simulated</text>` +
-    `<animateTransform attributeName="transform" type="translate" values="0 0; 4 0; 0 0" dur="6s" repeatCount="indefinite"/>` +
-    `</g>`;
   if (draftSvg.endsWith("</svg>")) {
-    return draftSvg.slice(0, -"</svg>".length) + overlay + "</svg>";
+    return draftSvg.slice(0, -"</svg>".length) + VIDEO_OVERLAY + "</svg>";
   }
-  return draftSvg + overlay;
+  return draftSvg + VIDEO_OVERLAY;
+}
+
+/**
+ * Simulated-video wrapper for a REAL model image: embed the raster data
+ * URI in an SVG and add the same labeled animated overlay. Pure.
+ */
+export function simulateVideoFromImage(dataUri: string): string {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">` +
+    `<image href="${dataUri}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>` +
+    VIDEO_OVERLAY +
+    `</svg>`
+  );
+}
+
+/** Displayable src for a draft: real dataUri, else the demo SVG. */
+export function draftImageSrc(d: { svg?: string; dataUri?: string }): string {
+  if (typeof d.dataUri === "string" && d.dataUri.length > 0) return d.dataUri;
+  return svgDataUrl(d.svg ?? "");
+}
+
+/** Displayable src for a final: real dataUri, else the SVG asset. */
+export function finalImageSrc(f: { asset?: string; dataUri?: string }): string {
+  if (typeof f.dataUri === "string" && f.dataUri.length > 0) return f.dataUri;
+  return svgDataUrl(f.asset ?? "");
 }

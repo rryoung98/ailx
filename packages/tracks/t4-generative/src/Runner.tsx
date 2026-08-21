@@ -2,7 +2,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
-import { generateImage, simulateVideo, svgDataUrl, IMAGE_MODEL_ID, VIDEO_MODEL_ID } from "./imageModel.js";
+import {
+  generateImage,
+  simulateVideo,
+  simulateVideoFromImage,
+  draftImageSrc,
+  finalImageSrc,
+  IMAGE_MODEL_ID,
+  VIDEO_MODEL_ID,
+} from "./imageModel.js";
+import {
+  OPENROUTER_KEY_STORAGE,
+  LLM_BASE_URL_STORAGE,
+  CURATED_IMAGE_MODELS,
+  buildImageRequest,
+  requestImage,
+  draftNeedsRecompress,
+  chooseDraftAsset,
+  DRAFT_MAX_BYTES,
+  ImageGenError,
+} from "./imagegen.js";
+import { recompressDataUri } from "./recompress.js";
 import { t4Plugin } from "./plugin.js";
 import { decodeT4Checkpoint, encodeT4Checkpoint, type T4CheckpointState } from "./checkpoint.js";
 import type { T4Draft, T4Final, T4Finals } from "./types.js";
@@ -86,6 +106,17 @@ export function Runner(props: TrackUIProps) {
   const [note, setNote] = useState(restored?.note ?? "");
   const [disclosed, setDisclosed] = useState(restored?.disclosed ?? false);
   const [submitted, setSubmitted] = useState(restored?.submitted ?? false);
+  // BYOK OpenRouter image generation — SAME key slot as T1's assist panel;
+  // the key lives only in the candidate's browser.
+  const [orKey, setOrKey] = useState("");
+  const [baseUrl, setBaseUrl] = useState<string | undefined>(undefined);
+  const [model, setModel] = useState<string>(CURATED_IMAGE_MODELS[0]);
+  const [customModel, setCustomModel] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+  // Full-resolution originals per draft index (session only, never stored
+  // in checkpoints — drafts persist a ≤200KB copy; finals promote these).
+  const fullRes = useRef<Map<number, string>>(new Map());
   const completed = useRef(false);
   const latest = useRef<T4CheckpointState>({ drafts, finals, chosenSet, note, disclosed, submitted });
   latest.current = { drafts, finals, chosenSet, note, disclosed, submitted };
@@ -97,6 +128,36 @@ export function Runner(props: TrackUIProps) {
     if (submitted) galleryHeadingRef.current?.focus();
   }, [submitted]);
 
+  // Load the shared BYOK key/base on mount (browser only — SSR safe).
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(OPENROUTER_KEY_STORAGE);
+      if (stored) setOrKey(stored);
+      const storedBase = window.localStorage.getItem(LLM_BASE_URL_STORAGE);
+      if (storedBase) setBaseUrl(storedBase);
+    } catch {
+      /* storage unavailable (private mode etc.) — demo mode stays on */
+    }
+  }, []);
+
+  const updateKey = (value: string) => {
+    setOrKey(value);
+    setGenError(null);
+    try {
+      // Same slot T1 writes — connecting here connects the whole exam.
+      if (value.trim().length > 0) {
+        window.localStorage.setItem(OPENROUTER_KEY_STORAGE, value.trim());
+      } else {
+        window.localStorage.removeItem(OPENROUTER_KEY_STORAGE);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  const hasKey = orKey.trim().length > 0;
+  const effectiveModel = customModel.trim() || model;
+
   const now = () => new Date().toISOString();
   const imagesLeft = cfg.finalImageQuota - finals.images.length;
   const videoLeft = cfg.finalVideoQuota - (finals.video ? 1 : 0);
@@ -105,36 +166,89 @@ export function Runner(props: TrackUIProps) {
     props.onCheckpoint?.(encodeT4Checkpoint({ ...latest.current, ...next }));
   };
 
-  const generateDraft = () => {
-    const p = prompt.trim();
-    if (!p || submitted) return;
-    const d: T4Draft = {
-      index: drafts.length,
-      prompt: p,
-      svg: generateImage(p),
-      clientTs: now(),
-    };
-    const nextDrafts = [...drafts, d];
+  /** Append a draft, log the generation with the ACTUAL model id, save. */
+  const commitDraft = (d: T4Draft) => {
+    const nextDrafts = [...latest.current.drafts, d];
     setDrafts(nextDrafts);
     props.onEvent({
       verb: d.index === 0 ? "prompted" : "regenerated",
       object: "t4/draft",
-      result: { index: d.index, modelId: IMAGE_MODEL_ID },
-      context: { prompt: p },
+      result: { index: d.index, modelId: d.modelId ?? IMAGE_MODEL_ID },
+      context: { prompt: d.prompt },
       clientTs: d.clientTs,
     });
     saveCheckpoint({ drafts: nextDrafts });
+  };
+
+  const generateDraft = async () => {
+    const p = prompt.trim();
+    if (!p || submitted || genBusy) return;
+    if (!hasKey) {
+      // No key → deterministic offline demo, labeled as such.
+      commitDraft({
+        index: latest.current.drafts.length,
+        prompt: p,
+        svg: generateImage(p),
+        modelId: IMAGE_MODEL_ID,
+        clientTs: now(),
+      });
+      return;
+    }
+    // Real OpenRouter image generation.
+    setGenBusy(true);
+    setGenError(null);
+    try {
+      const { dataUri, modelId } = await requestImage(
+        fetch,
+        orKey.trim(),
+        buildImageRequest(p, effectiveModel),
+        baseUrl,
+      );
+      // Drafts persist a downscaled ≤200KB copy; the full-res original is
+      // kept in memory for final promotion. If recompression fails we keep
+      // the original — never lose the image over a size optimization.
+      let stored = dataUri;
+      if (draftNeedsRecompress(dataUri)) {
+        const rec = await recompressDataUri(dataUri, DRAFT_MAX_BYTES);
+        stored = chooseDraftAsset(dataUri, rec);
+      }
+      const index = latest.current.drafts.length;
+      fullRes.current.set(index, dataUri);
+      commitDraft({ index, prompt: p, dataUri: stored, modelId, clientTs: now() });
+    } catch (e) {
+      setGenError(
+        e instanceof ImageGenError ? e.message : "Image generation failed.",
+      );
+    } finally {
+      setGenBusy(false);
+    }
   };
 
   const promote = (draft: T4Draft, kind: "image" | "video") => {
     if (submitted) return;
     if (kind === "image" && imagesLeft <= 0) return;
     if (kind === "video" && videoLeft <= 0) return;
+    // Finals promote the FULL-RESOLUTION real image when we still hold it
+    // (drafts persist a recompressed copy); demo drafts promote their SVG.
+    const real = draft.dataUri !== undefined;
+    const fullImage = real
+      ? fullRes.current.get(draft.index) ?? draft.dataUri ?? ""
+      : "";
     const f: T4Final = {
       kind,
       fromDraftIndex: draft.index,
       prompt: draft.prompt,
-      asset: kind === "video" ? simulateVideo(draft.svg) : draft.svg,
+      ...(real
+        ? kind === "video"
+          ? { asset: simulateVideoFromImage(fullImage) }
+          : { dataUri: fullImage }
+        : { asset: kind === "video" ? simulateVideo(draft.svg ?? "") : draft.svg ?? "" }),
+      modelId:
+        kind === "video"
+          ? real
+            ? `${VIDEO_MODEL_ID} (from ${draft.modelId ?? IMAGE_MODEL_ID})`
+            : VIDEO_MODEL_ID
+          : draft.modelId ?? IMAGE_MODEL_ID,
       clientTs: now(),
     };
     let nextFinals: T4Finals;
@@ -152,7 +266,7 @@ export function Runner(props: TrackUIProps) {
       object: `t4/final-${kind}`,
       result: {
         fromDraftIndex: draft.index,
-        modelId: kind === "video" ? VIDEO_MODEL_ID : IMAGE_MODEL_ID,
+        modelId: f.modelId,
         remainingAfter: kind === "image" ? imagesLeft - 1 : videoLeft - 1,
       },
       context: { prompt: draft.prompt },
@@ -265,7 +379,7 @@ export function Runner(props: TrackUIProps) {
             {chosenImages.map(({ f, i }) => (
               <figure key={i} style={{ margin: 0 }}>
                 <img
-                  src={svgDataUrl(f.asset)}
+                  src={finalImageSrc(f)}
                   alt={`Chosen final image ${i + 1}: ${f.prompt}`}
                   style={{ width: "100%", display: "block", borderRadius: 8, border: "2px solid var(--accent)" }}
                 />
@@ -277,7 +391,7 @@ export function Runner(props: TrackUIProps) {
             {finals.video && (
               <figure style={{ margin: 0 }}>
                 <img
-                  src={svgDataUrl(finals.video.asset)}
+                  src={finalImageSrc(finals.video)}
                   alt={`Final video (simulated): ${finals.video.prompt}`}
                   style={{ width: "100%", display: "block", borderRadius: 8, border: "2px solid var(--border)" }}
                 />
@@ -304,7 +418,7 @@ export function Runner(props: TrackUIProps) {
             {drafts.map((d) => (
               <img
                 key={d.index}
-                src={svgDataUrl(d.svg)}
+                src={draftImageSrc(d)}
                 alt={`Draft ${d.index + 1}: ${d.prompt}`}
                 title={d.prompt}
                 style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", flex: "0 0 auto" }}
@@ -355,12 +469,66 @@ export function Runner(props: TrackUIProps) {
         </section>
 
         <section style={panel} aria-label="Prompt">
-          <h2 style={h2}>Draft with the model · demo simulator · unlimited drafts</h2>
+          <h2 style={h2}>
+            Draft with the model · {hasKey ? effectiveModel : "demo simulator"} ·
+            unlimited drafts
+          </h2>
           <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-            Deterministic offline demo — same prompt, same image. Name colors,
-            objects and composition to steer it. Every draft is logged. Promote
-            your best drafts to consume the final quota.
+            {hasKey
+              ? "Real image generation (your OpenRouter key, your browser " +
+                "only). Every draft is logged with the model id; finals keep " +
+                "the full-resolution image."
+              : "Deterministic offline demo — same prompt, same image. Name " +
+                "colors, objects and composition to steer it. Every draft is " +
+                "logged. Paste an OpenRouter key for a real image model."}
           </p>
+          {hasKey ? (
+            <>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "#4ade80" }}>
+                  ● Connected — key stored only in this browser (shared with T1)
+                </span>
+                <button
+                  type="button"
+                  style={{ ...btn, background: "transparent", color: "var(--fg)", border: "1px solid var(--border)", padding: "4px 10px", fontSize: 12 }}
+                  onClick={() => updateKey("")}
+                >
+                  Disconnect
+                </button>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  aria-label="Image model"
+                  style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                >
+                  {CURATED_IMAGE_MODELS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  aria-label="Custom image model override"
+                  style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                  placeholder="custom model id (optional)"
+                />
+              </div>
+            </>
+          ) : (
+            <input
+              aria-label="OpenRouter API key"
+              type="password"
+              autoComplete="off"
+              style={{ ...mono, resize: "none" }}
+              value={orKey}
+              onChange={(e) => updateKey(e.target.value)}
+              placeholder="…paste an OpenRouter API key (same slot as T1 — stored only in this browser)"
+            />
+          )}
           <textarea
             aria-label="Image prompt"
             style={{ ...mono, minHeight: 72 }}
@@ -368,13 +536,18 @@ export function Runner(props: TrackUIProps) {
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="e.g. three boats on a storm wave under a gold star, centered"
           />
+          {genError && (
+            <p role="alert" style={{ margin: 0, color: "#f87171", fontSize: 13 }}>
+              {genError}
+            </p>
+          )}
           <button
             type="button"
-            style={{ ...btn, opacity: submitted ? 0.5 : 1 }}
-            onClick={generateDraft}
-            disabled={submitted}
+            style={{ ...btn, opacity: submitted || genBusy ? 0.5 : 1 }}
+            onClick={() => void generateDraft()}
+            disabled={submitted || genBusy}
           >
-            Generate draft (unlimited)
+            {genBusy ? "Generating…" : "Generate draft (unlimited)"}
           </button>
         </section>
 
@@ -451,7 +624,7 @@ export function Runner(props: TrackUIProps) {
                 }}
               >
                 <img
-                  src={svgDataUrl(f.asset)}
+                  src={finalImageSrc(f)}
                   alt={`Final image ${i + 1}: ${f.prompt}`}
                   style={{ width: "100%", display: "block", borderRadius: 4 }}
                 />
@@ -470,7 +643,7 @@ export function Runner(props: TrackUIProps) {
                 }}
               >
                 <img
-                  src={svgDataUrl(finals.video.asset)}
+                  src={finalImageSrc(finals.video)}
                   alt={`Final video (simulated): ${finals.video.prompt}`}
                   style={{ width: "100%", display: "block", borderRadius: 4 }}
                 />
@@ -508,7 +681,7 @@ export function Runner(props: TrackUIProps) {
                 }}
               >
                 <img
-                  src={svgDataUrl(d.svg)}
+                  src={draftImageSrc(d)}
                   alt={`Draft ${d.index + 1}: ${d.prompt}`}
                   style={{ width: "100%", display: "block", borderRadius: 4 }}
                 />

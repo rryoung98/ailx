@@ -93,13 +93,20 @@ export const t4Plugin: TrackPlugin<T4Config, T4Session, T4Artifact, T4Score> = {
       throw new Error("t4 artifact requires at least one draft");
     }
     const drafts: T4Draft[] = j.drafts.map((d, i) => {
-      if (!d || typeof d.prompt !== "string" || typeof d.svg !== "string") {
+      // A draft carries EITHER an svg (demo/legacy) OR a dataUri (real model).
+      if (
+        !d ||
+        typeof d.prompt !== "string" ||
+        (typeof d.svg !== "string" && typeof d.dataUri !== "string")
+      ) {
         throw new Error(`t4 draft ${i} malformed`);
       }
       return {
         index: i,
         prompt: d.prompt,
-        svg: d.svg,
+        ...(typeof d.svg === "string" ? { svg: d.svg } : {}),
+        ...(typeof d.dataUri === "string" ? { dataUri: d.dataUri } : {}),
+        ...(typeof d.modelId === "string" ? { modelId: d.modelId } : {}),
         clientTs: typeof d.clientTs === "string" ? d.clientTs : "",
       };
     });
@@ -110,7 +117,8 @@ export const t4Plugin: TrackPlugin<T4Config, T4Session, T4Artifact, T4Score> = {
         !v ||
         v.kind !== kind ||
         typeof v.prompt !== "string" ||
-        typeof v.asset !== "string" ||
+        // A final carries EITHER svg markup (asset) OR a real-model dataUri.
+        (typeof v.asset !== "string" && typeof v.dataUri !== "string") ||
         typeof v.fromDraftIndex !== "number" ||
         !Number.isInteger(v.fromDraftIndex) ||
         v.fromDraftIndex < 0 ||
@@ -122,7 +130,9 @@ export const t4Plugin: TrackPlugin<T4Config, T4Session, T4Artifact, T4Score> = {
         kind,
         fromDraftIndex: v.fromDraftIndex,
         prompt: v.prompt,
-        asset: v.asset,
+        ...(typeof v.asset === "string" ? { asset: v.asset } : {}),
+        ...(typeof v.dataUri === "string" ? { dataUri: v.dataUri } : {}),
+        ...(typeof v.modelId === "string" ? { modelId: v.modelId } : {}),
         clientTs: typeof v.clientTs === "string" ? v.clientTs : "",
       };
     };
