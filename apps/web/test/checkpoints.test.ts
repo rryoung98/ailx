@@ -60,3 +60,36 @@ describe("checkpoint store (F2)", () => {
     expect(() => saveCheckpoint(s, "att-1", "t1", { big: "x" })).not.toThrow();
   });
 });
+
+describe("checkpoint binding (audit: reject foreign-attempt payloads)", () => {
+  it("rejects a payload copied under another attempt's key", () => {
+    const s = memStorage();
+    saveCheckpoint(s, "att-1", "t2", { deckIndex: 3 });
+    // Simulate a multi-tab race / restore tool copying bytes across keys.
+    s.setItem(checkpointKey("att-2", "t2"), s.map.get(checkpointKey("att-1", "t2"))!);
+    expect(loadCheckpoint(s, "att-2", "t2")).toBeUndefined();
+    expect(loadCheckpoint(s, "att-1", "t2")).toEqual({ deckIndex: 3 });
+  });
+
+  it("rejects a payload copied under another TRACK's key", () => {
+    const s = memStorage();
+    saveCheckpoint(s, "att-1", "t2", { deckIndex: 3 });
+    s.setItem(checkpointKey("att-1", "t3"), s.map.get(checkpointKey("att-1", "t2"))!);
+    expect(loadCheckpoint(s, "att-1", "t3")).toBeUndefined();
+  });
+
+  it("rejects legacy v1 payloads without attempt/track binding (fail closed)", () => {
+    const s = memStorage();
+    s.setItem(checkpointKey("att-1", "t1"), JSON.stringify({ formatVersion: 1, state: { html: "<p>x</p>" } }));
+    expect(loadCheckpoint(s, "att-1", "t1")).toBeUndefined();
+  });
+
+  it("stored shape embeds the ids it was written for", () => {
+    const s = memStorage();
+    saveCheckpoint(s, "att-9", "t4", { drafts: [] });
+    const raw = JSON.parse(s.map.get(checkpointKey("att-9", "t4"))!);
+    expect(raw.formatVersion).toBe(2);
+    expect(raw.attemptId).toBe("att-9");
+    expect(raw.trackId).toBe("t4");
+  });
+});

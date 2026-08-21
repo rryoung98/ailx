@@ -85,3 +85,40 @@ describe("export tiers (spec §16 shapes)", () => {
       .toBe(JSON.stringify(researchExport(state, log, summary)));
   });
 });
+
+describe("audit hardening: eventCounts + per-track latency anchors", () => {
+  const log = scoredLog();
+  const state = project(log);
+  const summary = candidateComposite(state)!;
+  const x = researchExport(state, log, summary);
+
+  it("eventCounts tally EVERY persisted track_event, by verb, per track", () => {
+    expect(x.eventCounts).toHaveLength(4);
+    for (const ec of x.eventCounts) {
+      const expected = log.filter((e) => e.type === "track_event" && e.trackId === ec.trackId);
+      expect(ec.total).toBe(expected.length);
+      const verbSum = Object.values(ec.byVerb).reduce((a, b) => a + b, 0);
+      expect(verbSum).toBe(ec.total);
+    }
+    // Fixture sanity: T3 records 6 events incl. 1 challenged + 1 verified.
+    const t3 = x.eventCounts.find((e) => e.trackId === "t3")!;
+    expect(t3.total).toBe(6);
+    expect(t3.byVerb.challenged).toBe(1);
+    expect(t3.byVerb.verified).toBe(1);
+  });
+
+  it("statements latencyMs never spans a track boundary (per-track anchor)", () => {
+    const seenTracks = new Set<string>();
+    for (const s of x.statements) {
+      if (!seenTracks.has(s.trackId)) {
+        // First event of each track: no previous same-track anchor.
+        expect(s.latencyMs).toBeNull();
+        seenTracks.add(s.trackId);
+      } else {
+        // Fixture emits same-track events exactly 30 s apart.
+        expect(s.latencyMs).toBe(30_000);
+      }
+    }
+    expect(seenTracks.size).toBe(4);
+  });
+});

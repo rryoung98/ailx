@@ -7,6 +7,13 @@
  * The exam page saves every onCheckpoint(state) here, rehydrates the
  * Runner from it on mount/reload, and — on timeout — scores the partial
  * artifact derived from the LAST checkpoint (see registry.checkpointToArtifact).
+ *
+ * Audit hardening: the stored shape (v2) embeds the attemptId and trackId it
+ * was written for, and loadCheckpoint verifies BOTH against the requested
+ * key. A payload copied under the wrong key (multi-tab races, manual edits,
+ * restore tooling) is rejected instead of silently rehydrating another
+ * attempt's work. Legacy v1 payloads (no binding) are also rejected —
+ * fail closed: an absent checkpoint scores as a legitimate missing response.
  */
 import type { StorageLike, TrackId } from "@ailx/session";
 import { TRACK_IDS } from "@ailx/session";
@@ -16,7 +23,11 @@ export function checkpointKey(attemptId: string, trackId: TrackId): string {
 }
 
 interface CheckpointShape {
-  formatVersion: 1;
+  formatVersion: 2;
+  /** Attempt this checkpoint belongs to — verified on load. */
+  attemptId: string;
+  /** Track this checkpoint belongs to — verified on load. */
+  trackId: TrackId;
   state: unknown;
 }
 
@@ -26,7 +37,7 @@ export function saveCheckpoint(
   trackId: TrackId,
   state: unknown,
 ): void {
-  const shape: CheckpointShape = { formatVersion: 1, state };
+  const shape: CheckpointShape = { formatVersion: 2, attemptId, trackId, state };
   try {
     storage.setItem(checkpointKey(attemptId, trackId), JSON.stringify(shape));
   } catch {
@@ -47,13 +58,16 @@ export function loadCheckpoint(
   } catch {
     return undefined;
   }
+  if (typeof parsed !== "object" || parsed === null) return undefined;
+  const shape = parsed as Partial<CheckpointShape>;
   if (
-    typeof parsed !== "object" || parsed === null ||
-    (parsed as CheckpointShape).formatVersion !== 1
+    shape.formatVersion !== 2 ||
+    shape.attemptId !== attemptId ||
+    shape.trackId !== trackId
   ) {
     return undefined;
   }
-  return (parsed as CheckpointShape).state;
+  return shape.state;
 }
 
 export function clearCheckpoint(

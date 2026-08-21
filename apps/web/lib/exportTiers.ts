@@ -9,7 +9,7 @@
  *  - RESEARCH tier: built from an explicit ALLOWLIST schema
  *    (ailx.research.v2). It carries scores, subscores, rubric/scoring
  *    digests, judgment rows, event VERBS + timings (no free-text payloads),
- *    and T2 item ids + responses. It never copies raw artifacts, HTML,
+ *    per-track eventCounts (audit tallies), and T2 item ids + responses. It never copies raw artifacts, HTML,
  *    transcripts, notes, or arbitrary event result/context fields (F15).
  */
 
@@ -129,16 +129,37 @@ export function researchExport(state: SessionState, log: readonly SequencedEntry
       scoringDigest: state.tracks[t].scoringDigest ?? null,
       modelManifest: state.tracks[t].modelManifest ?? null,
     })),
-    /** Event VERBS + timings only — objects, results, context are dropped. */
-    statements: log
-      .filter((e) => e.type === "track_event")
-      .map((e, i, arr) => ({
-        seq: e.seq,
-        trackId: e.type === "track_event" ? e.trackId : undefined,
-        verb: e.type === "track_event" ? e.event.verb : undefined,
-        tRelMs: e.ts - t0,
-        latencyMs: i > 0 ? e.ts - arr[i - 1].ts : null,
-      })),
+    /** Event VERBS + timings only — objects, results, context are dropped.
+     * latencyMs is anchored WITHIN the track: ms since the previous event of
+     * the SAME track (null for a track's first event) — never a gap that
+     * spans a track boundary or the between-tracks screen. */
+    statements: (() => {
+      const lastTsByTrack = new Map<string, number>();
+      return log
+        .filter((e): e is Extract<SequencedEntry, { type: "track_event" }> => e.type === "track_event")
+        .map((e) => {
+          const prev = lastTsByTrack.get(e.trackId);
+          lastTsByTrack.set(e.trackId, e.ts);
+          return {
+            seq: e.seq,
+            trackId: e.trackId,
+            verb: e.event.verb,
+            tRelMs: e.ts - t0,
+            latencyMs: prev !== undefined ? e.ts - prev : null,
+          };
+        });
+    })(),
+    /** Per-track audit tallies: how many runner events were persisted, by
+     * verb — lets researchers verify no emission was silently dropped. */
+    eventCounts: TRACK_IDS.map((t) => {
+      const evs = log.filter(
+        (e): e is Extract<SequencedEntry, { type: "track_event" }> =>
+          e.type === "track_event" && e.trackId === t,
+      );
+      const byVerb: Record<string, number> = {};
+      for (const e of evs) byVerb[e.event.verb] = (byVerb[e.event.verb] ?? 0) + 1;
+      return { trackId: t, total: evs.length, byVerb };
+    }),
     /** Session milestones: entry types + relative timings, no payloads. */
     timeline: log.map((e) => ({
       seq: e.seq,

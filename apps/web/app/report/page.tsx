@@ -248,6 +248,59 @@ export default function ReportPage() {
           ))}
         </div>
 
+        <h2>Event log</h2>
+        <p className="faint small" style={{ marginTop: "-0.4rem" }}>
+          The verbatim audit trail — every persisted runner event, exactly as logged
+          (seq · verb · object · timing). Read-only: this is what scoring and the
+          exports are computed from.
+        </p>
+        {TRACK_IDS.map((t) => {
+          const startTs = log.find((e) => e.type === "track_started" && e.trackId === t)?.ts;
+          const evs = log.filter(
+            (e): e is Extract<SequencedEntry, { type: "track_event" }> =>
+              e.type === "track_event" && e.trackId === t,
+          );
+          return (
+            <details className="card small" key={t} style={{ marginBottom: "0.6rem", padding: "0.7rem 1rem" }}>
+              <summary className="mono faint" style={{ cursor: "pointer" }}>
+                {TRACK_META[t].code} · {TRACK_META[t].name} — {evs.length} event{evs.length === 1 ? "" : "s"} logged
+              </summary>
+              {evs.length === 0 ? (
+                <p className="faint small" style={{ margin: "0.5rem 0 0" }}>No events persisted for this track.</p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="small mono" style={{ marginTop: "0.5rem", borderCollapse: "collapse", width: "100%" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "right", paddingRight: "1rem" }}>seq</th>
+                        <th style={{ textAlign: "left", paddingRight: "1rem" }}>verb</th>
+                        <th style={{ textAlign: "left", paddingRight: "1rem" }}>object</th>
+                        <th style={{ textAlign: "right", paddingRight: "1rem" }}>t+ (s)</th>
+                        <th style={{ textAlign: "right" }}>Δprev (s)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {evs.map((e, i) => (
+                        <tr key={e.seq}>
+                          <td style={{ textAlign: "right", paddingRight: "1rem" }}>{e.seq}</td>
+                          <td style={{ paddingRight: "1rem" }}>{e.event.verb}</td>
+                          <td style={{ paddingRight: "1rem", maxWidth: "18rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.event.object}</td>
+                          <td style={{ textAlign: "right", paddingRight: "1rem" }}>
+                            {startTs !== undefined ? ((e.ts - startTs) / 1000).toFixed(1) : "—"}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            {i > 0 ? `+${((e.ts - evs[i - 1].ts) / 1000).toFixed(1)}` : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </details>
+          );
+        })}
+
         <h2>Take it with you</h2>
         <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
           <button className="btn primary" onClick={() => download(`ailx-individual-${state.attemptId}.json`, participantExport(state, summary))}>
