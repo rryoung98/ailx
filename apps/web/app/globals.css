@@ -659,14 +659,14 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
     /* The 240vh wrapper is the scrubber; the sticky 100vh stage is the
        screen. All phases key off one named view-timeline; contain 0%..100%
        spans exactly the pinned scroll distance. */
-    .hero-cinema { height: 240vh; view-timeline: --hero-scrub block; }
+    .hero-cinema { height: 185vh; view-timeline: --hero-scrub block; }
     .hero-stage {
       position: sticky; top: 0; height: 100vh; overflow: hidden;
       display: flex; flex-direction: column; justify-content: center;
       transform-origin: 50% 80%;
       animation: heroSettle linear both;
       animation-timeline: --hero-scrub;
-      animation-range: contain 72% contain 100%;
+      animation-range: contain 80% contain 100%;
     }
     .hero-phase-a { position: relative; }
 
@@ -691,7 +691,7 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
       position: absolute; inset: 0; z-index: 2; pointer-events: none;
       animation: heroPhaseB linear both;
       animation-timeline: --hero-scrub;
-      animation-range: contain 30% contain 70%;
+      animation-range: contain 26% contain 82%;
     }
     .hero-phase-b-copy {
       margin: 0; padding: 0 1.5rem;
@@ -815,7 +815,7 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
 /* Base/fallback: static rounded panel at ~70% width, content in normal flow
    below it. The AI-generated backdrop is decorative (alt="", aria-hidden;
    disclosed in docs/CREDITS.md). width/height attrs on the img = zero CLS. */
-.desk-cinema { position: relative; margin-top: 4.5rem; }
+.desk-cinema { position: relative; margin-top: 1.5rem; }
 .desk-stage { display: grid; place-items: center; }
 .desk-panel { position: relative; width: min(70%, 980px); }
 .desk-panel img { display: block; width: 100%; height: auto; }
@@ -863,7 +863,7 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
       overflow: hidden;
       animation: deskExpand linear both;
       animation-timeline: --desk;
-      animation-range: entry 35% contain 30%;
+      animation-range: entry 5% contain 26%;
     }
     /* Content floats over the pinned full-bleed image, Zero-style. */
     .desk-overlay { margin-top: -62vh; padding-block: 0 14vh; }
