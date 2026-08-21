@@ -24,6 +24,7 @@ export function LocaleSwitcher() {
         <button
           key={l}
           type="button"
+          lang={l}
           aria-pressed={locale === l}
           onClick={() => setLocale(l)}
           style={{

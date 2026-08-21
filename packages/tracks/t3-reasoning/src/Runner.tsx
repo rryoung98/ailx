@@ -8,7 +8,7 @@
  * full transcript + final answer. Reveal after submission: "you caught
  * X of Y".
  */
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import { assistantReply, DEMO_ASSISTANT_ID } from "./assistant.js";
@@ -26,7 +26,8 @@ const card: CSSProperties = {
   padding: "1rem",
 };
 const btn: CSSProperties = {
-  background: "var(--accent)", color: "#fff", border: "none",
+  // AA contrast: dark ink on the app accent (#5b8cff) = 6.04:1 (white = 3.16:1).
+  background: "var(--accent)", color: "#0a0f1e", border: "none",
   borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer", fontSize: "0.95rem",
 };
 const ghost: CSSProperties = {
@@ -53,6 +54,13 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   const draftRev = useRef(restored?.draftRev ?? 0);
   const regenNonce = useRef(0);
   const completed = useRef(false);
+  const revealHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  // A11y: on submit the whole view is replaced by the reveal — move focus
+  // to its heading so keyboard/AT users land on the outcome, not a void.
+  useEffect(() => {
+    if (phase === "reveal") revealHeadingRef.current?.focus();
+  }, [phase]);
 
   // Latest values for checkpointing from inside handlers (state setters
   // have not committed yet when handlers run).
@@ -271,7 +279,11 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
               : {}),
           }}
         >
-          <h2 style={{ marginTop: 0, ...(summary.perfect ? { color: "#4ade80" } : {}) }}>
+          <h2
+            ref={revealHeadingRef}
+            tabIndex={-1}
+            style={{ marginTop: 0, outline: "none", ...(summary.perfect ? { color: "#4ade80" } : {}) }}
+          >
             {summary.perfect ? "🎉 " : ""}You caught {summary.caught} of {summary.total} planted errors
           </h2>
           {summary.perfect && (
@@ -311,7 +323,7 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
       <div style={{ display: "grid", gap: "0.8rem", alignContent: "start" }}>
-        <div style={{ ...card, maxHeight: 380, overflowY: "auto" }}>
+        <div role="log" aria-label="Assistant conversation" style={{ ...card, maxHeight: 380, overflowY: "auto" }}>
           <div style={{ color: "var(--muted)", fontSize: "0.8rem", marginBottom: "0.5rem" }}>
             Assistant · {DEMO_ASSISTANT_ID} · {Math.max(0, Math.floor(secondsRemaining / 60))}m left
           </div>
@@ -329,6 +341,7 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <input
+            aria-label="Prompt the assistant"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
@@ -378,6 +391,7 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
             </span>
           </div>
           <textarea
+            aria-label="Your analysis draft"
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);

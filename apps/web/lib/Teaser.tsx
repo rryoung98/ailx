@@ -51,7 +51,7 @@ export function Teaser() {
         <span className="faint small mono">{idx + 1} / {items.length}</span>
       </div>
       {last && (
-        <p className={`small fade-in`} style={{ color: last.correct ? "var(--good)" : "var(--bad)", margin: "0.4rem 0" }}>
+        <p role="status" className={`small fade-in`} style={{ color: last.correct ? "var(--good)" : "var(--bad)", margin: "0.4rem 0" }}>
           {last.correct ? "✓ caught it. " : "✗ missed. "}<span className="muted">{last.tell}</span>
         </p>
       )}

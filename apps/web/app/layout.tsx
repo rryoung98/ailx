@@ -13,10 +13,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <a href="#main" className="skip-link">Skip to main content</a>
         <header className="site-header">
           <div className="inner">
             <Link href="/" className="wordmark">AIL<span>X</span></Link>
-            <nav className="site-nav">
+            <nav className="site-nav" aria-label="Primary">
               <Link href="/methodology">Methodology</Link>
               <Link href="/exam">Sit the exam</Link>
               <Link href="/report">Report</Link>
@@ -25,7 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </nav>
           </div>
         </header>
-        {children}
+        {/* Skip-link target: every page renders its own <main> landmark
+            inside this focusable wrapper. */}
+        <div id="main" tabIndex={-1} style={{ outline: "none" }}>
+          {children}
+        </div>
         <footer className="site-footer">
           <div className="container">
             <p>

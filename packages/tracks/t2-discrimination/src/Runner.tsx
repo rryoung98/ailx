@@ -23,7 +23,9 @@ const card: CSSProperties = {
 
 const btn: CSSProperties = {
   background: "var(--accent)",
-  color: "#fff",
+  // AA contrast: the app accent (#5b8cff) yields 3.16:1 with white text but
+  // 6.04:1 with this dark ink (matches the app's .btn.primary).
+  color: "#0a0f1e",
   border: "none",
   borderRadius: 8,
   padding: "0.6rem 1.2rem",
@@ -38,7 +40,21 @@ const ghostBtn: CSSProperties = {
   border: "1px solid var(--border)",
 };
 
-function Material({ item }: { item: T2Item }) {
+/** Visually hidden, exposed to assistive technology (self-contained —
+ *  the package must not depend on an app stylesheet). */
+const srOnly: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+function Material({ item, lang }: { item: T2Item; lang?: string }) {
   if (item.material.startsWith("data:image/") || /^(https?:)?\/[^\s]+\.(jpe?g|png|webp|gif)$/i.test(item.material)) {
     return (
       <img
@@ -50,6 +66,7 @@ function Material({ item }: { item: T2Item }) {
   }
   return (
     <div
+      lang={lang}
       style={{
         whiteSpace: "pre-wrap",
         fontFamily: item.type.startsWith("message") ? "ui-monospace, monospace" : "inherit",
@@ -106,6 +123,9 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   }, [choice]);
 
   const item = cfg.items[idx];
+  // Localized ITEM content (stems, materials, options, rationales) is
+  // marked with its language; UI chrome stays English (html lang="en").
+  const contentLang = locale === "en" ? undefined : locale;
   const deckHasImages = useMemo(
     () => cfg.items.some((i) => isImageMaterial(i.material)),
     [cfg.items],
@@ -236,11 +256,23 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     const sheetOpen = choice !== null;
     return (
       <div style={{ maxWidth: 560, margin: "0 auto", display: "grid", gap: "0.8rem" }}>
+        {/* Announce each item change (number + stem) politely; the visual
+            deck itself is gesture-driven and not reliably readable mid-swipe. */}
+        <p style={srOnly} aria-live="polite" data-testid="deck-live-region">
+          Item {idx + 1} of {cfg.items.length}.{" "}
+          <span lang={contentLang}>{item.stem}</span>
+          {untimed ? "" : ` Timed exposure: ${exposure} seconds.`}
+        </p>
+        <p style={srOnly}>
+          Use the two labeled answer buttons below the card — they are the
+          primary path and record the same response. Swiping the card or
+          pressing the left and right arrow keys are equivalent alternatives.
+        </p>
         <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
           <span>
             Item {idx + 1} / {cfg.items.length} · {item.type}
           </span>
-          <span aria-live="polite">
+          <span>
             {untimed ? "untimed" : `${Math.max(0, secondsLeft ?? exposure)}s`}
           </span>
         </div>
@@ -248,6 +280,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           item={item}
           nextItems={cfg.items.slice(idx + 1, idx + 3)}
           deckHasImages={deckHasImages}
+          lang={contentLang}
           enabled={!sheetOpen}
           onChoose={(i) => {
             if (choice !== null) return;
@@ -270,7 +303,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           }}
         >
           <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>
-            Your call: {choice !== null ? item.options[choice] : "—"}
+            Your call: <span lang={contentLang}>{choice !== null ? item.options[choice] : "—"}</span>
           </p>
           <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
             How sure? {confidence}
@@ -279,6 +312,8 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
               min={0}
               max={100}
               value={confidence}
+              aria-label={`Confidence: ${confidence} out of 100`}
+              aria-valuetext={`${confidence} out of 100`}
               onChange={(e) => setConfidence(Number(e.target.value))}
               style={{ width: "100%", accentColor: "var(--accent)" }}
             />
@@ -301,26 +336,33 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     const correct = resp?.choice === rItem.key;
     return (
       <div style={{ maxWidth: 720, margin: "0 auto", display: "grid", gap: "1rem" }}>
+        {/* Announce each reveal outcome politely as the replay advances. */}
+        <p style={srOnly} aria-live="polite" data-testid="replay-live-region">
+          Replay item {replayIdx + 1} of {cfg.items.length}.{" "}
+          {resp && resp.choice >= 0
+            ? `Your call was ${correct ? "correct" : "incorrect"}.`
+            : "No response was recorded for this item."}
+        </p>
         <div style={{ color: "var(--muted)" }}>
           Replay {replayIdx + 1} / {cfg.items.length} — how each call should be reasoned
         </div>
         <div style={card}>
-          <p style={{ marginTop: 0, fontWeight: 600 }}>{rItem.stem}</p>
-          <Material item={rItem} />
+          <p lang={contentLang} style={{ marginTop: 0, fontWeight: 600 }}>{rItem.stem}</p>
+          <Material item={rItem} lang={contentLang} />
           <p style={{ color: correct ? "#4ade80" : "#f87171", marginBottom: "0.3rem" }}>
             {resp && resp.choice >= 0
               ? `Your call: ${rItem.options[resp.choice]} (${resp.confidence} sure) — ${correct ? "correct" : "incorrect"}`
               : "No response (exposure lapsed)"}
           </p>
           <p style={{ marginBottom: "0.3rem" }}>
-            <strong>Answer:</strong> {rItem.options[rItem.key]}
+            <strong>Answer:</strong> <span lang={contentLang}>{rItem.options[rItem.key]}</span>
           </p>
           <p style={{ color: "var(--muted)" }}>
-            <strong style={{ color: "var(--fg)" }}>Why:</strong> {rItem.rationale}
+            <strong style={{ color: "var(--fg)" }}>Why:</strong> <span lang={contentLang}>{rItem.rationale}</span>
           </p>
           {rItem.teaching && (
             <p style={{ color: "var(--muted)", borderLeft: "3px solid var(--accent)", paddingLeft: "0.7rem" }}>
-              <strong style={{ color: "var(--fg)" }}>Provenance point:</strong> {rItem.teaching}
+              <strong style={{ color: "var(--fg)" }}>Provenance point:</strong> <span lang={contentLang}>{rItem.teaching}</span>
             </p>
           )}
           {replayIdx + 1 < cfg.items.length ? (
