@@ -155,3 +155,9 @@ runners — a trap for any future audit. Deleted (nothing imported them).
   proves reproduces the score.
 - `clientTs` inside event payloads is the runner's wall clock (informational);
   the authoritative ordering is the monotonic `ts`/`seq` assigned at append.
+
+
+## Residual items (Codex re-review, 2026-08-21)
+- Fixed: multi-tab CAS (SaveConflictError), duplicate `track_scored` rejection, unknown-entry rejection, validated hydration + visible persistence warnings, honest landing/OG copy, report event-log copy accuracy, disputed item now carries its verified Commons AI category.
+- Confirmed false positive: `afc954936e1d…` (Plaza Calderon) IS in Commons "Category:AI-generated images of architecture" (live category query); retained with category evidence embedded.
+- Accepted residual: content tests gate id/hash/link-manifest consistency but not live Commons category membership (network-free CI); localStorage quota exhaustion surfaces a warning rather than a durable fallback store; duplicated Commons source files across 3 item pairs deferred to next bank revision.
