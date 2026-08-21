@@ -1,2 +1,22 @@
+# T4 · Generative Direction — spec §T4
 plugin: "generative-direction@2"
-config: {}
+config:
+  session_minutes: 60
+  deliverables: { final_images: 3, final_videos: 1 }
+  draft_generations: unlimited        # fast model; iteration surface where craft is visible
+  quota:                              # hard final-render quota, stated in exam rules
+    images: 3
+    videos: 1
+  prompt_log: captured-automatically  # published alongside work in the public gallery
+  gallery:
+    governance: approval-required     # not takedown-based; human approves every asset
+    unpublish: per-item-minutes
+  models:                             # pinned by date suffix at instrument build time (§T4)
+    draft_images:  { id: "gemini-3.1-flash-image@20260115", quota: unlimited }
+    final_images:  { id: "gemini-3-pro-image@20260110", quota: 3, credentials: [c2pa, synthid] }
+    video:         { id: "veo-3.1-fast@20260112", quota: 1 }
+    safety:        { id: "gemini-flash-lite-classifier@20260105", role: input-to-human-approval }
+  comparative_judgement:
+    model: bayesian-bradley-terry     # same machinery as T1
+    pairing: balanced-incomplete-block
+    tie_parameter: true

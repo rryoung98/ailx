@@ -1,2 +1,53 @@
-# criteria, weights, band anchors — TODO (Phase 1)
-criteria: []
+# T2 · Authenticity Discrimination — score allocation per spec §T2 (100 pts)
+track: t2-discrimination
+total_points: 100
+criteria:
+  - id: sensitivity
+    name: Sensitivity (d′)
+    points: 60
+    scored_by: arithmetic         # no model in the loop at all
+    judged: false
+    description: >-
+      Signal-detection sensitivity across the media and message blocks,
+      log-linear corrected (add 0.5 to every contingency cell for every
+      candidate), scaled to points. Response criterion c is reported as a
+      diagnostic and does not enter the point total.
+  - id: calibration
+    name: Calibration
+    points: 25
+    scored_by: arithmetic
+    judged: false
+    description: >-
+      Brier score on the two-level confidence taps. Being confidently wrong
+      costs more than being uncertainly wrong.
+  - id: provenance-reasoning
+    name: Provenance reasoning
+    points: 15
+    scored_by: keyed-selection
+    judged: false
+    description: >-
+      Correct use of Content Credentials and artefact-family reasoning;
+      understanding the asymmetry of provenance evidence — a valid signed
+      manifest is meaningful positive evidence; absence of credentials is no
+      evidence at all.
+band_anchors:
+  - band: distinction
+    min_scaled: 70
+    anchor: >-
+      High d′ with near-neutral criterion; confidence well calibrated; provenance
+      asymmetry applied correctly including trust-list reasoning.
+  - band: merit
+    min_scaled: 61
+    anchor: >-
+      Above-cohort d′; minor criterion bias; calibration mostly sound; correct
+      credential reading with occasional asymmetry errors.
+  - band: pass
+    min_scaled: 50
+    anchor: >-
+      Functional discrimination on clear items; visible truth bias or
+      overconfidence; treats absent credentials as evidence of synthesis.
+  - band: participation
+    min_scaled: 0
+    anchor: >-
+      Completed the deck; d′ near chance or severe criterion bias; diagnostic
+      report identifies the specific failure mode.

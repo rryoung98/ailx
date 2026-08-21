@@ -1,2 +1,62 @@
-# criteria, weights, band anchors — TODO (Phase 1)
-criteria: []
+# T3 · AI-Assisted Reasoning — score allocation per spec §T3 (100 pts)
+track: t3-reasoning
+total_points: 100
+criteria:
+  - id: planted-error-detection
+    name: Planted-error detection (RSR)
+    points: 25
+    scored_by: arithmetic           # fully objective, model-free
+    judged: false
+    description: >-
+      Relative self-reliance: did the candidate catch and reject the seeded
+      wrong outputs (misattributed figure, false causal claim, fabricated
+      citation, wrong calculation)? Fully objective.
+  - id: analysis-quality
+    name: Analysis quality
+    points: 45
+    scored_by: jury
+    judged: true
+    description: >-
+      Locked rubric, evidence-anchored, heterogeneous three-model jury,
+      calibrated against a human-labelled set; top and bottom deciles
+      human-adjudicated. Anchored to AI Assessment Scale Level 3–4 language.
+  - id: process-quality
+    name: Process quality
+    points: 20
+    scored_by: transcript-analysis
+    judged: false
+    description: >-
+      From the transcript: decomposition, prompt iteration, verification
+      behaviour, whether the candidate went back to the primary source —
+      information verification, response integration, task stewardship.
+  - id: appropriate-reliance
+    name: Appropriate reliance (RAIR)
+    points: 10
+    scored_by: arithmetic
+    judged: false
+    description: >-
+      Relative AI reliance: did the candidate update toward correct AI advice
+      they had initially resisted? Over-rejection is a failure too.
+band_anchors:
+  - band: distinction
+    min_scaled: 70
+    anchor: >-
+      Catches all or nearly all seeded errors; analysis takes and defends an
+      actionable position with evidence anchoring; transcript shows systematic
+      verification against the primary source; updates appropriately on correct
+      advice.
+  - band: merit
+    min_scaled: 61
+    anchor: >-
+      Catches most seeded errors; coherent defended position; some verification
+      behaviour; occasional over- or under-reliance.
+  - band: pass
+    min_scaled: 50
+    anchor: >-
+      Catches some seeded errors; position stated but unevenly evidenced;
+      transcript shows accept-mostly behaviour or scattered iteration.
+  - band: participation
+    min_scaled: 0
+    anchor: >-
+      Analysis submitted; seeded errors largely adopted uncritically; reliance
+      pattern flagged in the diagnostic report.
