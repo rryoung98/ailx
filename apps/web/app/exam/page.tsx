@@ -17,7 +17,9 @@ import {
 import { trackConfig } from "../../lib/instrument";
 import { LOCALE_SCOPE_NOTE, useLocale, type Locale } from "../../lib/locale";
 import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
+import { Annotation } from "../../lib/Annotation";
 import { ConnectPanel } from "../../lib/ConnectPanel";
+import { PillCTA } from "../../lib/PillCTA";
 
 function demoConfig(locale: Locale): SessionConfig {
   return {
@@ -183,18 +185,19 @@ export default function ExamPage() {
         </div>
       ) : null}
       
-        <div className="container" style={{ maxWidth: 820 }}>
+        <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · AILX 2026.1</div>
-          <h1>Four tracks. One run.</h1>
+          <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
           <p className="lede">
             T1 to T4 in sequence, each on its own clock. You can pause between
             moves, never mid-swipe. The event log stays in this browser.
           </p>
-          <ul className="checklist" style={{ margin: "1.5rem 0" }}>
+          <div style={{ textAlign: "right" }}><Annotation side="left">no accounts — just play</Annotation></div>
+          <ul className="rule-rows" style={{ margin: "1rem 0 1.5rem" }}>
             {TRACK_LIST.map((t) => (
               <li key={t.id}>
-                <span className="mono" style={{ color: "var(--accent)", minWidth: "2rem" }}>{t.code}</span>
-                <span style={{ flex: 1 }}>{t.name}</span>
+                <span className="row-title"><span className="mono" style={{ color: "var(--accent)", fontSize: "0.8em", marginRight: "0.6rem" }}>{t.code}</span>{t.name}</span>
+                <span className="row-detail muted small">{TRACK_META[t.id as keyof typeof TRACK_META].hype}</span>
                 <span className="faint small mono">{fmt(t.demoBudgetSeconds)}</span>
               </li>
             ))}
@@ -206,8 +209,7 @@ export default function ExamPage() {
             Content locale: <span className="mono">{chosenLocale}</span> (header switcher). {LOCALE_SCOPE_NOTE}{chosenLocale !== "en" ? " ja/ko item content is machine-translated and marked unreviewed in item provenance." : ""}
           </p>
           <ConnectPanel />
-          <button
-            className="btn primary"
+          <PillCTA
             onClick={() => {
               const ts = Date.now();
               const attemptId = `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;
@@ -215,7 +217,7 @@ export default function ExamPage() {
             }}
           >
             Start your run
-          </button>
+          </PillCTA>
         </div>
       </main>
     );

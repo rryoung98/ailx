@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { Annotation } from "../lib/Annotation";
 import { HeroCanvas } from "../lib/HeroCanvas";
+import { PillCTA } from "../lib/PillCTA";
+import { Reveal } from "../lib/Reveal";
 import { Teaser } from "../lib/Teaser";
 import { TrackBands } from "../lib/track3d/TrackBands";
 
@@ -13,8 +16,9 @@ export default function Home() {
             <div>
               <div className="eyebrow">AILX 2026.1 · four tracks, one score</div>
               <h1 className="hero-title">
-                Benchmarks rate the models.<br />This one rates <em>you</em>.
+                Benchmarks rate the models.<br />This one rates <span className="script-accent">you</span>.
               </h1>
+              <Annotation>scored like an instrument</Annotation>
               <p className="lede hero-lede">
                 Build, detect, reason, direct. Four playable tracks, scored like a real
                 instrument — the AILX 2026.1 specification, trilateral (US·JP·KR) by design.
@@ -34,7 +38,7 @@ export default function Home() {
         <TrackBands />
       </section>
 
-      <section className="container" style={{ marginTop: "3rem" }}>
+      <Reveal as="section" className="container" style={{ marginTop: "3rem", paddingBottom: "5.5rem" }}>
         <div className="grid4">
           <div className="stat"><div className="value">4 × 100</div><div className="label">points; every track scored a different way, on purpose</div></div>
           <div className="stat"><div className="value">d′</div><div className="label">detection is scored by sensitivity, not percent correct (see methodology)</div></div>
@@ -48,7 +52,8 @@ export default function Home() {
           <Link href="/validate">/validate</Link>. Demo build — deterministic simulators,
           nothing leaves your browser.
         </p>
-      </section>
+      </Reveal>
+      <PillCTA href="/exam">Play</PillCTA>
     </main>
   );
 }
