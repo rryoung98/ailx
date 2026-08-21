@@ -221,7 +221,7 @@ textarea.field:focus, input.field:focus { outline: none; border-color: var(--acc
 .timer.low { animation: blink 1s step-end infinite; }
 
 /* landing */
-.hero-play { border: 1px solid var(--border-strong); border-radius: 14px; background: var(--card); padding: 1.2rem 1.4rem; }
+.hero-play { border: 1px solid var(--border-strong); border-radius: 14px; background: var(--card); padding: 1.2rem 1.4rem; overflow: hidden; }
 .track-card { transition: transform 150ms ease, border-color 150ms ease; position: relative; overflow: hidden; }
 .track-card:hover { transform: translateY(-3px); border-color: var(--accent); }
 .track-card .mechanic { color: var(--faint); font-size: 0.8rem; transition: color 150ms; }
@@ -323,4 +323,192 @@ summary { cursor: pointer; }
   .share-card::before { top: 0.9rem; right: 1rem; }
   table { font-size: 0.8rem; }
   th, td { padding: 0.4rem 0.5rem; }
+}
+
+/* ---- landing teaser: draggable card stack ----------------------------- */
+.teaser-stack {
+  position: relative; height: 15.5rem; margin-top: 0.7rem;
+  user-select: none; -webkit-user-select: none;
+}
+.teaser-card {
+  position: absolute; inset: 0;
+  background: var(--bg); border: 1px solid var(--border-strong);
+  border-radius: 12px; padding: 0.9rem; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: center;
+  will-change: transform;
+}
+.teaser-card .photo {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 8px; display: block; pointer-events: none;
+}
+.teaser-card blockquote { overflow-y: auto; max-height: 100%; }
+.verdict-stamp {
+  position: absolute; top: 0.8rem; padding: 0.15rem 0.6rem;
+  border: 2px solid; border-radius: 6px; font-weight: 800;
+  font-size: 0.95rem; letter-spacing: 0.08em; text-transform: uppercase;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  pointer-events: none;
+}
+.verdict-stamp.left { left: 0.8rem; color: var(--good); border-color: var(--good); transform: rotate(-8deg); }
+.verdict-stamp.right { right: 0.8rem; color: var(--bad); border-color: var(--bad); transform: rotate(8deg); }
+
+/* ---- landing track cards: animated mini-previews ---------------------- */
+.track-card-viz { display: block; color: inherit; text-decoration: none; }
+.track-card-viz:hover { text-decoration: none; }
+.tviz {
+  aspect-ratio: 16 / 10; position: relative; overflow: hidden;
+  border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg); --spd: 1;
+}
+.track-card:hover .tviz { --spd: 0.45; }
+.track-card[data-paused="true"] .tviz * { animation-play-state: paused !important; }
+
+/* T1 — code types in, morphs into a tiny rendered site */
+.tv1-browser { position: absolute; inset: 8% 10%; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-raised); overflow: hidden; }
+.tv1-chrome { display: flex; gap: 4px; padding: 5px 7px; border-bottom: 1px solid var(--border); }
+.tv1-chrome i { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong); }
+.tv1-chrome i:first-child { background: var(--bad); opacity: 0.7; }
+.tv1-body { position: absolute; inset: 18px 0 0; }
+.tv1-code { position: absolute; inset: 8px 10px; animation: tv1CodeFade calc(7s * var(--spd)) infinite; }
+.tv1-line {
+  display: block; height: 5px; margin: 5px 0; border-radius: 2px;
+  background: var(--accent-dim); transform-origin: left;
+  animation: tv1Type calc(7s * var(--spd)) infinite;
+}
+.tv1-line:nth-child(even) { background: var(--border-strong); }
+.tv1-cursor { display: inline-block; width: 5px; height: 8px; background: var(--accent); animation: blink 1s step-end infinite; }
+.tv1-site { position: absolute; inset: 8px 10px; opacity: 0; animation: tv1SiteFade calc(7s * var(--spd)) infinite; }
+.tv1-hero { height: 42%; border-radius: 4px; background: linear-gradient(120deg, var(--accent-dim), var(--accent)); }
+.tv1-cards { display: flex; gap: 5px; margin-top: 6px; height: 34%; }
+.tv1-cards i { flex: 1; border-radius: 3px; background: var(--card); border: 1px solid var(--border-strong); }
+@keyframes tv1Type {
+  0% { transform: scaleX(0); }
+  6% { transform: scaleX(0); }
+  16% { transform: scaleX(1); }
+  100% { transform: scaleX(1); }
+}
+@keyframes tv1CodeFade {
+  0%, 42% { opacity: 1; }
+  52%, 88% { opacity: 0; }
+  97%, 100% { opacity: 1; }
+}
+@keyframes tv1SiteFade {
+  0%, 44% { opacity: 0; }
+  54%, 88% { opacity: 1; }
+  96%, 100% { opacity: 0; }
+}
+
+/* T2 — mini card stack of real snapshot images, auto-swiping */
+.tv2 { background: var(--bg-raised); }
+.tv2-card {
+  position: absolute; inset: 9% 16%; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border-strong); background: var(--bg);
+}
+.tv2-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tv2-stamp {
+  position: absolute; top: 7px; left: 7px; padding: 0 5px;
+  border: 1.5px solid; border-radius: 4px; font-weight: 800;
+  font-size: 0.62rem; letter-spacing: 0.08em; opacity: 0;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+.tv2-stamp.real { color: var(--good); border-color: var(--good); transform: rotate(-6deg); }
+.tv2-stamp.ai { color: var(--bad); border-color: var(--bad); transform: rotate(6deg); }
+.tv2-a { z-index: 3; animation: tv2FlyA calc(9s * var(--spd)) infinite; }
+.tv2-b { z-index: 2; animation: tv2FlyB calc(9s * var(--spd)) infinite; }
+.tv2-c { z-index: 1; animation: tv2FlyC calc(9s * var(--spd)) infinite; }
+.tv2-a .tv2-stamp { animation: tv2StampA calc(9s * var(--spd)) infinite; }
+.tv2-b .tv2-stamp { animation: tv2StampB calc(9s * var(--spd)) infinite; }
+.tv2-c .tv2-stamp { animation: tv2StampC calc(9s * var(--spd)) infinite; }
+@keyframes tv2FlyA {
+  0%, 22% { transform: none; opacity: 1; }
+  30%, 92% { transform: translateX(130%) rotate(14deg); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes tv2FlyB {
+  0%, 52% { transform: scale(0.96) translateY(3%); opacity: 1; }
+  53% { transform: none; }
+  60%, 92% { transform: translateX(-130%) rotate(-14deg); opacity: 0; }
+  100% { transform: scale(0.96) translateY(3%); opacity: 1; }
+}
+@keyframes tv2FlyC {
+  0%, 82% { transform: scale(0.92) translateY(6%); }
+  83% { transform: none; }
+  92% { transform: translateX(130%) rotate(14deg); opacity: 0; }
+  100% { transform: scale(0.92) translateY(6%); opacity: 1; }
+}
+@keyframes tv2StampA { 0%, 12% { opacity: 0; } 18%, 28% { opacity: 1; } 30%, 100% { opacity: 0; } }
+@keyframes tv2StampB { 0%, 44% { opacity: 0; } 50%, 58% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes tv2StampC { 0%, 74% { opacity: 0; } 80%, 88% { opacity: 1; } 90%, 100% { opacity: 0; } }
+
+/* T3 — bubbles land, one claim gets struck and corrected */
+.tv3 { padding: 7% 8%; }
+.tv3-bubble {
+  position: relative; background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 8px 8px 8px 2px; padding: 3px 7px; font-size: 0.62rem; line-height: 1.4;
+  color: var(--muted); width: fit-content; max-width: 92%;
+  opacity: 0; animation: tv3In calc(8s * var(--spd)) infinite;
+}
+.tv3-b2 { margin-top: 6px; border-radius: 8px 8px 2px 8px; margin-left: auto; animation-name: tv3In2; }
+.tv3-claim { position: relative; color: var(--fg); white-space: nowrap; }
+.tv3-strike {
+  position: absolute; left: -2%; right: -2%; top: 50%; height: 2px;
+  background: var(--bad); transform-origin: left; transform: scaleX(0);
+  animation: tv3Strike calc(8s * var(--spd)) infinite;
+}
+.tv3-fix {
+  position: absolute; top: 26%; right: 10%; padding: 1px 6px;
+  border: 1.5px solid var(--warn); color: var(--warn); border-radius: 4px;
+  font-size: 0.66rem; font-weight: 800; transform: rotate(5deg);
+  opacity: 0; animation: tv3Fix calc(8s * var(--spd)) infinite;
+}
+.tv3-check {
+  position: absolute; bottom: 9%; right: 9%; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--good); color: #0a0f1e;
+  font-weight: 800; font-size: 0.8rem; display: flex; align-items: center;
+  justify-content: center; opacity: 0;
+  animation: tv3Check calc(8s * var(--spd)) infinite;
+}
+@keyframes tv3In { 0%, 4% { opacity: 0; transform: translateY(6px); } 12%, 94% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes tv3In2 { 0%, 20% { opacity: 0; transform: translateY(6px); } 30%, 94% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes tv3Strike { 0%, 40% { transform: scaleX(0); } 50%, 100% { transform: scaleX(1); } }
+@keyframes tv3Fix { 0%, 52% { opacity: 0; transform: rotate(5deg) scale(1.6); } 58%, 94% { opacity: 1; transform: rotate(5deg) scale(1); } 100% { opacity: 0; } }
+@keyframes tv3Check { 0%, 68% { opacity: 0; transform: scale(2); } 76%, 94% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+
+/* T4 — 2×2 generation grid sharpens tile by tile; quota pips tick down */
+.tv4 { padding: 7% 9% 14%; }
+.tv4-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; height: 100%; }
+.tv4-tile { position: relative; border-radius: 5px; overflow: hidden; filter: blur(5px) saturate(0.4); }
+.tv4-t0 { background: radial-gradient(circle at 30% 30%, #6d5bd0, #232a38); animation: tv4Sharp0 calc(9s * var(--spd)) infinite; }
+.tv4-t1 { background: radial-gradient(circle at 70% 40%, #2d7dd2, #1a2030); animation: tv4Sharp1 calc(9s * var(--spd)) infinite; }
+.tv4-t2 { background: radial-gradient(circle at 40% 70%, #c08d5f, #241d18); animation: tv4Sharp2 calc(9s * var(--spd)) infinite; }
+.tv4-t3 { background: radial-gradient(circle at 60% 60%, #4ade80, #14261d); animation: tv4Sharp3 calc(9s * var(--spd)) infinite; }
+.tv4-final {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--distinction); border-radius: 5px; color: var(--distinction);
+  font-weight: 800; font-size: 0.62rem; letter-spacing: 0.14em;
+  opacity: 0; animation: tv4Final calc(9s * var(--spd)) infinite;
+}
+.tv4-pips { position: absolute; right: 9%; bottom: 5%; display: flex; gap: 4px; }
+.tv4-pips i {
+  width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--border-strong);
+  background: var(--accent);
+}
+.tv4-pips .tv4-p1 { animation: tv4Pip1 calc(9s * var(--spd)) infinite; }
+.tv4-pips .tv4-p2 { animation: tv4Pip2 calc(9s * var(--spd)) infinite; }
+.tv4-pips .tv4-p3 { animation: tv4Pip3 calc(9s * var(--spd)) infinite; }
+@keyframes tv4Sharp0 { 0%, 6% { filter: blur(5px) saturate(0.4); } 16%, 96% { filter: none; } 100% { filter: blur(5px) saturate(0.4); } }
+@keyframes tv4Sharp1 { 0%, 22% { filter: blur(5px) saturate(0.4); } 32%, 96% { filter: none; } 100% { filter: blur(5px) saturate(0.4); } }
+@keyframes tv4Sharp2 { 0%, 38% { filter: blur(5px) saturate(0.4); } 48%, 96% { filter: none; } 100% { filter: blur(5px) saturate(0.4); } }
+@keyframes tv4Sharp3 { 0%, 54% { filter: blur(5px) saturate(0.35) hue-rotate(40deg); } 64%, 96% { filter: none; } 100% { filter: blur(5px) saturate(0.35) hue-rotate(40deg); } }
+@keyframes tv4Final { 0%, 70% { opacity: 0; transform: scale(1.25); } 78%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes tv4Pip1 { 0%, 14% { background: var(--accent); } 18%, 100% { background: transparent; } }
+@keyframes tv4Pip2 { 0%, 30% { background: var(--accent); } 34%, 100% { background: transparent; } }
+@keyframes tv4Pip3 { 0%, 62% { background: var(--accent); } 66%, 100% { background: transparent; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Static first frame for every landing mini-preview + the teaser stack. */
+  .tviz *, .teaser-card, .verdict-stamp { animation: none !important; transition: none !important; }
+  .tv1-site { opacity: 0; }
+  .tv1-line { transform: none; }
+  .teaser-card { transition: none !important; }
 }

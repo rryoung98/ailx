@@ -25,7 +25,7 @@ export default function ValidatePage() {
         <div className="eyebrow">Dogfood · validate AILX quickly</div>
         <h1>Live validation of the scoring path</h1>
         <p className="lede">
-          These checks run in your browser right now against the same code that scores an attempt: all four REAL track plugin score() functions replay pinned golden artifacts and judgments inside the purity harness, and a full fixture attempt is scored through the same registry path the exam uses. They also verify content addressing, rubric-version hashing, and composite reproducibility. Since there's no network or server involved, if it passes here, it will be reproducible anywhere.
+          These checks run in your browser right now against the same code that scores a run: all four REAL track plugin score() functions replay pinned golden artifacts and judgments inside the purity harness, and a full fixture run is scored through the same registry path the live game uses. They also verify content addressing, rubric-version hashing, and composite reproducibility. Since there's no network or server involved, if it passes here, it will be reproducible anywhere.
         </p>
 
         {results && (
@@ -57,7 +57,7 @@ export default function ValidatePage() {
           <code>Math.random</code> throw; item banks are content-addressed, so an edited item becomes a new item; judge prompts hash into <code>rubric_version</code>; golden fixtures fail the build on any drift. The same checks run in CI via Vitest. This page serves as in-browser proof.
         </p>
         <p>
-          <Link className="btn primary" href="/exam">Now sit the exam →</Link>{" "}
+          <Link className="btn primary" href="/exam">Now play it yourself →</Link>{" "}
           <Link className="btn" href="/methodology">Methodology</Link>
         </p>
       </div>

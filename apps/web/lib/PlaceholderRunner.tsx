@@ -68,7 +68,7 @@ export function PlaceholderRunner(props: TrackUIProps) {
       <h3 style={{ marginTop: "1rem" }}>{meta.code} · {meta.name} — brief</h3>
       <p className="muted">{meta.brief}</p>
       <p className="small faint">
-        Simulate candidate behaviour below. Every action lands in the append-only event
+        Simulate player behaviour below. Every action lands in the append-only event
         log and shapes the demo score (more diagnostic iteration → higher process
         subscores).
       </p>
