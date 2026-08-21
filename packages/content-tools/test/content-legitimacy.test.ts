@@ -87,7 +87,7 @@ describe("bank content legitimacy", () => {
 
   it("ja/ko items mark machine translation as unreviewed, prominently", () => {
     const jako = bank.items.filter((i) => i.locale === "ja" || i.locale === "ko");
-    expect(jako.length).toBeGreaterThanOrEqual(4);
+    expect(jako.length).toBeGreaterThanOrEqual(16); // >= 8 playable items per locale
     for (const i of jako) {
       const p = prov(i);
       if (p.translation_provenance !== "source") {

@@ -187,8 +187,14 @@ export const INVALID_SCORE: TrackScoreValue = { raw: { invalid: 1 }, scaled: 0 }
 /**
  * Score a track artifact through the REAL plugin's pure score(). Malformed
  * artifacts fail closed (scaled 0, raw {invalid: 1}) — never pseudo-points.
+ * `locale` must be the SESSION's locale so T2 scores against the same
+ * localized deck the candidate answered (item ids are locale-specific).
  */
-export function scoreTrack(trackId: TrackId, artifact: unknown): TrackScoringRecord {
+export function scoreTrack(
+  trackId: TrackId,
+  artifact: unknown,
+  locale: string = "en",
+): TrackScoringRecord {
   const rubricVersion = snapshotRubricVersion(trackId);
   const base = {
     rubricVersion,
@@ -208,7 +214,7 @@ export function scoreTrack(trackId: TrackId, artifact: unknown): TrackScoringRec
         return { ...base, score: { raw: s.raw, scaled: s.scaled }, judgments };
       }
       case "t2": {
-        const cfg = validateT2Config(trackConfig("t2"));
+        const cfg = validateT2Config(trackConfig("t2", locale));
         const s = t2Plugin.score({ artifact: artifact as never, judgments: [], rubricVersion }, cfg);
         return { ...base, score: { raw: s.raw as unknown as Record<string, number>, scaled: s.scaled }, judgments: [] };
       }

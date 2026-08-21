@@ -119,7 +119,7 @@ export default function ReportPage() {
   const calBins = useMemo(() => {
     if (!state) return [];
     const keys: Record<string, number> = {};
-    for (const it of t2Items("en")) keys[it.id] = it.key;
+    for (const it of t2Items(state.config?.locale ?? "en")) keys[it.id] = it.key;
     return calibrationBins(t2ResponsesFromArtifact(state.tracks.t2.artifact), keys);
   }, [state]);
   const counted = useCountUp(summary?.composite ?? 0);

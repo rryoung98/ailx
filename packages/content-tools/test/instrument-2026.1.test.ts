@@ -87,6 +87,33 @@ describe("T2 demo bank", () => {
     expect(locales).toContain("ja");
     expect(locales).toContain("ko");
   });
+  it("ja and ko decks are playable: >= 8 items each, spanning binary + provenance families", () => {
+    for (const locale of ["ja", "ko"] as const) {
+      const items = bank.items.filter((i) => i.locale === locale);
+      expect(items.length, `${locale} bank too thin`).toBeGreaterThanOrEqual(8);
+      const types = new Set(items.map((i) => i.type));
+      for (const t of ["text-authenticity", "image-provenance", "message-hostility", "provenance-reasoning"]) {
+        expect(types, `${locale} missing ${t}`).toContain(t);
+      }
+      // Balanced real-vs-AI media block so d' stays measurable per locale.
+      const media = items.filter((i) => i.type === "image-provenance");
+      expect(media.filter((i) => i.key === "ai").length).toBe(media.filter((i) => i.key === "real").length);
+      expect(media.filter((i) => i.key === "ai").length).toBeGreaterThanOrEqual(3);
+    }
+  });
+  it("translated ja/ko items link their en source item in provenance", () => {
+    const ids = new Set(bank.items.map((i) => i.id));
+    for (const i of bank.items.filter((x) => x.locale !== "en")) {
+      const p = i.provenance as { source_item?: string; translation_provenance?: string };
+      if (p.source_item !== undefined) {
+        expect(ids, `${i.id} source_item ${p.source_item} not in bank`).toContain(p.source_item);
+        const src = bank.items.find((x) => x.id === p.source_item)!;
+        expect(src.locale).toBe("en");
+        expect(src.type).toBe(i.type);
+        expect(src.key).toBe(i.key);
+      }
+    }
+  });
   it("items are self-contained (media inline or bundled repo-local assets)", () => {
     for (const item of bank.items) {
       const m = item.material as { kind?: string; data_uri?: string; src?: string };

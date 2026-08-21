@@ -134,8 +134,11 @@ export function t2Items(locale: string = "en") {
   const bank = snapshotTrack("t2").bank;
   if (!bank) throw new Error("snapshot t2 bank missing");
   const exposure = t2ExposureSeconds();
+  // Unknown/unpopulated locales fall back to the en deck rather than an
+  // empty (unscorable) sitting.
+  const wanted = bank.items.some((i) => i.locale === locale) ? locale : "en";
   const items = bank.items
-    .filter((i) => i.locale === locale)
+    .filter((i) => i.locale === wanted)
     .map((i) => {
       const type = TYPE_MAP[i.type] ?? "provenance";
       const signal = i.options.findIndex((o) => SIGNAL_OPTION_IDS.has(o.id));
@@ -194,11 +197,19 @@ export const T3_SCENARIO = {
 export const T3_SCENARIO_SHA256 =
   "38d7bdb42bae91e6377cfd586242e8db1e43ba194de0534ce3cfa90f46dff3dd";
 
-/** Per-track config passed to the real Runner + score(). */
-export function trackConfig(trackId: "t1" | "t2" | "t3" | "t4"): unknown {
+/**
+ * Per-track config passed to the real Runner + score(). The SESSION's
+ * locale (SessionConfig.locale, chosen via the header switcher) selects
+ * the localized T2 deck; T1/T3/T4 demo briefs stay English (scope
+ * control — only item content localizes in this build).
+ */
+export function trackConfig(
+  trackId: "t1" | "t2" | "t3" | "t4",
+  locale: string = "en",
+): unknown {
   switch (trackId) {
     case "t1": return undefined;             // plugin defaults carry the demo brief
-    case "t2": return { items: t2Items("en") };
+    case "t2": return { items: t2Items(locale) };
     case "t3": return T3_SCENARIO;
     case "t4": return undefined;             // plugin defaults carry the demo brief
   }
