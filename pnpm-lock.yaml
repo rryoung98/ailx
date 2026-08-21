@@ -177,6 +177,9 @@ importers:
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.18
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
       react:
         specifier: ^19.0.0
         version: 19.2.8
@@ -202,6 +205,9 @@ importers:
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.18
+      jsdom:
+        specifier: ^25.0.1
+        version: 25.0.1
       react:
         specifier: ^19.0.0
         version: 19.2.8

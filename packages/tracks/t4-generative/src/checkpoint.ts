@@ -11,6 +11,12 @@ export interface T4CheckpointState {
   chosenSet: number[];
   note: string;
   disclosed: boolean;
+  /**
+   * True once the candidate pressed submit and is viewing the finals
+   * gallery (presentation-only phase before onComplete fires). Optional in
+   * stored checkpoints for backward compatibility; absent means false.
+   */
+  submitted?: boolean;
 }
 
 export function encodeT4Checkpoint(state: T4CheckpointState): T4CheckpointState {
@@ -23,6 +29,7 @@ export function encodeT4Checkpoint(state: T4CheckpointState): T4CheckpointState 
     chosenSet: [...state.chosenSet],
     note: state.note,
     disclosed: state.disclosed,
+    submitted: state.submitted === true,
   };
 }
 
@@ -71,5 +78,6 @@ export function decodeT4Checkpoint(raw: unknown): T4CheckpointState | null {
     chosenSet,
     note: r.note,
     disclosed: r.disclosed,
+    submitted: r.submitted === true,
   };
 }

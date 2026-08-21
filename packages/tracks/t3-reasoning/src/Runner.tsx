@@ -14,6 +14,7 @@ import type { TrackUIProps } from "@ailx/core";
 import { assistantReply, DEMO_ASSISTANT_ID } from "./assistant.js";
 import { validateT3Config } from "./plugin.js";
 import { decodeT3Checkpoint, encodeT3Checkpoint, type T3ChatMsg } from "./checkpoint.js";
+import { revealSummary } from "./reveal.js";
 import type { T3Config, T3Turn } from "./types.js";
 
 type Phase = "brief" | "work" | "reveal";
@@ -193,9 +194,12 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
     [emit, saveCheckpoint],
   );
 
+  // Submit shows the reveal interstitial FIRST; onComplete fires only when
+  // the candidate continues (or, on timeout, the exam rebuilds the same
+  // artifact from the checkpoint saved here). Events and the artifact shape
+  // are unchanged — the reveal is presentation over already-captured data.
   const submit = useCallback(() => {
-    if (completed.current) return;
-    completed.current = true;
+    if (phase === "reveal") return;
     if (draft !== savedDraft) {
       const prev = draftRev.current;
       draftRev.current += 1;
@@ -207,10 +211,17 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
       });
     }
     emit({ verb: "submitted", object: "t3-reasoning:final", text: draft });
-    onComplete({ transcript: transcript.current, finalAnswer: draft });
+    setSavedDraft(draft);
     setPhase("reveal");
     saveCheckpoint({ phase: "reveal", savedDraft: draft });
-  }, [draft, emit, onComplete, savedDraft, saveCheckpoint]);
+  }, [draft, emit, phase, savedDraft, saveCheckpoint]);
+
+  /** Reveal → exam. Called exactly once, from the reveal's continue button. */
+  const finish = useCallback(() => {
+    if (completed.current) return;
+    completed.current = true;
+    onComplete({ transcript: transcript.current, finalAnswer: latest.current.savedDraft });
+  }, [onComplete]);
 
   const words = draft.trim() ? draft.trim().split(/\s+/).length : 0;
 
@@ -243,37 +254,55 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   }
 
   if (phase === "reveal") {
-    const caught = cfg.plantedErrors.filter(
-      (e) => surfaced.includes(e.id) && stances[e.id] === "challenged",
-    );
-    const surfacedPlanted = cfg.plantedErrors.filter((e) => surfaced.includes(e.id));
+    const summary = revealSummary(cfg, surfaced, stances);
+    const stanceColor: Record<string, string> = {
+      challenged: "#4ade80", accepted: "#f87171", ignored: "var(--muted)",
+    };
+    const stanceLabel: Record<string, string> = {
+      challenged: "✓ challenged", accepted: "✗ accepted", ignored: "— ignored",
+    };
     return (
       <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: "1rem" }}>
-        <div style={card}>
-          <h2 style={{ marginTop: 0 }}>
-            You caught {caught.length} of {surfacedPlanted.length} planted errors
+        <div
+          style={{
+            ...card,
+            ...(summary.perfect
+              ? { border: "1px solid #4ade80", boxShadow: "0 0 24px rgba(74,222,128,0.25)" }
+              : {}),
+          }}
+        >
+          <h2 style={{ marginTop: 0, ...(summary.perfect ? { color: "#4ade80" } : {}) }}>
+            {summary.perfect ? "🎉 " : ""}You caught {summary.caught} of {summary.total} planted errors
           </h2>
+          {summary.perfect && (
+            <p style={{ color: "#4ade80", fontWeight: 600 }}>
+              Clean sweep — you challenged every planted error the assistant tried on you.
+            </p>
+          )}
           <p style={{ color: "var(--muted)" }}>
             The assistant&apos;s environment was seeded with known-incorrect outputs.
             Here is what was planted:
           </p>
-          {cfg.plantedErrors.map((e) => (
-            <div key={e.id} style={{ borderLeft: "3px solid var(--border)", paddingLeft: "0.8rem", marginBottom: "0.8rem" }}>
+          {summary.rows.map((r) => (
+            <div key={r.id} style={{ borderLeft: `3px solid ${r.stance === "challenged" ? "#4ade80" : "var(--border)"}`, paddingLeft: "0.8rem", marginBottom: "0.8rem" }}>
               <p style={{ margin: 0 }}>
-                <span style={{ color: surfaced.includes(e.id) ? (stances[e.id] === "challenged" ? "#4ade80" : "#f87171") : "var(--muted)" }}>
-                  {surfaced.includes(e.id)
-                    ? stances[e.id] === "challenged" ? "✓ caught" : "✗ missed"
-                    : "— never surfaced"}
-                </span>{" "}
-                <em>&ldquo;{e.claim}&rdquo;</em>
+                <span style={{ color: stanceColor[r.stance] }}>{stanceLabel[r.stance]}</span>
+                {!r.surfaced && (
+                  <span style={{ color: "var(--muted)" }}> (never surfaced in your chat)</span>
+                )}{" "}
+                <em>&ldquo;{r.claim}&rdquo;</em>
               </p>
-              <p style={{ margin: 0, color: "var(--muted)" }}>Source says: {e.truth}</p>
+              <p style={{ margin: 0, color: "var(--muted)" }}>Source says: {r.truth}</p>
             </div>
           ))}
           <p style={{ color: "var(--muted)" }}>
             Transcript stored: {transcript.current.length} events. Scoring runs from
-            the stored transcript and stored jury judgments only.
+            the stored transcript and stored jury judgments only — this reveal is
+            presentation, not scoring.
           </p>
+          <button style={btn} onClick={finish}>
+            Continue →
+          </button>
         </div>
       </div>
     );

@@ -85,9 +85,10 @@ export function Runner(props: TrackUIProps) {
   const [chosenSet, setChosenSet] = useState<number[]>(restored?.chosenSet ?? []);
   const [note, setNote] = useState(restored?.note ?? "");
   const [disclosed, setDisclosed] = useState(restored?.disclosed ?? false);
-  const [submitted, setSubmitted] = useState(false);
-  const latest = useRef<T4CheckpointState>({ drafts, finals, chosenSet, note, disclosed });
-  latest.current = { drafts, finals, chosenSet, note, disclosed };
+  const [submitted, setSubmitted] = useState(restored?.submitted ?? false);
+  const completed = useRef(false);
+  const latest = useRef<T4CheckpointState>({ drafts, finals, chosenSet, note, disclosed, submitted });
+  latest.current = { drafts, finals, chosenSet, note, disclosed, submitted };
 
   const now = () => new Date().toISOString();
   const imagesLeft = cfg.finalImageQuota - finals.images.length;
@@ -162,16 +163,24 @@ export function Runner(props: TrackUIProps) {
     saveCheckpoint({ chosenSet: next });
   };
 
+  /** The exact artifact shape submit() has always produced — unchanged. */
+  const buildArtifact = () => {
+    const s = latest.current;
+    return {
+      drafts: s.drafts,
+      finals: s.finals,
+      chosenSet: s.chosenSet.length > 0 ? s.chosenSet : s.finals.images.map((_, i) => i),
+      note: s.note.slice(0, cfg.noteMaxChars),
+      disclosed: s.disclosed,
+    };
+  };
+
+  // Submit opens the finals GALLERY first (presentation over already-
+  // captured data); onComplete fires when the candidate delivers. On
+  // timeout the exam rebuilds the identical artifact from the checkpoint.
   const submit = () => {
     if (submitted || finals.images.length === 0) return;
     setSubmitted(true);
-    const artifact = {
-      drafts,
-      finals,
-      chosenSet: chosenSet.length > 0 ? chosenSet : finals.images.map((_, i) => i),
-      note: note.slice(0, cfg.noteMaxChars),
-      disclosed,
-    };
     props.onEvent({
       verb: "submitted",
       object: "t4/artifact",
@@ -183,8 +192,131 @@ export function Runner(props: TrackUIProps) {
       },
       clientTs: now(),
     });
-    props.onComplete(artifact);
+    saveCheckpoint({ submitted: true });
   };
+
+  /** Gallery → exam. Called exactly once, from the gallery's deliver button. */
+  const deliver = () => {
+    if (completed.current) return;
+    completed.current = true;
+    props.onComplete(buildArtifact());
+  };
+
+  if (submitted) {
+    const chosen =
+      chosenSet.length > 0 ? chosenSet : finals.images.map((_, i) => i);
+    const chosenImages = chosen
+      .filter((i) => i >= 0 && i < finals.images.length)
+      .map((i) => ({ f: finals.images[i], i }));
+    return (
+      <div
+        style={{
+          ...vars,
+          background: "var(--bg)",
+          color: "var(--fg)",
+          minHeight: "100%",
+          padding: 16,
+          fontFamily: "system-ui, sans-serif",
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+          maxWidth: 960,
+          margin: "0 auto",
+        }}
+      >
+        <section style={panel} aria-label="Final set">
+          <h2 style={h2}>Final set · delivered to {cfg.audience}</h2>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: 0.5,
+                borderRadius: 999,
+                padding: "4px 10px",
+                border: disclosed ? "1px solid #4ade80" : "1px solid var(--border)",
+                color: disclosed ? "#4ade80" : "var(--muted)",
+              }}
+            >
+              {disclosed ? "AI-GENERATED · DISCLOSED" : "NO DISCLOSURE ATTACHED"}
+            </span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>
+              {chosenImages.length} chosen image{chosenImages.length === 1 ? "" : "s"}
+              {finals.video ? " + 1 video (simulated)" : ""} · {drafts.length} draft
+              {drafts.length === 1 ? "" : "s"} behind them
+            </span>
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: 12,
+            }}
+          >
+            {chosenImages.map(({ f, i }) => (
+              <figure key={i} style={{ margin: 0 }}>
+                <img
+                  src={svgDataUrl(f.asset)}
+                  alt={`Chosen final image ${i + 1}: ${f.prompt}`}
+                  style={{ width: "100%", display: "block", borderRadius: 8, border: "2px solid var(--accent)" }}
+                />
+                <figcaption style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                  CHOSEN FINAL #{i + 1} · {f.prompt.slice(0, 60)}
+                </figcaption>
+              </figure>
+            ))}
+            {finals.video && (
+              <figure style={{ margin: 0 }}>
+                <img
+                  src={svgDataUrl(finals.video.asset)}
+                  alt={`Final video (simulated): ${finals.video.prompt}`}
+                  style={{ width: "100%", display: "block", borderRadius: 8, border: "2px solid var(--border)" }}
+                />
+                <figcaption style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                  FINAL VIDEO · simulated · {finals.video.prompt.slice(0, 60)}
+                </figcaption>
+              </figure>
+            )}
+          </div>
+        </section>
+
+        {note.trim() !== "" && (
+          <section style={{ ...panel, borderLeft: "3px solid var(--accent)" }} aria-label="Direction note caption">
+            <h2 style={h2}>Direction note</h2>
+            <p style={{ margin: 0, whiteSpace: "pre-wrap", fontStyle: "italic" }}>
+              {note.slice(0, cfg.noteMaxChars)}
+            </p>
+          </section>
+        )}
+
+        <section style={panel} aria-label="Draft filmstrip">
+          <h2 style={h2}>Drafts — the road to the final set</h2>
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+            {drafts.map((d) => (
+              <img
+                key={d.index}
+                src={svgDataUrl(d.svg)}
+                alt={`Draft ${d.index + 1}: ${d.prompt}`}
+                title={d.prompt}
+                style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", flex: "0 0 auto" }}
+              />
+            ))}
+            {drafts.length === 0 && (
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>No drafts recorded.</p>
+            )}
+          </div>
+        </section>
+
+        <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+          This gallery is presentation only — the stored artifact and events are
+          already final and are what scoring sees.
+        </p>
+        <button type="button" style={{ ...btn, alignSelf: "flex-start" }} onClick={deliver}>
+          Deliver final set →
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
