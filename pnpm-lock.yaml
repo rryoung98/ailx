@@ -13,6 +13,9 @@ importers:
       '@ailx/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@ailx/session':
+        specifier: workspace:*
+        version: link:../../packages/session
       next:
         specifier: ^15.1.0
         version: 15.5.23(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -36,25 +39,6 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.1)
 
-  packages/content-tools:
-    dependencies:
-      '@ailx/core':
-        specifier: workspace:*
-        version: link:../core
-      yaml:
-        specifier: ^2.6.0
-        version: 2.9.0
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.1
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@22.20.1)
-
   packages/core:
     devDependencies:
       '@types/node':
@@ -67,93 +51,14 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.1)
 
-  packages/tracks/t1-creative-build:
-    dependencies:
+  packages/session:
+    devDependencies:
       '@ailx/core':
         specifier: workspace:*
-        version: link:../../core
-    devDependencies:
+        version: link:../core
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.18
-      react:
-        specifier: ^19.0.0
-        version: 19.2.8
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.8(react@19.2.8)
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@22.20.1)
-
-  packages/tracks/t2-discrimination:
-    dependencies:
-      '@ailx/core':
-        specifier: workspace:*
-        version: link:../../core
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.1
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.18
-      react:
-        specifier: ^19.0.0
-        version: 19.2.8
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@22.20.1)
-
-  packages/tracks/t3-reasoning:
-    dependencies:
-      '@ailx/core':
-        specifier: workspace:*
-        version: link:../../core
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.1
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.18
-      react:
-        specifier: ^19.0.0
-        version: 19.2.8
-      typescript:
-        specifier: ^5.6.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@22.20.1)
-
-  packages/tracks/t4-generative:
-    dependencies:
-      '@ailx/core':
-        specifier: workspace:*
-        version: link:../../core
-    devDependencies:
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.20.1
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.18
-      react:
-        specifier: ^19.0.0
-        version: 19.2.8
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
@@ -929,11 +834,6 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
-  yaml@2.9.0:
-    resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
-    engines: {node: '>= 14.6'}
-    hasBin: true
-
 snapshots:
 
   '@emnapi/runtime@1.11.3':
@@ -1555,5 +1455,3 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
-
-  yaml@2.9.0: {}
