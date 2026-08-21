@@ -126,12 +126,17 @@ const MOOD_SKY: Record<Mood, [string, string]> = {
 };
 
 /**
- * Deterministic render: sha256(prompt) drives layout jitter and fallback
- * choices; extracted keywords steer palette, objects and composition.
+ * Deterministic render: sha256(prompt, variation) drives layout jitter and
+ * fallback choices; extracted keywords steer palette, objects and
+ * composition. `variation` mimics a real image model's sampling: repeating
+ * the SAME prompt with a new variation nonce produces a visibly different
+ * render (still a pure function of its inputs).
  */
-export function generateImage(prompt: string): string {
+export function generateImage(prompt: string, variation = 0): string {
   const norm = prompt.trim().toLowerCase();
-  const seed = sha256Bytes("t4-image:" + norm);
+  const seed = sha256Bytes(
+    variation > 0 ? `t4-image:${norm}#${variation}` : "t4-image:" + norm,
+  );
   const read = readPrompt(prompt);
 
   const [skyTop, skyBottom] =

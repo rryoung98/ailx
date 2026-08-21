@@ -122,16 +122,16 @@ export function ConnectPanel() {
   return (
     <section
       aria-label="AI connection"
-      style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "0.9rem 1.1rem", margin: "1.4rem 0", display: "grid", gap: 8 }}
+      style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "1rem 1.2rem", margin: "1.4rem 0", display: "grid", gap: 8, boxShadow: "0 1px 2px rgba(26,26,26,0.05)" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <strong style={{ fontSize: 14 }}>Bring a real model</strong>
+        <strong style={{ fontSize: 15 }}>Bring a real model</strong>
         <span className="small faint" style={{ flex: 1, minWidth: 220 }}>
           Optional. T1 builds and T4 image generation use it; without it both run on the free offline demo simulators.
         </span>
         {connected ? (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "#4ade80" }}>● Connected — key stays in this browser</span>
+            <span style={{ fontSize: 12, color: "var(--good)" }}>● Connected — key stays in this browser</span>
             <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => updateKey("")}>
               Disconnect
             </button>
@@ -172,7 +172,7 @@ export function ConnectPanel() {
         </div>
       ) : null}
       {error ? (
-        <p role="alert" style={{ margin: 0, color: "#f87171", fontSize: 12 }}>{error}</p>
+        <p role="alert" style={{ margin: 0, color: "var(--bad)", fontSize: 12 }}>{error}</p>
       ) : null}
     </section>
   );

@@ -61,8 +61,8 @@ function badgeStyle(side: "left" | "right", opacity: number): CSSProperties {
     top: 14,
     [side === "left" ? "left" : "right"]: 14,
     transform: `rotate(${side === "left" ? -12 : 12}deg)`,
-    border: `3px solid ${side === "left" ? "#f87171" : "#4ade80"}`,
-    color: side === "left" ? "#f87171" : "#4ade80",
+    border: `3px solid ${side === "left" ? "var(--bad, #b91c1c)" : "var(--good, #15803d)"}`,
+    color: side === "left" ? "var(--bad, #b91c1c)" : "var(--good, #15803d)",
     borderRadius: 8,
     padding: "0.2rem 0.55rem",
     fontWeight: 800,
@@ -367,7 +367,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             lang={lang}
             onClick={() => flingForChoice(0)}
             disabled={!enabled}
-            style={legendBtn("#f87171")}
+            style={legendBtn("var(--bad, #b91c1c)")}
           >
             {item.options[0]}
           </button>
@@ -378,7 +378,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             lang={lang}
             onClick={() => flingForChoice(1)}
             disabled={!enabled}
-            style={legendBtn("#4ade80")}
+            style={legendBtn("var(--good, #15803d)")}
           >
             {item.options[1]}
           </button>

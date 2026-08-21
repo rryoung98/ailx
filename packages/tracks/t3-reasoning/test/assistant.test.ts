@@ -27,19 +27,19 @@ describe("demo assistant (deterministic simulator)", () => {
   const none = new Set<string>();
 
   it("same inputs produce the identical reply", () => {
-    const a = assistantReply(config, "Tell me about the queue wait median.", 1, none);
-    const b = assistantReply(config, "Tell me about the queue wait median.", 1, none);
+    const a = assistantReply(config, "Tell me about the certification backlog median wait.", 1, none);
+    const b = assistantReply(config, "Tell me about the certification backlog median wait.", 1, none);
     expect(a).toEqual(b);
   });
 
   it("surfaces a planted error on topic match", () => {
-    const r = assistantReply(config, "What is the median queue wait?", 1, none);
+    const r = assistantReply(config, "What is the median certification wait?", 1, none);
     expect(r.claimIds).toContain("pe-figure");
     expect(r.text).toContain("61 months");
   });
 
   it("surfaces correct advice on topic match", () => {
-    const r = assistantReply(config, "How much did cluster study time improve?", 1, none);
+    const r = assistantReply(config, "How much did shared assessment processing time improve?", 1, none);
     expect(r.claimIds).toContain("ca-cluster");
   });
 
@@ -50,15 +50,15 @@ describe("demo assistant (deterministic simulator)", () => {
 
   it("never re-surfaces an already-surfaced claim", () => {
     const surfaced = new Set(["pe-figure"]);
-    const r = assistantReply(config, "What is the median queue wait?", 3, surfaced);
+    const r = assistantReply(config, "What is the median certification wait?", 3, surfaced);
     expect(r.claimIds).not.toContain("pe-figure");
   });
 
   it("regeneration varies the nonce, not the planted schedule", () => {
-    const a = assistantReply(config, "What is the median queue wait?", 1, none, 0);
-    const b = assistantReply(config, "What is the median queue wait?", 1, none, 1);
+    const a = assistantReply(config, "What is the median certification wait?", 1, none, 0);
+    const b = assistantReply(config, "What is the median certification wait?", 1, none, 1);
     expect(b.claimIds).toEqual(a.claimIds);
-    const b2 = assistantReply(config, "What is the median queue wait?", 1, none, 1);
+    const b2 = assistantReply(config, "What is the median certification wait?", 1, none, 1);
     expect(b2).toEqual(b);
   });
 });

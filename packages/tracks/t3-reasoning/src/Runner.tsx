@@ -26,8 +26,8 @@ const card: CSSProperties = {
   padding: "1rem",
 };
 const btn: CSSProperties = {
-  // AA contrast: dark ink on the app accent (#5b8cff) = 6.04:1 (white = 3.16:1).
-  background: "var(--accent)", color: "#0a0f1e", border: "none",
+  // Paper design: white text on the app accent green (#0b6b47) = 6.4:1.
+  background: "var(--accent)", color: "#ffffff", border: "none",
   borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer", fontSize: "0.95rem",
 };
 const ghost: CSSProperties = {
@@ -46,7 +46,11 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState(restored?.draft ?? "");
   const [savedDraft, setSavedDraft] = useState(restored?.savedDraft ?? "");
-  const [showSource, setShowSource] = useState(false);
+  // Bug fix: the source document is the reading material for the whole
+  // track — it renders VISIBLY (open by default), collapsible for small
+  // screens. "Verify against source" stays the instrumented act.
+  const [sourceOpen, setSourceOpen] = useState(true);
+  const sourceRef = useRef<HTMLElement>(null);
   const [stances, setStances] = useState<Record<string, "challenged" | "accepted">>(restored?.stances ?? {});
   const transcript = useRef<T3Turn[]>(restored?.transcript ?? []);
   const seq = useRef(restored?.seq ?? 0);
@@ -186,10 +190,9 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   }, [draft, emit, savedDraft, saveCheckpoint]);
 
   const checkSource = useCallback(() => {
-    setShowSource((v) => {
-      if (!v) emit({ verb: "verified", object: "source" });
-      return !v;
-    });
+    emit({ verb: "verified", object: "source" });
+    setSourceOpen(true);
+    sourceRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
   }, [emit]);
 
   const setStance = useCallback(
@@ -264,7 +267,7 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   if (phase === "reveal") {
     const summary = revealSummary(cfg, surfaced, stances);
     const stanceColor: Record<string, string> = {
-      challenged: "#4ade80", accepted: "#f87171", ignored: "var(--muted)",
+      challenged: "var(--good, #15803d)", accepted: "var(--bad, #b91c1c)", ignored: "var(--muted)",
     };
     const stanceLabel: Record<string, string> = {
       challenged: "✓ challenged", accepted: "✗ accepted", ignored: "— ignored",
@@ -275,19 +278,19 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
           style={{
             ...card,
             ...(summary.perfect
-              ? { border: "1px solid #4ade80", boxShadow: "0 0 24px rgba(74,222,128,0.25)" }
+              ? { border: `1px solid var(--good, #15803d)`, boxShadow: "0 0 24px rgba(11,107,71,0.18)" }
               : {}),
           }}
         >
           <h2
             ref={revealHeadingRef}
             tabIndex={-1}
-            style={{ marginTop: 0, outline: "none", ...(summary.perfect ? { color: "#4ade80" } : {}) }}
+            style={{ marginTop: 0, outline: "none", ...(summary.perfect ? { color: "var(--good, #15803d)" } : {}) }}
           >
             {summary.perfect ? "🎉 " : ""}You caught {summary.caught} of {summary.total} planted errors
           </h2>
           {summary.perfect && (
-            <p style={{ color: "#4ade80", fontWeight: 600 }}>
+            <p style={{ color: "var(--good, #15803d)", fontWeight: 600 }}>
               Clean sweep — you challenged every planted error the assistant tried on you.
             </p>
           )}
@@ -296,7 +299,7 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
             Here is what was planted:
           </p>
           {summary.rows.map((r) => (
-            <div key={r.id} style={{ borderLeft: `3px solid ${r.stance === "challenged" ? "#4ade80" : "var(--border)"}`, paddingLeft: "0.8rem", marginBottom: "0.8rem" }}>
+            <div key={r.id} style={{ borderLeft: `3px solid ${r.stance === "challenged" ? "var(--good, #15803d)" : "var(--border)"}`, paddingLeft: "0.8rem", marginBottom: "0.8rem" }}>
               <p style={{ margin: 0 }}>
                 <span style={{ color: stanceColor[r.stance] }}>{stanceLabel[r.stance]}</span>
                 {!r.surfaced && (
@@ -321,7 +324,30 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   }
 
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+    <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gap: "1rem" }}>
+      {/* Source document — ALWAYS in the layout (the reading material the
+          planted errors are checked against), scrollable, collapsible on
+          small screens. */}
+      <section ref={sourceRef} aria-label="Source document" style={card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.6rem", flexWrap: "wrap" }}>
+          <strong>{cfg.sourceTitle}</strong>
+          <button
+            style={{ ...ghost, ...tiny }}
+            aria-expanded={sourceOpen}
+            onClick={() => setSourceOpen((v) => !v)}
+          >
+            {sourceOpen ? "Collapse" : "Expand source"}
+          </button>
+        </div>
+        {sourceOpen && (
+          <div style={{ maxHeight: 260, overflowY: "auto", marginTop: "0.5rem" }}>
+            <p style={{ whiteSpace: "pre-wrap", color: "var(--fg)", fontSize: "0.92rem", lineHeight: 1.55, margin: 0 }}>
+              {cfg.sourceExcerpt}
+            </p>
+          </div>
+        )}
+      </section>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
       <div style={{ display: "grid", gap: "0.8rem", alignContent: "start" }}>
         <div role="log" aria-label="Assistant conversation" style={{ ...card, maxHeight: 380, overflowY: "auto" }}>
           <div style={{ color: "var(--muted)", fontSize: "0.8rem", marginBottom: "0.5rem" }}>
@@ -365,13 +391,13 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
               <div key={id} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.45rem" }}>
                 <span style={{ flex: 1, fontSize: "0.85rem" }}>{claimText.get(id)}</span>
                 <button
-                  style={{ ...ghost, ...tiny, borderColor: stances[id] === "challenged" ? "#f87171" : "var(--border)", color: stances[id] === "challenged" ? "#f87171" : "var(--fg)" }}
+                  style={{ ...ghost, ...tiny, borderColor: stances[id] === "challenged" ? "var(--bad, #b91c1c)" : "var(--border)", color: stances[id] === "challenged" ? "var(--bad, #b91c1c)" : "var(--fg)" }}
                   onClick={() => setStance(id, "challenged")}
                 >
                   Challenge
                 </button>
                 <button
-                  style={{ ...ghost, ...tiny, borderColor: stances[id] === "accepted" ? "#4ade80" : "var(--border)", color: stances[id] === "accepted" ? "#4ade80" : "var(--fg)" }}
+                  style={{ ...ghost, ...tiny, borderColor: stances[id] === "accepted" ? "var(--good, #15803d)" : "var(--border)", color: stances[id] === "accepted" ? "var(--good, #15803d)" : "var(--fg)" }}
                   onClick={() => setStance(id, "accepted")}
                 >
                   Accept
@@ -410,21 +436,14 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
               Save revision
             </button>
             <button style={ghost} onClick={checkSource}>
-              {showSource ? "Hide source" : "Check source"}
+              Verify against source
             </button>
             <button style={btn} onClick={submit} disabled={words === 0}>
               Submit final
             </button>
           </div>
         </div>
-        {showSource && (
-          <div style={{ ...card, maxHeight: 300, overflowY: "auto" }}>
-            <strong>{cfg.sourceTitle}</strong>
-            <p style={{ whiteSpace: "pre-wrap", color: "var(--muted)", fontSize: "0.9rem" }}>
-              {cfg.sourceExcerpt}
-            </p>
-          </div>
-        )}
+      </div>
       </div>
     </div>
   );

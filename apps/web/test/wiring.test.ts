@@ -76,6 +76,14 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
     const cfg = validateT3Config(trackConfig("t3"));
     expect(cfg.plantedErrors.length).toBe(3);
     expect(sha256Hex(canonicalJson(T3_SCENARIO))).toBe(T3_SCENARIO_SHA256);
+    // Trilateral-memorandum content upgrade kept the contract-pinned claim
+    // ids and numeric traps (61→38 months etc.) intact.
+    expect(cfg.sourceTitle).toContain("Trilateral AI Workforce Readiness Memorandum");
+    expect(cfg.plantedErrors.map((e) => e.id)).toEqual(["pe-figure", "pe-causal", "pe-citation"]);
+    expect(cfg.correctAdvice.map((a) => a.id)).toEqual(["ca-cluster", "ca-equity"]);
+    expect(cfg.plantedErrors[0].claim).toContain("61 months");
+    expect(cfg.plantedErrors[0].truth).toContain("38 months");
+    expect(cfg.sourceExcerpt).toContain("38 months");
   });
 
   it("per-track rubricVersion comes from the committed snapshot (F12)", () => {

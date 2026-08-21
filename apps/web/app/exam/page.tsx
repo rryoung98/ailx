@@ -191,6 +191,9 @@ export default function ExamPage() {
             moves, never mid-swipe. The event log stays in this browser.
           </p>
           <div style={{ textAlign: "right" }}><Annotation side="left">no accounts — just play</Annotation></div>
+          {/* AI connection FIRST — users must see it before the Start pill
+              (it was previously buried below the fold). */}
+          <ConnectPanel />
           <ul className="rule-rows" style={{ margin: "1rem 0 1.5rem" }}>
             {TRACK_LIST.map((t) => (
               <Reveal as="li" key={t.id}>
@@ -204,7 +207,6 @@ export default function ExamPage() {
           <p className="small faint">
             <span className="badge demo">demo</span> Deterministic scoring: the real track plugins score your stored artifact and judgments. The same play will always result in the same score.
           </p>
-          <ConnectPanel />
           </Reveal>
           <PillCTA
             onClick={() => {

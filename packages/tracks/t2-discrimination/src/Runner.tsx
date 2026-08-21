@@ -23,9 +23,8 @@ const card: CSSProperties = {
 
 const btn: CSSProperties = {
   background: "var(--accent)",
-  // AA contrast: the app accent (#5b8cff) yields 3.16:1 with white text but
-  // 6.04:1 with this dark ink (matches the app's .btn.primary).
-  color: "#0a0f1e",
+  // Paper design: white text on the app accent green (#0b6b47) = 6.4:1.
+  color: "#ffffff",
   border: "none",
   borderRadius: 8,
   padding: "0.6rem 1.2rem",
@@ -349,7 +348,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
         <div style={card}>
           <p lang={contentLang} style={{ marginTop: 0, fontWeight: 600 }}>{rItem.stem}</p>
           <Material item={rItem} lang={contentLang} />
-          <p style={{ color: correct ? "#4ade80" : "#f87171", marginBottom: "0.3rem" }}>
+          <p style={{ color: correct ? "var(--good, #15803d)" : "var(--bad, #b91c1c)", marginBottom: "0.3rem" }}>
             {resp && resp.choice >= 0
               ? `Your call: ${rItem.options[resp.choice]} (${resp.confidence} sure) — ${correct ? "correct" : "incorrect"}`
               : "No response (exposure lapsed)"}
