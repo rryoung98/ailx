@@ -107,6 +107,9 @@ export const plugin: TrackPlugin<T3Config, T3Session, T3Artifact, T3Score> = {
     const { raw, scaled } = scoreT3(inputs.artifact, inputs.judgments, cfg);
     return { raw: raw as unknown as Record<string, number>, scaled };
   },
+
+  /** Lazy UI loader (F11) — the platform must not hardcode track imports. */
+  ui: () => import("./Runner.js").then((m) => ({ Runner: m.Runner })),
 };
 
 export type { T3Raw };

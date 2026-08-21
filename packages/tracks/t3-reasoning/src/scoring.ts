@@ -3,13 +3,27 @@
  *   25 RSR    planted-error detection: caught & rejected seeded wrong outputs
  *   45        analysis quality from STORED jury judgments (never called here)
  *   20        process quality from the transcript
- *   10 RAIR   appropriate reliance: adopting correct advice; over-rejection fails
+ *   10 RAIR   appropriate reliance: adopting correct advice AFTER deliberation
  * 35 of 100 points are model-free measurement of behaviour.
  * No I/O, no clock, no randomness.
+ *
+ * RAIR (F5): appropriate reliance is a SEQUENCE, not a final stance. A claim
+ * must first be deliberated — challenged, or the source explicitly verified
+ * after the claim surfaced — before its acceptance earns full credit. A blind
+ * instant accept of correct advice earns half credit: the candidate happened
+ * to be right, but exhibited the same behaviour that swallows planted errors.
+ *
+ * Analysis (F6): stored jury judgment values are NORMALIZED [0,1] by contract
+ * (JudgeResponse.value); out-of-range stored values throw. The word-count
+ * length gate against cfg.minWords is a DECLARED rubric device: it multiplies
+ * the jury score, is capped at 1 (it can only withhold credit for an
+ * under-length answer, never add), and is reported in raw as
+ * 'analysis.lengthGate'. The component is clamped to [0, weights.analysis].
  */
 import type { Judgment } from "@ailx/core";
 import type { T3Artifact, T3Config, T3Turn } from "./types.js";
 
+/** Demo jury band scale — DemoJudge normalizes bands 0..5 to [0,1] by /5. */
 export const RUBRIC_BAND_MAX = 5;
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
@@ -25,6 +39,8 @@ export interface T3Raw {
   plantedCaught: number;
   adviceSurfaced: number;
   adviceAdopted: number;
+  /** Advice claims accepted only after deliberation (full RAIR credit). */
+  adviceDeliberated: number;
   promptCount: number;
   revisionChainLength: number;
   verificationCount: number;
@@ -32,6 +48,8 @@ export interface T3Raw {
   meanJuryBand: number;
   jurySpread: number;
   wordCount: number;
+  /** Declared length gate multiplier applied to the analysis component. */
+  "analysis.lengthGate": number;
 }
 
 /** Final stance per claim id: last challenged/accepted turn wins. */
@@ -66,6 +84,54 @@ export function revisionChainLength(transcript: ReadonlyArray<T3Turn>): number {
   return best;
 }
 
+/**
+ * RAIR credit for one correct-advice claim, in {0, 0.5, 1} — F5.
+ * Order is read from transcript array position (the transcript is
+ * append-only; array order is event order).
+ */
+export function rairCreditForClaim(
+  transcript: ReadonlyArray<T3Turn>,
+  claimId: string,
+): number {
+  const obj = `claim:${claimId}`;
+  let surfacedAt = -1;
+  let finalStance: "challenged" | "accepted" | null = null;
+  let finalStanceAt = -1;
+  let challengedBeforeFinal = false;
+  const verifiedAt: number[] = [];
+  transcript.forEach((t, i) => {
+    if (t.verb === "assisted" && t.claimIds?.includes(claimId) && surfacedAt < 0) surfacedAt = i;
+    if (t.verb === "verified") verifiedAt.push(i);
+    if ((t.verb === "challenged" || t.verb === "accepted") && t.object === obj) {
+      finalStance = t.verb;
+      finalStanceAt = i;
+    }
+  });
+  if (surfacedAt < 0 || finalStance !== "accepted") return 0;
+  // Recompute: was this claim ever challenged before the FINAL accept?
+  transcript.forEach((t, i) => {
+    if (t.verb === "challenged" && t.object === obj && i < finalStanceAt) {
+      challengedBeforeFinal = true;
+    }
+  });
+  const verifiedBetween = verifiedAt.some((v) => v > surfacedAt && v < finalStanceAt);
+  const deliberated = challengedBeforeFinal || verifiedBetween;
+  return deliberated ? 1 : 0.5;
+}
+
+function validatedAnalysisValues(judgments: ReadonlyArray<Judgment>): number[] {
+  return judgments
+    .filter((j) => j.dimension === "analysis")
+    .map((j) => {
+      if (!Number.isFinite(j.value) || j.value < 0 || j.value > 1) {
+        throw new Error(
+          `t3 judgment out of range: dimension=${j.dimension} sample=${j.sample} value=${j.value} (expected normalized [0,1])`,
+        );
+      }
+      return j.value;
+    });
+}
+
 export function scoreT3(
   artifact: T3Artifact,
   judgments: ReadonlyArray<Judgment>,
@@ -88,13 +154,15 @@ export function scoreT3(
       ? cfg.weights.rsr * (plantedCaught.length / plantedSurfaced.length)
       : 0;
 
-  // --- RAIR (10): adopt correct advice; over-rejection is a failure --------
+  // --- RAIR (10): deliberate adoption of correct advice — F5 ---------------
   const adviceIds = cfg.correctAdvice.map((a) => a.id);
   const adviceSurfaced = adviceIds.filter((id) => surfacedIds.has(id));
   const adviceAdopted = adviceSurfaced.filter((id) => stance.get(id) === "accepted");
+  const credits = adviceSurfaced.map((id) => rairCreditForClaim(transcript, id));
+  const adviceDeliberated = credits.filter((c) => c === 1).length;
   const rair =
     adviceSurfaced.length > 0
-      ? cfg.weights.rair * (adviceAdopted.length / adviceSurfaced.length)
+      ? cfg.weights.rair * (credits.reduce((s, c) => s + c, 0) / adviceSurfaced.length)
       : 0;
 
   // --- Process (20): decomposition, iteration, verification, deliberation --
@@ -110,19 +178,17 @@ export function scoreT3(
     q * clamp01(verificationCount / 2) + // went back to the primary source
     q * deliberationRate;               // deliberate stance on surfaced claims
 
-  // --- Analysis (45): stored jury judgments only ---------------------------
-  const analysisJ = judgments.filter((j) => j.dimension === "analysis");
-  const meanJuryBand =
-    analysisJ.length > 0
-      ? analysisJ.reduce((s, j) => s + j.value, 0) / analysisJ.length
-      : 0;
-  const jurySpread =
-    analysisJ.length > 0
-      ? Math.max(...analysisJ.map((j) => j.value)) - Math.min(...analysisJ.map((j) => j.value))
-      : 0;
+  // --- Analysis (45): stored jury judgments only — F6 ----------------------
+  const vals = validatedAnalysisValues(judgments);
+  const meanJury = vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+  const jurySpread = vals.length > 0 ? Math.max(...vals) - Math.min(...vals) : 0;
   const wordCount = finalAnswer.trim().length === 0 ? 0 : finalAnswer.trim().split(/\s+/).length;
-  const lengthFactor = cfg.minWords > 0 ? clamp01(wordCount / cfg.minWords) : 1;
-  const analysis = cfg.weights.analysis * (meanJuryBand / RUBRIC_BAND_MAX) * lengthFactor;
+  // Declared length gate: capped at 1 — can only withhold, never add.
+  const lengthGate = cfg.minWords > 0 ? clamp01(wordCount / cfg.minWords) : 1;
+  const analysis = Math.min(
+    cfg.weights.analysis,
+    Math.max(0, cfg.weights.analysis * meanJury * lengthGate),
+  );
 
   const raw: T3Raw = {
     rsr: round3(rsr),
@@ -133,13 +199,15 @@ export function scoreT3(
     plantedCaught: plantedCaught.length,
     adviceSurfaced: adviceSurfaced.length,
     adviceAdopted: adviceAdopted.length,
+    adviceDeliberated,
     promptCount,
     revisionChainLength: chain,
     verificationCount,
     deliberationRate: round3(deliberationRate),
-    meanJuryBand: round3(meanJuryBand),
+    meanJuryBand: round3(meanJury),
     jurySpread: round3(jurySpread),
     wordCount,
+    "analysis.lengthGate": round3(lengthGate),
   };
   return { raw, scaled: round3(raw.rsr + raw.analysis + raw.process + raw.rair) };
 }

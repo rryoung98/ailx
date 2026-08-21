@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core";
 import type { Judgment } from "@ailx/core";
 import { plugin, validateT3Config } from "../src/plugin.js";
-import { revisionChainLength, scoreT3 } from "../src/scoring.js";
+import { rairCreditForClaim, revisionChainLength, scoreT3 } from "../src/scoring.js";
 import {
   config, credulousTranscript, goodAnswer, goodTranscript,
   juryJudgments, overRejectTranscript, shortAnswer,
@@ -17,6 +17,10 @@ const score = (transcript: readonly T3Turn[], finalAnswer: string, judgments: Ju
     ),
   );
 
+function blindShift(turns: T3Turn[]): T3Turn[] {
+  return turns.map((t, i) => ({ ...t, seq: i + 1 }));
+}
+
 describe("T3 score()", () => {
   it("is pure under the purity harness and deterministic", () => {
     const a = score(goodTranscript, goodAnswer);
@@ -27,9 +31,10 @@ describe("T3 score()", () => {
   it("strong candidate: full RSR, RAIR and process; analysis from stored jury", () => {
     const s = score(goodTranscript, goodAnswer);
     expect(s.raw.rsr).toBe(25);        // caught 3/3 surfaced planted errors
-    expect(s.raw.rair).toBe(10);       // adopted 2/2 correct-advice claims
-    expect(s.raw.process).toBe(20);    // 3 prompts, chain 2, 2 verifies, full deliberation
-    // jury mean 11/3 over band max 5 -> 45 * 0.7333 = 33
+    expect(s.raw.rair).toBe(10);       // deliberated then adopted 2/2 correct-advice claims
+    expect(s.raw.adviceDeliberated).toBe(2);
+    expect(s.raw.process).toBe(20);    // 3 prompts, chain 2, 3 verifies, full deliberation
+    // normalized jury mean 0.7333 -> 45 * 0.7333 = 33
     expect(s.raw.analysis).toBe(33);
     expect(s.scaled).toBe(88);
     expect(s.raw.plantedCaught).toBe(3);
@@ -43,7 +48,39 @@ describe("T3 score()", () => {
     expect(s.raw.plantedCaught).toBe(0);
     expect(s.raw.verificationCount).toBe(0);
     expect(s.raw.process).toBeLessThan(10); // no verification, no revision chain
-    expect(s.raw.rair).toBe(10);            // did accept the one correct claim surfaced
+    // F5: blind instant accept of the one correct claim — HALF credit only.
+    expect(s.raw.rair).toBe(5);
+    expect(s.raw.adviceDeliberated).toBe(0);
+  });
+
+  it("F5 regression: assisted followed directly by accepted earns < full RAIR", () => {
+    // The review's read-only probe: an 'assisted' event followed immediately
+    // by 'accepted' used to earn the full 10 RAIR points.
+    const blind: T3Turn[] = [
+      { verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster"], seq: 0, clientTs: "2026-02-01T10:00:00Z" },
+      { verb: "accepted", object: "claim:ca-cluster", seq: 1, clientTs: "2026-02-01T10:00:01Z" },
+    ];
+    const s = score(blind, goodAnswer);
+    expect(s.raw.rair).toBeLessThan(config.weights.rair);
+    expect(s.raw.rair).toBe(config.weights.rair / 2);
+    expect(rairCreditForClaim(blind, "ca-cluster")).toBe(0.5);
+  });
+
+  it("F5: verification between surfacing and acceptance restores full credit", () => {
+    const deliberate: T3Turn[] = [
+      { verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster"], seq: 0, clientTs: "2026-02-01T10:00:00Z" },
+      { verb: "verified", object: "source", seq: 1, clientTs: "2026-02-01T10:01:00Z" },
+      { verb: "accepted", object: "claim:ca-cluster", seq: 2, clientTs: "2026-02-01T10:02:00Z" },
+    ];
+    expect(rairCreditForClaim(deliberate, "ca-cluster")).toBe(1);
+    expect(score(deliberate, goodAnswer).raw.rair).toBe(config.weights.rair);
+    // A verify that happened BEFORE the claim surfaced is not deliberation
+    // on that claim.
+    const staleVerify: T3Turn[] = [
+      { verb: "verified", object: "source", seq: 0, clientTs: "2026-02-01T09:59:00Z" },
+      ...blindShift(deliberate.filter((t) => t.verb !== "verified")),
+    ];
+    expect(rairCreditForClaim(staleVerify, "ca-cluster")).toBe(0.5);
   });
 
   it("over-rejection is a failure too: challenging correct advice zeroes RAIR", () => {
@@ -52,7 +89,7 @@ describe("T3 score()", () => {
     expect(s.raw.rair).toBe(0);
   });
 
-  it("last stance wins: challenge then accept counts as accepted", () => {
+  it("last stance wins: challenge then accept counts as accepted (and IS deliberation)", () => {
     const flip: T3Turn[] = [
       ...credulousTranscript,
       { verb: "challenged", object: "claim:ca-cluster", seq: 100, clientTs: "2026-02-01T10:00:00Z" },
@@ -60,14 +97,40 @@ describe("T3 score()", () => {
     ];
     const s = score(flip, goodAnswer);
     expect(s.raw.adviceAdopted).toBe(1);
+    // Challenged before the final accept -> resistance shown -> full credit.
     expect(s.raw.rair).toBe(10);
+    expect(s.raw.adviceDeliberated).toBe(1);
   });
 
-  it("analysis is gated by word count against the brief's target", () => {
+  it("F6 regression: out-of-range stored judgment values throw, never inflate", () => {
+    const bad = (value: number): Judgment[] => [
+      { dimension: "analysis", sample: 0, value, modelId: "evil@1" },
+    ];
+    // The review probe: a stored value of 50 produced 450 analysis points.
+    expect(() => score(goodTranscript, goodAnswer, bad(50))).toThrow(/out of range/);
+    expect(() => score(goodTranscript, goodAnswer, bad(4))).toThrow(/out of range/);
+    expect(() => score(goodTranscript, goodAnswer, bad(1.001))).toThrow(/out of range/);
+    expect(() => score(goodTranscript, goodAnswer, bad(-0.1))).toThrow(/out of range/);
+    expect(() => score(goodTranscript, goodAnswer, bad(Number.NaN))).toThrow(/out of range/);
+  });
+
+  it("F6: analysis is capped at its 45-point allocation and the length gate at 1", () => {
+    const maxed: Judgment[] = [0, 1, 2].map((sample) => ({
+      dimension: "analysis", sample, value: 1, modelId: "demo-judge@1",
+    }));
+    const longAnswer = ("word ".repeat(config.minWords * 3)).trim(); // 3x minWords
+    const s = score(goodTranscript, longAnswer, maxed);
+    expect(s.raw.analysis).toBe(45);
+    expect(s.raw["analysis.lengthGate"]).toBe(1); // capped: length never adds credit
+  });
+
+  it("analysis length gate is declared: reported in raw and only withholds", () => {
     const full = score(goodTranscript, goodAnswer);
     const short = score(goodTranscript, shortAnswer);
     expect(short.raw.analysis).toBeLessThan(full.raw.analysis);
     expect(short.raw.wordCount).toBe(3);
+    expect(short.raw["analysis.lengthGate"]).toBeCloseTo(3 / config.minWords, 3);
+    expect(full.raw["analysis.lengthGate"]).toBe(1);
   });
 
   it("no judgments stored -> zero analysis points (never judged here)", () => {
@@ -86,11 +149,13 @@ describe("T3 score()", () => {
       {
         "raw": {
           "adviceAdopted": 2,
+          "adviceDeliberated": 2,
           "adviceSurfaced": 2,
           "analysis": 33,
+          "analysis.lengthGate": 1,
           "deliberationRate": 1,
-          "jurySpread": 1,
-          "meanJuryBand": 3.667,
+          "jurySpread": 0.2,
+          "meanJuryBand": 0.733,
           "plantedCaught": 3,
           "plantedSurfaced": 3,
           "process": 20,
@@ -98,7 +163,7 @@ describe("T3 score()", () => {
           "rair": 10,
           "revisionChainLength": 2,
           "rsr": 25,
-          "verificationCount": 2,
+          "verificationCount": 3,
           "wordCount": 180,
         },
         "scaled": 88,
@@ -111,22 +176,24 @@ describe("T3 score()", () => {
       {
         "raw": {
           "adviceAdopted": 1,
+          "adviceDeliberated": 0,
           "adviceSurfaced": 1,
           "analysis": 33,
+          "analysis.lengthGate": 1,
           "deliberationRate": 1,
-          "jurySpread": 1,
-          "meanJuryBand": 3.667,
+          "jurySpread": 0.2,
+          "meanJuryBand": 0.733,
           "plantedCaught": 0,
           "plantedSurfaced": 2,
           "process": 6.667,
           "promptCount": 1,
-          "rair": 10,
+          "rair": 5,
           "revisionChainLength": 0,
           "rsr": 0,
           "verificationCount": 0,
           "wordCount": 180,
         },
-        "scaled": 49.667,
+        "scaled": 44.667,
       }
     `);
   });

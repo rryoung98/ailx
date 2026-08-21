@@ -9,7 +9,8 @@ import { scoreT4 } from "./score.js";
 import type {
   T4Artifact,
   T4Config,
-  T4Generation,
+  T4Draft,
+  T4Final,
   T4Score,
   T4Session,
 } from "./types.js";
@@ -18,13 +19,19 @@ export const T4_TRACK_ID = "t4-generative";
 
 const DEFAULT_CONFIG: T4Config = {
   brief:
-    "Produce a visual that makes the viewer understand: cooperation between " +
-    "three nations, weathering a storm together. The viewer should read " +
-    "resilience, not decoration.",
+    "Produce a visual set that makes the viewer understand: cooperation " +
+    "between three nations, weathering a storm together. The viewer should " +
+    "read resilience, not decoration.",
   audience: "Summit delegates seeing the gallery without any caption.",
-  maxGenerations: 6,
+  // Spec §T4: drafts unlimited; finals hard-limited to 3 images + 1 video.
+  finalImageQuota: 3,
+  finalVideoQuota: 1,
   noteMaxChars: 1200,
 };
+
+function intInRange(v: unknown, lo: number, hi: number): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= lo && v <= hi;
+}
 
 export const t4Plugin: TrackPlugin<T4Config, T4Session, T4Artifact, T4Score> = {
   id: T4_TRACK_ID,
@@ -49,23 +56,20 @@ export const t4Plugin: TrackPlugin<T4Config, T4Session, T4Artifact, T4Score> = {
       }
       cfg.audience = r.audience;
     }
-    if (r.maxGenerations !== undefined) {
-      if (
-        typeof r.maxGenerations !== "number" ||
-        !Number.isInteger(r.maxGenerations) ||
-        r.maxGenerations < 1 ||
-        r.maxGenerations > 50
-      ) {
-        throw new Error("t4 config.maxGenerations must be an integer in [1,50]");
+    if (r.finalImageQuota !== undefined) {
+      if (!intInRange(r.finalImageQuota, 1, 10)) {
+        throw new Error("t4 config.finalImageQuota must be an integer in [1,10]");
       }
-      cfg.maxGenerations = r.maxGenerations;
+      cfg.finalImageQuota = r.finalImageQuota;
+    }
+    if (r.finalVideoQuota !== undefined) {
+      if (!intInRange(r.finalVideoQuota, 0, 3)) {
+        throw new Error("t4 config.finalVideoQuota must be an integer in [0,3]");
+      }
+      cfg.finalVideoQuota = r.finalVideoQuota;
     }
     if (r.noteMaxChars !== undefined) {
-      if (
-        typeof r.noteMaxChars !== "number" ||
-        !Number.isInteger(r.noteMaxChars) ||
-        r.noteMaxChars <= 0
-      ) {
+      if (!intInRange(r.noteMaxChars, 1, 100000)) {
         throw new Error("t4 config.noteMaxChars must be a positive integer");
       }
       cfg.noteMaxChars = r.noteMaxChars;
@@ -77,38 +81,77 @@ export const t4Plugin: TrackPlugin<T4Config, T4Session, T4Artifact, T4Score> = {
     return { attemptId: ctx.attemptId, trackId: T4_TRACK_ID };
   },
 
-  /** Idempotent: same payload -> same artifact. */
+  /** Idempotent: same payload -> same artifact. Enforces the final quotas. */
   async ingest(
     _ctx: TrackCtx,
     _s: T4Session,
     payload: Upload,
   ): Promise<T4Artifact> {
+    const cfg = DEFAULT_CONFIG;
     const j = payload.json as Partial<T4Artifact> | undefined;
-    if (!j || !Array.isArray(j.generations) || j.generations.length === 0) {
-      throw new Error("t4 artifact requires at least one generation");
+    if (!j || !Array.isArray(j.drafts) || j.drafts.length === 0) {
+      throw new Error("t4 artifact requires at least one draft");
     }
-    const generations: T4Generation[] = j.generations.map((g, i) => {
-      if (!g || typeof g.prompt !== "string" || typeof g.svg !== "string") {
-        throw new Error(`t4 generation ${i} malformed`);
+    const drafts: T4Draft[] = j.drafts.map((d, i) => {
+      if (!d || typeof d.prompt !== "string" || typeof d.svg !== "string") {
+        throw new Error(`t4 draft ${i} malformed`);
       }
       return {
         index: i,
-        prompt: g.prompt,
-        svg: g.svg,
-        clientTs: typeof g.clientTs === "string" ? g.clientTs : "",
+        prompt: d.prompt,
+        svg: d.svg,
+        clientTs: typeof d.clientTs === "string" ? d.clientTs : "",
       };
     });
-    const chosenIndex =
-      typeof j.chosenIndex === "number" &&
-      Number.isInteger(j.chosenIndex) &&
-      j.chosenIndex >= 0 &&
-      j.chosenIndex < generations.length
-        ? j.chosenIndex
-        : generations.length - 1;
+    const finalsRaw = (j.finals ?? {}) as Partial<T4Artifact["finals"]>;
+    const parseFinal = (f: unknown, where: string, kind: "image" | "video"): T4Final => {
+      const v = f as Partial<T4Final> | undefined;
+      if (
+        !v ||
+        v.kind !== kind ||
+        typeof v.prompt !== "string" ||
+        typeof v.asset !== "string" ||
+        typeof v.fromDraftIndex !== "number" ||
+        !Number.isInteger(v.fromDraftIndex) ||
+        v.fromDraftIndex < 0 ||
+        v.fromDraftIndex >= drafts.length
+      ) {
+        throw new Error(`t4 final ${where} malformed`);
+      }
+      return {
+        kind,
+        fromDraftIndex: v.fromDraftIndex,
+        prompt: v.prompt,
+        asset: v.asset,
+        clientTs: typeof v.clientTs === "string" ? v.clientTs : "",
+      };
+    };
+    const imagesRaw = Array.isArray(finalsRaw.images) ? finalsRaw.images : [];
+    if (imagesRaw.length > cfg.finalImageQuota) {
+      throw new Error(
+        `t4 finals.images exceeds the hard quota of ${cfg.finalImageQuota}`,
+      );
+    }
+    const images = imagesRaw.map((f, i) => parseFinal(f, `images[${i}]`, "image"));
+    const video =
+      finalsRaw.video !== undefined && finalsRaw.video !== null
+        ? parseFinal(finalsRaw.video, "video", "video")
+        : undefined;
+    if (video && cfg.finalVideoQuota < 1) {
+      throw new Error("t4 finals.video exceeds the hard quota of 0");
+    }
+    const chosenSet = (Array.isArray(j.chosenSet) ? j.chosenSet : [])
+      .filter(
+        (i): i is number =>
+          typeof i === "number" && Number.isInteger(i) && i >= 0 && i < images.length,
+      )
+      .filter((v, i, a) => a.indexOf(v) === i);
     return {
-      generations,
-      chosenIndex,
+      drafts,
+      finals: video ? { images, video } : { images },
+      chosenSet: chosenSet.length > 0 ? chosenSet : images.map((_, i) => i),
       note: typeof j.note === "string" ? j.note : "",
+      disclosed: j.disclosed === true,
     };
   },
 
@@ -127,4 +170,7 @@ export const t4Plugin: TrackPlugin<T4Config, T4Session, T4Artifact, T4Score> = {
   score(inputs: ScoreInputs<T4Artifact>, cfg: T4Config): T4Score {
     return scoreT4(inputs, cfg);
   },
+
+  /** Lazy UI loader (F11) — the platform must not hardcode track imports. */
+  ui: () => import("./Runner.js").then((m) => ({ Runner: m.Runner })),
 };

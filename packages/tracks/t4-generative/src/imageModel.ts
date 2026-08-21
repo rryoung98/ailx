@@ -188,3 +188,25 @@ export function generateImage(prompt: string): string {
 export function svgDataUrl(svg: string): string {
   return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
 }
+
+export const VIDEO_MODEL_ID = "demo-video@1";
+
+/**
+ * DEMO video model — simulates the one-video final quota (spec §T4) as an
+ * ANIMATED SVG derived from a draft render: a drifting pan plus a clearly
+ * labeled "VIDEO · simulated" badge. Deterministic: same draft SVG in, same
+ * animated markup out.
+ */
+export function simulateVideo(draftSvg: string): string {
+  const overlay =
+    `<g><rect x="8" y="8" rx="4" width="132" height="24" fill="#000" opacity="0.55">` +
+    `<animate attributeName="opacity" values="0.55;0.25;0.55" dur="2s" repeatCount="indefinite"/>` +
+    `</rect>` +
+    `<text x="16" y="25" font-family="system-ui,sans-serif" font-size="14" fill="#fff">▶ VIDEO · simulated</text>` +
+    `<animateTransform attributeName="transform" type="translate" values="0 0; 4 0; 0 0" dur="6s" repeatCount="indefinite"/>` +
+    `</g>`;
+  if (draftSvg.endsWith("</svg>")) {
+    return draftSvg.slice(0, -"</svg>".length) + overlay + "</svg>";
+  }
+  return draftSvg + overlay;
+}

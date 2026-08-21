@@ -4,7 +4,13 @@
  *
  *  - 60 pts sensitivity: d' = z(H) - z(F), log-linear corrected (+0.5 to
  *    every contingency cell, applied to EVERY candidate).
- *  - 25 pts calibration: Brier score over the 0-100 confidence slider.
+ *  - 25 pts calibration: Brier score over the 0-100 confidence slider,
+ *    computed over ANSWERED binary items only (F7). Lapsed/unanswered items
+ *    are EXCLUDED from the Brier mean — silence is not a calibrated 50%
+ *    forecast — and full calibration weight additionally requires answering
+ *    at least 50% of the binary deck (linear below that; declared missing-
+ *    response rule, reported in raw as 'calibrationCoverage'). A fully
+ *    unanswered deck earns zero calibration points.
  *  - 15 pts provenance reasoning: difficulty-weighted accuracy over the
  *    untimed provenance block.
  *
@@ -58,6 +64,10 @@ export interface T2Raw {
   accuracy: number;
   brier: number;
   weightedAccuracy: number;
+  /** Answered (non-lapsed) binary items — the Brier population (F7). */
+  answeredBinary: number;
+  /** Coverage multiplier on calibration: min(1, answeredFrac / 0.5). */
+  calibrationCoverage: number;
   hits: number;
   falseAlarms: number;
   nSignal: number;
@@ -103,21 +113,31 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
   const criterion = nSignal > 0 && nNoise > 0 ? -(probit(H) + probit(F)) / 2 : 0;
   const sensitivity = cfg.weights.sensitivity * clamp01(dPrime / D_PRIME_CEILING);
 
-  // --- Calibration: Brier over confidence taps ------------------------------
+  // --- Calibration: Brier over ANSWERED confidence taps only (F7) -----------
   // Forecast f = 0.5 + confidence/200: a 0-confidence answer is a coin flip,
   // 100 confidence claims certainty. Being confidently wrong costs the most.
-  let brierSum = 0, correctCount = 0;
+  // Lapsed items (choice < 0, i.e. no response before the exposure ended)
+  // are excluded from the Brier mean: an unanswered item is not a forecast
+  // and must earn no calibration credit.
+  let brierSum = 0, correctCount = 0, answeredBinary = 0;
   for (const item of binary) {
     const r = responseFor(byId, item);
     const correct = r.choice === item.key ? 1 : 0;
     correctCount += correct;
+    if (r.choice < 0) continue; // lapse: excluded from calibration
+    answeredBinary++;
     const f = 0.5 + Math.min(100, Math.max(0, r.confidence)) / 200;
     brierSum += (f - correct) ** 2;
   }
-  const brier = binary.length > 0 ? brierSum / binary.length : 0;
+  const brier = answeredBinary > 0 ? brierSum / answeredBinary : 0;
   const accuracy = binary.length > 0 ? correctCount / binary.length : 0;
+  // Declared missing-response rule: full calibration weight requires
+  // answering >= 50% of the binary deck; linear credit below that.
+  const answeredFrac = binary.length > 0 ? answeredBinary / binary.length : 0;
+  const calibrationCoverage = clamp01(answeredFrac / 0.5);
   // 0 Brier -> full points; 0.25 (pure guessing) -> half; >= 0.5 -> zero.
-  const calibration = cfg.weights.calibration * clamp01(1 - 2 * brier);
+  const calibration =
+    cfg.weights.calibration * clamp01(1 - 2 * brier) * calibrationCoverage;
 
   // --- Provenance reasoning: difficulty-weighted accuracy -------------------
   let wSum = 0, wCorrect = 0;
@@ -139,6 +159,8 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
     accuracy: round3(accuracy),
     brier: round3(brier),
     weightedAccuracy: round3(weightedAccuracy),
+    answeredBinary,
+    calibrationCoverage: round3(calibrationCoverage),
     hits, falseAlarms, nSignal, nNoise,
   };
   return { raw, scaled: round3(raw.sensitivity + raw.calibration + raw.provenance) };

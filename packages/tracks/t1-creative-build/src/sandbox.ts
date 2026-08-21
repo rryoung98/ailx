@@ -25,24 +25,19 @@ export const PREVIEW_CSP =
 const CSP_META = `<meta http-equiv="Content-Security-Policy" content="${PREVIEW_CSP}">`;
 
 /**
- * Wrap candidate HTML for use as iframe srcdoc, injecting the CSP meta as
- * early as possible so it governs every subresource in the document.
+ * Wrap candidate HTML for use as iframe srcdoc.
+ *
+ * SECURITY (F4): the candidate HTML is NEVER inspected — no regex search
+ * for <head> or <html>, which was bypassable with a fake occurrence such
+ * as `<!-- <head> -->`. Instead we always emit our own static document
+ * shell whose <head> contains the CSP meta, and place the candidate HTML
+ * strictly AFTER it, inside <body>. The HTML parser applies a
+ * Content-Security-Policy meta as long as it is parsed before any
+ * candidate content, and stray <html>/<head>/<body> tags inside body are
+ * merged or ignored by the parser — they can never un-apply the policy.
+ * The returned string therefore starts with a constant trusted prefix and
+ * the first byte of candidate input always appears after the CSP meta.
  */
 export function buildPreviewSrcdoc(candidateHtml: string): string {
-  const headOpen = /<head(\s[^>]*)?>/i.exec(candidateHtml);
-  if (headOpen) {
-    const at = headOpen.index + headOpen[0].length;
-    return candidateHtml.slice(0, at) + CSP_META + candidateHtml.slice(at);
-  }
-  const htmlOpen = /<html(\s[^>]*)?>/i.exec(candidateHtml);
-  if (htmlOpen) {
-    const at = htmlOpen.index + htmlOpen[0].length;
-    return (
-      candidateHtml.slice(0, at) +
-      `<head>${CSP_META}</head>` +
-      candidateHtml.slice(at)
-    );
-  }
-  // Fragment: give it a full document shell.
   return `<!doctype html><html><head>${CSP_META}</head><body>${candidateHtml}</body></html>`;
 }

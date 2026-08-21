@@ -70,6 +70,7 @@ export const goodTranscript: T3Turn[] = [
   turn({ verb: "revised", object: "draft:rev-1", text: "First draft…" }),
   turn({ verb: "prompted", object: "prompt:3", text: "Any FERC compliance angle on community projects fee caps?" }),
   turn({ verb: "assisted", object: "assist:3", text: "…", claimIds: ["ca-equity", "pe-citation"] }),
+  turn({ verb: "verified", object: "source" }),
   turn({ verb: "challenged", object: "claim:pe-citation" }),
   turn({ verb: "accepted", object: "claim:ca-equity" }),
   turn({ verb: "revised", object: "draft:rev-2", text: "Second draft…", revisionOf: "draft:rev-1" }),
@@ -101,9 +102,13 @@ export const goodAnswer = (para + para + para).trim(); // ~180 words > minWords
 
 export const shortAnswer = "Adopt cluster studies."; // far under minWords
 
-/** Stored heterogeneous-jury judgments (three demo models, dimension 'analysis'). */
+/**
+ * Stored heterogeneous-jury judgments (three demo models, dimension
+ * 'analysis'). Values are NORMALIZED [0,1] per the JudgeResponse contract
+ * (bands 4/5, 4/5, 3/5).
+ */
 export const juryJudgments: Judgment[] = [
-  { dimension: "analysis", sample: 0, value: 4, evidence: "anchored to §3.2/§4.1", modelId: "demo-judge-1@1" },
-  { dimension: "analysis", sample: 1, value: 4, evidence: "position actionable", modelId: "demo-judge-2@1" },
-  { dimension: "analysis", sample: 2, value: 3, evidence: "risk treatment thin", modelId: "demo-judge-3@1" },
+  { dimension: "analysis", sample: 0, value: 0.8, evidence: "anchored to §3.2/§4.1", modelId: "demo-judge-1@1" },
+  { dimension: "analysis", sample: 1, value: 0.8, evidence: "position actionable", modelId: "demo-judge-2@1" },
+  { dimension: "analysis", sample: 2, value: 0.6, evidence: "risk treatment thin", modelId: "demo-judge-3@1" },
 ];

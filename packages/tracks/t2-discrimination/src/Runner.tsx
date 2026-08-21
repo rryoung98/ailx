@@ -9,8 +9,9 @@ import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import type { T2Config, T2Item, T2Response } from "./types.js";
 import { validateT2Config } from "./plugin.js";
+import { decodeT2Checkpoint, encodeT2Checkpoint, type T2Phase } from "./checkpoint.js";
 
-type Phase = "intro" | "deck" | "replay" | "done";
+type Phase = T2Phase;
 
 const card: CSSProperties = {
   background: "var(--card)",
@@ -64,17 +65,35 @@ function Material({ item }: { item: T2Item }) {
   );
 }
 
-export function Runner({ locale, config, onEvent, onComplete }: TrackUIProps) {
+export function Runner({ locale, config, onEvent, onComplete, checkpoint, onCheckpoint }: TrackUIProps) {
   const cfg: T2Config = useMemo(() => validateT2Config(config), [config]);
-  const [phase, setPhase] = useState<Phase>("intro");
-  const [idx, setIdx] = useState(0);
+  // Rehydrate from the persisted checkpoint on (re)mount — F2.
+  const restored = useMemo(() => decodeT2Checkpoint(checkpoint), []);
+  const [phase, setPhase] = useState<Phase>(restored?.phase ?? "intro");
+  const [idx, setIdx] = useState(restored?.deckIndex ?? 0);
   const [choice, setChoice] = useState<number | null>(null);
   const [confidence, setConfidence] = useState(50);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-  const [responses, setResponses] = useState<T2Response[]>([]);
-  const [replayIdx, setReplayIdx] = useState(0);
+  const [responses, setResponses] = useState<T2Response[]>(restored?.responses ?? []);
+  const [replayIdx, setReplayIdx] = useState(restored?.replayIdx ?? 0);
   const shownAt = useRef(0);
   const completed = useRef(false);
+
+  // Checkpoint every meaningful mutation with explicit next values (state
+  // setters have not committed yet inside handlers).
+  const saveCheckpoint = useCallback(
+    (next: Partial<{ phase: Phase; deckIndex: number; replayIdx: number; responses: T2Response[] }>) => {
+      onCheckpoint?.(
+        encodeT2Checkpoint({
+          phase: next.phase ?? phase,
+          deckIndex: next.deckIndex ?? idx,
+          replayIdx: next.replayIdx ?? replayIdx,
+          responses: next.responses ?? responses,
+        }),
+      );
+    },
+    [idx, onCheckpoint, phase, replayIdx, responses],
+  );
 
   const item = cfg.items[idx];
   const untimed = !item || item.type === "provenance";
@@ -91,16 +110,19 @@ export function Runner({ locale, config, onEvent, onComplete }: TrackUIProps) {
         context: { track: "t2-discrimination", index: idx, type: item.type },
         clientTs: new Date().toISOString(),
       });
-      setResponses((prev) => [...prev, r]);
+      const nextResponses = [...responses, r];
+      setResponses(nextResponses);
       setChoice(null);
       setConfidence(50);
       if (idx + 1 < cfg.items.length) {
         setIdx(idx + 1);
+        saveCheckpoint({ responses: nextResponses, deckIndex: idx + 1 });
       } else {
         setPhase("replay");
+        saveCheckpoint({ responses: nextResponses, phase: "replay" });
       }
     },
-    [cfg.items.length, idx, item, onEvent],
+    [cfg.items.length, idx, item, onEvent, responses, saveCheckpoint],
   );
 
   // Fixed-exposure countdown per timed item; a lapse is recorded as choice -1.
@@ -139,7 +161,8 @@ export function Runner({ locale, config, onEvent, onComplete }: TrackUIProps) {
     });
     onComplete(artifact);
     setPhase("done");
-  }, [onComplete, onEvent, responses]);
+    saveCheckpoint({ phase: "done" });
+  }, [onComplete, onEvent, responses, saveCheckpoint]);
 
   if (phase === "intro") {
     return (
@@ -153,7 +176,13 @@ export function Runner({ locale, config, onEvent, onComplete }: TrackUIProps) {
             being uncertainly wrong. After the deck, a replay teaches each item&apos;s
             rationale. Locale: {locale}.
           </p>
-          <button style={btn} onClick={() => setPhase("deck")}>
+          <button
+            style={btn}
+            onClick={() => {
+              setPhase("deck");
+              saveCheckpoint({ phase: "deck" });
+            }}
+          >
             Start the deck
           </button>
         </div>
@@ -245,7 +274,13 @@ export function Runner({ locale, config, onEvent, onComplete }: TrackUIProps) {
             </p>
           )}
           {replayIdx + 1 < cfg.items.length ? (
-            <button style={btn} onClick={() => setReplayIdx(replayIdx + 1)}>
+            <button
+              style={btn}
+              onClick={() => {
+                setReplayIdx(replayIdx + 1);
+                saveCheckpoint({ replayIdx: replayIdx + 1 });
+              }}
+            >
               Next
             </button>
           ) : (
