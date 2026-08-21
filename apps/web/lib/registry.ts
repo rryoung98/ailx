@@ -15,7 +15,10 @@ import type { ComponentType } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import type { TrackId, TrackScoreValue } from "@ailx/session";
 import { demoScoreArtifact } from "./demo";
-import { PlaceholderRunner } from "./PlaceholderRunner";
+import { T1Runner } from "./runners/T1Runner";
+import { T2Runner } from "./runners/T2Runner";
+import { T3Runner } from "./runners/T3Runner";
+import { T4Runner } from "./runners/T4Runner";
 
 export interface TrackModule {
   Runner: ComponentType<TrackUIProps>;
@@ -45,8 +48,16 @@ export async function loadTrackModule(trackId: TrackId): Promise<TrackModule> {
       // fall through to placeholder: track module not yet installed
     }
   }
-  return { Runner: PlaceholderRunner, placeholder: true };
+  return { Runner: DEMO_RUNNERS[trackId], placeholder: true };
 }
+
+/** Interactive demo runners bundled with the showcase (placeholder=true). */
+const DEMO_RUNNERS: Record<TrackId, ComponentType<TrackUIProps>> = {
+  t1: T1Runner,
+  t2: T2Runner,
+  t3: T3Runner,
+  t4: T4Runner,
+};
 
 /**
  * Score a completed track's artifact. PURE (demo scorer is sha256-seeded).

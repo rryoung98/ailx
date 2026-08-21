@@ -143,3 +143,81 @@ textarea.field, input.field {
   font: inherit; padding: 0.6rem 0.8rem;
 }
 textarea.field:focus, input.field:focus { outline: none; border-color: var(--accent); }
+
+/* ---- game feel ------------------------------------------------------- */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadeUp 240ms ease-out; }
+@keyframes popIn { 0% { opacity: 0; transform: scale(0.85); } 70% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+.pop-in { animation: popIn 420ms cubic-bezier(.2,.9,.3,1.2); }
+
+.swipe-card {
+  background: var(--bg); border: 1px solid var(--border-strong);
+  border-radius: 12px; padding: 1rem; animation: fadeUp 200ms ease-out;
+  transition: transform 160ms ease;
+}
+.swipe-card .photo svg { width: 100%; height: auto; border-radius: 8px; display: block; }
+.tilt-left { transform: rotate(-3deg) translateX(-12px); }
+.tilt-right { transform: rotate(3deg) translateX(12px); }
+
+.deck-dots { display: flex; gap: 5px; }
+.deck-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); }
+.deck-dots .dot.done { background: var(--accent); }
+.deck-dots .dot.now { background: var(--fg); transform: scale(1.25); }
+
+.btn.choice { font-size: 1rem; padding: 0.65rem 1.3rem; }
+.btn.small-btn { font-size: 0.8rem; padding: 0.3rem 0.7rem; font-weight: 500; }
+.btn.armed { border-color: var(--accent); color: var(--accent); }
+
+.chat { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.8rem; }
+.chat-turn { display: flex; gap: 0.7rem; align-items: flex-start; }
+.chat-bubble {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px 10px 10px 3px; padding: 0.6rem 0.9rem;
+  font-size: 0.9rem; flex: 1; max-width: 34rem;
+}
+.chat-actions { display: flex; gap: 0.4rem; flex-shrink: 0; padding-top: 0.3rem; }
+
+.gen-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+@media (max-width: 560px) { .gen-grid { grid-template-columns: 1fr 1fr; } }
+.gen-cell {
+  padding: 0; border: 2px solid var(--border); border-radius: 8px;
+  background: none; cursor: pointer; overflow: hidden; line-height: 0;
+  transition: border-color 120ms, transform 120ms; animation: popIn 320ms ease-out;
+}
+.gen-cell:hover { transform: scale(1.02); }
+.gen-cell.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+.gen-cell svg { width: 100%; height: auto; display: block; }
+.quota-low { color: var(--bad); font-weight: 700; }
+
+.site-preview {
+  border: 1px solid var(--border-strong); border-radius: 10px;
+  padding: 1rem 1.2rem; transition: background 200ms, color 200ms;
+}
+
+/* exam chrome */
+.track-progress { display: flex; gap: 0.4rem; margin-bottom: 1rem; }
+.track-progress .seg { flex: 1; height: 5px; border-radius: 3px; background: var(--border); }
+.track-progress .seg.done { background: var(--good); }
+.track-progress .seg.now { background: var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.time-bar { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 0.5rem; }
+.time-bar > div { height: 100%; background: var(--accent); transition: width 1s linear; }
+.time-bar.low > div { background: var(--bad); }
+@keyframes blink { 50% { opacity: 0.4; } }
+.timer.low { animation: blink 1s step-end infinite; }
+
+/* landing */
+.hero-play { border: 1px solid var(--border-strong); border-radius: 14px; background: var(--card); padding: 1.2rem 1.4rem; }
+.track-card { transition: transform 150ms ease, border-color 150ms ease; position: relative; overflow: hidden; }
+.track-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.track-card .mechanic { color: var(--faint); font-size: 0.8rem; transition: color 150ms; }
+.track-card:hover .mechanic { color: var(--accent); }
+
+/* report reward */
+.reveal-band { font-size: 2.6rem; font-weight: 800; letter-spacing: -0.02em; }
+.share-card {
+  border: 1px solid var(--border-strong); border-radius: 14px;
+  background: linear-gradient(160deg, var(--card), var(--bg-raised));
+  padding: 1.4rem 1.6rem;
+}
+.dist-strip { display: block; width: 100%; height: 56px; }
