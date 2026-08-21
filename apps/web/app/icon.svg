@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+  <!-- AILX favicon: rounded green square, mint X glyph (matches logo.svg). -->
+  <rect x="2" y="2" width="92" height="92" rx="24" fill="#0b6b47"/>
+  <g stroke="#d8ffe8" stroke-width="13" stroke-linecap="round">
+    <path d="M31 29 L65 67"/>
+    <path d="M65 29 L31 67"/>
+  </g>
+</svg>

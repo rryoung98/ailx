@@ -7,6 +7,7 @@ const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable",
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
 import { Loader } from "../lib/Loader";
+import { NavLink } from "../lib/NavLink";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
@@ -24,10 +25,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="inner">
             <Link href="/" className="wordmark">AIL<span>X</span></Link>
             <nav className="site-nav" aria-label="Primary">
-              <Link href="/methodology">Methodology</Link>
-              <Link href="/exam">Play</Link>
-              <Link href="/report">Report</Link>
-              <Link href="/validate">Validate</Link>
+              <NavLink href="/methodology">Methodology</NavLink>
+              <NavLink href="/report">Report</NavLink>
+              <NavLink href="/validate">Validate</NavLink>
+              {/* Compact pill twin of the bottom .pill-cta, aligned right. */}
+              <NavLink href="/exam" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>
             </nav>
           </div>
         </header>

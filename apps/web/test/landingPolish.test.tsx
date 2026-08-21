@@ -80,12 +80,18 @@ describe("what-you-get marketing section", () => {
     expect(h.textContent).not.toContain("1 : 2 : 3");
   });
 
-  it("keeps the methodology and /validate links as quiet footnotes", async () => {
+  it("upgraded the footnote line into the proof showcase (links + quiet caption)", async () => {
     const h = await render(createElement(Home));
-    const foot = h.querySelector(".wyg-footnotes")!;
-    expect(foot).not.toBeNull();
-    const hrefs = [...foot.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual(["/methodology", "/validate"]);
+    expect(h.querySelector(".wyg-footnotes")).toBeNull();
+    const showcase = h.querySelector(".showcase")!;
+    expect(showcase).not.toBeNull();
+    const rows = [...showcase.querySelectorAll(".showcase-row")];
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/methodology");
+    expect(rows[1].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/validate");
+    expect(showcase.querySelector(".showcase-caption")!.textContent).toContain(
+      "demo build of the AILX 2026.1 spec",
+    );
   });
 });
 

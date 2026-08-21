@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Annotation } from "../../lib/Annotation";
 import { useEffect, useState } from "react";
 import { runAllChecks, type CheckResult } from "../../lib/validateChecks";
 import { Reveal } from "../../lib/Reveal";
@@ -23,31 +24,45 @@ export default function ValidatePage() {
   return (
     <main className="page">
       <div className="container" style={{ maxWidth: 820 }}>
-        <div className="eyebrow">Dogfood · validate AILX quickly</div>
-        <h1>Live validation of the scoring path</h1>
+        {/* Zero-style hero band (desk backdrop, cream scrim, serif h1 with a
+            script accent). Decorative, disclosed in docs/CREDITS.md. */}
+        <div className="page-hero">
+          <div className="page-hero-media" aria-hidden="true">
+            <img
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/media/hero-desk.jpg`}
+              alt="" width={1600} height={872} decoding="async"
+            />
+            <div className="page-hero-scrim" />
+          </div>
+          <div className="page-hero-copy">
+            <div className="eyebrow">Dogfood · validate AILX quickly</div>
+            <h1>Live validation of the <span className="script-accent">scoring</span> path</h1>
+            <Annotation>runs in your browser</Annotation>
+          </div>
+        </div>
         <p className="lede">
           These checks run in your browser against the same code that scores a run. The four REAL track plugin score() functions replay pinned golden artifacts and judgments inside the purity harness. A full fixture run is scored through the same registry path used by the live game. These checks also verify content addressing, rubric-version hashing, and composite reproducibility. Since there's no network or server involved, if it passes here, it will be reproducible anywhere.
         </p>
 
         {results && (
-          <p style={{ margin: "1.6rem 0" }}>
+          <div className="run-card">
             <span className={`badge ${allPass ? "pass-check" : "fail-check"}`}>
               {allPass ? `ALL ${total} CHECKS PASS` : `${passed} / ${total} CHECKS PASS`}
-            </span>{" "}
-            <span className="faint small mono">ran {ranAt}</span>{" "}
-            <button className="btn" style={{ marginLeft: "0.6rem" }} onClick={runNow}>Re-run</button>
-          </p>
+            </span>
+            <span className="faint small mono">ran {ranAt}</span>
+            <button className="btn" onClick={runNow}>Re-run</button>
+          </div>
         )}
 
-        <ul className="checklist rule-stagger">
+        <ul className="check-grid">
           {(results ?? []).map((r) => (
-            <Reveal as="li" key={r.id} style={{ flexDirection: "column", alignItems: "stretch", gap: "0.2rem" }}>
-              <div style={{ display: "flex", gap: "0.9rem", alignItems: "baseline" }}>
-                <span className={`badge ${r.pass ? "pass-check" : "fail-check"}`}>{r.pass ? "pass" : "fail"}</span>
+            <Reveal as="li" key={r.id} className="check-card">
+              <div className="check-card-head">
+                <span className={`badge check-pill ${r.pass ? "pass-check" : "fail-check"}`}>{r.pass ? "pass" : "fail"}</span>
                 <strong>{r.title}</strong>
-                <span className="faint small">{r.spec}</span>
               </div>
-              <div className="muted small mono" style={{ paddingLeft: "0.1rem" }}>{r.detail}</div>
+              <span className="faint small">{r.spec}</span>
+              <div className="muted small mono">{r.detail}</div>
             </Reveal>
           ))}
         </ul>
