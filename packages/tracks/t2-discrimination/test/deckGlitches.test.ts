@@ -33,4 +33,13 @@ describe("t2 deck glitch guards", () => {
   it("advancing scrolls the next item header into view", () => {
     expect(runner).toContain("deckTopRef.current.scrollIntoView");
   });
+
+  it("GL frameloop never toggles to 'never' (blank-card race) and context loss falls back to DOM", () => {
+    const scene = readFileSync(join(here, "../src/swipe/CardScene.tsx"), "utf8");
+    expect(scene).not.toContain('frameloop={props.imageUrl ? "always" : "never"}');
+    expect(scene).toContain('frameloop="always"');
+    expect(scene).toContain("webglcontextlost");
+    expect(deck).toContain("handleContextLost");
+    expect(deck).toContain("onContextLost={handleContextLost}");
+  });
 });

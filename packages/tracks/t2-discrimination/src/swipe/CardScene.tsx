@@ -41,6 +41,8 @@ export interface CardSceneProps {
   offsetY?: number;
   /** Fired once the texture for imageUrl is decoded and the mesh is visible. */
   onTextureReady?: (imageUrl: string) => void;
+  /** Fired if the WebGL context is lost — callers must fall back to DOM. */
+  onContextLost?: () => void;
 }
 
 const DEG = Math.PI / 180;
@@ -198,10 +200,21 @@ export default function CardScene(props: CardSceneProps) {
     <Canvas
       orthographic
       flat
-      frameloop={props.imageUrl ? "always" : "never"}
+      // ALWAYS: toggling to "never" between cards raced the texture-ready
+      // callback — the DOM img was already swapped out (opacity 0) while the
+      // canvas never drew another frame, leaving a blank card (live bug).
+      frameloop="always"
       dpr={[1, 2]}
       camera={{ position: [0, 0, 300], zoom: 1, near: 0.1, far: 1000 }}
       gl={{ alpha: true, antialias: true, powerPreference: "low-power" }}
+      onCreated={(state) => {
+        // Context loss (mobile GPUs, tab switches) would blank the deck while
+        // the DOM stimulus stays hidden — surface it so the deck falls back.
+        state.gl.domElement.addEventListener("webglcontextlost", (e) => {
+          e.preventDefault();
+          props.onContextLost?.();
+        });
+      }}
       style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
     >
       {props.imageUrl ? (

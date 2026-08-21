@@ -351,6 +351,11 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
     setGlReadyUrl(url);
     onStimulusReady?.();
   }, [onStimulusReady]);
+  const handleContextLost = useCallback(() => {
+    setWebgl(false);
+    setGlReadyUrl(null);
+    onStimulusReady?.();
+  }, [onStimulusReady]);
   const handleTextureError = useCallback(() => {
     const url = itemUrlRef.current;
     if (!url) return;
@@ -465,6 +470,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
                   offsetX={slot ? slot.ox : 0}
                   offsetY={slot ? slot.oy : 0}
                   onTextureReady={handleTextureReady}
+                  onContextLost={handleContextLost}
                 />
               </Suspense>
             </TextureErrorBoundary>
