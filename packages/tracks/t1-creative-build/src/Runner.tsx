@@ -46,14 +46,6 @@ const STARTER_HTML = `<!doctype html>
 </body>
 </html>`;
 
-const vars: CSSProperties = {
-  ["--bg" as string]: "#0b0d12",
-  ["--fg" as string]: "#e6e9f0",
-  ["--muted" as string]: "#8b93a7",
-  ["--accent" as string]: "#6b46f2", /* AA: 5.55:1 under white button text (was #7c5cff at 4.35:1) */
-  ["--card" as string]: "#121622",
-  ["--border" as string]: "#232a3d",
-};
 
 const panel: CSSProperties = {
   background: "var(--card)",
@@ -69,7 +61,7 @@ const panel: CSSProperties = {
 const mono: CSSProperties = {
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
   fontSize: 13,
-  background: "#0a0c11",
+  background: "var(--bg, #faf8f6)",
   color: "var(--fg)",
   border: "1px solid var(--border)",
   borderRadius: 6,
@@ -365,7 +357,6 @@ export function Runner(props: TrackUIProps) {
   return (
     <div
       style={{
-        ...vars,
         background: "var(--bg)",
         color: "var(--fg)",
         minHeight: "100%",
@@ -399,7 +390,7 @@ export function Runner(props: TrackUIProps) {
           </p>
           {hasKey ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "#4ade80" }}>
+              <span style={{ fontSize: 12, color: "var(--good, #15803d)" }}>
                 ● Connected — key stored only in this browser
               </span>
               <button
@@ -460,7 +451,7 @@ export function Runner(props: TrackUIProps) {
             {assistBusy ? "Asking…" : "Ask (logged)"}
           </button>
           {assistError && (
-            <p role="alert" style={{ margin: 0, color: "#f87171", fontSize: 12 }}>
+            <p role="alert" style={{ margin: 0, color: "var(--bad, #b91c1c)", fontSize: 12 }}>
               {assistError}
             </p>
           )}
