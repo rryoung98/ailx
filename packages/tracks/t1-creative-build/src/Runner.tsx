@@ -19,12 +19,9 @@ import {
   requestVibeCompletion,
 } from "./openrouter.js";
 import {
-  buildAuthUrl,
   cleanCallbackUrl,
-  computeCodeChallenge,
   exchangeCodeForKey,
   extractCallbackCode,
-  generateCodeVerifier,
   PKCE_VERIFIER_STORAGE,
 } from "./sso.js";
 import { t1Plugin } from "./plugin.js";
@@ -190,36 +187,6 @@ export function Runner(props: TrackUIProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** 'Connect OpenRouter' — start the PKCE round-trip. */
-  const connectOpenRouter = async () => {
-    if (ssoBusy) return;
-    setSsoBusy(true);
-    setAssistError(null);
-    try {
-      const verifier = generateCodeVerifier((a) => window.crypto.getRandomValues(a));
-      window.localStorage.setItem(PKCE_VERIFIER_STORAGE, verifier);
-      const challenge = await computeCodeChallenge(verifier, window.crypto.subtle);
-      window.location.href = buildAuthUrl(cleanCallbackUrl(window.location.href), challenge);
-    } catch {
-      setSsoBusy(false);
-      setAssistError("Could not start OpenRouter sign-in in this browser.");
-    }
-  };
-
-  const updateBaseUrl = (value: string) => {
-    setBaseUrl(value);
-    setAssistError(null);
-    try {
-      if (normalizeBaseUrl(value) !== DEFAULT_BASE_URL) {
-        window.localStorage.setItem(LLM_BASE_URL_STORAGE, value.trim());
-      } else {
-        window.localStorage.removeItem(LLM_BASE_URL_STORAGE);
-      }
-    } catch {
-      /* non-fatal */
-    }
-  };
-
   const updateKey = (value: string) => {
     setOrKey(value);
     setAssistError(null);
@@ -302,7 +269,15 @@ export function Runner(props: TrackUIProps) {
    * srcdoc wrapper is unchanged — the artifact stays a contained site.
    * Errors surface inline and never crash the runner.
    */
+  /** Cohort budget cap: ≤10 real-model calls per run keeps a funded 45-person
+      cohort under ~$0.15/run (docs/BUDGET.md); the demo assist is free. */
+  const REAL_ASSIST_CAP = 10;
+  const realCalls = promptLog.current.filter((e) => e.kind === "prompted" && e.modelId && !String(e.modelId).startsWith("demo")).length;
   const askVibe = async (p: string) => {
+    if (realCalls >= REAL_ASSIST_CAP) {
+      setAssistError(`Run budget reached (${REAL_ASSIST_CAP} real-model calls) — refine by hand or use shorter prompts.`);
+      return;
+    }
     setAssistBusy(true);
     setAssistError(null);
     const promptedEntry: PromptLogEntry = {
@@ -419,9 +394,8 @@ export function Runner(props: TrackUIProps) {
               ? "Real vibe coding (your key/endpoint, your browser only). The " +
                 "model returns the full updated document; every prompt is " +
                 "logged to your submission artefact with the model id."
-              : "demo simulator — connect OpenRouter or paste a key for a real " +
-                "model. Deterministic offline demo: same prompt, same answer. " +
-                "Every prompt is logged to your submission artefact."}
+              : "demo simulator — deterministic offline demo: same prompt, same " +
+                "answer. Every prompt is logged to your submission artefact."}
           </p>
           {hasKey ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -438,33 +412,11 @@ export function Runner(props: TrackUIProps) {
             </div>
           ) : (
             !customBase && (
-              <button
-                type="button"
-                style={{ ...btn, opacity: ssoBusy ? 0.5 : 1 }}
-                onClick={() => void connectOpenRouter()}
-                disabled={ssoBusy}
-              >
-                {ssoBusy ? "Connecting…" : "Connect OpenRouter (quick SSO)"}
-              </button>
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+                Connect a model on the run start screen to use real vibe coding here.
+              </p>
             )
           )}
-          <input
-            aria-label="OpenRouter API key"
-            type="password"
-            autoComplete="off"
-            style={{ ...mono, resize: "none" }}
-            value={orKey}
-            onChange={(e) => updateKey(e.target.value)}
-            placeholder="…or paste an OpenRouter API key (stored only in this browser)"
-          />
-          <input
-            aria-label="API base URL"
-            style={{ ...mono, resize: "none" }}
-            value={baseUrl}
-            onChange={(e) => updateBaseUrl(e.target.value)}
-            placeholder={DEFAULT_BASE_URL}
-            title="Any OpenAI-compatible endpoint — e.g. http://localhost:11434/v1 for Ollama (key optional for local servers)"
-          />
           <div style={{ display: "flex", gap: 8 }}>
             <select
               aria-label="Assist model"

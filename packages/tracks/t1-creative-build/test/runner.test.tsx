@@ -23,15 +23,15 @@ describe("T1 Runner (SSR smoke)", () => {
     expect(html).toContain("demo simulator");
     expect(html).toContain("20:34"); // secondsRemaining formatted
   });
-  it("renders the BYOK OpenRouter controls with no key baked in (SSR default)", () => {
+  it("keeps the runner uncluttered: no key inputs, just the start-screen hint (SSR default)", () => {
     const html = renderToStaticMarkup(createElement(Runner, props));
-    expect(html).toContain("aria-label=\"OpenRouter API key\"");
+    // Connection moved to the run start screen — the runner carries no
+    // key/base inputs of its own, only a pointer plus the model selects.
+    expect(html).not.toContain("aria-label=\"OpenRouter API key\"");
+    expect(html).not.toContain("aria-label=\"API base URL\"");
     expect(html).toContain("aria-label=\"Assist model\"");
     expect(html).toContain("aria-label=\"Custom model override\"");
-    // No key -> demo label with the paste-a-key hint; nothing key-like rendered.
-    expect(html).toContain("connect OpenRouter or paste a key for a real");
-    expect(html).toContain("Connect OpenRouter (quick SSO)");
-    expect(html).toContain("aria-label=\"API base URL\"");
+    expect(html).toContain("Connect a model on the run start screen");
     expect(html).not.toMatch(/sk-or-/);
   });
 });

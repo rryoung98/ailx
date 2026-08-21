@@ -17,6 +17,7 @@ import {
 import { trackConfig } from "../../lib/instrument";
 import { LOCALE_SCOPE_NOTE, useLocale, type Locale } from "../../lib/locale";
 import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
+import { ConnectPanel } from "../../lib/ConnectPanel";
 
 function demoConfig(locale: Locale): SessionConfig {
   return {
@@ -204,6 +205,7 @@ export default function ExamPage() {
           <p className="small faint">
             Content locale: <span className="mono">{chosenLocale}</span> (header switcher). {LOCALE_SCOPE_NOTE}{chosenLocale !== "en" ? " ja/ko item content is machine-translated and marked unreviewed in item provenance." : ""}
           </p>
+          <ConnectPanel />
           <button
             className="btn primary"
             onClick={() => {

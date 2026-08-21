@@ -194,7 +194,14 @@ export function Runner(props: TrackUIProps) {
       });
       return;
     }
-    // Real OpenRouter image generation.
+    // Real OpenRouter image generation — cohort budget cap: ≤12 real images
+    // per run keeps a funded 45-person cohort under ~$0.15/run (docs/BUDGET.md).
+    const REAL_DRAFT_CAP = 12;
+    const realDrafts = latest.current.drafts.filter((d) => d.dataUri).length;
+    if (realDrafts >= REAL_DRAFT_CAP) {
+      setGenError(`Run budget reached (${REAL_DRAFT_CAP} real generations) — promote your best drafts or refine with the demo model.`);
+      return;
+    }
     setGenBusy(true);
     setGenError(null);
     try {
@@ -519,15 +526,9 @@ export function Runner(props: TrackUIProps) {
               </div>
             </>
           ) : (
-            <input
-              aria-label="OpenRouter API key"
-              type="password"
-              autoComplete="off"
-              style={{ ...mono, resize: "none" }}
-              value={orKey}
-              onChange={(e) => updateKey(e.target.value)}
-              placeholder="…paste an OpenRouter API key (same slot as T1 — stored only in this browser)"
-            />
+            <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+              Connect a model on the run start screen to generate real images here.
+            </p>
           )}
           <textarea
             aria-label="Image prompt"
