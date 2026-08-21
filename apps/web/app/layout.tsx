@@ -1,5 +1,10 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Fraunces, Caveat } from "next/font/google";
+
+/* Self-hosted at build time (static export stays offline). */
+const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable", variable: "--font-serif", display: "swap" });
+const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
 import { LocaleSwitcher } from "../lib/LocaleSwitcher";
 
@@ -11,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${serif.variable} ${script.variable}`}>
       <body>
         <a href="#main" className="skip-link">Skip to main content</a>
         <header className="site-header">
