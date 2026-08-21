@@ -120,7 +120,7 @@ export default function ExamPage() {
     if (!cur || cur.currentTrack !== t || cur.tracks[t].status === "completed") return;
     const ts = stamp();
     const timedOut = secondsRemaining(cur, t, ts) <= 0;
-    const rec = scoreTrack(t, artifact);
+    const rec = scoreTrack(t, artifact, cur.attemptId ?? undefined);
     commit([
       { type: "track_completed", trackId: t, artifact, timedOut, ts },
       {
@@ -296,7 +296,7 @@ export default function ExamPage() {
   const uiProps = {
     attemptId: state.attemptId!,
     locale: state.config!.locale,
-    config: trackConfig(t),
+    config: trackConfig(t, state.attemptId ?? undefined),
     onEvent: (event: TrackEvent) => {
       const cur = logRef.current ? project(logRef.current) : null;
       // Accept while in_track AND paused: runners stay mounted under the

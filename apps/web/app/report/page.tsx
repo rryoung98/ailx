@@ -11,7 +11,7 @@ import { CalibrationCurve } from "../../lib/CalibrationCurve";
 import { candidateComposite } from "../../lib/composite";
 import { participantExport, researchExport } from "../../lib/exportTiers";
 import { narratives, trackInsights } from "../../lib/insights";
-import { t2Items } from "../../lib/instrument";
+import { t2AnswerKeys } from "../../lib/instrument";
 import { TRACK_META } from "../../lib/tracks";
 
 function download(filename: string, data: unknown) {
@@ -118,9 +118,9 @@ export default function ReportPage() {
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
   const calBins = useMemo(() => {
     if (!state) return [];
-    const keys: Record<string, number> = {};
-    for (const it of t2Items("en")) keys[it.id] = it.key;
-    return calibrationBins(t2ResponsesFromArtifact(state.tracks.t2.artifact), keys);
+    // Full-bank key map: the demo deck rotates per attempt, so resolve any
+    // item id the stored artifact may reference.
+    return calibrationBins(t2ResponsesFromArtifact(state.tracks.t2.artifact), t2AnswerKeys("en"));
   }, [state]);
   const counted = useCountUp(summary?.composite ?? 0);
 

@@ -19,6 +19,7 @@ const state: T4CheckpointState = {
   chosenSet: [0],
   note: "resumed direction note",
   disclosed: true,
+  submitted: false,
 };
 
 describe("T4 checkpoint codec (F2)", () => {

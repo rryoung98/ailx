@@ -8,6 +8,7 @@
  * demo scenario remains code-side (no content-package changes); its hash is
  * pinned and asserted at test time.
  */
+import { seededUniform, sha256Hex } from "@ailx/session";
 import snapshotRaw from "../../../instruments/2026.1/snapshot.json";
 
 interface BankItem {
@@ -130,7 +131,7 @@ function materialToString(m: BankItem["material"]): string {
 }
 
 /** Snapshot bank items (content-addressed upstream) → T2Config item shape. */
-export function t2Items(locale: string = "en") {
+export function t2Items(locale: string = "en", attemptId?: string) {
   const bank = snapshotTrack("t2").bank;
   if (!bank) throw new Error("snapshot t2 bank missing");
   const exposure = t2ExposureSeconds();
@@ -155,15 +156,71 @@ export function t2Items(locale: string = "en") {
   // Demo deck: keep the sitting short & fun — 12 items across difficulties.
   // Real-media photo items (repo-local files) lead the deck; balance the
   // photo block between AI and authentic keys so d' stays measurable.
+  //
+  // DEMO-ONLY ROTATION: the OPERATIONAL instrument uses fixed, equated
+  // forms (spec §T2) — every candidate on a form sees the same items. This
+  // per-attempt rotation exists only so the static showcase stays fresh on
+  // replay. It is deterministic (seed = sha256(attemptId), via the
+  // @ailx/session seeded PRNG) so a given attempt always re-derives the
+  // SAME deck for presentation and scoring. Without an attemptId the fixed
+  // default deck is returned (used by sample fixtures and /validate).
   const isMedia = (i: { material: string }) => i.material.startsWith("/");
   const binary = items.filter((i) => i.type !== "provenance");
   const prov = items.filter((i) => i.type === "provenance");
   const mediaAi = binary.filter((i) => isMedia(i) && i.signal === i.key);
   const mediaReal = binary.filter((i) => isMedia(i) && i.signal !== i.key);
-  const media = [...Array(Math.min(3, mediaAi.length, mediaReal.length)).keys()]
-    .flatMap((k) => [mediaAi[k], mediaReal[k]]);
-  const rest = binary.filter((i) => !media.includes(i));
-  return [...media, ...rest.slice(0, Math.max(0, 9 - media.length)), ...prov.slice(0, 3)];
+  if (attemptId === undefined) {
+    const media = [...Array(Math.min(3, mediaAi.length, mediaReal.length)).keys()]
+      .flatMap((k) => [mediaAi[k], mediaReal[k]]);
+    const rest = binary.filter((i) => !media.includes(i));
+    return [...media, ...rest.slice(0, Math.max(0, 9 - media.length)), ...prov.slice(0, 3)];
+  }
+  const seed = sha256Hex(attemptId);
+  // 3 AI photos, then 3 real photos difficulty-matched to them (nearest
+  // difficulty, so mean difficulty stays balanced across the two classes).
+  const aiPick = seededShuffle(mediaAi, seed, "media-ai").slice(0, 3);
+  const realPool = seededShuffle(mediaReal, seed, "media-real");
+  const realPick = aiPick.map((a) => {
+    let best = 0;
+    for (let j = 1; j < realPool.length; j++) {
+      if (Math.abs(realPool[j].difficulty - a.difficulty) <
+          Math.abs(realPool[best].difficulty - a.difficulty)) best = j;
+    }
+    return realPool.splice(best, 1)[0];
+  });
+  // Interleave as pairs; seeded order per pair so AI never has a fixed slot.
+  const media = aiPick.flatMap((a, k) => {
+    const pair = [a, realPick[k]];
+    return seededUniform(`${seed}:pair-order`, k) < 0.5 ? pair : pair.reverse();
+  });
+  const textPick = seededShuffle(binary.filter((i) => !isMedia(i)), seed, "text").slice(0, 3);
+  const provPick = seededShuffle(prov, seed, "prov").slice(0, 3);
+  return [...media, ...textPick, ...provPick];
+}
+
+/** Deterministic Fisher–Yates over the @ailx/session seeded PRNG. */
+function seededShuffle<T>(arr: readonly T[], seed: string, salt: string): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(seededUniform(`${seed}:${salt}`, i) * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * Answer keys for the FULL bank (not just one deck) — report/rationale
+ * rendering must resolve any rotated deck's item ids.
+ */
+export function t2AnswerKeys(locale: string = "en"): Record<string, number> {
+  const bank = snapshotTrack("t2").bank;
+  if (!bank) throw new Error("snapshot t2 bank missing");
+  const keys: Record<string, number> = {};
+  for (const i of bank.items) {
+    if (i.locale !== locale) continue;
+    keys[i.id] = Math.max(0, i.options.findIndex((o) => o.id === i.key));
+  }
+  return keys;
 }
 
 /**
@@ -194,11 +251,16 @@ export const T3_SCENARIO = {
 export const T3_SCENARIO_SHA256 =
   "38d7bdb42bae91e6377cfd586242e8db1e43ba194de0534ce3cfa90f46dff3dd";
 
-/** Per-track config passed to the real Runner + score(). */
-export function trackConfig(trackId: "t1" | "t2" | "t3" | "t4"): unknown {
+/**
+ * Per-track config passed to the real Runner + score(). `attemptId` drives
+ * the DEMO-ONLY T2 deck rotation; presentation and scoring must pass the
+ * same attemptId so the scored deck is the presented deck. Omitted →
+ * fixed default deck (fixtures, /validate).
+ */
+export function trackConfig(trackId: "t1" | "t2" | "t3" | "t4", attemptId?: string): unknown {
   switch (trackId) {
     case "t1": return undefined;             // plugin defaults carry the demo brief
-    case "t2": return { items: t2Items("en") };
+    case "t2": return { items: t2Items("en", attemptId) };
     case "t3": return T3_SCENARIO;
     case "t4": return undefined;             // plugin defaults carry the demo brief
   }
