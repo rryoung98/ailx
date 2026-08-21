@@ -353,8 +353,13 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             display: "flex",
             justifyContent: "space-between",
             gap: "0.6rem",
-            marginTop: "0.9rem",
+            // Clear the stacked cards' 32px overhang below the deck box and
+            // stay above the GL/badge overlays so the answer buttons are
+            // never covered.
+            marginTop: "2.8rem",
             alignItems: "center",
+            position: "relative",
+            zIndex: 7,
           }}
         >
           <span aria-hidden style={{ color: "var(--muted)", fontSize: "1.1rem" }}>←</span>
