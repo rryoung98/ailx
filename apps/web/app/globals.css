@@ -581,6 +581,12 @@ body::before {
   background-position: 0 0, 3px 5px;
 }
 body > * { position: relative; z-index: 1; }
+/* The #main wrapper must stack ABOVE the footer: fixed elements inside it
+   (e.g. the Start pill) are trapped in its stacking context, and at equal
+   z-index the later-DOM footer painted over them and swallowed their
+   clicks (run-start bug: the Start pill was unclickable near the page
+   bottom). */
+#main { z-index: 2; }
 
 /* Hand-drawn script annotation with a curved arrow (SVG inline). */
 .annotation {
