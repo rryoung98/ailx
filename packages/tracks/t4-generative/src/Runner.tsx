@@ -80,7 +80,12 @@ const T4_CSS = `
 /* Pane height caps live in CSS (not inline) so the phone layout can lift
    them: a capped pane with visible overflow lets buttons escape their card
    (same bug class as the T1 submit-button escape). */
-.t4-pane { max-height: 78vh; min-height: 480px; }
+.t4-pane {
+  max-height: 78vh; min-height: 480px;
+  /* Capped panes must scroll internally — visible overflow let the controls
+     spill over the card edge onto the footer (user screenshot, mid-width). */
+  overflow-y: auto;
+}
 @media (max-width: 900px) {
   .t4-grid { grid-template-columns: 1fr; }
   .t4-pane { max-height: none; min-height: 0; }

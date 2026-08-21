@@ -76,7 +76,12 @@ const T1_CSS = `
 /* Pane height caps live in CSS (not inline) so the phone layout can lift
    them: a capped pane with visible overflow lets the submit button escape
    the card and land under the neighbouring pane's tab bar (mobile bug). */
-.t1-pane { max-height: 78vh; min-height: 480px; }
+.t1-pane {
+  max-height: 78vh; min-height: 480px;
+  /* Capped panes must scroll internally — visible overflow let the controls
+     spill over the card edge onto the footer (user screenshot, mid-width). */
+  overflow-y: auto;
+}
 @media (max-width: 900px) {
   .t1-grid { grid-template-columns: 1fr; }
   .t1-pane { max-height: none; min-height: 0; }

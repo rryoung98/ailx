@@ -11,6 +11,10 @@
  * override that removes it on phones.
  */
 import { afterEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+const here = dirname(fileURLToPath(import.meta.url));
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Runner } from "../src/Runner.js";
@@ -71,7 +75,7 @@ describe("T1 mobile containment", () => {
   it("stylesheet pins the pane cap on desktop and REMOVES it on phones", () => {
     const c = mount();
     const css = c.querySelector("style")!.textContent!;
-    expect(css).toContain(".t1-pane { max-height: 78vh; min-height: 480px; }");
+    expect(css).toMatch(/\.t1-pane \{\s*\n?\s*max-height: 78vh; min-height: 480px;/);
     const mobile = css.slice(css.indexOf("@media (max-width: 900px)"));
     expect(mobile).toContain(".t1-pane { max-height: none; min-height: 0; }");
     // Grid children must be shrinkable or long content forces page scroll.
@@ -106,5 +110,12 @@ describe("T1 mobile containment", () => {
     expect(ta.style.minWidth).toBe("0");
     expect(ta.style.boxSizing).toBe("border-box");
     expect(ta.style.width).toBe("100%");
+  });
+
+  it("capped pane scrolls internally instead of spilling (mid-width overlap bug)", () => {
+    const src = readFileSync(join(here, "../src/Runner.tsx"), "utf8");
+    const m = /\.t1-pane \{[^}]*max-height[^}]*\}/s.exec(src);
+    expect(m, ".t1-pane rule").toBeTruthy();
+    expect(m![0]).toContain("overflow-y: auto");
   });
 });
