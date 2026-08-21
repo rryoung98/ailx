@@ -325,6 +325,19 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
 
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gap: "1rem" }}>
+      {/* Task brief — ALWAYS visible while working (user report: "the brief
+          is not visible" — it used to exist only on the pre-Begin screen,
+          so it vanished the moment work started). */}
+      <section
+        aria-label="Task brief"
+        style={{ ...card, borderLeft: "3px solid var(--accent, #0b6b47)" }}
+      >
+        <strong>{cfg.title}</strong>
+        <p style={{ margin: "0.35rem 0 0", fontSize: "0.92rem" }}>{cfg.brief}</p>
+        <p style={{ margin: "0.35rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}>
+          Challenge what you doubt; accept what you verify. Target {cfg.minWords} words.
+        </p>
+      </section>
       {/* Source document — ALWAYS in the layout (the reading material the
           planted errors are checked against), scrollable, collapsible on
           small screens. */}

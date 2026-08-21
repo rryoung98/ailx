@@ -61,12 +61,23 @@ const btn: CSSProperties = {
   fontWeight: 600,
 };
 
-const tinyBtn: CSSProperties = {
-  ...btn,
-  padding: "4px 8px",
-  fontSize: 12,
-  fontWeight: 500,
-};
+/** Self-contained chat styling (paper palette; standardized button motion:
+ *  background/color/border 150ms, transform 120ms; hover fills accent). */
+const T4_CSS = `
+.t4-shell .t4-btn {
+  background: var(--accent, #0b6b47); color: #fff; border: 1px solid var(--accent, #0b6b47);
+  border-radius: 7px; padding: 8px 14px; cursor: pointer; font: inherit; font-weight: 600;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+.t4-shell .t4-btn:hover:not(:disabled) { background: #0e895a; border-color: #0e895a; transform: translateY(-1px); }
+.t4-shell .t4-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.t4-shell .t4-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.t4-shell .t4-btn:focus-visible { outline: 2px solid var(--accent, #0b6b47); outline-offset: 2px; }
+.t4-shell .t4-btn.ghost { background: var(--card, #fff); color: var(--fg, #1a1a1a); border: 1px solid var(--border-strong, #c9c2b9); }
+.t4-shell .t4-btn.ghost:hover:not(:disabled) { background: var(--accent, #0b6b47); color: #fff; border-color: var(--accent, #0b6b47); }
+.t4-grid { display: grid; grid-template-columns: minmax(300px, 5fr) minmax(0, 7fr); gap: 12px; padding: 12px; }
+@media (max-width: 900px) { .t4-grid { grid-template-columns: 1fr; } }
+`;
 
 const h2: CSSProperties = {
   margin: 0,
@@ -113,6 +124,12 @@ export function Runner(props: TrackUIProps) {
   const latest = useRef<T4CheckpointState>({ drafts, finals, chosenSet, note, disclosed, submitted });
   latest.current = { drafts, finals, chosenSet, note, disclosed, submitted };
   const galleryHeadingRef = useRef<HTMLHeadingElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Keep the newest generation in view in the chat column.
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [drafts.length, genBusy]);
 
   // A11y: submit replaces the workspace with the finals gallery — move
   // focus to its heading so keyboard/AT users land on the outcome.
@@ -446,112 +463,161 @@ export function Runner(props: TrackUIProps) {
 
   return (
     <div
-      style={{
-        background: "var(--bg)",
-        color: "var(--fg)",
-        minHeight: "100%",
-        display: "grid",
-        gridTemplateColumns: "minmax(280px, 1fr) minmax(0, 2fr)",
-        gap: 12,
-        padding: 12,
-        fontFamily: "system-ui, sans-serif",
-      }}
+      className="t4-shell t4-grid"
+      style={{ background: "var(--bg)", color: "var(--fg)", minHeight: "100%", fontFamily: "system-ui, sans-serif" }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-        <section style={panel} aria-label="Brief">
-          <h2 style={h2}>Target brief · {fmtTime(props.secondsRemaining)} left</h2>
-          <p style={{ margin: 0 }}>{cfg.brief}</p>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-            Audience: {cfg.audience}
-          </p>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-            Deliverable: {cfg.finalImageQuota} final images + {cfg.finalVideoQuota} final
-            video. Drafts are unlimited; finals are the hard quota.
-          </p>
-        </section>
+      <style>{T4_CSS}</style>
 
-        <section style={panel} aria-label="Prompt">
-          <h2 style={h2}>
-            Draft with the model · {hasKey ? effectiveModel : "demo simulator"} ·
-            unlimited drafts
-          </h2>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-            {hasKey
-              ? "Real image generation (your OpenRouter key, your browser " +
-                "only). Every draft is logged with the model id; finals keep " +
-                "the full-resolution image."
-              : "Deterministic offline demo — same prompt, same image. Name " +
-                "colors, objects and composition to steer it. Every draft is " +
-                "logged. Paste an OpenRouter key for a real image model."}
-          </p>
-          {hasKey ? (
-            <>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "var(--good, #15803d)" }}>
-                  ● Connected — key stored only in this browser (shared with T1)
-                </span>
-                <button
-                  type="button"
-                  style={{ ...btn, background: "transparent", color: "var(--fg)", border: "1px solid var(--border)", padding: "4px 10px", fontSize: 12 }}
-                  onClick={() => updateKey("")}
-                >
-                  Disconnect
-                </button>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <select
-                  aria-label="Image model"
-                  style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                >
-                  {CURATED_IMAGE_MODELS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  aria-label="Custom image model override"
-                  style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
-                  value={customModel}
-                  onChange={(e) => setCustomModel(e.target.value)}
-                  placeholder="custom model id (optional)"
-                />
-              </div>
-            </>
-          ) : (
-            <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-              Connect a model on the run start screen to generate real images here.
+      {/* LEFT — the conversation pane: brief pinned on top, then the
+          prompt/generation history as chat bubbles, input at the bottom
+          (same chat language as T1; ai-sdk-chatbot-style layout, no dep). */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0, maxHeight: "78vh", minHeight: 480 }}>
+        <section style={{ ...panel, flex: 1, minHeight: 0 }} aria-label="Prompt">
+          <div
+            role="note"
+            aria-label="Brief"
+            style={{
+              background: "var(--bg, #f7f4f2)",
+              border: "1px solid var(--border)",
+              borderLeft: "3px solid var(--accent, #0b6b47)",
+              borderRadius: 8,
+              padding: "8px 10px",
+            }}
+          >
+            <h2 style={h2}>Target brief · {fmtTime(props.secondsRemaining)} left</h2>
+            <p style={{ margin: "4px 0 0", fontSize: 14 }}>{cfg.brief}</p>
+            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
+              Audience: {cfg.audience} · Deliverable: {cfg.finalImageQuota} final images +{" "}
+              {cfg.finalVideoQuota} final video. Drafts are unlimited; finals are the hard quota.
             </p>
-          )}
-          <textarea
-            aria-label="Image prompt"
-            style={{ ...mono, minHeight: 72 }}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g. three boats on a storm wave under a gold star, centered"
-          />
+          </div>
+
+          {/* Chat transcript — every draft is a prompt bubble + an image reply. */}
+          <div
+            role="log"
+            aria-label="Generation conversation"
+            style={{ flex: 1, minHeight: 160, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, padding: "4px 0" }}
+          >
+            {drafts.length === 0 && (
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
+                {hasKey
+                  ? "Real image generation (your OpenRouter key, your browser only). Every draft is logged with the model id; finals keep the full-resolution image."
+                  : "demo simulator — deterministic offline demo: same prompt, same image. Name colors, objects and composition to steer it. Every draft is logged. Connect a model on the run start screen to generate real images here."}
+              </p>
+            )}
+            {drafts.map((d) => (
+              <div key={d.index} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div
+                  style={{
+                    alignSelf: "flex-end",
+                    maxWidth: "88%",
+                    background: "var(--accent-dim, #bcd9cc)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "12px 12px 4px 12px",
+                    padding: "8px 10px",
+                    fontSize: 13.5,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  <span style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 2 }}>you</span>
+                  {d.prompt}
+                </div>
+                <div
+                  style={{
+                    alignSelf: "flex-start",
+                    maxWidth: "88%",
+                    background: "var(--card, #fff)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "12px 12px 12px 4px",
+                    padding: "8px 10px",
+                  }}
+                >
+                  <span style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
+                    {d.modelId ?? IMAGE_MODEL_ID} · draft #{d.index + 1}
+                  </span>
+                  <img
+                    src={draftImageSrc(d)}
+                    alt={`Draft ${d.index + 1}: ${d.prompt}`}
+                    style={{ maxWidth: "100%", width: 220, display: "block", borderRadius: 6, border: "1px solid var(--border)" }}
+                  />
+                </div>
+              </div>
+            ))}
+            {genBusy && (
+              <div style={{ alignSelf: "flex-start", color: "var(--muted)", fontSize: 13 }}>Generating…</div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
           {genError && (
             <p role="alert" style={{ margin: 0, color: "var(--bad, #b91c1c)", fontSize: 13 }}>
               {genError}
             </p>
           )}
-          <button
-            type="button"
-            style={{ ...btn, opacity: submitted || genBusy ? 0.5 : 1 }}
-            onClick={() => void generateDraft()}
-            disabled={submitted || genBusy}
-          >
-            {genBusy ? "Generating…" : "Generate draft (unlimited)"}
-          </button>
+
+          {hasKey ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <select
+                aria-label="Image model"
+                style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              >
+                {CURATED_IMAGE_MODELS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <input
+                aria-label="Custom image model override"
+                style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
+                value={customModel}
+                onChange={(e) => setCustomModel(e.target.value)}
+                placeholder="custom model id (optional)"
+              />
+              <button
+                type="button"
+                className="t4-btn ghost"
+                style={{ padding: "4px 10px", fontSize: 12 }}
+                onClick={() => updateKey("")}
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : null}
+
+          {/* Input pinned at the bottom — drafting is the conversation. */}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+            <textarea
+              aria-label="Image prompt"
+              style={{ ...mono, minHeight: 44, flex: 1 }}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void generateDraft();
+                }
+              }}
+              placeholder="e.g. three boats on a storm wave under a gold star, centered"
+            />
+            <button
+              type="button"
+              className="t4-btn"
+              onClick={() => void generateDraft()}
+              disabled={submitted || genBusy}
+            >
+              {genBusy ? "Generating…" : "Generate draft (unlimited)"}
+            </button>
+          </div>
         </section>
 
         <section style={panel} aria-label="Direction note">
           <h2 style={h2}>Direction note</h2>
           <textarea
             aria-label="Direction note"
-            style={{ ...mono, minHeight: 90 }}
+            style={{ ...mono, minHeight: 60 }}
             maxLength={cfg.noteMaxChars}
             value={note}
             onChange={(e) => {
@@ -574,7 +640,7 @@ export function Runner(props: TrackUIProps) {
           </label>
           <button
             type="button"
-            style={{ ...btn, opacity: submitted || finals.images.length === 0 ? 0.5 : 1 }}
+            className="t4-btn"
             onClick={submit}
             disabled={submitted || finals.images.length === 0}
           >
@@ -689,7 +755,8 @@ export function Runner(props: TrackUIProps) {
                 <div style={{ display: "flex", gap: 6 }}>
                   <button
                     type="button"
-                    style={{ ...tinyBtn, opacity: imagesLeft <= 0 || submitted ? 0.4 : 1 }}
+                    className="t4-btn"
+                    style={{ padding: "4px 8px", fontSize: 12, fontWeight: 500 }}
                     onClick={() => promote(d, "image")}
                     disabled={imagesLeft <= 0 || submitted}
                   >
@@ -697,7 +764,8 @@ export function Runner(props: TrackUIProps) {
                   </button>
                   <button
                     type="button"
-                    style={{ ...tinyBtn, opacity: videoLeft <= 0 || submitted ? 0.4 : 1 }}
+                    className="t4-btn"
+                    style={{ padding: "4px 8px", fontSize: 12, fontWeight: 500 }}
                     onClick={() => promote(d, "video")}
                     disabled={videoLeft <= 0 || submitted}
                   >

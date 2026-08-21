@@ -62,13 +62,57 @@ describe("run start screen", () => {
     ).toBeTruthy();
 
     const start = [...host.querySelectorAll("button")].find((b) =>
-      (b.textContent ?? "").includes("Start your run"),
+      b.classList.contains("pill-cta"),
     );
     expect(start).toBeTruthy();
     expect(
       connect!.compareDocumentPosition(start!) & Node.DOCUMENT_POSITION_FOLLOWING,
       "AI connection must precede the Start pill",
     ).toBeTruthy();
+  });
+
+  it("gates the start on a model connection: disabled pill, no attempt, attention pulse", async () => {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => { root!.render(createElement(ExamPage)); });
+
+    const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
+    expect(pill.textContent).toContain("Connect a model to start");
+    expect(pill.getAttribute("aria-disabled")).toBe("true");
+
+    // Clicking the gated pill must NOT start a run — it nudges the panel.
+    await act(async () => { pill.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    expect(host.textContent).toContain("Connect a model to start"); // still on start screen
+    expect(window.localStorage.getItem("ailx:attempt:v1")).toBeNull();
+    const connect = host.querySelector('section[aria-label="AI connection"]')!;
+    expect(connect.className).toContain("connect-attention");
+  });
+
+  it("enables the start once a key is stored (and after ConnectPanel announces a change)", async () => {
+    window.localStorage.setItem("ailx:openrouter-key", "sk-or-test");
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => { root!.render(createElement(ExamPage)); });
+
+    const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
+    expect(pill.textContent).toContain("Start your run");
+    expect(pill.getAttribute("aria-disabled")).toBeNull();
+    await act(async () => { pill.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    // The run started (start screen replaced by the between-tracks screen).
+    expect(host.textContent).not.toContain("Start your run");
+    expect(host.textContent).toContain("Ready");
+  });
+
+  it("a custom base URL (local model, no key) also opens the gate", async () => {
+    window.localStorage.setItem("ailx:llm-base-url", "http://localhost:11434/v1");
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => { root!.render(createElement(ExamPage)); });
+    const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
+    expect(pill.textContent).toContain("Start your run");
   });
 
   it("keeps the fixed Start pill above the footer stacking context (#main z-index)", () => {

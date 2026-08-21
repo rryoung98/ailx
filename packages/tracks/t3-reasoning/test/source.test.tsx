@@ -102,3 +102,29 @@ describe("T3 source document panel", () => {
     expect(config.sourceExcerpt).toContain("18%");
   });
 });
+
+describe("T3 task brief visibility (user report: brief not visible mid-work)", () => {
+  it("renders the task brief card VISIBLY in the work layout, above the chat, with no clicks", () => {
+    const c = mount();
+    const brief = c.querySelector('section[aria-label="Task brief"]');
+    expect(brief, "task brief section must be in the work layout").not.toBeNull();
+    expect(brief!.textContent).toContain(config.title);
+    expect(brief!.textContent).toContain(config.brief.slice(0, 60));
+    // Brief precedes the source document and the chat in DOM order.
+    const source = c.querySelector('section[aria-label="Source document"]')!;
+    expect(
+      brief!.compareDocumentPosition(source) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const chat = c.querySelector('[role="log"][aria-label="Assistant conversation"]')!;
+    expect(
+      brief!.compareDocumentPosition(chat) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("source panel is EXPANDED by default in the work phase", () => {
+    const c = mount();
+    const toggle = [...c.querySelectorAll("button")].find((b) => (b.textContent ?? "").includes("Collapse"));
+    expect(toggle, "source starts expanded (Collapse offered)").toBeTruthy();
+    expect(toggle!.getAttribute("aria-expanded")).toBe("true");
+  });
+});

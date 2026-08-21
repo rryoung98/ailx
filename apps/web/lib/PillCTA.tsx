@@ -8,6 +8,9 @@
  * element marked [data-pill-clear] (teaser actions, connect panel, runner
  * controls) intersects the bottom band of the viewport, so it can never
  * cover a tappable control.
+ *
+ * `disabled` renders the gated state (still clickable so the page can
+ * redirect attention, e.g. pulse the ConnectPanel) — aria-disabled only.
  */
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -17,10 +20,12 @@ const CLEAR_BAND_PX = 140;
 export function PillCTA({
   href,
   onClick,
+  disabled,
   children,
 }: {
   href?: string;
   onClick?: () => void;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   const [cleared, setCleared] = useState(false);
@@ -75,7 +80,12 @@ export function PillCTA({
     );
   }
   return (
-    <button type="button" className={cls} onClick={onClick}>
+    <button
+      type="button"
+      className={`${cls}${disabled ? " disabled" : ""}`}
+      aria-disabled={disabled || undefined}
+      onClick={onClick}
+    >
       {inner}
     </button>
   );

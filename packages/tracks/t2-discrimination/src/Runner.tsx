@@ -318,10 +318,26 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             />
           </label>
           <button
-            style={{ ...btn, marginTop: "0.8rem", opacity: sheetOpen ? 1 : 0.5 }}
+            style={{ ...btn, marginTop: "0.8rem", opacity: sheetOpen ? 1 : 0.5, display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
             disabled={!sheetOpen}
             onClick={() => record(choice ?? -1, confidence)}
           >
+            {/* Inline padlock glyph — decorative; the label carries meaning. */}
+            <svg
+              aria-hidden="true"
+              data-testid="lock-icon"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="4" y="11" width="16" height="10" rx="2" fill="currentColor" stroke="none" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
             Lock in
           </button>
         </div>
