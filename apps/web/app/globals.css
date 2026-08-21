@@ -86,9 +86,10 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   max-width: 960px; margin: 0 auto; padding: 0.7rem 1.5rem;
   display: flex; align-items: baseline; gap: 1.5rem; flex-wrap: wrap;
 }
-.wordmark { font-weight: 800; letter-spacing: 0.14em; font-size: 1.05rem; color: var(--fg); }
+.wordmark { font-weight: 800; letter-spacing: 0.14em; font-size: 1.05rem; color: var(--fg); display: inline-flex; align-items: center; }
 .wordmark:hover { text-decoration: none; }
 .wordmark span { color: var(--accent); }
+.wordmark-img { height: 20px; width: auto; display: block; }
 .site-nav { display: flex; gap: 1.2rem; font-size: 0.9rem; }
 .site-nav a { color: var(--muted); }
 .site-nav a:hover { color: var(--fg); text-decoration: none; }
@@ -1043,18 +1044,14 @@ html[data-ailx-loaded="1"] .loader { display: none; }
   background-size: 7px 7px, 11px 11px;
   background-position: 0 0, 3px 5px;
 }
-.loader-logo { width: min(240px, 48vw); height: auto; }
-.loader-logo path {
-  stroke-dasharray: 1; stroke-dashoffset: 1;
-  animation: loaderDraw 420ms ease forwards;
+.loader-logo { width: min(280px, 56vw); height: auto; }
+.loader-logo .lg-fill {
+  opacity: 0;
+  animation: loaderFade 460ms ease forwards;
 }
-.loader-logo .lg-a  { animation-delay: 0ms; }
-.loader-logo .lg-a2 { animation-delay: 80ms; }
-.loader-logo .lg-i  { animation-delay: 160ms; }
-.loader-logo .lg-l  { animation-delay: 240ms; }
-.loader-logo .lg-x1 { animation-delay: 320ms; }
-.loader-logo .lg-x2 { animation-delay: 400ms; }
-@keyframes loaderDraw { to { stroke-dashoffset: 0; } }
+.loader-logo .lg-ail { fill: #f7f4f2; }
+.loader-logo .lg-x { fill: #b7f0cd; animation-delay: 220ms; }
+@keyframes loaderFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes loaderWipe { from { transform: none; } to { transform: translateY(-101%); } }
 
 

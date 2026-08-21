@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
  * Covering loader regression tests:
- *  - first hard load: aria-hidden fixed cover with the six wordmark strokes
- *    (pathLength=1 for the unit dash draw), then ALWAYS unmounts via the
+ *  - first hard load: aria-hidden fixed cover with the traced two-tone
+ *    wordmark (fill fade-in), then ALWAYS unmounts via the
  *    setTimeout fallback even when no animation events ever fire (jsdom);
  *  - sets the sessionStorage flag on first show, and skips entirely when
  *    the flag is already set;
@@ -63,15 +63,16 @@ afterEach(() => {
 });
 
 describe("Loader behavior", () => {
-  it("first load: shows the aria-hidden cover with six unit-dash strokes, sets the flag", () => {
+  it("first load: shows the aria-hidden cover with the two-tone wordmark, sets the flag", () => {
     vi.useFakeTimers();
     const h = render(createElement(Loader));
     const cover = h.querySelector('[data-testid="loader"]')!;
     expect(cover).not.toBeNull();
     expect(cover.getAttribute("aria-hidden")).toBe("true");
-    const paths = cover.querySelectorAll("svg path");
-    expect(paths).toHaveLength(6);
-    for (const p of paths) expect(p.getAttribute("pathLength")).toBe("1");
+    // Traced wordmark: serif AIL + script X as two fill groups.
+    expect(cover.querySelectorAll("svg .lg-fill")).toHaveLength(2);
+    expect(cover.querySelector("svg .lg-ail path")).not.toBeNull();
+    expect(cover.querySelector("svg .lg-x path")).not.toBeNull();
     expect(window.sessionStorage.getItem("ailx:loaded")).toBe("1");
     // fallback unmount: no animation events ever fire in jsdom
     act(() => { vi.advanceTimersByTime(LOADER_FALLBACK_MS + 10); });
@@ -125,14 +126,12 @@ describe("Loader CSS", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{ \.loader \{ display: none; \} \}/);
   });
 
-  it("strokes draw via unit dash stagger and the cover wipes up", () => {
-    expect(css).toContain("@keyframes loaderDraw");
+  it("wordmark fades in and the cover wipes up", () => {
+    expect(css).toContain("@keyframes loaderFade");
     expect(css).toContain("@keyframes loaderWipe");
-    expect(css).toMatch(/\.loader-logo path \{[^}]*stroke-dasharray: 1; stroke-dashoffset: 1;/s);
+    expect(css).toMatch(/\.loader-logo \.lg-fill \{[^}]*animation: loaderFade/s);
     expect(css).toContain("translateY(-101%)");
-    // stagger: each stroke class has an increasing delay
-    for (const cls of ["lg-a2", "lg-i", "lg-l", "lg-x1", "lg-x2"]) {
-      expect(css).toContain(`.loader-logo .${cls}`);
-    }
+    // the script X lands after the serif AIL
+    expect(css).toMatch(/\.loader-logo \.lg-x \{[^}]*animation-delay/s);
   });
 });

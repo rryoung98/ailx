@@ -142,12 +142,12 @@ describe("interior page heroes", () => {
 });
 
 describe("favicon", () => {
-  it("app/icon.svg is a rounded green square with the mint X strokes", () => {
+  it("app/icon.svg is the cream rounded square with the traced green script X", () => {
     const svg = readFileSync(join(appDir, "icon.svg"), "utf8");
-    expect(svg).toContain('rx="24"');
-    expect(svg).toContain('fill="#0b6b47"');
-    expect(svg).toContain('stroke="#d8ffe8"');
-    expect((svg.match(/<path /g) ?? []).length).toBe(2);
+    expect(svg).toContain('rx="22"');
+    expect(svg).toContain('fill="#f7f4f2"');
+    expect(svg).toContain('fill="#438028"');
+    expect(svg).toContain("<path d=");
   });
 
   it("app/apple-icon.png exists (180px raster committed for iOS)", () => {

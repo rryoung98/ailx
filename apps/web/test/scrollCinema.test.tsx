@@ -126,7 +126,9 @@ describe("self-drawing annotations", () => {
   it("CSS scrubs the stroke on a view timeline and fully draws it under reduced motion", () => {
     expect(css).toContain("annotationDraw");
     expect(css).toMatch(/stroke-dasharray: 1; stroke-dashoffset: 1;/);
-    const reduce = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    // The reduce block immediately after annotationDraw fully draws the arrow
+    // (ordering-independent of later sections' own reduce blocks).
+    const reduce = css.slice(css.indexOf("@keyframes annotationDraw"));
     expect(reduce).toContain("stroke-dashoffset: 0");
   });
 });

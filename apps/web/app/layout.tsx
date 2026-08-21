@@ -23,7 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="skip-link">Skip to main content</a>
         <header className="site-header">
           <div className="inner">
-            <Link href="/" className="wordmark">AIL<span>X</span></Link>
+            <Link href="/" className="wordmark" aria-label="AILX home">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx"}/media/logo.svg`} alt="AILX" className="wordmark-img" />
+            </Link>
             <nav className="site-nav" aria-label="Primary">
               <NavLink href="/methodology">Methodology</NavLink>
               <NavLink href="/report">Report</NavLink>
