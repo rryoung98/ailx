@@ -6,12 +6,16 @@ export {
   generationSeries,
   steeringEfficiency,
   quotaEfficiency,
+  promotedDraftIndex,
 } from "./score.js";
+export { encodeT4Checkpoint, decodeT4Checkpoint, type T4CheckpointState } from "./checkpoint.js";
 export {
   generateImage,
   readPrompt,
   svgDataUrl,
+  simulateVideo,
   IMAGE_MODEL_ID,
+  VIDEO_MODEL_ID,
   COLOR_VOCAB,
   OBJECT_VOCAB,
   COMPOSITION_VOCAB,
