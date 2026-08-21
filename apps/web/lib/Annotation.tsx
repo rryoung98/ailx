@@ -12,8 +12,8 @@ export function Annotation({
 }) {
   const arrow = (
     <svg viewBox="0 0 34 26" aria-hidden focusable="false" style={side === "left" ? { transform: "scaleX(-1)" } : undefined}>
-      <path d="M2 4 C 12 2, 24 8, 29 20" />
-      <path d="M23 17 L 29 20 L 30 13" />
+      <path d="M2 4 C 12 2, 24 8, 29 20" pathLength={1} />
+      <path d="M23 17 L 29 20 L 30 13" pathLength={1} />
     </svg>
   );
   return (

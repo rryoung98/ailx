@@ -21,6 +21,7 @@ import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
 import { Annotation } from "../../lib/Annotation";
 import { ConnectPanel } from "../../lib/ConnectPanel";
 import { PillCTA } from "../../lib/PillCTA";
+import { Reveal } from "../../lib/Reveal";
 
 function demoConfig(locale: "en"): SessionConfig {
   return {
@@ -192,17 +193,19 @@ export default function ExamPage() {
           <div style={{ textAlign: "right" }}><Annotation side="left">no accounts — just play</Annotation></div>
           <ul className="rule-rows" style={{ margin: "1rem 0 1.5rem" }}>
             {TRACK_LIST.map((t) => (
-              <li key={t.id}>
+              <Reveal as="li" key={t.id}>
                 <span className="row-title"><span className="mono" style={{ color: "var(--accent)", fontSize: "0.8em", marginRight: "0.6rem" }}>{t.code}</span>{t.name}</span>
                 <span className="row-detail muted small">{TRACK_META[t.id as keyof typeof TRACK_META].hype}</span>
                 <span className="faint small mono">{fmt(t.demoBudgetSeconds)}</span>
-              </li>
+              </Reveal>
             ))}
           </ul>
+          <Reveal as="section">
           <p className="small faint">
             <span className="badge demo">demo</span> Deterministic scoring: the real track plugins score your stored artifact and judgments. The same play will always result in the same score.
           </p>
           <ConnectPanel />
+          </Reveal>
           <PillCTA
             onClick={() => {
               const ts = Date.now();

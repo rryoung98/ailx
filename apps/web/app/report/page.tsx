@@ -13,6 +13,7 @@ import { participantExport, researchExport } from "../../lib/exportTiers";
 import { narratives, trackInsights } from "../../lib/insights";
 import { t2AnswerKeys } from "../../lib/instrument";
 import { TRACK_META } from "../../lib/tracks";
+import { Reveal } from "../../lib/Reveal";
 
 function download(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -209,7 +210,7 @@ export default function ReportPage() {
           const ts = state.tracks[t];
           const score = ts.score!;
           return (
-            <div className="card" key={t} style={{ marginBottom: "1rem" }}>
+            <Reveal as="div" className="card" key={t} style={{ marginBottom: "1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <h3><span className="mono" style={{ color: "var(--accent)" }}>{meta.code}</span> · {meta.name}</h3>
                 <span className="mono">{score.scaled.toFixed(1)} <span className="faint">/ 100</span></span>
@@ -271,17 +272,17 @@ export default function ReportPage() {
                   </div>
                 </details>
               )}
-            </div>
+            </Reveal>
           );
         })}
 
         <h2>What the log says about you</h2>
         <div className="grid2">
           {narratives(insights).map((n) => (
-            <div className="card" key={n.headline}>
+            <Reveal as="div" className="card" key={n.headline}>
               <h3>{n.headline}</h3>
               <p className="muted small" style={{ marginBottom: 0 }}>{n.detail}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
 
@@ -339,6 +340,7 @@ export default function ReportPage() {
           );
         })}
 
+        <Reveal as="section">
         <h2>Take it with you</h2>
         <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
           <button className="btn primary" onClick={() => download(`ailx-individual-${state.attemptId}.json`, participantExport(state, summary))}>
@@ -351,6 +353,7 @@ export default function ReportPage() {
         <p className="faint small">
           De-identified, item-level audit-ready rubric versions and model manifests for every score (spec §16). Each is keyed to a hashed PID, never a name.
         </p>
+        </Reveal>
       </div>
     </main>
   );

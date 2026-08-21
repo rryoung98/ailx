@@ -13,6 +13,7 @@ export default function Methodology() {
           The key elements of the instrument specification include the construct, the psychometric approach with a sample size of 45, judge governance, and the modularity rules that ensure every score remains reproducible indefinitely.
         </p>
 
+        <section className="reveal">
         <h2 id="construct">Construct definition (§03)</h2>
         <p>
           AILX defines <strong>applied AI literacy</strong> A person's ability to produce positive outcomes in an information environment saturated with generative systems can be defined precisely enough to be tested. This ability breaks down into four measurable capabilities, each representing a different track.
@@ -32,6 +33,9 @@ export default function Methodology() {
           <strong> predictive — unvalidated</strong> There is no claim yet that it predicts real-world outcomes. Establishing this will require longitudinal follow-up as outlined in the roadmap for 2028.
         </p>
 
+        </section>
+
+        <section className="reveal">
         <h2 id="psychometrics">Psychometric honesty at n = 45 (§09)</h2>
         <blockquote>
           <strong>The Year-1 posture, stated plainly.</strong> The 2026 cohort serves as a calibration and item-development group. Rasch analysis is used to rank item difficulty and eliminate misfitting items at ±1 logit. This approach is supported by n = 45. Person-ability logits are then determined. <em>not</em> 2PL and 3PL models are not being used. For the 2PL model, GLAT required a sample size of 355, while AICOS needed 514 for the 3PL model. Absolute cut scores and certification claims will be deferred until the combined sample size exceeds 250. In Year 1, reports include percentiles and bands instead of competence certifications.
@@ -59,6 +63,9 @@ export default function Methodology() {
           </li>
         </ul>
 
+        </section>
+
+        <section className="reveal">
         <h2 id="judges">Judge governance (§10)</h2>
         <p>
           Where models do score, the protocol is the product. AILX adopts
@@ -107,6 +114,9 @@ export default function Methodology() {
           Two things are published <em>before</em> The exam includes an adversarial red-team assessment by our own judges, using a measured attack success rate. We also conduct a formatting-invariance ablation test, tracking the delta.
         </p>
 
+        </section>
+
+        <section className="reveal">
         <h2 id="modularity">Modularity &amp; reproducibility (§14)</h2>
         <p>
           The failure mode designed against is specific: Year 2 changes a rubric, and Year
@@ -131,6 +141,7 @@ export default function Methodology() {
           <Link href="/validate">validation page</Link> run the production code paths in your
           browser.
         </p>
+        </section>
       </div>
     </main>
   );

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { runAllChecks, type CheckResult } from "../../lib/validateChecks";
+import { Reveal } from "../../lib/Reveal";
 
 export default function ValidatePage() {
   const [results, setResults] = useState<CheckResult[] | null>(null);
@@ -38,19 +39,20 @@ export default function ValidatePage() {
           </p>
         )}
 
-        <ul className="checklist">
+        <ul className="checklist rule-stagger">
           {(results ?? []).map((r) => (
-            <li key={r.id} style={{ flexDirection: "column", alignItems: "stretch", gap: "0.2rem" }}>
+            <Reveal as="li" key={r.id} style={{ flexDirection: "column", alignItems: "stretch", gap: "0.2rem" }}>
               <div style={{ display: "flex", gap: "0.9rem", alignItems: "baseline" }}>
                 <span className={`badge ${r.pass ? "pass-check" : "fail-check"}`}>{r.pass ? "pass" : "fail"}</span>
                 <strong>{r.title}</strong>
                 <span className="faint small">{r.spec}</span>
               </div>
               <div className="muted small mono" style={{ paddingLeft: "0.1rem" }}>{r.detail}</div>
-            </li>
+            </Reveal>
           ))}
         </ul>
 
+        <Reveal as="section">
         <h2>What this demonstrates</h2>
         <p className="muted" style={{ maxWidth: "44rem" }}>
           The load-bearing property of the architecture (spec §14) is that any score, once issued, can be recomputed byte-by-byte from stored inputs. Every track&apos;s real <code>score()</code> runs here under a harness where <code>fetch</code>, <code>Date.now</code> and{" "}
@@ -60,6 +62,7 @@ export default function ValidatePage() {
           <Link className="btn primary" href="/exam">Now play it yourself →</Link>{" "}
           <Link className="btn" href="/methodology">Methodology</Link>
         </p>
+        </Reveal>
       </div>
     </main>
   );

@@ -1,0 +1,11 @@
+{
+  "file": "apps/web/public/media/hero-desk.jpg",
+  "kind": "ai-generated",
+  "model": "google/gemini-3.1-flash-image",
+  "provider": "openrouter/Google AI Studio",
+  "date": "2026-08-21",
+  "prompt": "Photorealistic top-down photo of a warm wooden study desk in soft afternoon light: cream notebook paper, a fountain pen, printed photographs scattered, a wooden ruler, a ceramic cup of tea, paper clips, a hand-drawn chart on graph paper. Warm cream and deep green tones, gentle shadows, no people, wide composition.",
+  "disclosure": "Decorative hero backdrop. AI-generated, disclosed in docs/CREDITS.md and aria-hidden; not an exam item.",
+  "original_bytes": 985165,
+  "web_bytes": 276762
+}
