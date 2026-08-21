@@ -15,13 +15,14 @@ import {
   checkpointToArtifact, loadTrackModule, scoreTrack, type TrackModule,
 } from "../../lib/registry";
 import { trackConfig } from "../../lib/instrument";
+import { LOCALE_SCOPE_NOTE, useLocale, type Locale } from "../../lib/locale";
 import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
 
-function demoConfig(): SessionConfig {
+function demoConfig(locale: Locale): SessionConfig {
   return {
     instrument: "ailx",
     version: "2026.1",
-    locale: "en",
+    locale,
     budgets: {
       t1: TRACK_META.t1.demoBudgetSeconds,
       t2: TRACK_META.t2.demoBudgetSeconds,
@@ -44,6 +45,10 @@ export default function ExamPage() {
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
+  // Persisted content locale ('ailx:locale', header switcher). Snapshotted
+  // into SessionConfig at attempt start — mid-attempt switches never change
+  // a live sitting's deck.
+  const chosenLocale = useLocale();
   const logRef = useRef<SequencedEntry[] | null>(null);
   logRef.current = log;
 
@@ -120,7 +125,7 @@ export default function ExamPage() {
     if (!cur || cur.currentTrack !== t || cur.tracks[t].status === "completed") return;
     const ts = stamp();
     const timedOut = secondsRemaining(cur, t, ts) <= 0;
-    const rec = scoreTrack(t, artifact, cur.attemptId ?? undefined);
+    const rec = scoreTrack(t, artifact, cur.config?.locale ?? "en", cur.attemptId ?? undefined);
     commit([
       { type: "track_completed", trackId: t, artifact, timedOut, ts },
       {
@@ -168,7 +173,7 @@ export default function ExamPage() {
 
   // ---- No attempt yet -----------------------------------------------------
   if (!state) {
-    const cfg = demoConfig();
+    const cfg = demoConfig(chosenLocale);
     return (
       <main className="page">
       {persistWarning ? (
@@ -194,6 +199,9 @@ export default function ExamPage() {
           </ul>
           <p className="small faint">
             <span className="badge demo">demo</span> Deterministic scoring: the real track plugins score your stored artifact and judgments. The same play will always result in the same score.
+          </p>
+          <p className="small faint">
+            Content locale: <span className="mono">{chosenLocale}</span> (header switcher). {LOCALE_SCOPE_NOTE}{chosenLocale !== "en" ? " ja/ko item content is machine-translated and marked unreviewed in item provenance." : ""}
           </p>
           <button
             className="btn primary"
@@ -296,7 +304,7 @@ export default function ExamPage() {
   const uiProps = {
     attemptId: state.attemptId!,
     locale: state.config!.locale,
-    config: trackConfig(t, state.attemptId ?? undefined),
+    config: trackConfig(t, state.config!.locale, state.attemptId ?? undefined),
     onEvent: (event: TrackEvent) => {
       const cur = logRef.current ? project(logRef.current) : null;
       // Accept while in_track AND paused: runners stay mounted under the

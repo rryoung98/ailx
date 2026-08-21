@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LocaleSwitcher } from "../lib/LocaleSwitcher";
 
 export const metadata: Metadata = {
   title: "AILX — The AI Literacy Examination",
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/exam">Sit the exam</Link>
               <Link href="/report">Report</Link>
               <Link href="/validate">Validate</Link>
+              <LocaleSwitcher />
             </nav>
           </div>
         </header>

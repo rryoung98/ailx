@@ -65,7 +65,7 @@ describe("T2 deck rotation (demo-only)", () => {
 
   it("scoring with the same attemptId reproduces the presented deck", () => {
     const attemptId = "att-rotation-repro";
-    const cfg = trackConfig("t2", attemptId) as { items: Item[] };
+    const cfg = trackConfig("t2", "en", attemptId) as { items: Item[] };
     // Answer every presented item correctly at 90% confidence.
     const artifact = {
       responses: cfg.items.map((i) => ({
@@ -75,10 +75,10 @@ describe("T2 deck rotation (demo-only)", () => {
         latencyMs: 1500,
       })),
     };
-    const withId = scoreTrack("t2", artifact, attemptId);
+    const withId = scoreTrack("t2", artifact, "en", attemptId);
     expect(withId.score.scaled).toBeGreaterThan(80);
     // Same call again is deterministic.
-    expect(scoreTrack("t2", artifact, attemptId).score).toEqual(withId.score);
+    expect(scoreTrack("t2", artifact, "en", attemptId).score).toEqual(withId.score);
     // The default deck is a DIFFERENT population, so scoring without the
     // attemptId must not silently agree (rotated items count as lapses).
     const withoutId = scoreTrack("t2", artifact);

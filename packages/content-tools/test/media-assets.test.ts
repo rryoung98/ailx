@@ -42,13 +42,28 @@ describe("t2 media assets", () => {
     }
   });
 
-  it("every shipped t2-media asset is referenced by exactly one bank item", () => {
-    const referenced = imageItems.map(
-      (i) => (i.material as unknown as ImageMaterial).src?.replace("t2-media/", ""),
-    );
-    expect(new Set(referenced).size).toBe(referenced.length);
+  it("every shipped t2-media asset is referenced by exactly one bank item per locale", () => {
+    // Media files are locale-neutral: ja/ko stem-variant items may reuse an
+    // en item's asset, but within one locale each asset appears at most once,
+    // and every shipped asset is referenced by the en deck.
+    const byLocale = new Map<string, string[]>();
+    for (const i of imageItems) {
+      const src = (i.material as unknown as ImageMaterial).src?.replace("t2-media/", "") ?? "";
+      const list = byLocale.get(i.locale) ?? [];
+      list.push(src);
+      byLocale.set(i.locale, list);
+    }
+    for (const [locale, refs] of byLocale) {
+      expect(new Set(refs).size, `duplicate media reference within locale ${locale}`).toBe(refs.length);
+    }
     const shipped = readdirSync(MEDIA_DIR).filter((f) => f.endsWith(".jpg"));
-    expect(shipped.sort()).toEqual([...referenced].sort());
+    expect(shipped.sort()).toEqual([...(byLocale.get("en") ?? [])].sort());
+    // Non-en locales may only reuse assets the en deck ships.
+    const enSet = new Set(byLocale.get("en") ?? []);
+    for (const [locale, refs] of byLocale) {
+      if (locale === "en") continue;
+      for (const r of refs) expect(enSet.has(r), `${locale} references non-en asset ${r}`).toBe(true);
+    }
   });
 
   it("image items carry Commons provenance with an allowed license", () => {

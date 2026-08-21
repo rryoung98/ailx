@@ -118,9 +118,12 @@ export default function ReportPage() {
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
   const calBins = useMemo(() => {
     if (!state) return [];
-    // Full-bank key map: the demo deck rotates per attempt, so resolve any
-    // item id the stored artifact may reference.
-    return calibrationBins(t2ResponsesFromArtifact(state.tracks.t2.artifact), t2AnswerKeys("en"));
+    // Full-bank key map for the attempt's locale: the demo deck rotates per
+    // attempt, so resolve any item id the stored artifact may reference.
+    return calibrationBins(
+      t2ResponsesFromArtifact(state.tracks.t2.artifact),
+      t2AnswerKeys(state.config?.locale ?? "en"),
+    );
   }, [state]);
   const counted = useCountUp(summary?.composite ?? 0);
 

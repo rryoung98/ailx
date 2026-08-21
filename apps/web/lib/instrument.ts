@@ -135,8 +135,11 @@ export function t2Items(locale: string = "en", attemptId?: string) {
   const bank = snapshotTrack("t2").bank;
   if (!bank) throw new Error("snapshot t2 bank missing");
   const exposure = t2ExposureSeconds();
+  // Unknown/unpopulated locales fall back to the en deck rather than an
+  // empty (unscorable) sitting.
+  const wanted = bank.items.some((i) => i.locale === locale) ? locale : "en";
   const items = bank.items
-    .filter((i) => i.locale === locale)
+    .filter((i) => i.locale === wanted)
     .map((i) => {
       const type = TYPE_MAP[i.type] ?? "provenance";
       const signal = i.options.findIndex((o) => SIGNAL_OPTION_IDS.has(o.id));
@@ -252,15 +255,22 @@ export const T3_SCENARIO_SHA256 =
   "38d7bdb42bae91e6377cfd586242e8db1e43ba194de0534ce3cfa90f46dff3dd";
 
 /**
- * Per-track config passed to the real Runner + score(). `attemptId` drives
- * the DEMO-ONLY T2 deck rotation; presentation and scoring must pass the
- * same attemptId so the scored deck is the presented deck. Omitted →
- * fixed default deck (fixtures, /validate).
+
+ * Per-track config passed to the real Runner + score(). The SESSION's
+ * locale (SessionConfig.locale, chosen via the header switcher) selects
+ * the localized T2 deck; `attemptId` drives the DEMO-ONLY T2 deck rotation.
+ * Presentation and scoring must pass the SAME locale + attemptId so the
+ * scored deck is the presented deck. Omitted attemptId → fixed default
+ * deck (fixtures, /validate). T1/T3/T4 demo briefs stay English.
  */
-export function trackConfig(trackId: "t1" | "t2" | "t3" | "t4", attemptId?: string): unknown {
+export function trackConfig(
+  trackId: "t1" | "t2" | "t3" | "t4",
+  locale: string = "en",
+  attemptId?: string,
+): unknown {
   switch (trackId) {
     case "t1": return undefined;             // plugin defaults carry the demo brief
-    case "t2": return { items: t2Items("en", attemptId) };
+    case "t2": return { items: t2Items(locale, attemptId) };
     case "t3": return T3_SCENARIO;
     case "t4": return undefined;             // plugin defaults carry the demo brief
   }
