@@ -613,6 +613,11 @@ body > * { position: relative; z-index: 1; }
   border: 4px solid color-mix(in oklch, #ffffff 55%, transparent);
   transition: transform 160ms ease, box-shadow 160ms ease;
 }
+.pill-cta { cursor: pointer; } /* <button> UAs default to `default`, not pointer */
+.pill-cta:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
 a.pill-cta { color: #ffffff; text-decoration: none; }
 .pill-cta:hover { transform: translateY(-2px); text-decoration: none; box-shadow: 0 14px 36px rgba(26, 26, 26, 0.28), 0 3px 10px rgba(26, 26, 26, 0.2); }
 .pill-cta .dot { width: 9px; height: 9px; border-radius: 50%; background: #34d399; }
@@ -873,3 +878,171 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
   from { width: min(70%, 980px); border-radius: clamp(20px, 3.5vw, 40px); }
   to { width: 100%; border-radius: 0; }
 }
+
+
+/* ---- what you get: three steps, one idea each ------------------------- */
+.wyg { margin-top: 4.5rem; padding-bottom: 6.5rem; }
+.wyg-steps {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  counter-reset: wyg;
+}
+@media (max-width: 820px) { .wyg-steps { grid-template-columns: 1fr; } }
+.wyg-step { counter-increment: wyg; }
+.wyg-title {
+  margin: 0 0 0.45rem; font-family: var(--serif); font-weight: 520;
+  font-size: clamp(1.35rem, 2.4vw, 1.7rem); letter-spacing: -0.015em;
+  line-height: 1.2; text-wrap: balance;
+}
+.wyg-line { margin: 0; color: var(--muted); font-size: 1rem; line-height: 1.55; max-width: 24rem; }
+.wyg-viz { height: 3.4rem; display: flex; align-items: center; gap: 0.45rem; margin-bottom: 1rem; }
+.wyg-viz-tracks span {
+  display: inline-grid; place-items: center;
+  width: 2.5rem; height: 2.5rem; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border-strong);
+  color: var(--accent); font-weight: 700; font-size: 0.8rem;
+  box-shadow: 0 4px 12px rgba(26, 26, 26, 0.07);
+}
+.wyg-score-ring {
+  display: inline-grid; place-items: center;
+  width: 3rem; height: 3rem; border-radius: 50%;
+  border: 3px solid var(--accent); background: var(--card);
+  box-shadow: 0 4px 12px rgba(26, 26, 26, 0.07);
+}
+.wyg-score-num { font-family: var(--serif); font-weight: 600; font-size: 1.35rem; color: var(--accent); }
+.wyg-report-card {
+  position: relative; display: inline-flex; flex-direction: column; gap: 0.4rem;
+  width: 3.6rem; height: 2.7rem; padding: 0.55rem 0.5rem;
+  background: var(--card); border: 1px solid var(--border-strong); border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(26, 26, 26, 0.07);
+}
+.wyg-report-line { display: block; height: 3px; border-radius: 2px; background: var(--border-strong); }
+.wyg-report-line.short { width: 60%; }
+.wyg-report-check {
+  position: absolute; right: -0.5rem; bottom: -0.55rem;
+  display: grid; place-items: center; width: 1.35rem; height: 1.35rem;
+  border-radius: 50%; background: var(--accent); color: #ffffff;
+  font-size: 0.8rem; font-weight: 700;
+}
+.wyg-footnotes { margin-top: 2.75rem; max-width: 44rem; }
+
+/* ---- campus map journey (Zero map-pan move) --------------------------- */
+/* Base + reduced motion: the journey is display:none; the static
+   alternating .track-bands-fallback section renders instead. Supporting
+   browsers flip both, so exactly one set of the four /exam links is ever
+   displayed (and exposed to AT), always in DOM order T1..T4. */
+.campus-journey { display: none; }
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .track-bands-fallback { display: none; }
+    .campus-journey {
+      display: block; position: relative;
+      height: 400vh; view-timeline: --campus block;
+      margin-top: 3rem;
+    }
+    .campus-stage { position: sticky; top: 0; height: 100vh; overflow: clip; }
+    .campus-map {
+      position: absolute; inset: 0;
+      background-size: auto 125%; background-repeat: no-repeat;
+      animation: campusPan linear both;
+      animation-timeline: --campus;
+      animation-range: contain 0% contain 100%;
+      will-change: background-position, transform;
+    }
+    /* Cream scrim keeps AA contrast for the floating cards' surroundings. */
+    .campus-scrim {
+      position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(
+        180deg,
+        rgba(247, 244, 242, 0.72),
+        rgba(247, 244, 242, 0.1) 34%,
+        rgba(247, 244, 242, 0.16) 66%,
+        rgba(247, 244, 242, 0.66) 100%
+      );
+    }
+    .campus-card {
+      position: absolute; z-index: 2;
+      width: min(23rem, calc(100vw - 2.5rem));
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 18px; padding: 1.3rem 1.4rem 1.1rem;
+      box-shadow: 0 18px 50px rgba(26, 26, 26, 0.18);
+      color: inherit; text-decoration: none;
+      animation: campusCard linear both;
+      animation-timeline: --campus;
+    }
+    .campus-card:hover { text-decoration: none; }
+    .campus-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    /* one stop per track: fade/slide through its quarter of the scrub */
+    .campus-stop-1 { animation-range: contain 0% contain 30%; left: 7%; top: 14%; }
+    .campus-stop-2 { animation-range: contain 24% contain 52%; right: 8%; top: 18%; }
+    .campus-stop-3 { animation-range: contain 48% contain 76%; left: 9%; bottom: 16%; }
+    .campus-stop-4 { animation-range: contain 70% contain 100%; right: 7%; bottom: 14%; }
+    .campus-card-code { color: var(--accent); font-weight: 700; }
+    .campus-card-title {
+      margin: 0.35rem 0 0.25rem; font-family: var(--serif); font-weight: 520;
+      font-size: 1.45rem; letter-spacing: -0.01em;
+    }
+    .campus-card-line { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.98rem; }
+    .campus-card-viz { border-radius: 12px; overflow: hidden; background: rgba(247, 244, 242, 0.6); }
+    .campus-card-viz .track-scene { aspect-ratio: 16 / 10; }
+    .campus-progress {
+      position: absolute; z-index: 2; inset-inline: 0; bottom: 4.4rem; /* clear of the pill CTA */
+      margin: 0; text-align: center; font-size: 0.75rem; color: var(--muted);
+      pointer-events: none;
+    }
+  }
+}
+/* Pan/zoom keyframes: T1 glass pavilion (left) -> T2 round hall ->
+   T3 terraced library -> T4 curved media building (right). */
+@keyframes campusPan {
+  0%   { background-position: 3% 46%; transform: scale(1.12); }
+  13%  { background-position: 3% 46%; transform: scale(1.12); }
+  31%  { background-position: 35% 54%; transform: scale(1.02); }
+  43%  { background-position: 35% 54%; transform: scale(1.02); }
+  61%  { background-position: 66% 48%; transform: scale(1.08); }
+  73%  { background-position: 66% 48%; transform: scale(1.08); }
+  93%  { background-position: 97% 52%; transform: scale(1.18); }
+  100% { background-position: 97% 52%; transform: scale(1.18); }
+}
+@keyframes campusCard {
+  0%   { opacity: 0; visibility: hidden; transform: translateY(2.6rem); }
+  16%  { opacity: 1; visibility: visible; transform: none; }
+  84%  { opacity: 1; visibility: visible; transform: none; }
+  100% { opacity: 0; visibility: hidden; transform: translateY(-2rem); }
+}
+
+/* ---- covering loader (zero.university-style) -------------------------- */
+/* Skip paths: the pre-hydration script flags <html> for repeat loads, and
+   reduced motion never shows the cover at all. */
+html[data-ailx-loaded="1"] .loader { display: none; }
+@media (prefers-reduced-motion: reduce) { .loader { display: none; } }
+.loader {
+  position: fixed; inset: 0; z-index: 100; /* above the pill CTA (30) */
+  display: grid; place-items: center;
+  background: #166b43;
+  animation: loaderWipe 450ms cubic-bezier(0.6, 0, 0.15, 1) 850ms both;
+}
+/* Mint-tinted paper grain, same dot technique as body::before. */
+.loader::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    radial-gradient(rgba(183, 240, 205, 0.09) 1px, transparent 1px),
+    radial-gradient(rgba(183, 240, 205, 0.06) 1px, transparent 1px);
+  background-size: 7px 7px, 11px 11px;
+  background-position: 0 0, 3px 5px;
+}
+.loader-logo { width: min(240px, 48vw); height: auto; }
+.loader-logo path {
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation: loaderDraw 420ms ease forwards;
+}
+.loader-logo .lg-a  { animation-delay: 0ms; }
+.loader-logo .lg-a2 { animation-delay: 80ms; }
+.loader-logo .lg-i  { animation-delay: 160ms; }
+.loader-logo .lg-l  { animation-delay: 240ms; }
+.loader-logo .lg-x1 { animation-delay: 320ms; }
+.loader-logo .lg-x2 { animation-delay: 400ms; }
+@keyframes loaderDraw { to { stroke-dashoffset: 0; } }
+@keyframes loaderWipe { from { transform: none; } to { transform: translateY(-101%); } }
