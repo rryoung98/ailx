@@ -13,7 +13,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@ailx/core": "workspace:*",
-    "@ailx/session": "workspace:*"
+    "@ailx/session": "workspace:*",
+    "@ailx/track-t1": "workspace:*",
+    "@ailx/track-t2": "workspace:*",
+    "@ailx/track-t3": "workspace:*",
+    "@ailx/track-t4": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

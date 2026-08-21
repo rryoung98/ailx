@@ -12,6 +12,7 @@ import {
   DEMO_SCORING_DIGEST, demoModelManifest, demoRubricVersion,
 } from "../../lib/demo";
 import { loadTrackModule, scoreTrackArtifact, type TrackModule } from "../../lib/registry";
+import { trackConfig } from "../../lib/instrument";
 import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
 
 function demoConfig(): SessionConfig {
@@ -229,7 +230,7 @@ export default function ExamPage() {
   const uiProps = {
     attemptId: state.attemptId!,
     locale: state.config!.locale,
-    config: { trackId: t },
+    config: trackConfig(t),
     onEvent: (event: TrackEvent) =>
       commit([{ type: "track_event", trackId: t, event, ts: Date.now() }]),
     onComplete: (artifact: unknown) => finishTrack(t, artifact, false),
