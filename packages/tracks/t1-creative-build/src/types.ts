@@ -15,9 +15,11 @@ export interface T1Session {
 }
 
 export interface PromptLogEntry {
-  /** 'prompted' — asked the demo assistant; 'revised' — edited the artifact after. */
+  /** 'prompted' — asked the assistant; 'revised' — the artifact changed after. */
   kind: "prompted" | "revised";
   prompt?: string;
+  /** Which model produced/drove this entry (e.g. 'demo-assist@1' or an OpenRouter model id). */
+  modelId?: string;
   /** ISO timestamp captured client-side (never read inside score()). */
   clientTs: string;
 }
