@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HeroCanvas } from "../lib/HeroCanvas";
 import { Teaser } from "../lib/Teaser";
 
 const TRACKS = [
@@ -11,22 +12,25 @@ const TRACKS = [
 export default function Home() {
   return (
     <main className="page">
-      <section className="container">
-        <div className="grid2" style={{ gap: "2rem", alignItems: "center" }}>
-          <div>
-            <div className="eyebrow">The AI Literacy Examination · 2026.1</div>
-            <h1 style={{ marginBottom: "0.8rem" }}>
-              Benchmarks rate the models.<br />This one rates <em>you</em>.
-            </h1>
-            <p className="lede" style={{ fontSize: "1.05rem" }}>
-              Four performance tracks — build, detect, reason, and direct — are scored like a real instrument. Built to the AILX 2026.1 specification — a trilateral (US·JP·KR) instrument design; this site is its live demo build.
-            </p>
-            <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", marginTop: "1.4rem" }}>
-              <Link className="btn primary" href="/exam">Start the exam</Link>
-              <Link className="btn" href="/validate">Watch it prove itself</Link>
-            </p>
+      <section className="hero">
+        <HeroCanvas />
+        <div className="container hero-inner">
+          <div className="grid2" style={{ gap: "2.5rem", alignItems: "center" }}>
+            <div>
+              <div className="eyebrow">The AI Literacy Examination · 2026.1</div>
+              <h1 className="hero-title">
+                Benchmarks rate the models.<br />This one rates <em>you</em>.
+              </h1>
+              <p className="lede hero-lede">
+                Four performance tracks — build, detect, reason, and direct — are scored like a real instrument. Built to the AILX 2026.1 specification — a trilateral (US·JP·KR) instrument design; this site is its live demo build.
+              </p>
+              <p className="hero-cta">
+                <Link className="btn primary" href="/exam">Start the exam</Link>
+                <Link className="btn" href="/validate">Watch it prove itself</Link>
+              </p>
+            </div>
+            <Teaser />
           </div>
-          <Teaser />
         </div>
       </section>
 
