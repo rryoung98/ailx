@@ -47,9 +47,10 @@ describe("scoreT1 golden fixture", () => {
       functional: 27,
       comparative: 24.8,
       ambition: 12,
-      rationale: 7.85,
+      rationale: 8, // ALL 10 rationale points from the judged dimension (F8)
+      "process.signal": 0.75, // diagnostic only — adds no points
     });
-    expect(s.scaled).toBe(71.65);
+    expect(s.scaled).toBe(71.8);
   });
 
   it("is deterministic under runPure (no clock, no randomness, no fetch)", () => {
@@ -58,7 +59,7 @@ describe("scoreT1 golden fixture", () => {
     expect(a).toEqual(b);
   });
 
-  it("perfect judgments with full process signal reach 100", () => {
+  it("perfect judgments reach 100 regardless of prompt-log volume (F8)", () => {
     const perfect: ScoreInputs<T1Artifact> = {
       artifact: {
         ...goldenArtifact,
@@ -91,14 +92,39 @@ describe("scoreT1 golden fixture", () => {
 });
 
 describe("medianForDimension", () => {
-  it("takes the median of samples and clamps to [0,1]", () => {
-    expect(medianForDimension([J("d", 0, 0.2), J("d", 1, 5), J("d", 2, 0.4)], "d")).toBe(0.4);
+  it("takes the median of samples", () => {
+    expect(medianForDimension([J("d", 0, 0.2), J("d", 1, 1), J("d", 2, 0.4)], "d")).toBe(0.4);
     expect(medianForDimension([J("d", 0, 0.2), J("d", 1, 0.6)], "d")).toBeCloseTo(0.4);
     expect(medianForDimension([], "d")).toBe(0);
+  });
+  it("throws on out-of-range judgment values — contract is normalized [0,1] (F10)", () => {
+    expect(() => medianForDimension([J("d", 0, 5)], "d")).toThrow(/out of range/);
+    expect(() => medianForDimension([J("d", 0, -0.1)], "d")).toThrow(/out of range/);
+    expect(() => medianForDimension([J("d", 0, Number.NaN)], "d")).toThrow(/out of range/);
+    expect(() => scoreT1({ ...goldenInputs, judgments: [J("rationale", 0, 3)] }, cfg)).toThrow(/out of range/);
   });
 });
 
 describe("processSignal", () => {
+  it("prompt-log activity alone earns ZERO points (F8 regression)", () => {
+    const busyLogNoJudgments: ScoreInputs<T1Artifact> = {
+      artifact: {
+        html: "<p>x</p>",
+        promptLog: [
+          { kind: "prompted", prompt: "a", clientTs: "t" },
+          { kind: "revised", clientTs: "t" },
+          { kind: "prompted", prompt: "b", clientTs: "t" },
+          { kind: "revised", clientTs: "t" },
+        ],
+        selfReport: "",
+      },
+      judgments: [],
+      rubricVersion: "test-rubric-v1",
+    };
+    const s = runPure(() => scoreT1(busyLogNoJudgments, cfg));
+    expect(s.scaled).toBe(0);
+    expect(s.raw["process.signal"]).toBe(1); // reported, not scored
+  });
   it("is 0 with an empty log", () => {
     expect(processSignal({ html: "", promptLog: [], selfReport: "" })).toBe(0);
   });

@@ -5,6 +5,7 @@ import type { TrackUIProps } from "@ailx/core";
 import { demoAssist } from "./assist.js";
 import type { AssistReply } from "./assist.js";
 import { buildPreviewSrcdoc, SANDBOX_ATTR } from "./sandbox.js";
+import { decodeT1Checkpoint, encodeT1Checkpoint } from "./checkpoint.js";
 import { t1Plugin } from "./plugin.js";
 import type { PromptLogEntry } from "./types.js";
 
@@ -83,16 +84,32 @@ function fmtTime(s: number): string {
  */
 export function Runner(props: TrackUIProps) {
   const cfg = useMemo(() => t1Plugin.validateConfig(props.config), [props.config]);
-  const [html, setHtml] = useState(STARTER_HTML);
-  const [preview, setPreview] = useState<string>(() => buildPreviewSrcdoc(STARTER_HTML));
+  // Rehydrate from the persisted checkpoint on (re)mount — F2.
+  const restored = useMemo(() => decodeT1Checkpoint(props.checkpoint), []);
+  const [html, setHtml] = useState(restored?.html ?? STARTER_HTML);
+  const [preview, setPreview] = useState<string>(() =>
+    buildPreviewSrcdoc(restored?.html ?? STARTER_HTML),
+  );
   const [assistPrompt, setAssistPrompt] = useState("");
   const [assistReply, setAssistReply] = useState<AssistReply | null>(null);
-  const [selfReport, setSelfReport] = useState("");
+  const [selfReport, setSelfReport] = useState(restored?.selfReport ?? "");
   const [submitted, setSubmitted] = useState(false);
-  const promptLog = useRef<PromptLogEntry[]>([]);
+  const promptLog = useRef<PromptLogEntry[]>(restored?.promptLog ?? []);
   const dirtySinceRun = useRef(false);
 
   const now = () => new Date().toISOString();
+
+  // Checkpoint every meaningful mutation with explicit next values (state
+  // setters have not committed yet when handlers run).
+  const checkpoint = (next: Partial<{ html: string; selfReport: string }>) => {
+    props.onCheckpoint?.(
+      encodeT1Checkpoint({
+        html: next.html ?? html,
+        promptLog: promptLog.current,
+        selfReport: next.selfReport ?? selfReport,
+      }),
+    );
+  };
 
   const runPreview = () => {
     setPreview(buildPreviewSrcdoc(html));
@@ -107,6 +124,7 @@ export function Runner(props: TrackUIProps) {
       });
       dirtySinceRun.current = false;
     }
+    checkpoint({});
   };
 
   const askAssist = () => {
@@ -123,6 +141,7 @@ export function Runner(props: TrackUIProps) {
       context: { prompt: p },
       clientTs: entry.clientTs,
     });
+    checkpoint({});
   };
 
   const submit = () => {
@@ -197,7 +216,10 @@ export function Runner(props: TrackUIProps) {
             style={{ ...mono, minHeight: 90 }}
             maxLength={cfg.selfReportMaxChars}
             value={selfReport}
-            onChange={(e) => setSelfReport(e.target.value)}
+            onChange={(e) => {
+              setSelfReport(e.target.value);
+              checkpoint({ selfReport: e.target.value });
+            }}
             placeholder="State your intent: audience, message, and the choices that serve them."
           />
           <button type="button" style={{ ...btn, opacity: submitted ? 0.5 : 1 }} onClick={submit} disabled={submitted}>
@@ -217,6 +239,7 @@ export function Runner(props: TrackUIProps) {
             onChange={(e) => {
               setHtml(e.target.value);
               dirtySinceRun.current = true;
+              checkpoint({ html: e.target.value });
             }}
           />
           <button type="button" style={btn} onClick={runPreview}>
