@@ -1240,3 +1240,47 @@ html[data-ailx-loaded="1"] .loader { display: none; }
   animation: ailx-attention 1.1s ease 2;
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
+
+/* ---- Mobile card containment (shared layer) ------------------------------
+   Regression guard for the "T1 submit button escapes its card" bug class:
+   1. Form controls inside any card/section may never overflow their card.
+   2. Grid/flex children must be shrinkable (min-width: 0), or long
+      min-content (inputs, code, urls) forces horizontal page scroll.
+   3. Inputs render at >= 16px on small screens so iOS Safari does not
+      zoom-jump when a field is focused.
+   4. Primary controls stay comfortably tappable on coarse pointers. */
+main textarea,
+main input,
+main select {
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+/* User-resizable textareas may grow but can never be dragged past their
+   card (user report: the T4 prompt box dragged over the Direction-note
+   card). Touch gets no drag handle at all. */
+main textarea {
+  resize: vertical;
+  max-height: 60vh;
+}
+@media (pointer: coarse) {
+  main textarea {
+    resize: none !important;
+  }
+}
+main section,
+main .card {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  main textarea,
+  main select,
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    font-size: 16px !important;
+  }
+}
+@media (pointer: coarse) {
+  main button:not(.t1-tab):not(.t4-tab) {
+    min-height: 44px;
+  }
+}

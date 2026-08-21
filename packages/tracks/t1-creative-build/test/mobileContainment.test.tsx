@@ -1,0 +1,110 @@
+// @vitest-environment jsdom
+/**
+ * Mobile containment — regression for the live-dogfood report:
+ * at 390x844 the design-rationale textarea overflowed its card and the
+ * "Submit final artifact" button ESCAPED the conversation card, landing
+ * under the preview pane's tab bar (which then swallowed the tap).
+ *
+ * Root cause: the pane height cap (max-height: 78vh) was an INLINE style,
+ * so the phone layout could not lift it, and the pane overflow is visible.
+ * The cap now lives in the .t1-pane CSS class with a max-width: 900px
+ * override that removes it on phones.
+ */
+import { afterEach, describe, expect, it } from "vitest";
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { Runner } from "../src/Runner.js";
+
+(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+
+const lsStore = new Map<string, string>();
+Object.defineProperty(window, "localStorage", {
+  configurable: true,
+  value: {
+    getItem: (k: string) => lsStore.get(k) ?? null,
+    setItem: (k: string, v: string) => void lsStore.set(k, String(v)),
+    removeItem: (k: string) => void lsStore.delete(k),
+    clear: () => lsStore.clear(),
+  },
+});
+
+let root: Root | null = null;
+afterEach(() => {
+  if (root) act(() => root!.unmount());
+  root = null;
+  lsStore.clear();
+});
+
+function mount() {
+  const c = document.createElement("div");
+  document.body.appendChild(c);
+  root = createRoot(c);
+  act(() =>
+    root!.render(
+      createElement(Runner, {
+        attemptId: "a-1",
+        locale: "en" as const,
+        config: {},
+        onEvent: () => {},
+        onComplete: () => {},
+        secondsRemaining: 900,
+        onCheckpoint: () => {},
+      }),
+    ),
+  );
+  return c;
+}
+
+describe("T1 mobile containment", () => {
+  it("panes carry NO inline height cap (the cap lives in CSS so phones can lift it)", () => {
+    const c = mount();
+    const panes = c.querySelectorAll("section.t1-pane");
+    expect(panes.length).toBe(2); // conversation + live page
+    for (const pane of panes) {
+      const style = (pane as HTMLElement).style;
+      expect(style.maxHeight).toBe("");
+      // panel base style keeps flex min-height: 0; the 480px cap is gone.
+      expect(style.minHeight).not.toBe("480px");
+    }
+  });
+
+  it("stylesheet pins the pane cap on desktop and REMOVES it on phones", () => {
+    const c = mount();
+    const css = c.querySelector("style")!.textContent!;
+    expect(css).toContain(".t1-pane { max-height: 78vh; min-height: 480px; }");
+    const mobile = css.slice(css.indexOf("@media (max-width: 900px)"));
+    expect(mobile).toContain(".t1-pane { max-height: none; min-height: 0; }");
+    // Grid children must be shrinkable or long content forces page scroll.
+    expect(css).toContain(".t1-grid > .t1-pane { min-width: 0; }");
+  });
+
+  it("inputs render >= 16px on phones (stops iOS Safari zoom-jump on focus)", () => {
+    const c = mount();
+    const css = c.querySelector("style")!.textContent!;
+    const mobile = css.slice(css.indexOf("@media (max-width: 900px)"));
+    expect(mobile).toMatch(/\.t1-shell textarea, \.t1-shell input, \.t1-shell select \{ font-size: 16px !important; \}/);
+  });
+
+  it("buttons and tabs are >= 44px touch targets on coarse pointers", () => {
+    const c = mount();
+    const css = c.querySelector("style")!.textContent!;
+    const coarse = css.slice(css.indexOf("@media (pointer: coarse)"));
+    expect(coarse).toContain(".t1-shell .t1-btn, .t1-shell .t1-tab { min-height: 44px; }");
+  });
+
+  it("resizable textareas are clamped (drag handle cannot pull them past the card)", () => {
+    const c = mount();
+    const css = c.querySelector("style")!.textContent!;
+    expect(css).toContain(".t1-shell textarea { max-height: 60vh; }");
+    const coarse = css.slice(css.indexOf("@media (pointer: coarse)"));
+    expect(coarse).toContain(".t1-shell textarea { resize: none !important; }");
+  });
+
+  it("the prompt textarea is shrinkable (min-width: 0) and box-sized so it cannot overflow the card", () => {
+    const c = mount();
+    const ta = c.querySelector('textarea[aria-label="Assist prompt"]') as HTMLTextAreaElement;
+    expect(ta.style.minWidth).toBe("0");
+    expect(ta.style.boxSizing).toBe("border-box");
+    expect(ta.style.width).toBe("100%");
+  });
+});
