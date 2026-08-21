@@ -87,11 +87,17 @@ describe("T2 demo bank", () => {
     expect(locales).toContain("ja");
     expect(locales).toContain("ko");
   });
-  it("items are self-contained (all media inline as data: URIs)", () => {
+  it("items are self-contained (media inline or bundled repo-local assets)", () => {
     for (const item of bank.items) {
-      const m = item.material as { kind?: string; data_uri?: string };
+      const m = item.material as { kind?: string; data_uri?: string; src?: string };
       if (m.kind === "svg") {
         expect(m.data_uri).toMatch(/^data:image\/svg\+xml;base64,/);
+      }
+      if (m.kind === "image") {
+        // Bundled static asset: relative path under apps/web/public, never a
+        // remote URL (network fetches at exam time would break containment).
+        expect(m.src).toMatch(/^t2-media\/[0-9a-f]{12}\.jpg$/);
+        continue;
       }
       // No externally fetched media fields anywhere in material.
       expect(JSON.stringify(item.material)).not.toMatch(/"(src|href|image_url|media_url)"/);
