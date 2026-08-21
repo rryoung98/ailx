@@ -6,3 +6,5 @@ dist/
 *.tsbuildinfo
 coverage/
 .DS_Store
+apps/web/out/
+next-env.d.ts
