@@ -7,14 +7,16 @@
   "bin": {
     "ailx-hash-bank": "dist/cli/hash-bank.js",
     "ailx-rubric-version": "dist/cli/rubric-version.js",
-    "ailx-build-snapshot": "dist/cli/build-snapshot.js"
+    "ailx-build-snapshot": "dist/cli/build-snapshot.js",
+    "ailx-check-links": "dist/cli/check-links.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "hash-bank": "node dist/cli/hash-bank.js",
     "rubric-version": "node dist/cli/rubric-version.js",
-    "build-snapshot": "node dist/cli/build-snapshot.js"
+    "build-snapshot": "node dist/cli/build-snapshot.js",
+    "check-links": "node dist/cli/check-links.js"
   },
   "dependencies": {
     "@ailx/core": "workspace:*",
