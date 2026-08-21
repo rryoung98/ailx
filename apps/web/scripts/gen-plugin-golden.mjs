@@ -96,12 +96,18 @@ const FIXTURES = {
   t4: {
     config: null,
     artifact: {
-      generations: [
+      drafts: [
         { index: 0, prompt: "poster", svg: "<svg/>", clientTs: "2026-01-01T00:00:00.000Z" },
         { index: 1, prompt: "poster, focal figure, wide margins", svg: "<svg/>", clientTs: "2026-01-01T00:00:01.000Z" },
       ],
-      chosenIndex: 1,
+      finals: {
+        images: [
+          { kind: "image", fromDraftIndex: 1, prompt: "poster, focal figure, wide margins", asset: "<svg/>", clientTs: "2026-01-01T00:00:02.000Z" },
+        ],
+      },
+      chosenSet: [0],
       note: "Chose the second frame: the focal figure reads first, as the brief asks.",
+      disclosed: true,
     },
     judgments: [
       { dimension: "generation", sample: 0, value: 0.3, modelId: "golden@1" },

@@ -71,9 +71,10 @@
         "functional": 24,
         "comparative": 22,
         "ambition": 8,
-        "rationale": 6.4
+        "rationale": 7,
+        "process.signal": 0.5
       },
-      "scaled": 60.4
+      "scaled": 61
     }
   },
   "t2": {
@@ -179,6 +180,8 @@
         "accuracy": 0.667,
         "brier": 0.18,
         "weightedAccuracy": 1,
+        "answeredBinary": 3,
+        "calibrationCoverage": 1,
         "hits": 1,
         "falseAlarms": 1,
         "nSignal": 1,
@@ -273,28 +276,30 @@
     "expected": {
       "raw": {
         "rsr": 25,
-        "analysis": 6,
+        "analysis": 30,
         "process": 9.167,
         "rair": 10,
         "plantedSurfaced": 1,
         "plantedCaught": 1,
         "adviceSurfaced": 1,
         "adviceAdopted": 1,
+        "adviceDeliberated": 1,
         "promptCount": 1,
         "revisionChainLength": 0,
         "verificationCount": 1,
         "deliberationRate": 1,
         "meanJuryBand": 0.667,
         "jurySpread": 0.2,
-        "wordCount": 24
+        "wordCount": 24,
+        "analysis.lengthGate": 1
       },
-      "scaled": 50.167
+      "scaled": 74.167
     }
   },
   "t4": {
     "config": null,
     "artifact": {
-      "generations": [
+      "drafts": [
         {
           "index": 0,
           "prompt": "poster",
@@ -308,8 +313,22 @@
           "clientTs": "2026-01-01T00:00:01.000Z"
         }
       ],
-      "chosenIndex": 1,
-      "note": "Chose the second frame: the focal figure reads first, as the brief asks."
+      "finals": {
+        "images": [
+          {
+            "kind": "image",
+            "fromDraftIndex": 1,
+            "prompt": "poster, focal figure, wide margins",
+            "asset": "<svg/>",
+            "clientTs": "2026-01-01T00:00:02.000Z"
+          }
+        ]
+      },
+      "chosenSet": [
+        0
+      ],
+      "note": "Chose the second frame: the focal figure reads first, as the brief asks.",
+      "disclosed": true
     },
     "judgments": [
       {
@@ -353,13 +372,16 @@
       "raw": {
         "brief-fit": 18,
         "comparative": 20,
-        "craft": 15.029,
+        "craft": 12.029,
         "provenance": 9,
         "craft.steering": 0.743,
         "craft.note": 0.6,
-        "craft.quota": 1
+        "craft.quota": 0.25,
+        "finals.images": 1,
+        "finals.video": 0,
+        "drafts.count": 2
       },
-      "scaled": 62.029
+      "scaled": 59.029
     }
   }
 }

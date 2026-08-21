@@ -36,20 +36,16 @@ export interface TrackModule {
   placeholder: boolean;
 }
 
-type Importer = () => Promise<{ Runner: ComponentType<TrackUIProps> }>;
-
-const realImporters: Record<TrackId, Importer> = {
-  t1: () => import("@ailx/track-t1"),
-  t2: () => import("@ailx/track-t2"),
-  t3: () => import("@ailx/track-t3"),
-  t4: () => import("@ailx/track-t4"),
-};
-
+/** Runners come from each plugin's own ui() loader (F11) — no hardcoded
+ * platform imports of Runner components. */
 export async function loadTrackModule(trackId: TrackId): Promise<TrackModule> {
   try {
-    const mod = await realImporters[trackId]();
-    if (typeof mod.Runner === "function" || typeof mod.Runner === "object") {
-      return { Runner: mod.Runner, placeholder: false };
+    const ui = PLUGINS[trackId].ui;
+    if (ui) {
+      const mod = (await ui()) as { Runner: ComponentType<TrackUIProps> };
+      if (typeof mod.Runner === "function" || typeof mod.Runner === "object") {
+        return { Runner: mod.Runner, placeholder: false };
+      }
     }
   } catch {
     // fall through
@@ -105,8 +101,10 @@ export function isValidArtifact(trackId: TrackId, artifact: unknown): boolean {
     case "t3":
       return Array.isArray(a.transcript) && typeof a.finalAnswer === "string";
     case "t4":
-      return Array.isArray(a.generations) && typeof a.note === "string" &&
-        typeof a.chosenIndex === "number";
+      return Array.isArray(a.drafts) && isObj(a.finals) &&
+        Array.isArray((a.finals as Record<string, unknown>).images) &&
+        Array.isArray(a.chosenSet) && typeof a.note === "string" &&
+        typeof a.disclosed === "boolean";
   }
 }
 
@@ -152,13 +150,20 @@ export function checkpointToArtifact(trackId: TrackId, checkpoint: unknown): unk
         transcript: arr(src.transcript),
         finalAnswer: str(src.finalAnswer ?? src.draft),
       };
-    case "t4":
+    case "t4": {
+      const finals = isObj(src.finals) ? (src.finals as Record<string, unknown>) : {};
       return {
         ...src,
-        generations: arr(src.generations),
-        chosenIndex: num(src.chosenIndex, 0),
+        drafts: arr(src.drafts ?? src.generations),
+        finals: {
+          images: arr(finals.images),
+          ...(isObj(finals.video) ? { video: finals.video } : {}),
+        },
+        chosenSet: arr(src.chosenSet).filter((x): x is number => typeof x === "number"),
         note: str(src.note),
+        disclosed: src.disclosed === true,
       };
+    }
   }
 }
 

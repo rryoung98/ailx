@@ -80,12 +80,18 @@ function fixtureArtifact(trackId: TrackId): unknown {
       };
     case "t4":
       return {
-        generations: [
+        drafts: [
           { index: 0, prompt: "warm dawn palette poster", svg: "<svg/>", clientTs: iso(T0) },
           { index: 1, prompt: "warm dawn palette poster, single focal figure, wide margin composition", svg: "<svg/>", clientTs: iso(T0 + 1000) },
           { index: 2, prompt: "same composition, stronger typographic hierarchy for the headline", svg: "<svg/>", clientTs: iso(T0 + 2000) },
         ],
-        chosenIndex: 2,
+        finals: {
+          images: [
+            { kind: "image", fromDraftIndex: 2, prompt: "same composition, stronger typographic hierarchy for the headline", asset: "<svg/>", clientTs: iso(T0 + 3000) },
+          ],
+        },
+        chosenSet: [0],
+        disclosed: true,
         note:
           "Two generations spent on composition, one on hierarchy; the chosen frame keeps the " +
           "focal figure the viewer should read first. Disclosure statement attached to every delivered asset.",

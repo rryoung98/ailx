@@ -70,30 +70,52 @@ export function judgeT3(artifact: { transcript: unknown[]; finalAnswer: string }
   });
 }
 
-interface T4Gen { prompt: string; [k: string]: unknown }
+interface T4DraftLike { prompt: string; [k: string]: unknown }
+interface T4FinalLike { prompt?: string; fromDraftIndex?: number; [k: string]: unknown }
 
-export function judgeT4(artifact: { generations: T4Gen[]; chosenIndex: number; note: string }): Judgment[] {
-  if (artifact.generations.length === 0) {
+/**
+ * Judges the CURRENT T4 artifact shape (spec §T4 / F9): unlimited drafts,
+ * quota-limited finals ({images, video?}), chosenSet, note, disclosed.
+ */
+export function judgeT4(artifact: {
+  drafts: T4DraftLike[];
+  finals: { images: T4FinalLike[]; video?: T4FinalLike };
+  chosenSet: number[];
+  note: string;
+  disclosed: boolean;
+}): Judgment[] {
+  if (artifact.drafts.length === 0) {
     return [
       ...zeroTri("brief-fit"), ...zeroTri("comparative"),
       ...zeroTri("direction-note"), ...zeroTri("provenance"),
     ];
   }
-  const seed = sha256Hex(JSON.stringify(artifact.generations.map((g) => g.prompt)) + artifact.note);
+  const seed = sha256Hex(JSON.stringify(artifact.drafts.map((g) => g.prompt)) + artifact.note);
   const out: Judgment[] = [];
-  // Per-generation 'generation' values: richer prompts judge higher (deterministic).
-  artifact.generations.forEach((g, i) => {
+  // Per-DRAFT 'generation' values: richer prompts judge higher (deterministic).
+  artifact.drafts.forEach((g, i) => {
     const richness = clamp01(g.prompt.split(/\s+/).filter(Boolean).length / 20);
     const jitter = (seeded01(`${seed}|gen|${i}`) - 0.5) * 0.15;
     out.push(mk("generation", i, clamp01(0.2 + 0.7 * richness + jitter)));
   });
-  const chosen = artifact.generations[Math.min(artifact.chosenIndex, artifact.generations.length - 1)];
-  const chosenRich = chosen ? clamp01(chosen.prompt.split(/\s+/).filter(Boolean).length / 20) : 0;
+  // Delivered set: chosen final images (fall back to the last draft).
+  const delivered: T4FinalLike[] = [
+    ...artifact.chosenSet.map((i) => artifact.finals.images[i]).filter(Boolean),
+    ...(artifact.finals.video ? [artifact.finals.video] : []),
+  ];
+  const deliveredPrompts = delivered
+    .map((f) => (typeof f.prompt === "string" ? f.prompt : ""))
+    .filter((p) => p.length > 0);
+  const richOf = (p: string) => clamp01(p.split(/\s+/).filter(Boolean).length / 20);
+  const chosenRich = deliveredPrompts.length > 0
+    ? deliveredPrompts.reduce((a, p) => a + richOf(p), 0) / deliveredPrompts.length
+    : richOf(artifact.drafts[artifact.drafts.length - 1].prompt);
   out.push(
     ...tri("brief-fit", clamp01(0.3 + 0.55 * chosenRich), seed),
     ...tri("comparative", clamp01(0.25 + 0.55 * chosenRich), seed),
     ...tri("direction-note", clamp01(0.2 + 0.65 * clamp01(artifact.note.length / 300)), seed),
-    ...tri("provenance", 0.8, seed), // demo pipeline always attaches credentials
+    // Disclosure hygiene comes from the STORED disclosure flag.
+    ...tri("provenance", artifact.disclosed ? 0.85 : 0.15, seed),
   );
   return out;
 }

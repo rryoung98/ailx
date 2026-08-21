@@ -96,14 +96,14 @@ describe("real plugin scoring (F1: no fallback, fail closed)", () => {
     t1: t1Artifact,
     t2: { responses: t2Items("en").map((i, idx) => ({ itemId: i.id, choice: idx % 2 === 0 ? i.key : (i.key + 1) % i.options.length, confidence: 70, latencyMs: 1200 })) },
     t3: { transcript: [{ seq: 0, clientTs: "t", verb: "prompted", object: "prompt:1", text: "x" }], finalAnswer: "word ".repeat(140) },
-    t4: { generations: [{ prompt: "red fox" }, { prompt: "a red fox at dawn, watercolor, wide composition" }], chosenIndex: 1, note: "The dawn palette communicates warmth for the brief audience." },
+    t4: { drafts: [{ prompt: "red fox" }, { prompt: "a red fox at dawn, watercolor, wide composition" }], finals: { images: [{ kind: "image", fromDraftIndex: 1, prompt: "a red fox at dawn, watercolor, wide composition", asset: "<svg/>", clientTs: "2026-01-01T00:00:02.000Z" }] }, chosenSet: [0], note: "The dawn palette communicates warmth for the brief audience.", disclosed: true },
   };
 
   it("judgments are deterministic and normalized to [0,1]", () => {
     expect(judgeT1(t1Artifact)).toEqual(judgeT1(t1Artifact));
     const t3a = { transcript: [], finalAnswer: "word ".repeat(150) };
     expect(judgeT3(t3a)).toEqual(judgeT3(t3a));
-    const t4a = { generations: [{ prompt: "a red fox at dawn, watercolor, wide" }], chosenIndex: 0, note: "note" };
+    const t4a = { drafts: [{ prompt: "a red fox at dawn, watercolor, wide" }], finals: { images: [{ kind: "image", fromDraftIndex: 0, prompt: "a red fox at dawn, watercolor, wide", asset: "<svg/>", clientTs: "2026-01-01T00:00:01.000Z" }] }, chosenSet: [0], note: "note", disclosed: true };
     expect(judgeT4(t4a)).toEqual(judgeT4(t4a));
     for (const j of [...judgeT1(t1Artifact), ...judgeT3(t3a), ...judgeT4(t4a)]) {
       expect(j.value).toBeGreaterThanOrEqual(0);
@@ -182,7 +182,7 @@ describe("real plugin scoring (F1: no fallback, fail closed)", () => {
     const draft = checkpointToArtifact("t3", { transcript: [], draft: "wip" });
     expect((draft as { finalAnswer: string }).finalAnswer).toBe("wip");
     // extra unknown fields survive (new T4 shapes)
-    const t4 = checkpointToArtifact("t4", { generations: [], note: "n", chosenIndex: 0, finals: [1, 2, 3] });
-    expect((t4 as { finals: number[] }).finals).toEqual([1, 2, 3]);
+    const t4 = checkpointToArtifact("t4", { drafts: [], finals: { images: [] }, chosenSet: [], note: "n", disclosed: false });
+    expect((t4 as { finals: { images: unknown[] } }).finals).toEqual({ images: [] });
   });
 });
