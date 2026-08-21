@@ -25,10 +25,7 @@ export default function ValidatePage() {
         <div className="eyebrow">Dogfood · validate AILX quickly</div>
         <h1>Live validation of the scoring path</h1>
         <p className="lede">
-          These checks execute in your browser, right now, against the same code that
-          scores an attempt: content addressing, the purity harness, golden fixtures,
-          and composite reproducibility. No network, no server — if it passes here, it
-          is reproducible anywhere.
+          These checks run in your browser right now against the same code that scores an attempt. They verify content addressing, the purity harness, golden fixtures, and composite reproducibility. Since there's no network or server involved, if it passes here, it will be reproducible anywhere.
         </p>
 
         {results && (
@@ -56,13 +53,8 @@ export default function ValidatePage() {
 
         <h2>What this demonstrates</h2>
         <p className="muted" style={{ maxWidth: "44rem" }}>
-          The load-bearing property of the whole architecture (spec §14): any score, ever
-          issued, can be recomputed byte-identically from stored inputs. Scoring runs
-          under a harness where <code>fetch</code>, <code>Date.now</code> and{" "}
-          <code>Math.random</code> throw; item banks are content-addressed so an edited
-          item is a new item; judge prompts hash into <code>rubric_version</code>; and
-          golden fixtures fail the build on any drift. The same checks run in CI via
-          vitest — this page is the in-browser proof.
+          The load-bearing property of the architecture (spec §14) ensures that any score, once issued, can be recomputed byte-by-byte from stored inputs. Scoring runs under a harness where <code>fetch</code>, <code>Date.now</code> and{" "}
+          <code>Math.random</code> Throw; item banks are content-addressed, so an edited item becomes a new item. Judge prompts hash into... <code>rubric_version</code>Golden fixtures fail the build on any drift. The same checks run in CI via Vitest. This page serves as in-browser proof.
         </p>
         <p>
           <Link className="btn primary" href="/exam">Now sit the exam →</Link>{" "}

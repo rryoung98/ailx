@@ -118,8 +118,7 @@ export default function ExamPage() {
           <div className="eyebrow">Demo sitting · AILX 2026.1</div>
           <h1>Four tracks. One attempt.</h1>
           <p className="lede">
-            T1 → T4 in order, each on its own clock. Pause between moves, never mid-swipe.
-            Your event log stays in this browser.
+            T1 to T4 in sequence, each on its own clock. Pause between each move, never interrupting a swipe. The event log remains in this browser.
           </p>
           <ul className="checklist" style={{ margin: "1.5rem 0" }}>
             {TRACK_LIST.map((t) => (
@@ -131,8 +130,7 @@ export default function ExamPage() {
             ))}
           </ul>
           <p className="small faint">
-            <span className="badge demo">demo</span> Deterministic scoring, seeded by
-            SHA-256 of what you actually do. Same play, same score, forever.
+            <span className="badge demo">demo</span> Deterministic scoring based on the SHA-256 hash of your actions. The same play will always result in the same score.
           </p>
           <button
             className="btn primary"

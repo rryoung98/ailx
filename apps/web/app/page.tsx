@@ -19,8 +19,7 @@ export default function Home() {
               Benchmarks rate the models.<br />This one rates <em>you</em>.
             </h1>
             <p className="lede" style={{ fontSize: "1.05rem" }}>
-              Four performance tracks — build, detect, reason, direct — scored like a
-              real instrument. First cross-nationally normed exam of its kind.
+              Four performance tracks — build, detect, reason, and direct — are scored like a real instrument. This is the first cross-nationally normed exam of its kind.
             </p>
             <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", marginTop: "1.4rem" }}>
               <Link className="btn primary" href="/exam">Start the exam</Link>
