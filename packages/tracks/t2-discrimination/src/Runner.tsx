@@ -98,6 +98,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   const shownAt = useRef(0);
   const decisionLatency = useRef<number | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const deckTopRef = useRef<HTMLParagraphElement>(null);
   const completed = useRef(false);
 
   // Checkpoint every meaningful mutation with explicit next values (state
@@ -157,6 +158,11 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
       if (idx + 1 < cfg.items.length) {
         setIdx(idx + 1);
         saveCheckpoint({ responses: nextResponses, deckIndex: idx + 1 });
+        // Bring the next item's header/stem back into view — the confidence
+        // sheet usually left the page scrolled to the bottom of the card.
+        if (typeof deckTopRef.current?.scrollIntoView === "function") {
+          deckTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
       } else {
         setPhase("replay");
         saveCheckpoint({ responses: nextResponses, phase: "replay" });
@@ -274,7 +280,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           primary path and record the same response. Swiping the card or
           pressing the left and right arrow keys are equivalent alternatives.
         </p>
-        <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
+        <div ref={deckTopRef as unknown as React.RefObject<HTMLDivElement>} style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", scrollMarginTop: 96 }}>
           <span>
             Item {idx + 1} / {cfg.items.length} · {item.type}
           </span>
@@ -288,6 +294,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           deckHasImages={deckHasImages}
           lang={contentLang}
           enabled={!sheetOpen}
+          maskUpcoming={sheetOpen}
           onChoose={(i) => {
             if (choice !== null) return;
             decisionLatency.current = Math.max(0, Math.round(performance.now() - shownAt.current));
@@ -308,6 +315,16 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             pointerEvents: sheetOpen ? "auto" : "none",
           }}
         >
+          {item.type === "media-image" && (
+            // Keep the judged stimulus in view while rating confidence —
+            // the card itself has flown off and upcoming cards are masked.
+            <img
+              src={item.material}
+              alt=""
+              aria-hidden
+              style={{ width: "100%", maxHeight: 180, objectFit: "contain", borderRadius: 8, marginBottom: "0.6rem", background: "var(--bg)" }}
+            />
+          )}
           <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>
             Your call: <span lang={contentLang}>{choice !== null ? item.options[choice] : "—"}</span>
           </p>

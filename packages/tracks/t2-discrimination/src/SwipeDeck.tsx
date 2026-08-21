@@ -223,9 +223,15 @@ export interface SwipeDeckProps {
   onStimulusReady?: () => void;
   /** BCP-47 language of localized ITEM content (stem/material/options). */
   lang?: string;
+  /**
+   * Hide upcoming stimuli (blank card backs) — set while the confidence
+   * sheet is up so the NEXT item never shows through after the judged card
+   * flies off.
+   */
+  maskUpcoming?: boolean;
 }
 
-export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang }: SwipeDeckProps) {
+export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, maskUpcoming }: SwipeDeckProps) {
   const swipeable = item.options.length === 2;
   const [webgl, setWebgl] = useState(false);
   useEffect(() => {
@@ -393,7 +399,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
                 pointerEvents: "none",
               }}
             >
-              <CardBody item={n} hideImage={false} />
+              {maskUpcoming ? null : <CardBody item={n} hideImage={false} />}
             </div>
           );
         })}
@@ -506,7 +512,18 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
           <span aria-hidden style={{ color: "var(--muted)", fontSize: "1.1rem" }}>→</span>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: "0.5rem", marginTop: "0.9rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: "0.5rem",
+            // Clear the stacked cards' 32px overhang below the deck box and
+            // stay above the GL/badge overlays — same guard as the swipe
+            // buttons — so the first option is never painted over.
+            marginTop: "2.8rem",
+            position: "relative",
+            zIndex: 7,
+          }}
+        >
           {item.options.map((opt, i) => (
             <button
               key={i}
