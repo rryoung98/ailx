@@ -126,6 +126,6 @@ export function demoAssist(prompt: string): AssistReply {
     note:
       `Demo assistant (deterministic, offline). Suggestion id ` +
       sha256Hex("t1-assist:" + norm).slice(0, 8) +
-      ". Adapt the snippet to your brief — judges score coherence between intent and artefact.",
+      ". Adapt the snippet to your brief — judges score coherence between intent and artifact.",
   };
 }

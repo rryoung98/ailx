@@ -29,7 +29,7 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
     hype: "T1 — you direct, it renders. Ship a site you'd put your name on.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t1, demoBudgetSeconds: 10 * 60,
     brief:
-      "Build a personal site that communicates who you are and what you work on, to a stated audience. AI assistance is unrestricted and expected — the prompt log is a required submission artefact, not a confession.",
+      "Build a personal site that communicates who you are and what you work on, to a stated audience. AI assistance is unrestricted and expected — the prompt log is a required submission artifact, not a confession.",
     components: [
       { key: "gates", label: "Functional & accessibility gates", points: 30 },
       { key: "comparative", label: "Comparative visual merit", points: 40 },

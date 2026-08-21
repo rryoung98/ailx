@@ -20,7 +20,7 @@ const DEFAULT_CONFIG: T1Config = {
   brief:
     "Build a personal site that communicates who you are and what you work " +
     "on, to a stated audience. AI assistance is unrestricted and expected — " +
-    "the prompt log is a required submission artefact, not a confession.",
+    "the prompt log is a required submission artifact, not a confession.",
   requiredElements: ["name", "what you work on", "contact route"],
   selfReportMaxChars: 1600, // ~200 words
 };

@@ -27,7 +27,7 @@ export interface PromptLogEntry {
 export interface T1Artifact {
   /** Single self-contained HTML document. */
   html: string;
-  /** Required submission artefact, not a confession (spec §T1). */
+  /** Required submission artifact, not a confession (spec §T1). */
   promptLog: PromptLogEntry[];
   /** 200-word statement of intent. */
   selfReport: string;
@@ -45,7 +45,7 @@ export interface T1Score {
  *  - 'comparative'  Bradley–Terry scaled position from blinded pairwise
  *                   human judgement (stored, never computed here)
  *  - 'ambition'     technical ambition confirmed purposeful by judge
- *  - 'rationale'    coherence of stated intent vs delivered artefact
+ *  - 'rationale'    coherence of stated intent vs delivered artifact
  */
 export const T1_DIMENSIONS = [
   "functional",

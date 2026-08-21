@@ -21,7 +21,7 @@ export const DEMO_MODEL_ID = "demo-judge@1";
 
 /** Demo rubric bundle — hashed into rubric_version exactly as spec §14 requires. */
 export const DEMO_RUBRIC_PARTS: Record<TrackId, string[]> = {
-  t1: ["ailx-2026.1/t1 rubric v1", "screening prompt: judge the artefact against the locked T1 traits"],
+  t1: ["ailx-2026.1/t1 rubric v1", "screening prompt: judge the artifact against the locked T1 traits"],
   t2: ["ailx-2026.1/t2 rubric v1", "no model in the loop: arithmetic on response data (SDT)"],
   t3: ["ailx-2026.1/t3 rubric v1", "screening prompt: evidence-anchored analysis rubric, three-family jury"],
   t4: ["ailx-2026.1/t4 rubric v1", "screening prompt: blind communicative-intent reading vs brief"],

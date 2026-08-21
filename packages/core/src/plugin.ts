@@ -35,7 +35,7 @@ export interface StageSpec {
 }
 
 /**
- * Inputs to score() are STORED artefacts and STORED judgments.
+ * Inputs to score() are STORED artifacts and STORED judgments.
  * Model calls happen in pipeline() stages; their outputs are persisted
  * and replayed here. That is what makes re-scoring deterministic.
  */

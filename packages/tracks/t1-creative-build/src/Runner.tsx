@@ -462,7 +462,7 @@ export function Runner(props: TrackUIProps) {
             <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
               {realMode
                 ? "Real vibe coding (your key/endpoint, your browser only). Describe a change — the model returns the full updated document and the preview re-renders."
-                : "demo simulator — deterministic offline demo: same prompt, same answer. Every prompt is logged to your submission artefact."}
+                : "demo simulator — deterministic offline demo: same prompt, same answer. Every prompt is logged to your submission artifact."}
             </p>
           )}
           {chat.map((m, i) => (
@@ -597,7 +597,7 @@ export function Runner(props: TrackUIProps) {
             onClick={submit}
             disabled={submitted}
           >
-            {submitted ? "Submitted" : "Submit final artefact"}
+            {submitted ? "Submitted" : "Submit final artifact"}
           </button>
         </div>
       </section>

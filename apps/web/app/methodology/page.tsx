@@ -38,7 +38,7 @@ export default function Methodology() {
         <table>
           <thead><tr><th>Track</th><th>Capability</th><th>Failure it detects</th></tr></thead>
           <tbody>
-            <tr><td className="mono">T1</td><td><strong>Create with AI</strong> — direct AI tooling to produce an artefact that meets an external standard of quality</td><td className="muted">Can operate a chatbot; cannot ship anything</td></tr>
+            <tr><td className="mono">T1</td><td><strong>Create with AI</strong> — direct AI tooling to produce an artifact that meets an external standard of quality</td><td className="muted">Can operate a chatbot; cannot ship anything</td></tr>
             <tr><td className="mono">T2</td><td><strong>Discriminate</strong> — tell authentic media from synthetic and legitimate messages from hostile ones, with calibrated confidence</td><td className="muted">Trusts everything, or trusts nothing</td></tr>
             <tr><td className="mono">T3</td><td><strong>Reason with AI</strong> — use a model on a genuinely difficult problem while keeping and exercising independent judgment</td><td className="muted">Cognitive offloading; accepts wrong output</td></tr>
             <tr><td className="mono">T4</td><td><strong>Direct generation</strong> — take a communicative brief to a finished visual result with proper attribution</td><td className="muted">Generates volume; communicates nothing</td></tr>
