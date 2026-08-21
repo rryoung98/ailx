@@ -48,7 +48,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.1)
 
-  packages/tracks/t1-creative-build:
+  packages/tracks/t2-discrimination:
     dependencies:
       '@ailx/core':
         specifier: workspace:*
@@ -63,9 +63,6 @@ importers:
       react:
         specifier: ^19.0.0
         version: 19.2.8
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
@@ -73,7 +70,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.1)
 
-  packages/tracks/t4-generative:
+  packages/tracks/t3-reasoning:
     dependencies:
       '@ailx/core':
         specifier: workspace:*
@@ -88,9 +85,6 @@ importers:
       react:
         specifier: ^19.0.0
         version: 19.2.8
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.8(react@19.2.8)
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
