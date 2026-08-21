@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /**
- * Landing track-card visuals: smoke-renders the four animated mini-previews
+ * CSS track visuals (now the non-WebGL fallback behind lib/track3d):
+ * smoke-renders the four animated mini-previews
  * and pins their contracts — each card links to /exam, the T2 preview uses
  * REAL snapshot media with REAL/AI stamps, T3 shows the strike-through
  * correction, T4 shows the FINAL frame and quota pips.

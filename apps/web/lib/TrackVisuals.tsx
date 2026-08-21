@@ -1,9 +1,14 @@
 "use client";
 
 /**
- * Landing-page track cards: animated mini-previews of each track's play
+ * CSS track previews: animated mini-previews of each track's play
  * mechanic. Pure CSS keyframes + inline SVG — no new dependencies. The T2
  * preview uses REAL images from the committed instrument snapshot.
+ *
+ * Since the 3D landing pass these serve as the NON-WEBGL FALLBACK for the
+ * track3d scenes (see lib/track3d/TrackScene.tsx, TRACK_VIZ below); the
+ * TrackCards grid remains as a self-contained embed used by tests and any
+ * surface that wants the compact card presentation.
  *
  * Motion rules: prefers-reduced-motion shows the static first frame
  * (globals.css kills the keyframes); an IntersectionObserver pauses every
@@ -130,6 +135,8 @@ function T4Viz() {
     </div>
   );
 }
+
+export const TRACK_VIZ = { T1: T1Viz, T2: T2Viz, T3: T3Viz, T4: T4Viz } as const;
 
 const CARDS = [
   { id: "T1", name: "Creative Build", caption: "Direct a build, watch it render, ship it.", Viz: T1Viz },
