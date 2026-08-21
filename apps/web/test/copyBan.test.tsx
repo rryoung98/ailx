@@ -104,11 +104,20 @@ describe("game vocabulary on product surfaces", () => {
 
   it("nav links to /exam under the label Play (URL frozen, copy not)", () => {
     let found = false;
+    const text = (node: ReactNode): string => {
+      if (Array.isArray(node)) return node.map(text).join("");
+      if (typeof node === "string") return node;
+      if (!isValidElement(node)) return "";
+      return text((node.props as { children?: ReactNode }).children ?? null);
+    };
     const walk = (node: ReactNode): void => {
       if (Array.isArray(node)) { node.forEach(walk); return; }
       if (!isValidElement(node)) return;
-      const props = node.props as { href?: string; children?: ReactNode };
-      if (props?.href === "/exam" && props.children === "Play") found = true;
+      const props = node.props as { href?: string; className?: string; children?: ReactNode };
+      // Header play control is a compact pill (green dot + Play label).
+      if (props?.href === "/exam" && props.className === "nav-pill" && text(props.children) === "Play") {
+        found = true;
+      }
       if (props?.children !== undefined) walk(props.children);
     };
     walk(RootLayout({ children: null }) as ReactElement);

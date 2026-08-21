@@ -125,6 +125,7 @@ export function Teaser() {
   return (
     <div
       className="hero-play"
+      data-pill-clear=""
       tabIndex={0}
       role="group"
       aria-label="Real-or-fake teaser. Swipe or drag the card, press the buttons, or use the left and right arrow keys. Left means authentic, right means synthetic."

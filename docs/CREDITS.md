@@ -95,6 +95,11 @@ Campus aerial (`apps/web/public/media/campus-map.jpg`): AI-generated
 journey, aria-hidden, never an exam item. Provenance:
 `apps/web/public/media/backdrops.provenance.json`.
 
+Pastoral painting (`apps/web/public/media/pastoral.jpg`): AI-generated
+(gemini-3.1-flash-image), decorative painterly panel behind the landing
+proof showcase and the methodology hero band, aria-hidden, never an exam
+item. Provenance: `apps/web/public/media/backdrops.provenance.json`.
+
 AILX wordmark (`apps/web/public/media/logo.svg`): original stroked SVG
 drawn for this project (no third-party source); used by the covering
 loader.

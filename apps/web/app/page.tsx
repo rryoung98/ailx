@@ -65,6 +65,78 @@ function StepVizReport() {
   );
 }
 
+
+/**
+ * Zero-style showcase minis: tiny white UI cards that float over the
+ * pastoral panel at different parallax rates. Pure CSS/DOM (no rasters),
+ * decorative only (the wrapping layer is aria-hidden).
+ */
+function MiniScoreCard() {
+  return (
+    <span className="mini-card mini-card-score showcase-float-1">
+      <span className="mini-card-eyebrow mono">AILX 2026.1</span>
+      <span className="mini-card-band">Merit</span>
+      <span className="mini-card-num mono">206.6<span className="mini-card-denom">/400</span></span>
+    </span>
+  );
+}
+
+function MiniChecksCard() {
+  return (
+    <span className="mini-card mini-card-checks showcase-float-2">
+      {["sha256 verified", "replay = live", "export matches"].map((s) => (
+        <span key={s} className="mini-check">
+          <span className="mini-check-tick">✓</span>
+          <span className="mono">{s}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function MiniReportCard() {
+  return (
+    <span className="mini-card mini-card-report showcase-float-3">
+      <span className="mini-report-seal" />
+      <span className="mini-report-lines">
+        <span className="mini-report-line" />
+        <span className="mini-report-line short" />
+      </span>
+    </span>
+  );
+}
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+/** One showcase row: copy on the left, painterly panel with floating minis on the right. */
+function ShowcaseRow({
+  href, flip = false, title, note, line, cta, cards,
+}: {
+  href: string;
+  flip?: boolean;
+  title: React.ReactNode;
+  note: string;
+  line: string;
+  cta: string;
+  cards: React.ReactNode;
+}) {
+  return (
+    <Reveal as="div" className={`showcase-row${flip ? " showcase-row-flip" : ""}`}>
+      <div className="showcase-copy">
+        <h2 className="showcase-title">{title}</h2>
+        <Annotation side={flip ? "left" : "right"}>{note}</Annotation>
+        <p className="showcase-line muted">{line}</p>
+        <p><Link className="btn" href={href}>{cta}</Link></p>
+      </div>
+      <Link href={href} className="showcase-panel" tabIndex={-1} aria-hidden="true">
+        <img src={`${BASE}/media/pastoral.jpg`} alt="" width={2000} height={1200} loading="lazy" decoding="async" />
+        <span className="showcase-scrim" />
+        <span className="showcase-cards">{cards}</span>
+      </Link>
+    </Reveal>
+  );
+}
+
 export default function Home() {
   return (
     <main className="page">
@@ -169,11 +241,31 @@ export default function Home() {
             <p className="wyg-line">Every point can be recomputed from what you did. Nothing leaves your browser.</p>
           </Reveal>
         </ol>
-        <p className="wyg-footnotes faint small">
-          How the scoring works: <Link href="/methodology">methodology</Link>.
-          Watch it check itself: <Link href="/validate">/validate</Link>.
-          This is the demo build of the AILX 2026.1 spec.
-        </p>
+      </section>
+
+      {/* Zero-style proof showcase: two split rows (serif header + script
+          accent + hand note on the left; pastoral panel with floating white
+          minis drifting at different scroll rates on the right). Panels are
+          decorative duplicates of the copy links (aria-hidden, tabIndex -1). */}
+      <section className="container showcase" aria-label="See how the scoring works">
+        <ShowcaseRow
+          href="/methodology"
+          title={<>Read the <span className="script-accent">methodology</span>.</>}
+          note="no black boxes"
+          line="Construct, psychometrics, judge governance. All of it public."
+          cta="Read the methodology"
+          cards={<><MiniScoreCard /><MiniReportCard /></>}
+        />
+        <ShowcaseRow
+          href="/validate"
+          flip
+          title={<>Watch it <span className="script-accent">prove</span> itself.</>}
+          note="runs in your browser"
+          line="Eight live checks replay the real scoring path on this page."
+          cta="Run the checks"
+          cards={<><MiniChecksCard /><MiniScoreCard /></>}
+        />
+        <p className="showcase-caption faint small">This is the demo build of the AILX 2026.1 spec.</p>
       </section>
       <PillCTA href="/exam">Play</PillCTA>
     </main>

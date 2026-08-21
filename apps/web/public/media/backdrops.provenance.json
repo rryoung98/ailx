@@ -5,8 +5,12 @@
       "note": "replaces garbled-text v1"
     },
     "campus-map.jpg": {
-      "prompt": "Aerial drone photograph of a modern green university campus by a river: four distinctive buildings spread across the frame \u2014 a glass studio pavilion (left), a round gallery hall (center-left), a terraced library with reading gardens (center-right), and a media arts building with a curved white roof (right). Connected by tree-lined paths, lawns, a small plaza with umbrellas. Warm afternoon light, photorealistic, no text, no logos, no people close-up. Very wide panoramic composition.",
+      "prompt": "Aerial drone photograph of a modern green university campus by a river: four distinctive buildings spread across the frame — a glass studio pavilion (left), a round gallery hall (center-left), a terraced library with reading gardens (center-right), and a media arts building with a curved white roof (right). Connected by tree-lined paths, lawns, a small plaza with umbrellas. Warm afternoon light, photorealistic, no text, no logos, no people close-up. Very wide panoramic composition.",
       "note": "wide aerial for T1-T4 map-pan parallax"
+    },
+    "pastoral.jpg": {
+      "prompt": "Impressionist pastoral oil painting of a sunlit green meadow with a winding stream, soft rolling hills, wildflowers, warm cream sky, loose painterly brushstrokes, no people, no text, wide composition.",
+      "note": "painterly panel backdrop for the landing proof showcase and methodology hero"
     }
   },
   "kind": "ai-generated",

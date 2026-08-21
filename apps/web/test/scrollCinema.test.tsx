@@ -165,7 +165,9 @@ describe("site-wide show-on-scroll coverage", () => {
     const s = src(join("validate", "page.tsx"));
     expect(s).toContain('<Reveal as="li"');
     expect(s).toContain('<Reveal as="section">');
-    expect(s).toContain('className="checklist rule-stagger"');
+    // showcase wave: checks render as reveal-wrapped cards in the 2-col grid
+    expect(s).toContain('className="check-grid"');
+    expect(s).toContain('className="check-card"');
   });
 
   it("rule rows carry per-row stagger vars for both reveal paths", () => {
