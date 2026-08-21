@@ -1,0 +1,10 @@
+id: ailx
+version: "2026.1"
+effective_from: 2026-01-01
+locales: [en, ja, ko]
+tracks:
+  - t1-creative-build
+  - t2-discrimination
+  - t3-reasoning
+  - t4-generative
+# signature: added at packaging time (cosign)
