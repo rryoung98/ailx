@@ -81,3 +81,9 @@ each item's `provenance` records model, date, and the exact prompt.
 | be810838ac5d.jpg | Photograph | File:Tuna Salad with sweet corn.jpg | Adesolive | CC0 | [source](https://commons.wikimedia.org/wiki/File:Tuna_Salad_with_sweet_corn.jpg) |
 | 636f536bab7f.jpg | Photograph | File:Cutlery drawer.jpg | Acabashi | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Cutlery_drawer.jpg) |
 | f729f0c0bed1.jpg | Photograph | File:Berliner Pfannkuchen 5.jpg | Sebastian Koppehel | CC BY 4.0 | [source](https://commons.wikimedia.org/wiki/File:Berliner_Pfannkuchen_5.jpg) |
+
+## Site chrome
+
+Hero backdrop (`apps/web/public/media/hero-desk.jpg`): AI-generated
+(gemini-3.1-flash-image), disclosed — decorative only, aria-hidden, never an
+exam item. Provenance: `apps/web/public/media/hero-desk.provenance.json`.
