@@ -45,6 +45,19 @@ const T3_CSS = `
 @media (max-width: 900px) {
   .t3-shell textarea, .t3-shell input, .t3-shell select { font-size: 16px !important; }
 }
+/* 700px matches where the app's runner-frame forces this grid single-column
+   (globals.css): only there does the analysis sit BELOW the chat. */
+@media (max-width: 700px) {
+  /* Full-width prompt line: the buttons wrap below instead of sharing the
+     row with the input. Inline styles keep the desktop row (flex 1 1 160px). */
+  .t3-shell .t3-row-prompt > input { flex-basis: 100% !important; }
+  /* The 14-row analysis draft dominates a phone screen and pushes the
+     assistant chat out of reach. Cap it only while it is still EMPTY
+     (:placeholder-shown): once the player starts writing, the full rows
+     height returns. Coarse pointers have no resize handle, so a permanent
+     cap would box a long draft into a 6-line scroll window. */
+  .t3-shell .t3-analysis:placeholder-shown { height: 200px; }
+}
 .t3-shell textarea { max-height: 60vh; }
 @media (pointer: coarse) {
   .t3-shell button { min-height: 44px; }
@@ -399,7 +412,7 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
         {/* flexWrap + minWidth: 0 keep this row from forcing the page wider
             than the phone viewport (min-content of input + two buttons was
             403px at a 390px viewport — horizontal-scroll bug). */}
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div className="t3-row-prompt" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <input
             aria-label="Prompt the assistant"
             value={input}
@@ -453,6 +466,7 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
           </div>
           <textarea
             aria-label="Your analysis draft"
+            className="t3-analysis"
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);

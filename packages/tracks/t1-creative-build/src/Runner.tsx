@@ -90,6 +90,14 @@ const T1_CSS = `
   .t1-pane [role="log"] { max-height: 45vh; }
   /* >= 16px stops iOS Safari zoom-jump on focus (inline styles use 13px). */
   .t1-shell textarea, .t1-shell input, .t1-shell select { font-size: 16px !important; }
+  /* Phone chat controls stack to full-width lines: the prompt was 197px
+     and the model pair ~133px each at a 390px viewport, crushed beside
+     their buttons. Scoped here so desktop keeps single rows (the inline
+     styles stay flex: 1, basis 0). */
+  .t1-shell .t1-row-prompt { flex-wrap: wrap; }
+  .t1-shell .t1-row-prompt > textarea,
+  .t1-shell .t1-row-model > select,
+  .t1-shell .t1-row-model > input { flex-basis: 100% !important; }
 }
 /* Resizable textareas are clamped so the drag handle can never pull them
    past the card; touch devices get no drag handle at all. */
@@ -524,8 +532,9 @@ export function Runner(props: TrackUIProps) {
           </p>
         )}
 
-        {/* Model row (kept compact above the input). */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        {/* Model row (kept compact above the input). Phone layout: the CSS
+            900px block stacks these controls to full-width lines. */}
+        <div className="t1-row-model" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <select
             aria-label="Assist model"
             style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
@@ -559,8 +568,9 @@ export function Runner(props: TrackUIProps) {
           </p>
         )}
 
-        {/* Input pinned at the bottom of the pane. */}
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+        {/* Input pinned at the bottom of the pane. Phone layout: the CSS
+            900px block wraps Send below a full-width prompt. */}
+        <div className="t1-row-prompt" style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
           <textarea
             aria-label="Assist prompt"
             style={{ ...mono, minHeight: 44, flex: 1, minWidth: 0 }}

@@ -91,7 +91,16 @@ const T4_CSS = `
   .t4-pane { max-height: none; min-height: 0; }
   /* >= 16px stops iOS Safari zoom-jump on focus (inline styles use 13px). */
   .t4-shell textarea, .t4-shell input, .t4-shell select { font-size: 16px !important; }
+  /* Phone: the model select/override stack to full-width lines. */
+  .t4-shell .t4-row-model > select,
+  .t4-shell .t4-row-model > input { flex-basis: 100% !important; }
 }
+/* Prompt row wraps at EVERY width, unlike T1: the t4-grid is capped at
+   960px, so this pane never exceeds ~380px of content and the wide
+   "Generate draft (unlimited)" button crushed the prompt to ~99-120px on
+   any desktop (38px on phones). Full-width prompt, button below. */
+.t4-shell .t4-row-prompt { flex-wrap: wrap; }
+.t4-shell .t4-row-prompt > textarea { flex-basis: 100% !important; }
 /* Resizable textareas are clamped so the drag handle can never pull them
    past the card (user report: the prompt box dragged over the Direction
    note); touch devices get no drag handle at all. */
@@ -579,7 +588,7 @@ export function Runner(props: TrackUIProps) {
           )}
 
           {hasKey ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="t4-row-model" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <select
                 aria-label="Image model"
                 style={{ ...mono, resize: "none", flex: 1, minWidth: 0 }}
@@ -610,8 +619,11 @@ export function Runner(props: TrackUIProps) {
             </div>
           ) : null}
 
-          {/* Input pinned at the bottom — drafting is the conversation. */}
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          {/* Input pinned at the bottom: drafting is the conversation.
+              Phone layout: the CSS 900px block wraps the wide Generate
+              button below a full-width prompt (it was crushed to a 38px
+              sliver at a 390px viewport, user report). */}
+          <div className="t4-row-prompt" style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <textarea
               aria-label="Image prompt"
               style={{ ...mono, minHeight: 44, flex: 1, minWidth: 0 }}

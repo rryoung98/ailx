@@ -68,4 +68,20 @@ describe("T4 mobile containment", () => {
     expect(m, ".t4-pane rule").toBeTruthy();
     expect(m![0]).toContain("overflow-y: auto");
   });
+
+  it("prompt row wraps at every width; model row stacks on phones only", () => {
+    const src = readFileSync(join(here, "../src/Runner.tsx"), "utf8");
+    // The t4-grid caps at 960px, so the pane never exceeds ~380px and the
+    // wide Generate button crushed the prompt at every width (38px at a
+    // 390px phone, ~99px at 1000px desktop). The prompt-row wrap is
+    // therefore UNCONDITIONAL; the model row stacks only under 900px.
+    expect(src).toContain(".t4-shell .t4-row-prompt { flex-wrap: wrap; }");
+    expect(src).toContain(".t4-shell .t4-row-prompt > textarea { flex-basis: 100% !important; }");
+    const mobile = src.slice(src.indexOf("@media (max-width: 900px)"), src.indexOf("/* Prompt row wraps"));
+    expect(mobile).toContain(".t4-shell .t4-row-model > select");
+    expect(mobile).toContain("flex-basis: 100% !important;");
+    expect(src).toContain('className="t4-row-prompt"');
+    expect(src).toContain('className="t4-row-model"');
+    expect(src).not.toMatch(/flex: "1 1 \d+px"/);
+  });
 });

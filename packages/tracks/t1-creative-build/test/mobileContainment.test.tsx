@@ -118,4 +118,17 @@ describe("T1 mobile containment", () => {
     expect(m, ".t1-pane rule").toBeTruthy();
     expect(m![0]).toContain("overflow-y: auto");
   });
+
+  it("phone layout stacks the chat controls to full-width lines, desktop keeps rows", () => {
+    const src = readFileSync(join(here, "../src/Runner.tsx"), "utf8");
+    // The stacking must live in the 900px media block, never inline: an
+    // unconditional flex-basis wraps buttons on mid-width desktops too.
+    const mobile = src.slice(src.indexOf("@media (max-width: 900px)"), src.indexOf("/* Resizable textareas"));
+    expect(mobile).toContain(".t1-shell .t1-row-prompt { flex-wrap: wrap; }");
+    expect(mobile).toContain("flex-basis: 100% !important;");
+    expect(src).toContain('className="t1-row-prompt"');
+    expect(src).toContain('className="t1-row-model"');
+    // Inline styles stay basis-0 so desktop rows never wrap.
+    expect(src).not.toMatch(/flex: "1 1 \d+px"/);
+  });
 });

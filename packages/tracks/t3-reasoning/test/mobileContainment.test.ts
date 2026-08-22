@@ -44,4 +44,15 @@ describe("T3 mobile containment (source pin)", () => {
     // The style tag must actually be rendered by the working screen.
     expect(src).toContain("<style>{T3_CSS}</style>");
   });
+
+  it("phone layout gives the prompt a full line and caps only the EMPTY analysis", () => {
+    // Scoped to 700px, where the app's runner-frame forces single-column.
+    const phone = src.slice(src.indexOf("@media (max-width: 700px)"));
+    expect(phone).toContain(".t3-shell .t3-row-prompt > input { flex-basis: 100% !important; }");
+    // :placeholder-shown: never cap a draft in progress (coarse pointers
+    // have no resize handle to escape a permanent cap).
+    expect(phone).toContain(".t3-shell .t3-analysis:placeholder-shown { height: 200px; }");
+    expect(src).toContain('className="t3-row-prompt"');
+    expect(src).toContain('className="t3-analysis"');
+  });
 });
