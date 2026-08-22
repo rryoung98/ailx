@@ -22,6 +22,17 @@ import type { T2Artifact, T2Config, T2Item, T2Response } from "./types.js";
 export const D_PRIME_CEILING = 3.0;
 
 /**
+ * Best corrected d′ a flawless run can reach on a deck with the given
+ * signal/noise counts (hits = nSignal, falseAlarms = 0, log-linear cells).
+ * Short demo decks pass min(D_PRIME_CEILING, this) as cfg.dPrimeCeiling so
+ * perfect play still earns full sensitivity points.
+ */
+export function maxAttainableDPrime(nSignal: number, nNoise: number): number {
+  if (nSignal <= 0 || nNoise <= 0) return 0;
+  return probit((nSignal + 0.5) / (nSignal + 1)) - probit(0.5 / (nNoise + 1));
+}
+
+/**
  * Inverse standard-normal CDF (probit), Acklam's rational approximation.
  * |relative error| < 1.15e-9 over (0,1). Pure.
  */
@@ -98,12 +109,16 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
     const r = responseFor(byId, item);
     const isSignal = item.key === signal;
     const saidSignal = r.choice === signal;
+    // A lapse (choice < 0) earns the bad cell in BOTH classes: no hit on a
+    // signal item, a false alarm on a noise item. Silence is never a free
+    // correct rejection — otherwise deliberately lapsing noise items would
+    // strictly dominate answering (mirrors F7: silence is not a forecast).
     if (isSignal) {
       nSignal++;
       if (saidSignal) hits++;
     } else {
       nNoise++;
-      if (saidSignal) falseAlarms++;
+      if (saidSignal || r.choice < 0) falseAlarms++;
     }
   }
   // Log-linear correction (Hautus): +0.5 per cell, +1 per denominator, always.
@@ -111,7 +126,8 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
   const F = (falseAlarms + 0.5) / (nNoise + 1);
   const dPrime = nSignal > 0 && nNoise > 0 ? probit(H) - probit(F) : 0;
   const criterion = nSignal > 0 && nNoise > 0 ? -(probit(H) + probit(F)) / 2 : 0;
-  const sensitivity = cfg.weights.sensitivity * clamp01(dPrime / D_PRIME_CEILING);
+  const ceiling = cfg.dPrimeCeiling ?? D_PRIME_CEILING;
+  const sensitivity = cfg.weights.sensitivity * clamp01(dPrime / ceiling);
 
   // --- Calibration: Brier over ANSWERED confidence taps only (F7) -----------
   // Forecast f = 0.5 + confidence/200: a 0-confidence answer is a coin flip,

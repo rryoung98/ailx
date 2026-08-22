@@ -195,9 +195,27 @@ function CardMesh({ imageUrl, motion, parallax, width, height, offsetX = 0, offs
   );
 }
 
+/**
+ * The canvas is purely presentational (pointerEvents: none), so the default
+ * pointer-event manager is dead weight — and its connect() races a fast
+ * unmount: answering a card quickly can tear the container down while r3f is
+ * still attaching DOM listeners, throwing "addEventListener of null". An
+ * inert manager never touches the DOM.
+ */
+const inertEvents = () => ({
+  enabled: false,
+  priority: 0,
+  connected: false,
+  handlers: {},
+  connect: () => {},
+  disconnect: () => {},
+  update: () => {},
+});
+
 export default function CardScene(props: CardSceneProps) {
   return (
     <Canvas
+      events={inertEvents as never}
       orthographic
       flat
       // ALWAYS: toggling to "never" between cards raced the texture-ready

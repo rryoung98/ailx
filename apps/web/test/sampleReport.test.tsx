@@ -50,6 +50,15 @@ describe("sample report", () => {
     expect(host.textContent).toContain("not your play. Nothing was saved.");
     expect(host.textContent).toContain("Track breakdown");
     expect(store.size).toBe(0); // nothing persisted
+    // The fixture's T2 artifact answers the FIXED default deck; scoring it
+    // must not rotate to a per-attempt deck and lapse everything (T2 > 0).
+    const t2Card = [...host.querySelectorAll("h3")].find((h) => h.textContent?.includes("Authenticity"))?.closest("div.card");
+    expect(t2Card, "T2 card").toBeTruthy();
+    expect(t2Card!.textContent).not.toContain("0.0 / 100");
+    // The MBTI-style player profile renders from the same scored sample.
+    const profile = host.querySelector('[data-testid="player-profile"]');
+    expect(profile, "player profile").toBeTruthy();
+    expect(profile!.textContent).toMatch(/[KT][CB][VA][IO]/);
     clickByText("Exit sample");
     expect(host.textContent).toContain("No run in this browser yet.");
   });

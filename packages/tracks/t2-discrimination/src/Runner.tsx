@@ -338,7 +338,11 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
               aria-label={`Confidence: ${confidence} out of 100`}
               aria-valuetext={`${confidence} out of 100`}
               onChange={(e) => setConfidence(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "var(--accent)" }}
+              // 16px floor: iOS Safari auto-zooms the page when a focused
+              // form control's font is smaller, then snaps back out on
+              // lock-in when the sheet closes — the reported mobile "zoom
+              // out", most visible on image items (tallest sheet).
+              style={{ width: "100%", accentColor: "var(--accent)", fontSize: 16 }}
             />
           </label>
           <button

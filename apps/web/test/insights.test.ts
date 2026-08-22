@@ -12,7 +12,9 @@ describe("event-derived process insights", () => {
     expect(t3.eventCount).toBe(6);
     expect(t3.verbCounts).toEqual({ prompted: 2, assisted: 1, challenged: 1, verified: 1, accepted: 1 });
     expect(t3.iterationRatio).toBe(0);
-    expect(t3.verificationEvents).toBe(1);
+    // 1 verified + 1 unique challenged claim (stance toggles on the same
+    // claim would still count once).
+    expect(t3.verificationEvents).toBe(2);
   });
 
   it("excludes paused time from active seconds", () => {

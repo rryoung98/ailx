@@ -11,16 +11,17 @@
  *
  * Every scoring call also returns the judgment rows it consumed, the
  * snapshot rubricVersion and a real scoring digest (F12):
- *   scoringDigest = sha256(`${plugin.id}@${pkg.version}:${score.toString()}`)
+ *   scoringDigest = sha256(`${plugin.id}@${pkg.version}:${score.toString()}:${core}`)
  * i.e. a hash of the track package version plus the score() source actually
- * shipped in this bundle.
+ * shipped in this bundle, plus the delegated scorer-core source for tracks
+ * whose score() is a thin wrapper (SCORER_CORES).
  */
 import type { ComponentType } from "react";
 import type { Judgment, TrackUIProps } from "@ailx/core";
 import type { TrackId, TrackScoreValue } from "@ailx/session";
 import { sha256Hex } from "@ailx/session";
 import { t1Plugin } from "@ailx/track-t1";
-import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
+import { plugin as t2Plugin, scoreT2, validateT2Config } from "@ailx/track-t2";
 import { plugin as t3Plugin, validateT3Config } from "@ailx/track-t3";
 import { t4Plugin } from "@ailx/track-t4";
 import t1Pkg from "@ailx/track-t1/package.json";
@@ -65,10 +66,21 @@ const PKG_VERSIONS: Record<TrackId, string> = {
   t4: (t4Pkg as { version: string }).version,
 };
 
+/**
+ * Scorer CORE sources per track: plugin.score() can be a thin wrapper, so
+ * hashing it alone misses semantic changes in the function it delegates to
+ * (T2's scoreT2 lapse rule changed without touching the wrapper). Any track
+ * whose score() delegates must list the delegate here.
+ */
+const SCORER_CORES: Partial<Record<TrackId, () => string>> = {
+  t2: () => scoreT2.toString(),
+};
+
 export function scoringDigest(trackId: TrackId): string {
   const plugin = PLUGINS[trackId];
+  const core = SCORER_CORES[trackId]?.() ?? "";
   return sha256Hex(
-    `${plugin.id}@${PKG_VERSIONS[trackId]}:${plugin.score.toString()}`,
+    `${plugin.id}@${PKG_VERSIONS[trackId]}:${plugin.score.toString()}:${core}`,
   );
 }
 

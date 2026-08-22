@@ -13,6 +13,7 @@ import { CalibrationCurve } from "../../lib/CalibrationCurve";
 import { candidateComposite } from "../../lib/composite";
 import { participantExport, researchExport } from "../../lib/exportTiers";
 import { narratives, trackInsights } from "../../lib/insights";
+import { playerProfile } from "../../lib/personality";
 import { t2AnswerKeys } from "../../lib/instrument";
 import { TRACK_META } from "../../lib/tracks";
 import { Reveal } from "../../lib/Reveal";
@@ -180,7 +181,10 @@ export default function ReportPage() {
       for (const t of TRACK_IDS) {
         const artifact = proj.tracks[t].artifact;
         if (!artifact) continue;
-        const rec = scoreTrack(t, artifact, "en", proj.attemptId ?? undefined);
+        // No attemptId here: the fixture artifacts are built on the FIXED
+        // default T2 deck — scoring with the fixture's attemptId would
+        // rotate to a different deck and lapse every response.
+        const rec = scoreTrack(t, artifact, "en");
         sampleLog = append(sampleLog, {
           type: "track_scored", trackId: t, score: rec.score,
           judgments: rec.judgments,
@@ -203,6 +207,7 @@ export default function ReportPage() {
   const state = useMemo(() => (log ? project(log) : null), [log]);
   const summary = useMemo(() => (state ? candidateComposite(state) : null), [state]);
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
+  const profile = useMemo(() => (state ? playerProfile(state, insights) : null), [state, insights]);
   const calBins = useMemo(() => {
     if (!state) return [];
     // Full-bank key map for the attempt's locale: the demo deck rotates per
@@ -312,6 +317,41 @@ export default function ReportPage() {
             <span className="badge demo">demo cohort</span>
           </div>
         </div>
+
+        {profile ? (
+          <Reveal as="section" className="card" data-testid="player-profile" style={{ marginBottom: "2rem" }}>
+            <div className="eyebrow">player profile · a playful read, never scored</div>
+            <div style={{ display: "flex", gap: "1.4rem", alignItems: "baseline", flexWrap: "wrap" }}>
+              <span className="mono" aria-label={`Profile code ${profile.code.split("").join(" ")}`} style={{ fontSize: "2.6rem", fontWeight: 800, letterSpacing: "0.22em", color: "var(--accent)" }}>
+                {profile.code}
+              </span>
+              <h3 style={{ margin: 0 }}>{profile.archetype}</h3>
+            </div>
+            <p className="muted small" style={{ maxWidth: "62ch" }}>{profile.blurb}</p>
+            <div style={{ display: "grid", gap: "0.9rem", marginTop: "0.4rem" }}>
+              {profile.axes.map((a) => (
+                <div key={a.key}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.8rem" }}>
+                    <span className="small" style={{ color: a.letter === a.letters[0] ? "var(--fg)" : "var(--faint)" }}>
+                      <span className="mono" style={{ color: "var(--accent)" }}>{a.letters[0]}</span> {a.poles[0]}
+                    </span>
+                    <span className="small mono" style={{ color: "var(--accent)" }}>{a.strength}% {a.pole}</span>
+                    <span className="small" style={{ color: a.letter === a.letters[1] ? "var(--fg)" : "var(--faint)", textAlign: "right" }}>
+                      {a.poles[1]} <span className="mono" style={{ color: "var(--accent)" }}>{a.letters[1]}</span>
+                    </span>
+                  </div>
+                  <div aria-hidden="true" style={{ position: "relative", height: 6, borderRadius: 3, background: "var(--border)", margin: "0.35rem 0 0.2rem" }}>
+                    <div style={{ position: "absolute", top: -3, left: `calc(${(1 - a.value) * 100}% - 6px)`, width: 12, height: 12, borderRadius: "50%", background: "var(--accent)" }} />
+                  </div>
+                  <div className="faint small">{a.basis}</div>
+                </div>
+              ))}
+            </div>
+            <p className="faint small" style={{ marginBottom: 0 }}>
+              Derived from the same stored artifacts and event log as the scores above; the letters move no points.
+            </p>
+          </Reveal>
+        ) : null}
 
         <h2 style={{ marginTop: 0 }}>Track breakdown</h2>
         {TRACK_IDS.map((t) => {

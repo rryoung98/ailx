@@ -9,6 +9,7 @@
  * pinned and asserted at test time.
  */
 import { seededUniform, sha256Hex } from "@ailx/session";
+import { D_PRIME_CEILING, maxAttainableDPrime } from "@ailx/track-t2";
 import snapshotRaw from "../../../instruments/2026.1/snapshot.json";
 
 interface BankItem {
@@ -156,9 +157,10 @@ export function t2Items(locale: string = "en", attemptId?: string) {
         ...(exposure[type] !== undefined ? { exposureSeconds: exposure[type] } : {}),
       };
     });
-  // Demo deck: keep the sitting short & fun — 12 items across difficulties.
-  // Real-media photo items (repo-local files) lead the deck; balance the
-  // photo block between AI and authentic keys so d' stays measurable.
+  // Demo deck: keep the sitting short & fun — 6 items across difficulties:
+  // 2 media (1 AI + 1 real, difficulty-matched), 2 text/message (1 signal +
+  // 1 benign), 2 provenance. Real-media photo items (repo-local files) lead
+  // the deck; both binary blocks stay class-balanced so d' stays measurable.
   //
   // DEMO-ONLY ROTATION: the OPERATIONAL instrument uses fixed, equated
   // forms (spec §T2) — every candidate on a form sees the same items. This
@@ -172,32 +174,51 @@ export function t2Items(locale: string = "en", attemptId?: string) {
   const prov = items.filter((i) => i.type === "provenance");
   const mediaAi = binary.filter((i) => isMedia(i) && i.signal === i.key);
   const mediaReal = binary.filter((i) => isMedia(i) && i.signal !== i.key);
+  const textAi = binary.filter((i) => !isMedia(i) && i.signal === i.key);
+  const textReal = binary.filter((i) => !isMedia(i) && i.signal !== i.key);
+  type DeckItem = (typeof items)[number];
+  // Nearest-difficulty real partner per AI pick (splices from the pool) —
+  // both branches use this so a single pair is never class-confounded with
+  // difficulty. Both branches also back-fill a missing text class from the
+  // remaining text pool so the deck size stays content-independent.
+  const matchByDifficulty = (aiPick: DeckItem[], realPool: DeckItem[]) =>
+    aiPick.map((a) => {
+      let best = 0;
+      for (let j = 1; j < realPool.length; j++) {
+        if (Math.abs(realPool[j].difficulty - a.difficulty) <
+            Math.abs(realPool[best].difficulty - a.difficulty)) best = j;
+      }
+      return realPool.splice(best, 1)[0];
+    });
+  const backfillText = (picked: DeckItem[]) => {
+    const pool = [...textAi, ...textReal].filter((i) => !picked.includes(i));
+    while (picked.length < 2 && pool.length > 0) picked.push(pool.shift()!);
+    return picked;
+  };
   if (attemptId === undefined) {
-    const media = [...Array(Math.min(3, mediaAi.length, mediaReal.length)).keys()]
-      .flatMap((k) => [mediaAi[k], mediaReal[k]]);
-    const rest = binary.filter((i) => !media.includes(i));
-    return [...media, ...rest.slice(0, Math.max(0, 9 - media.length)), ...prov.slice(0, 3)];
+    const aiPick = mediaAi.slice(0, Math.min(1, mediaReal.length));
+    const realPick = matchByDifficulty(aiPick, [...mediaReal]);
+    const media = aiPick.flatMap((a, k) => [a, realPick[k]]);
+    const text = backfillText([textAi[0], textReal[0]].filter(Boolean));
+    return [...media, ...text, ...prov.slice(0, 2)];
   }
   const seed = sha256Hex(attemptId);
-  // 3 AI photos, then 3 real photos difficulty-matched to them (nearest
-  // difficulty, so mean difficulty stays balanced across the two classes).
-  const aiPick = seededShuffle(mediaAi, seed, "media-ai").slice(0, 3);
-  const realPool = seededShuffle(mediaReal, seed, "media-real");
-  const realPick = aiPick.map((a) => {
-    let best = 0;
-    for (let j = 1; j < realPool.length; j++) {
-      if (Math.abs(realPool[j].difficulty - a.difficulty) <
-          Math.abs(realPool[best].difficulty - a.difficulty)) best = j;
-    }
-    return realPool.splice(best, 1)[0];
-  });
+  // 1 AI photo, then 1 real photo difficulty-matched to it.
+  const aiPick = seededShuffle(mediaAi, seed, "media-ai").slice(0, 1);
+  const realPick = matchByDifficulty(aiPick, seededShuffle(mediaReal, seed, "media-real"));
   // Interleave as pairs; seeded order per pair so AI never has a fixed slot.
   const media = aiPick.flatMap((a, k) => {
     const pair = [a, realPick[k]];
     return seededUniform(`${seed}:pair-order`, k) < 0.5 ? pair : pair.reverse();
   });
-  const textPick = seededShuffle(binary.filter((i) => !isMedia(i)), seed, "text").slice(0, 3);
-  const provPick = seededShuffle(prov, seed, "prov").slice(0, 3);
+  // 1 signal (AI/hostile) + 1 benign text, seeded pick and seeded order.
+  const textPair = backfillText([
+    seededShuffle(textAi, seed, "text-ai")[0],
+    seededShuffle(textReal, seed, "text-real")[0],
+  ].filter(Boolean));
+  const textPick =
+    seededUniform(`${seed}:text-order`, 0) < 0.5 ? textPair : [...textPair].reverse();
+  const provPick = seededShuffle(prov, seed, "prov").slice(0, 2);
   return [...media, ...textPick, ...provPick];
 }
 
@@ -298,7 +319,18 @@ export function trackConfig(
 ): unknown {
   switch (trackId) {
     case "t1": return undefined;             // plugin defaults carry the demo brief
-    case "t2": return { items: t2Items(locale, attemptId) };
+    case "t2": {
+      const items = t2Items(locale, attemptId);
+      // Short demo deck: full sensitivity points at the deck's ATTAINABLE
+      // corrected d′ — the log-linear correction caps a perfect run well
+      // below the operational 3.0 ceiling on a 4-item binary block, which
+      // would truncate the 0-100 scale against the unchanged demo cohort.
+      const binary = items.filter((i) => i.type !== "provenance");
+      const nSignal = binary.filter((i) => i.signal === i.key).length;
+      const nNoise = binary.length - nSignal;
+      const ceiling = Math.min(D_PRIME_CEILING, maxAttainableDPrime(nSignal, nNoise));
+      return { items, ...(ceiling > 0 ? { dPrimeCeiling: ceiling } : {}) };
+    }
     case "t3": return T3_SCENARIO;
     case "t4": return undefined;             // plugin defaults carry the demo brief
   }

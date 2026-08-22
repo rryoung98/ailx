@@ -16,7 +16,7 @@ import {
 describe("instrument wiring (snapshot-derived, F3/F16)", () => {
   it("t2 bank adapts into a valid T2Config", () => {
     const cfg = validateT2Config(trackConfig("t2"));
-    expect(cfg.items.length).toBeGreaterThanOrEqual(10);
+    expect(cfg.items).toHaveLength(6);
     for (const i of cfg.items) {
       expect(i.id).toMatch(/^[0-9a-f]{64}$/);
       expect(i.key).toBeGreaterThanOrEqual(0);
@@ -203,7 +203,7 @@ d2("real media items", () => {
   const items = t2Items("en");
   const media = items.filter((i) => i.material.startsWith("/ailx/t2-media/"));
   it2("bank includes real-vs-AI photo items", () => {
-    ex2(media.length).toBeGreaterThanOrEqual(6);
+    ex2(media.length).toBeGreaterThanOrEqual(2);
   });
   it2("every referenced media file exists and is <= 200 KB", () => {
     for (const i of media) {

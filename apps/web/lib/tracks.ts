@@ -41,7 +41,10 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
     id: "t2", code: "T2", pluginId: "swipe-deck@2", name: "Authenticity Discrimination",
     packageName: "@ailx/track-t2", points: 100,
     hype: "T2 — can you spot the fakes?",
-    specBudgetSeconds: SPEC_BUDGETS_SECONDS.t2, demoBudgetSeconds: 8 * 60,
+    // 5 min for the 6-item demo deck: the forced-exposure floor is ~62 s, so
+    // a diligent full-exposure run stays well clear of the fast-submission
+    // insight threshold (< 25% of budget).
+    specBudgetSeconds: SPEC_BUDGETS_SECONDS.t2, demoBudgetSeconds: 5 * 60,
     brief:
       "120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture. Sensitivity (d′) is the score, not raw accuracy — percent correct confounds sensitivity with response criterion.",
     components: [

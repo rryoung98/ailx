@@ -52,6 +52,10 @@ export function validateT2Config(raw: unknown): T2Config {
   for (const k of ["sensitivity", "calibration", "provenance"] as const) {
     if (typeof w[k] !== "number" || (w[k] as number) < 0) fail(`weights.${k} must be a non-negative number`);
   }
+  if (cfg.dPrimeCeiling !== undefined &&
+      (typeof cfg.dPrimeCeiling !== "number" || !Number.isFinite(cfg.dPrimeCeiling) || cfg.dPrimeCeiling <= 0)) {
+    fail("dPrimeCeiling must be a positive finite number when present");
+  }
   return {
     items: cfg.items as T2Item[],
     weights: {
@@ -59,6 +63,7 @@ export function validateT2Config(raw: unknown): T2Config {
       calibration: w.calibration as number,
       provenance: w.provenance as number,
     },
+    ...(cfg.dPrimeCeiling !== undefined ? { dPrimeCeiling: cfg.dPrimeCeiling as number } : {}),
   };
 }
 

@@ -17,6 +17,11 @@ export interface TrackProcessInsight {
   timedOut: boolean;
   /** revised+regenerated per prompted — where iteration was diagnostic vs random. */
   iterationRatio: number | null;
+  /**
+   * Verified events plus UNIQUE challenged claims (the T3 scorer dedupes
+   * stance toggles per claim; counting raw clicks would let a stance-flipper
+   * look like a thorough verifier). Every consumer reads this one field.
+   */
   verificationEvents: number;
 }
 
@@ -28,6 +33,9 @@ export function trackInsights(state: SessionState): TrackProcessInsight[] {
     for (const e of t.events) verbCounts[e.verb] = (verbCounts[e.verb] ?? 0) + 1;
     const prompted = verbCounts["prompted"] ?? 0;
     const iterations = (verbCounts["revised"] ?? 0) + (verbCounts["regenerated"] ?? 0);
+    const challengedClaims = new Set(
+      t.events.filter((e) => e.verb === "challenged").map((e) => e.object),
+    );
     const activeSeconds = Math.round(t.activeMs / 1000);
     return {
       trackId,
@@ -38,7 +46,7 @@ export function trackInsights(state: SessionState): TrackProcessInsight[] {
       timeUsedFrac: budget > 0 ? Math.min(1, activeSeconds / budget) : 0,
       timedOut: t.timedOut === true,
       iterationRatio: prompted > 0 ? Math.round((iterations / prompted) * 100) / 100 : null,
-      verificationEvents: verbCounts["verified"] ?? 0,
+      verificationEvents: (verbCounts["verified"] ?? 0) + challengedClaims.size,
     };
   });
 }

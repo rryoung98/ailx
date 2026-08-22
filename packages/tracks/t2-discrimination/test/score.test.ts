@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core";
 import { plugin, validateT2Config } from "../src/plugin.js";
-import { probit, scoreT2 } from "../src/scoring.js";
+import { maxAttainableDPrime, probit, scoreT2 } from "../src/scoring.js";
 import { config, items, mixedResponses, perfectResponses, truthBiasResponses } from "./fixtures.js";
 
 const score = (responses: typeof perfectResponses) =>
@@ -195,6 +195,59 @@ describe("T2 validateConfig", () => {
   it("rejects binary items without exactly two options", () => {
     const bad = { ...items[0], options: ["a", "b", "c"], key: 0 };
     expect(() => validateT2Config({ items: [bad] })).toThrow(/2 options/);
+  });
+  it("accepts a positive dPrimeCeiling and rejects non-positive ones", () => {
+    expect(validateT2Config({ items: [...items], dPrimeCeiling: 1.9 }).dPrimeCeiling).toBe(1.9);
+    expect(validateT2Config({ items: [...items] }).dPrimeCeiling).toBeUndefined();
+    expect(() => validateT2Config({ items: [...items], dPrimeCeiling: 0 })).toThrow(/dPrimeCeiling/);
+    expect(() => validateT2Config({ items: [...items], dPrimeCeiling: Infinity })).toThrow(/dPrimeCeiling/);
+  });
+});
+
+describe("lapse rule: silence earns the bad cell in both classes", () => {
+  const binary = items.filter((i) => i.type !== "provenance");
+  const noise = binary.filter((i) => i.signal !== i.key);
+  it("lapsing a noise item is a false alarm, never a free correct rejection", () => {
+    const lapseNoise = items.map((i) =>
+      i.id === noise[0].id
+        ? { itemId: i.id, choice: -1, confidence: 0, latencyMs: 0 }
+        : { itemId: i.id, choice: i.key, confidence: 60, latencyMs: 500 },
+    );
+    const s = score(lapseNoise);
+    expect(s.raw.falseAlarms).toBe(1);
+    // Strictly worse than answering that item correctly.
+    expect(s.raw.sensitivity).toBeLessThan(score(perfectResponses).raw.sensitivity);
+  });
+  it("lapsing every noise item cannot beat answering the full deck", () => {
+    const lapseAllNoise = items.map((i) =>
+      noise.some((n) => n.id === i.id)
+        ? { itemId: i.id, choice: -1, confidence: 0, latencyMs: 0 }
+        : { itemId: i.id, choice: i.key, confidence: 100, latencyMs: 500 },
+    );
+    expect(score(lapseAllNoise).scaled).toBeLessThan(score(perfectResponses).scaled);
+  });
+});
+
+describe("deck-aware d′ ceiling", () => {
+  it("maxAttainableDPrime matches the corrected cells of a flawless run", () => {
+    // 2 signal / 2 noise: H = 2.5/3, F = 0.5/3 → z(.8333) - z(.1667) = 1.935.
+    expect(maxAttainableDPrime(2, 2)).toBeCloseTo(1.935, 3);
+    expect(maxAttainableDPrime(0, 5)).toBe(0);
+  });
+  it("cfg.dPrimeCeiling restores full sensitivity points for a perfect run", () => {
+    const withCeiling = validateT2Config({
+      ...config,
+      dPrimeCeiling: maxAttainableDPrime(
+        items.filter((i) => i.type !== "provenance" && i.signal === i.key).length,
+        items.filter((i) => i.type !== "provenance" && i.signal !== i.key).length,
+      ),
+    });
+    const s = runPure(() =>
+      plugin.score({ artifact: { responses: perfectResponses }, judgments: [], rubricVersion: "test" }, withCeiling),
+    );
+    expect(s.raw.sensitivity).toBeCloseTo(withCeiling.weights.sensitivity, 3);
+    // Default (no ceiling) behaviour is unchanged: same run scores lower.
+    expect(score(perfectResponses).raw.sensitivity).toBeLessThan(s.raw.sensitivity);
   });
 });
 

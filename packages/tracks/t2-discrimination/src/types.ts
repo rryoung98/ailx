@@ -47,6 +47,13 @@ export interface T2Config {
     calibration: number;
     provenance: number;
   };
+  /**
+   * d′ that earns full sensitivity points. Defaults to D_PRIME_CEILING
+   * (3.0, spec §T2). Short demo decks pass the deck's ATTAINABLE corrected
+   * d′ here: the log-linear correction caps a perfect run well below 3.0 on
+   * small binary blocks, which would silently truncate the 0-100 scale.
+   */
+  dPrimeCeiling?: number;
 }
 
 export interface T2Response {

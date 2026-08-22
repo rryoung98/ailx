@@ -17,7 +17,7 @@ const CFG: SessionConfig = {
   instrument: "ailx",
   version: "2026.1",
   locale: "en",
-  budgets: { t1: 600, t2: 480, t3: 600, t4: 480 },
+  budgets: { t1: 600, t2: 300, t3: 600, t4: 480 },
   demo: true,
 };
 
