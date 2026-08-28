@@ -1307,3 +1307,19 @@ main .card {
 .gallery-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .gallery-vote { padding: 4px 12px; font-size: 0.85rem; }
 .gallery-vote.voted { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+
+/* ---- player-type card (MBTI-style, playful) --------------------------- */
+.ptype-card { margin-bottom: 1.4rem; }
+.ptype-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.ptype-code { display: flex; gap: 6px; }
+.ptype-letter {
+  display: inline-grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 10px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 1.35rem; font-weight: 700;
+  background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+}
+.ptype-letter.hi { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ptype-axes { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.ptype-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }

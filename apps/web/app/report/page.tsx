@@ -12,6 +12,7 @@ import { calibrationBins, t2ResponsesFromArtifact } from "../../lib/calibration"
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
 import { candidateComposite } from "../../lib/composite";
 import { participantExport, researchExport } from "../../lib/exportTiers";
+import { playerType } from "../../lib/playerType";
 import { narratives, trackInsights } from "../../lib/insights";
 import { playerProfile } from "../../lib/personality";
 import { t2AnswerKeys } from "../../lib/instrument";
@@ -352,6 +353,53 @@ export default function ReportPage() {
             </p>
           </Reveal>
         ) : null}
+
+        {(() => {
+          const p = playerType(summary.trackRaw);
+          return (
+            <Reveal as="section" className="card ptype-card" aria-label="Player type">
+              <div className="ptype-head">
+                <div>
+                  <p className="kicker" style={{ margin: 0 }}>YOUR PLAYER TYPE · JUST FOR FUN</p>
+                  <h2 style={{ margin: "0.2rem 0 0.1rem" }}>{p.name}</h2>
+                  <p className="muted" style={{ margin: 0 }}>{p.tagline}</p>
+                </div>
+                <div className="ptype-code" aria-label={`Type code ${p.code}`}>
+                  {p.poles.map((pole) => (
+                    <span key={pole.track} className={`ptype-letter${pole.high ? " hi" : ""}`} title={`${pole.track.toUpperCase()}: ${pole.label}`}>
+                      {pole.letter}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="ptype-axes">
+                {p.poles.map((pole) => (
+                  <span key={pole.track} className="small muted">
+                    <span className="mono" style={{ color: "var(--accent)" }}>{pole.track.toUpperCase()}</span> {pole.label}
+                  </span>
+                ))}
+              </div>
+              <div className="grid2" style={{ marginTop: "0.6rem" }}>
+                {p.strengths.length > 0 && (
+                  <div>
+                    <h4 className="small" style={{ margin: "0 0 0.3rem" }}>Where you played strong</h4>
+                    <ul className="small muted ptype-list">{p.strengths.map((s) => <li key={s}>{s}</li>)}</ul>
+                  </div>
+                )}
+                {p.watchouts.length > 0 && (
+                  <div>
+                    <h4 className="small" style={{ margin: "0 0 0.3rem" }}>Watch for next run</h4>
+                    <ul className="small muted ptype-list">{p.watchouts.map((s) => <li key={s}>{s}</li>)}</ul>
+                  </div>
+                )}
+              </div>
+              <p className="faint small" style={{ margin: "0.6rem 0 0" }}>
+                A playful lens on this one run — split at the demo cohort's per-track median.
+                Not a personality claim, and never part of the score.
+              </p>
+            </Reveal>
+          );
+        })()}
 
         <h2 style={{ marginTop: 0 }}>Track breakdown</h2>
         {TRACK_IDS.map((t) => {
