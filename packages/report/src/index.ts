@@ -14,4 +14,5 @@ export * from "./insights.js";
 export * from "./judging.js";
 export * from "./personality.js";
 export * from "./playerType.js";
+export * from "./share.js";
 export * from "./tracks.js";

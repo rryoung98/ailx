@@ -14,6 +14,7 @@ import {
   calibrationBins, candidateComposite, cohortMedians, demoRubricVersion,
   judgeT1, judgeT3, judgeT4, narratives, participantExport, playerProfile,
   playerType, researchExport, t2ResponsesFromArtifact, trackInsights,
+  buildSharePayload,
 } from "../src/index.js";
 
 /** A fully scored synthetic attempt — no app, no storage, no clock. */
@@ -79,6 +80,7 @@ describe("@ailx/report purity", () => {
         composite,
         medians: cohortMedians(),
         playerType: playerType(composite.trackRaw),
+        share: buildSharePayload(state, { site: "/api/site/abc/index.html" }),
         profile: playerProfile(state, insights),
         participant: participantExport(state, composite),
         research: researchExport(state, LOG, composite),
@@ -98,6 +100,7 @@ describe("@ailx/report purity", () => {
       };
     });
     expect(out.composite.cohortSize).toBe(45);
+    expect(out.share?.site).toBe("/api/site/abc/index.html");
     expect(out.profile).not.toBeNull();
     expect(out.research.schema).toBe("ailx.research.v2");
   });
