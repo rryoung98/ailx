@@ -11,6 +11,7 @@ import { hashBank } from "../src/bank.js";
 import { buildSnapshot } from "../src/snapshot.js";
 
 const DIR = fileURLToPath(new URL("../../../instruments/2026.1", import.meta.url));
+const TRACKS = fileURLToPath(new URL("../../tracks", import.meta.url));
 const pkg = loadInstrument(DIR);
 
 describe("instrument 2026.1 loads and validates", () => {
@@ -140,7 +141,7 @@ describe("T2 demo bank", () => {
 describe("snapshot.json consistency (CI gate)", () => {
   it("committed snapshot matches a fresh build byte-for-byte", () => {
     const committed = readFileSync(join(DIR, "snapshot.json"), "utf8");
-    const fresh = JSON.stringify(buildSnapshot(DIR), null, 2) + "\n";
+    const fresh = JSON.stringify(buildSnapshot(DIR, TRACKS), null, 2) + "\n";
     expect(committed).toBe(fresh);
   });
   it("rubric versions are stable hex digests distinct per track", () => {

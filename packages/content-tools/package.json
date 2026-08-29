@@ -16,6 +16,7 @@
     "hash-bank": "node dist/cli/hash-bank.js",
     "rubric-version": "node dist/cli/rubric-version.js",
     "build-snapshot": "node dist/cli/build-snapshot.js",
+    "snapshot:2026.1": "node dist/cli/build-snapshot.js ../../instruments/2026.1 ../../instruments/2026.1/snapshot.json --scorers ../tracks",
     "check-links": "node dist/cli/check-links.js"
   },
   "dependencies": {

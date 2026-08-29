@@ -4211,5 +4211,99 @@
         "rubricVersion": "0b6fe323197b47833c4e01c5755534271d135f388a4eb16f855734a6f01b7a98"
       }
     ]
-  }
+  },
+  "scorers": [
+    {
+      "trackId": "t1",
+      "packageName": "@ailx/track-t1",
+      "packageVersion": "0.0.1",
+      "sources": [
+        {
+          "path": "src/plugin.ts",
+          "sha256": "aad22b8949c42e21fb91b7c7d1a05665b051126c6df367b8de51f95fbffdfe64"
+        },
+        {
+          "path": "src/score.ts",
+          "sha256": "80fd630bb2a253f9acda95631c3ab9bab2c39182bace315fba0ce4330991e0ef"
+        },
+        {
+          "path": "src/types.ts",
+          "sha256": "694f0d41e781281519558b39be44c960d17ef92a0f39c4cef7fb1b44c8cc7e9f"
+        }
+      ],
+      "externals": [
+        "@ailx/core@workspace:*"
+      ],
+      "digest": "57940e357b8dcd89a00078211d97f3660557699447440f8fc5e0c8fc500c1d1f"
+    },
+    {
+      "trackId": "t2",
+      "packageName": "@ailx/track-t2",
+      "packageVersion": "0.1.0",
+      "sources": [
+        {
+          "path": "src/plugin.ts",
+          "sha256": "79a47390b3b2f4bdf10421cb03f49b0e2c5869db1584d1a5f4633c5cd0f37dae"
+        },
+        {
+          "path": "src/scoring.ts",
+          "sha256": "06fc8dc044793aa412b1e3bee6cd00922e0f84e1ada93bfa0751f02de774fd93"
+        },
+        {
+          "path": "src/types.ts",
+          "sha256": "4393eb749cde6648ac58793034c88e02cc2a3d03338758fcda491e048e818194"
+        }
+      ],
+      "externals": [
+        "@ailx/core@workspace:*"
+      ],
+      "digest": "f7268917ac6b55d8cf179d389185677a2519f2fac5027dc3db89b1ec87891d29"
+    },
+    {
+      "trackId": "t3",
+      "packageName": "@ailx/track-t3",
+      "packageVersion": "0.0.1",
+      "sources": [
+        {
+          "path": "src/plugin.ts",
+          "sha256": "f931a849c92d83904bc3e6e4712cb3ecb296c9988be85fc5d0e0fd02c4eea018"
+        },
+        {
+          "path": "src/scoring.ts",
+          "sha256": "51b91dbbd98deaeeb9f389cfbca78b9cbd1166b7fe13e16ae9f33ccf748a6a93"
+        },
+        {
+          "path": "src/types.ts",
+          "sha256": "b3f8d5342ea80eab7d572ad57018aed39412a68153e7e71f2f389dea8568dc35"
+        }
+      ],
+      "externals": [
+        "@ailx/core@workspace:*"
+      ],
+      "digest": "3fbd978ba65038eeae58a62fb119fd2cb18c7987323d7a2d96e6affbde823e3a"
+    },
+    {
+      "trackId": "t4",
+      "packageName": "@ailx/track-t4",
+      "packageVersion": "0.0.1",
+      "sources": [
+        {
+          "path": "src/plugin.ts",
+          "sha256": "bff0441c61a666292cf35d278c97ea50032e1b504e5e591fa534bccd0a6e54ef"
+        },
+        {
+          "path": "src/score.ts",
+          "sha256": "ae5b1027cea878c1deb97e5163b517ac10932eaa91fe7dd9da90aa2783a8c181"
+        },
+        {
+          "path": "src/types.ts",
+          "sha256": "896f9a76a7188c09b61696c6145231fa96cd7a7015820e7c1de1e0eaf2bb68ec"
+        }
+      ],
+      "externals": [
+        "@ailx/core@workspace:*"
+      ],
+      "digest": "62efffdbc8dad9ca6fd94215cb3ad09c7a6c30d4ba493a4ee7419a3da2a356d7"
+    }
+  ]
 }

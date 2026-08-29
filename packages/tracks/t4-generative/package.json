@@ -2,6 +2,10 @@
   "name": "@ailx/track-t4",
   "version": "0.0.1",
   "type": "module",
+  "ailx": {
+    "trackId": "t4",
+    "scoringEntry": "src/plugin.ts"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

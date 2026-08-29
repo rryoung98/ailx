@@ -46,9 +46,26 @@ interface SnapshotTrack {
   bank?: { items: BankItem[]; sha256?: string };
 }
 
+/**
+ * Build-time content address of a track's score() source closure, emitted by
+ * `@ailx/content-tools build-snapshot --scorers` (see packages/content-tools/
+ * src/scorers.ts). This is the audit digest: it identifies the scoring SOURCE,
+ * so it survives a bundler bump that changes nothing about how a score is
+ * computed.
+ */
+interface SnapshotScorer {
+  trackId: "t1" | "t2" | "t3" | "t4";
+  packageName: string;
+  packageVersion: string;
+  sources: Array<{ path: string; sha256: string }>;
+  externals: string[];
+  digest: string;
+}
+
 interface Snapshot {
   format: string;
   instrument: { manifest: Record<string, unknown>; tracks: SnapshotTrack[] };
+  scorers?: SnapshotScorer[];
 }
 
 export const SNAPSHOT = snapshotRaw as unknown as Snapshot;
@@ -71,6 +88,23 @@ export function snapshotTrack(trackId: "t1" | "t2" | "t3" | "t4"): SnapshotTrack
 /** Per-track rubricVersion from the committed snapshot (F12). */
 export function snapshotRubricVersion(trackId: "t1" | "t2" | "t3" | "t4"): string {
   return snapshotTrack(trackId).rubricVersion;
+}
+
+/**
+ * Per-track scoring digest from the committed snapshot (F12). Fails CLOSED:
+ * an attempt must never persist a score with a digest the platform cannot
+ * derive from source. Regenerate with
+ * `pnpm --filter @ailx/content-tools run snapshot:2026.1`.
+ */
+export function snapshotScoringDigest(trackId: "t1" | "t2" | "t3" | "t4"): string {
+  const s = SNAPSHOT.scorers?.find((x) => x.trackId === trackId);
+  if (!s) {
+    throw new Error(
+      `snapshot carries no scoring digest for ${trackId} — rebuild it with ` +
+      `'pnpm --filter @ailx/content-tools run snapshot:2026.1'`,
+    );
+  }
+  return s.digest;
 }
 
 /** Bank item type → T2Config item type. */

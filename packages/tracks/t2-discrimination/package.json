@@ -2,6 +2,10 @@
   "name": "@ailx/track-t2",
   "version": "0.1.0",
   "type": "module",
+  "ailx": {
+    "trackId": "t2",
+    "scoringEntry": "src/plugin.ts"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

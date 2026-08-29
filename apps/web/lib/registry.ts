@@ -10,26 +10,20 @@
  *  - a truly malformed artifact FAILS CLOSED: score 0 with raw {invalid: 1}.
  *
  * Every scoring call also returns the judgment rows it consumed, the
- * snapshot rubricVersion and a real scoring digest (F12):
- *   scoringDigest = sha256(`${plugin.id}@${pkg.version}:${score.toString()}:${core}`)
- * i.e. a hash of the track package version plus the score() source actually
- * shipped in this bundle, plus the delegated scorer-core source for tracks
- * whose score() is a thin wrapper (SCORER_CORES).
+ * snapshot rubricVersion and the scoring digest (F12). The digest is read
+ * from the committed instrument snapshot, where the build step
+ * content-addressed each track's score() SOURCE closure — the browser no
+ * longer hashes its own bundled code (FRONTEND.md §2.1).
  */
 import type { ComponentType } from "react";
 import type { Judgment, TrackUIProps } from "@ailx/core";
 import type { TrackId, TrackScoreValue } from "@ailx/session";
-import { sha256Hex } from "@ailx/session";
 import { t1Plugin } from "@ailx/track-t1";
-import { plugin as t2Plugin, scoreT2, validateT2Config } from "@ailx/track-t2";
+import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
 import { plugin as t3Plugin, validateT3Config } from "@ailx/track-t3";
 import { t4Plugin } from "@ailx/track-t4";
-import t1Pkg from "@ailx/track-t1/package.json";
-import t2Pkg from "@ailx/track-t2/package.json";
-import t3Pkg from "@ailx/track-t3/package.json";
-import t4Pkg from "@ailx/track-t4/package.json";
 import { PlaceholderRunner } from "./PlaceholderRunner";
-import { snapshotRubricVersion, trackConfig } from "./instrument";
+import { snapshotRubricVersion, snapshotScoringDigest, trackConfig } from "./instrument";
 import { judgeT1, judgeT3, judgeT4 } from "@ailx/report";
 
 export interface TrackModule {
@@ -55,45 +49,21 @@ export async function loadTrackModule(trackId: TrackId): Promise<TrackModule> {
 }
 
 // ---------------------------------------------------------------------------
-// Scoring digests (F12): hash of package version + score() source.
+// Scoring digests (F12): build-time content address of the score() source.
 // ---------------------------------------------------------------------------
 
 const PLUGINS = { t1: t1Plugin, t2: t2Plugin, t3: t3Plugin, t4: t4Plugin } as const;
-const PKG_VERSIONS: Record<TrackId, string> = {
-  t1: (t1Pkg as { version: string }).version,
-  t2: (t2Pkg as { version: string }).version,
-  t3: (t3Pkg as { version: string }).version,
-  t4: (t4Pkg as { version: string }).version,
-};
 
 /**
- * Scorer CORE sources per track: plugin.score() can be a thin wrapper, so
- * hashing it alone misses semantic changes in the function it delegates to
- * (T2's scoreT2 lapse rule changed without touching the wrapper). Any track
- * whose score() delegates must list the delegate here.
- */
-const SCORER_CORES: Partial<Record<TrackId, () => string>> = {
-  t2: () => scoreT2.toString(),
-};
-
-/**
- * KNOWN LIMITATION (reproducibility): this digest hashes
- * `Function.prototype.toString()` of BUNDLED code, so it identifies the
- * exact build, not the scoring source — an innocent bundler/minifier bump
- * changes the digest even when score() source is unchanged. Digests
- * persisted with old builds therefore cannot be re-derived from source
- * alone. The committed instrument snapshot carries no per-track
- * scoring_digest to pin instead; the durable fix is to content-address the
- * score() source files at build time and emit that hash into the snapshot.
- * Until then, treat `${plugin.id}@${pkg.version}` as the stable identifier
- * and the source-hash portion as build-advisory only.
+ * The audit digest, read from the committed instrument snapshot. The build
+ * step walks each track plugin's score() import closure on disk and hashes
+ * the source bytes (packages/content-tools/src/scorers.ts), so the digest
+ * identifies the scoring CODE and is re-derivable from a git checkout — the
+ * old `Function.prototype.toString()` hash identified the bundle, and moved
+ * whenever the minifier did. Fails closed when the snapshot is stale.
  */
 export function scoringDigest(trackId: TrackId): string {
-  const plugin = PLUGINS[trackId];
-  const core = SCORER_CORES[trackId]?.() ?? "";
-  return sha256Hex(
-    `${plugin.id}@${PKG_VERSIONS[trackId]}:${plugin.score.toString()}:${core}`,
-  );
+  return snapshotScoringDigest(trackId);
 }
 
 export function trackModelManifest(trackId: TrackId): Record<string, string> {
