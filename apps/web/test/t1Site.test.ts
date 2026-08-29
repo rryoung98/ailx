@@ -9,9 +9,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { SITE_INDEX, siteUrlPath } from "@ailx/backend";
-import { FsSnapshotStore, snapshotFromZip } from "@ailx/backend/t1";
+import { BlobSnapshotStore, FsSnapshotStore, snapshotFromZip } from "@ailx/backend/t1";
 import { buildSiteZip } from "../lib/siteUpload";
-import { snapshotDir } from "../lib/server/site";
+import {
+  BLOB_TOKEN_ENV,
+  makeSnapshotStore,
+  snapshotBlobPrefix,
+  snapshotDir,
+  snapshotStoreMode,
+} from "../lib/server/site";
 
 /**
  * Serving is reachability-gated: bytes are served only while a `responses`
@@ -57,6 +63,47 @@ describe("snapshotDir", () => {
   it("prefers AILX_SNAPSHOT_DIR and falls back to cwd/.ailx-snapshots", () => {
     expect(snapshotDir({ AILX_SNAPSHOT_DIR: "/data/snaps" }, "/srv")).toBe("/data/snaps");
     expect(snapshotDir({}, "/srv")).toBe(join("/srv", ".ailx-snapshots"));
+  });
+});
+
+/**
+ * Store selection is the serverless-correctness decision: on a per-invocation
+ * filesystem, an uploaded site written by one request is gone by the next.
+ * It lives in exactly one file, so these are the only env reads to check.
+ */
+describe("snapshot store selection", () => {
+  const TOKEN = { [BLOB_TOKEN_ENV]: "vercel_blob_rw_test" };
+
+  it("defaults to the filesystem, and takes fs explicitly", () => {
+    expect(snapshotStoreMode({})).toBe("fs");
+    expect(snapshotStoreMode({ AILX_SNAPSHOT_STORE: "" })).toBe("fs");
+    expect(snapshotStoreMode({ AILX_SNAPSHOT_STORE: "fs" })).toBe("fs");
+    // A blob token alone must NOT redirect a dev server into a shared bucket.
+    expect(snapshotStoreMode(TOKEN)).toBe("fs");
+    expect(makeSnapshotStore(TOKEN, "/srv")).toBeInstanceOf(FsSnapshotStore);
+  });
+
+  it("selects the blob store when asked, with the token", () => {
+    const env = { AILX_SNAPSHOT_STORE: "blob", ...TOKEN };
+    expect(snapshotStoreMode(env)).toBe("blob");
+    expect(makeSnapshotStore(env, "/srv")).toBeInstanceOf(BlobSnapshotStore);
+  });
+
+  it("refuses blob mode without a token instead of silently writing to disk", () => {
+    expect(() => makeSnapshotStore({ AILX_SNAPSHOT_STORE: "blob" }, "/srv")).toThrow(
+      new RegExp(BLOB_TOKEN_ENV),
+    );
+  });
+
+  it("rejects an unknown mode rather than guessing", () => {
+    for (const mode of ["gcs", "s3", "FS", "blob "]) {
+      expect(() => snapshotStoreMode({ AILX_SNAPSHOT_STORE: mode })).toThrow(/must be "fs" or "blob"/);
+    }
+  });
+
+  it("namespaces blob keys, defaulting to t1", () => {
+    expect(snapshotBlobPrefix({})).toBe("t1");
+    expect(snapshotBlobPrefix({ AILX_SNAPSHOT_BLOB_PREFIX: "staging" })).toBe("staging");
   });
 });
 

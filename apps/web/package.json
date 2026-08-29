@@ -23,7 +23,8 @@
     "three": "^0.182.0",
     "@react-three/fiber": "^9.0.0",
     "@ailx/backend": "workspace:*",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "@vercel/blob": "^2.8.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
