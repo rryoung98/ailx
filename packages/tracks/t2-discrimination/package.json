@@ -15,7 +15,8 @@
     "@ailx/core": "workspace:*",
     "three": "^0.182.0",
     "@react-three/fiber": "^9.0.0",
-    "@react-three/drei": "^10.0.0"
+    "@react-three/drei": "^10.0.0",
+    "@ailx/session": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
