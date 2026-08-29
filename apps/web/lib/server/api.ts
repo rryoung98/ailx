@@ -36,17 +36,25 @@ function toHeaderMap(req: Request): HeaderMap {
   return headers;
 }
 
-/** Adapt a fetch Request onto an @ailx/backend handler. */
+/**
+ * Adapt a fetch Request onto an @ailx/backend handler. `rawBody` hands the
+ * handler the request bytes untouched (T1 ZIP upload) instead of parsed JSON.
+ */
 export async function apiRoute(
   req: Request,
   fn: (ctx: ApiContext, headers: HeaderMap, body: unknown) => Promise<ApiResult>,
+  opts: { rawBody?: boolean } = {},
 ): Promise<Response> {
   let body: unknown;
   if (req.method !== "GET" && req.method !== "HEAD") {
-    try {
-      body = await req.json();
-    } catch {
-      body = undefined; // Empty/non-JSON body — handlers validate fields anyway.
+    if (opts.rawBody) {
+      body = new Uint8Array(await req.arrayBuffer());
+    } else {
+      try {
+        body = await req.json();
+      } catch {
+        body = undefined; // Empty/non-JSON body — handlers validate fields anyway.
+      }
     }
   }
   try {
