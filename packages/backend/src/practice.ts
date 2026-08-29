@@ -43,6 +43,7 @@ import { StoreError } from "./store.js";
 /** A non-uuid id can never match a `uuid` column — probe it as a miss, not a cast error. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+import type { HeaderMap } from "./auth.js";
 import type { ApiContext, ApiResult } from "./handlers.js";
 import { withParticipant } from "./handlers.js";
 import { logsByAttempt, shapeOf } from "./aggregates.js";
@@ -323,7 +324,7 @@ export async function participantProgress(
 // --- handlers ---------------------------------------------------------------
 
 /** POST /api/practice — deal a drill. */
-export async function handleStartPractice(ctx: ApiContext, headers: Record<string, string>): Promise<ApiResult> {
+export async function handleStartPractice(ctx: ApiContext, headers: HeaderMap): Promise<ApiResult> {
   return withParticipant(ctx, headers, async (participantId) => ({
     status: 201,
     body: { session: await startPractice(ctx.db, participantId) },
@@ -333,7 +334,7 @@ export async function handleStartPractice(ctx: ApiContext, headers: Record<strin
 /** POST /api/practice/:id — submit the whole drill and learn whether it counted. */
 export async function handleSubmitPractice(
   ctx: ApiContext,
-  headers: Record<string, string>,
+  headers: HeaderMap,
   sessionId: string,
   body: unknown,
   now: number = Date.now(),
@@ -363,7 +364,7 @@ export async function handleSubmitPractice(
 /** GET the caller's own progression. Authenticated: it is one person's data. */
 export async function handleProgress(
   ctx: ApiContext,
-  headers: Record<string, string>,
+  headers: HeaderMap,
   now: number = Date.now(),
 ): Promise<ApiResult> {
   return withParticipant(ctx, headers, async (participantId) => ({
