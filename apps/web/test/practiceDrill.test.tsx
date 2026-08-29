@@ -1,0 +1,228 @@
+// @vitest-environment jsdom
+/**
+ * The practice drill component.
+ *
+ * What is asserted here is what only a rendered drill can show:
+ *  - it deals and displays PRACTICE material and never a scored bank item;
+ *  - a call produces immediate right/wrong feedback with the teaching;
+ *  - it asserts NOTHING to the server — it posts choices, never a grade, an
+ *    elapsed time or a streak, and it renders the streak the server returns;
+ *  - in the static export it plays and says plainly that nothing is recorded.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { PRACTICE_BANK, PRACTICE_DECK_SIZE } from "@ailx/report";
+
+(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+
+/** Vite rewrites a literal `new URL(..., import.meta.url)`; resolve by path. */
+const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const repoFile = (rel: string): string => join(WEB_ROOT, rel);
+
+const store = new Map<string, string>();
+Object.defineProperty(window, "localStorage", {
+  value: {
+    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
+    setItem: (k: string, v: string) => void store.set(k, String(v)),
+    removeItem: (k: string) => void store.delete(k),
+    clear: () => void store.clear(),
+  },
+  configurable: true,
+});
+
+const SESSION_ID = "11111111-2222-3333-4444-555555555555";
+const posted: Array<{ url: string; body: unknown }> = [];
+let dealt: string[] = [];
+let streak = { current: 3, best: 7, totalDays: 12, lastDay: "2026-03-10", practisedToday: true, restDayAvailable: false };
+let qualification = { counted: true, reason: "ok" };
+
+function installFetch(): void {
+  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+    const body = init?.body === undefined ? undefined : JSON.parse(String(init.body));
+    posted.push({ url: String(url), body });
+    if (String(url).endsWith("/api/practice")) {
+      return new Response(JSON.stringify({ session: { id: SESSION_ID, itemIds: dealt } }), { status: 201 });
+    }
+    return new Response(
+      JSON.stringify({
+        result: { answered: dealt.length, correct: dealt.length, qualification },
+        progress: { streak },
+      }),
+      { status: 200 },
+    );
+  });
+}
+
+let root: Root | null = null;
+let host: HTMLElement;
+
+async function mount(serverMode: boolean): Promise<void> {
+  vi.resetModules();
+  process.env.NEXT_PUBLIC_AILX_BACKEND = serverMode ? "1" : "";
+  const { PracticeDrill } = await import("../lib/PracticeDrill");
+  host = document.createElement("div");
+  document.body.appendChild(host);
+  root = createRoot(host);
+  await act(async () => {
+    root!.render(createElement(PracticeDrill));
+  });
+}
+
+function buttons(): HTMLButtonElement[] {
+  return [...host.querySelectorAll("button")];
+}
+
+async function click(match: RegExp): Promise<void> {
+  const btn = buttons().find((b) => match.test(b.textContent ?? ""));
+  expect(btn, `button ${match}`).toBeTruthy();
+  await act(async () => {
+    btn!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+/** Play the whole deck, always calling "Artefact". */
+async function playThrough(): Promise<void> {
+  for (let i = 0; i < PRACTICE_DECK_SIZE; i++) {
+    await click(/Artefact/);
+    await click(/Next card|Finish the round/);
+  }
+}
+
+beforeEach(() => {
+  posted.length = 0;
+  store.clear();
+  dealt = PRACTICE_BANK.slice(0, PRACTICE_DECK_SIZE).map((i) => i.id);
+  qualification = { counted: true, reason: "ok" };
+  streak = { current: 3, best: 7, totalDays: 12, lastDay: "2026-03-10", practisedToday: true, restDayAvailable: false };
+  // jsdom has no crypto.randomUUID in this combo; the static path needs one.
+  if (typeof crypto.randomUUID !== "function") {
+    Object.defineProperty(crypto, "randomUUID", { value: () => SESSION_ID, configurable: true });
+  }
+  installFetch();
+});
+
+afterEach(() => {
+  act(() => root?.unmount());
+  host?.remove();
+  vi.unstubAllGlobals();
+});
+
+describe("hosted build", () => {
+  it("shows the deck the SERVER dealt, in order, one card at a time", async () => {
+    await mount(true);
+    expect(posted[0].url).toMatch(/\/api\/practice$/);
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    expect(host.textContent).toContain(first.passage);
+    // The next card is not on screen yet — exposure is one card at a time.
+    const second = PRACTICE_BANK.find((i) => i.id === dealt[1])!;
+    expect(host.textContent).not.toContain(second.passage);
+  });
+
+  it("gives immediate right/wrong feedback with the teaching", async () => {
+    await mount(true);
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    await click(first.key === 0 ? /Artefact/ : /Clean/);
+    expect(host.textContent).toContain("Right.");
+    expect(host.textContent).toContain(first.tell);
+    expect(host.querySelector('[role="status"]')).toBeTruthy();
+  });
+
+  it("names a miss as a miss and still teaches the tell", async () => {
+    await mount(true);
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    await click(first.key === 0 ? /Clean/ : /Artefact/);
+    expect(host.textContent).toContain("Missed it.");
+    expect(host.textContent).toContain(first.tell);
+  });
+
+  it("submits choices and a UTC offset — never a grade, a streak or an elapsed time", async () => {
+    await mount(true);
+    await playThrough();
+    const submit = posted[posted.length - 1];
+    expect(submit.url).toContain(`/api/practice/${SESSION_ID}`);
+    const body = submit.body as { answers: Array<Record<string, unknown>>; tzOffsetMinutes: number };
+    expect(body.answers).toHaveLength(PRACTICE_DECK_SIZE);
+    expect(typeof body.tzOffsetMinutes).toBe("number");
+    const sent = JSON.stringify(body);
+    expect(sent).not.toMatch(/"correct"|"streak"|"elapsed"|"counted"|"score"/);
+    for (const a of body.answers) {
+      expect(Object.keys(a).sort()).toEqual(["choice", "clientTs", "itemId", "latencyMs", "seq"]);
+    }
+  });
+
+  it("renders the streak the SERVER returned, not one it worked out", async () => {
+    await mount(true);
+    await playThrough();
+    expect(host.textContent).toContain("day streak");
+    expect(host.textContent).toContain("7"); // best
+    expect(host.textContent).toContain("12"); // days practised
+  });
+
+  it("explains kindly when a round did not earn its day", async () => {
+    qualification = { counted: false, reason: "too_fast" };
+    await mount(true);
+    await playThrough();
+    expect(host.textContent).toMatch(/too fast to count/i);
+    expect(host.textContent).not.toMatch(/cheat|banned|violation/i);
+  });
+
+  it("surfaces a failed start as a retryable alert rather than a blank screen", async () => {
+    vi.stubGlobal("fetch", async () => new Response("nope", { status: 500 }));
+    await mount(true);
+    expect(host.querySelector('[role="alert"]')).toBeTruthy();
+    expect(buttons().some((b) => /Try again/.test(b.textContent ?? ""))).toBe(true);
+  });
+});
+
+describe("static export build", () => {
+  it("plays with no server at all and calls nothing", async () => {
+    await mount(false);
+    expect(posted).toEqual([]);
+    expect(host.textContent).toMatch(/Does this passage carry/);
+  });
+
+  it("says plainly that nothing was recorded and shows no streak", async () => {
+    await mount(false);
+    await playThrough();
+    expect(posted).toEqual([]);
+    expect(host.textContent).toMatch(/static demo build/i);
+    expect(host.textContent).toMatch(/nothing was recorded/i);
+    expect(host.textContent).not.toContain("day streak");
+  });
+});
+
+describe("it can never show a scored item", () => {
+  it("imports the practice corpus and no instrument content", () => {
+    const source = readFileSync(repoFile("lib/PracticeDrill.tsx"), "utf8");
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(code).not.toMatch(/instruments|bank\.jsonl|demoItems|t2DeckRecords|lib\/instrument/);
+  });
+
+  it("renders nothing for an id the practice corpus does not know", async () => {
+    dealt = ["not-a-practice-item", ...PRACTICE_BANK.slice(0, 2).map((i) => i.id)];
+    await mount(true);
+    expect(host.textContent).not.toContain("not-a-practice-item");
+    // The unknown id is dropped; the round is simply shorter.
+    expect(host.querySelectorAll('[class*="pip"]').length).toBe(2);
+  });
+});
+
+describe("styling stays on the token palette", () => {
+  it("hard-codes no colour, so the measured AA contrast still holds", () => {
+    for (const file of ["lib/PracticeDrill.module.css", "app/progress/progress.module.css"]) {
+      const css = readFileSync(repoFile(file), "utf8");
+      expect(css.match(/#[0-9a-fA-F]{3,8}\b/g), file).toBeNull();
+      expect(css, file).not.toMatch(/rgb\(|hsl\(/);
+    }
+  });
+
+  it("gives every interactive control a visible focus indicator (WCAG 2.4.13)", () => {
+    const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
+    expect(css).toMatch(/:focus-visible/);
+    expect(css).toMatch(/outline: 2px/);
+  });
+});

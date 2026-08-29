@@ -188,9 +188,14 @@ describe("header play pill", () => {
     walk((nav.props as { children?: ReactNode }).children);
     // Static export: the share gallery needs a database, so the nav links the
     // T4 community wall instead of a route that cannot exist here.
-    expect(links.map((l) => l.href)).toEqual(["/methodology", "/report", "/wall", "/validate", "/exam"]);
-    expect(links[4].className).toBe("nav-pill");
-    for (const l of links.slice(0, 3)) expect(l.className).toBeUndefined();
+    // Static export: the share gallery and the personal progress page both
+    // need a database, so the nav links the T4 community wall and the drill
+    // itself instead of routes that cannot exist here.
+    expect(links.map((l) => l.href)).toEqual([
+      "/methodology", "/report", "/wall", "/practice", "/validate", "/exam",
+    ]);
+    expect(links[links.length - 1].className).toBe("nav-pill");
+    for (const l of links.slice(0, -1)) expect(l.className).toBeUndefined();
     // dot span inside the pill
     const pill = els().find((e) => (e.props as { className?: string }).className === "nav-pill")!;
     const kids = (pill.props as { children?: ReactNode }).children as ReactNode[];
@@ -213,8 +218,11 @@ describe("header play pill", () => {
         if (props?.children !== undefined) walk(props.children);
       };
       walk((nav.props as { children?: ReactNode }).children);
-      expect(hrefs).toEqual(["/methodology", "/report", "/gallery", "/world", "/validate", "/exam"]);
+      expect(hrefs).toEqual([
+        "/methodology", "/report", "/gallery", "/world", "/progress", "/validate", "/exam",
+      ]);
       expect(hrefs).not.toContain("/wall");
+      expect(hrefs).not.toContain("/practice");
     } finally {
       vi.unstubAllEnvs();
     }
@@ -277,9 +285,10 @@ describe("parent dogfood follow-ups", () => {
 
   it("nav links render through NavLink, which sets aria-current on the active page", () => {
     const layoutSrc = readFileSync(join(appDir, "layout.tsx"), "utf8");
-    // 4 always-on links + Play, plus the two mode-gated hosted links
-    // (/gallery, /world) and the static-export /wall that replaces them.
-    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(7);
+    // 3 always-on links + Play, plus the two mode-gated hosted links
+    // (/gallery, /world), the static-export /wall that replaces them, and the
+    // one slot that is /progress in the hosted build and /practice in the export.
+    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(8);
     const navSrc = readFileSync(join(appDir, "..", "lib", "NavLink.tsx"), "utf8");
     expect(navSrc).toContain("usePathname");
     expect(navSrc).toContain('aria-current={current ? "page" : undefined}');

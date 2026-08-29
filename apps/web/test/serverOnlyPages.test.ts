@@ -53,12 +53,28 @@ describe("server-only files carry a server-only extension", () => {
   });
 
   it("every page that reads the store is server-only by name", () => {
-    // The gallery, its reviewer queue and the world aggregates all read the
-    // database; in the static export none of them may exist at all.
-    for (const route of ["gallery", "world", "review"]) {
+    // The gallery, its reviewer queue, the world aggregates and one person's
+    // progress all read the database; in the static export none of them may
+    // exist at all.
+    for (const route of ["gallery", "world", "review", "progress"]) {
       const pages = files.filter((f) => f.rel.startsWith(`${route}/page`));
       expect(pages.map((f) => f.rel), route).toEqual([`${route}/page.api.tsx`]);
     }
+  });
+
+  it("the practice drill's own page is NOT server-only — it plays in both builds", () => {
+    // Its corpus is bundled and its API calls are made from the client, so
+    // /practice must exist in the export. A page.api.tsx here would delete
+    // the drill from the demo, which is the surface that sells the loop.
+    const pages = files.filter((f) => f.rel.startsWith("practice/page"));
+    expect(pages.map((f) => f.rel)).toEqual(["practice/page.tsx"]);
+    expect(pages[0].source).not.toMatch(SERVER_ONLY);
+  });
+
+  it("the practice API is server-only by name, on both of its routes", () => {
+    const routes = files.filter((f) => f.rel.startsWith("api/practice/"));
+    expect(routes.length).toBe(2);
+    for (const f of routes) expect(f.rel, f.rel).toMatch(/route\.api\.ts$/);
   });
 
   it("no route has both a static and a server-only page (duplicate route)", () => {
