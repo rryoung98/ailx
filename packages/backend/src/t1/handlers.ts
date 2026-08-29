@@ -18,6 +18,7 @@ import type { ApiContext, ApiResult } from "../handlers.js";
 import { withParticipant } from "../handlers.js";
 import { appendResponse, getAttempt } from "../store.js";
 import type { HeaderMap } from "../auth.js";
+import { canonicalSitePath, siteUrlPath } from "../site-url.js";
 import { SnapshotError, type SnapshotErrorCode } from "./errors.js";
 import { SNAPSHOT_DIGEST_RE, snapshotFromZip } from "./snapshot.js";
 import type { SnapshotStore } from "./storage.js";
@@ -121,7 +122,7 @@ export async function handleUploadSite(
           digest: snapshot.digest,
           fileCount: snapshot.fileCount,
           totalBytes: snapshot.totalBytes,
-          path: `/api/site/${snapshot.digest}/`,
+          path: siteUrlPath(snapshot.digest),
         },
       },
     };
@@ -191,8 +192,10 @@ const NOT_FOUND: ServeSiteResult = {
 
 /**
  * GET /api/site/:digest/*path — no auth: the digest IS the capability.
- * "" and trailing-slash paths resolve to index.html; anything not listed in
- * the snapshot manifest (including traversal junk) is a 404 by construction.
+ * Directory-ish paths resolve to index.html via the shared canonicalSitePath
+ * rule (the HTTP route redirects them there instead, so the browser's base URL
+ * matches what it asked for); anything not listed in the snapshot manifest
+ * (including traversal junk) is a 404 by construction.
  */
 export async function handleServeSite(
   store: SnapshotStore,
@@ -201,7 +204,7 @@ export async function handleServeSite(
   rawPath: string,
 ): Promise<ServeSiteResult> {
   if (!SNAPSHOT_DIGEST_RE.test(digest)) return NOT_FOUND;
-  const path = rawPath === "" || rawPath.endsWith("/") ? `${rawPath}index.html` : rawPath;
+  const path = canonicalSitePath(rawPath);
   const file = await store.getFile(digest, path);
   if (file === null) return NOT_FOUND;
   return { status: 200, headers: sandboxHeaders(origin, file.contentType), data: file.data };

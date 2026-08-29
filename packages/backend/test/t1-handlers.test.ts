@@ -14,6 +14,7 @@ import {
   type T1ApiContext,
 } from "../src/t1/handlers.js";
 import { MemorySnapshotStore } from "../src/t1/storage.js";
+import { canonicalSitePath, siteUrlPath } from "../src/site-url.js";
 import { snapshotFromZip } from "../src/t1/snapshot.js";
 import { freshDb, openAttempt } from "./helpers.js";
 import { buildZip, siteZip } from "./t1-fixtures.js";
@@ -67,7 +68,10 @@ describe("handleUploadSite", () => {
     const submission = result.body.submission as Record<string, unknown>;
     expect(submission.digest).toBe(expected.digest);
     expect(submission.created).toBe(true);
-    expect(submission.path).toBe(`/api/site/${expected.digest}/`);
+    expect(submission.path).toBe(`/api/site/${expected.digest}/index.html`);
+    // Canonical: a real file name, so no framework trailing-slash rewrite can
+    // bounce it (the staging redirect loop) and relative assets still resolve.
+    expect(submission.path).toBe(siteUrlPath(expected.digest));
 
     // Bytes are retrievable under the digest — the scored artifact exists.
     expect(await c.snapshots.has(expected.digest)).toBe(true);
@@ -149,6 +153,32 @@ describe("handleUploadSite", () => {
     const result = await upload(c, headers, attemptId, siteZip(), 0);
     expect(result.status).toBe(409);
     expect((result.body.error as Record<string, unknown>).code).toBe("seq_conflict");
+  });
+});
+
+describe("site URL convention", () => {
+  const DIGEST = `sha256:${"a".repeat(64)}`;
+
+  it("canonicalises only directory-ish paths", () => {
+    expect(canonicalSitePath("")).toBe("index.html");
+    expect(canonicalSitePath("/")).toBe("/index.html");
+    expect(canonicalSitePath("sub/")).toBe("sub/index.html");
+    expect(canonicalSitePath("index.html")).toBe("index.html");
+    expect(canonicalSitePath("sub/index.html")).toBe("sub/index.html");
+    expect(canonicalSitePath("assets/app.js")).toBe("assets/app.js");
+  });
+
+  it("is a fixed point — canonicalising twice cannot start a redirect loop", () => {
+    for (const p of ["", "/", "sub/", "index.html", "assets/app.js"]) {
+      const once = canonicalSitePath(p);
+      expect(canonicalSitePath(once)).toBe(once);
+    }
+  });
+
+  it("builds the canonical live URL, honouring a basePath-prefixed API root", () => {
+    expect(siteUrlPath(DIGEST)).toBe(`/api/site/${DIGEST}/index.html`);
+    expect(siteUrlPath(DIGEST, "/ailx/api")).toBe(`/ailx/api/site/${DIGEST}/index.html`);
+    expect(siteUrlPath(DIGEST).endsWith("/")).toBe(false);
   });
 });
 
