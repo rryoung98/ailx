@@ -22,11 +22,43 @@ export {
   type TranscriptInput,
   type TranscriptVerb,
 } from "./store.js";
-export { SITE_INDEX, canonicalSitePath, siteUrlPath } from "./site-url.js";
 export {
+  SITE_INDEX,
+  T1_SITE_RESPONSE_KIND,
+  canonicalSitePath,
+  siteUrlPath,
+} from "./site-url.js";
+export {
+  SHARE_STATUSES,
+  SHARE_TOKEN_BYTES,
+  SHARE_TOKEN_RE,
+  shareCardPath,
+  shareUrlPath,
+  type ShareStatus,
+} from "./share-url.js";
+export {
+  attemptSiteDigest,
+  createShare,
+  getShareForAttempt,
+  handleCreateShare,
+  handleGetShare,
+  handleRevokeShare,
+  handleViewShare,
+  hashShareToken,
+  newShareToken,
+  resolveShare,
+  revokeShare,
+  shareStatus,
+  type CreateShareOptions,
+  type CreatedShare,
+  type ShareRecord,
+} from "./share.js";
+export {
+  DEV_AUTH_OVERRIDE,
   DEV_USER_HEADER,
   DevAuthProvider,
   authProviderFromEnv,
+  verifiedAuthProvider,
   type AuthContext,
   type AuthMode,
   type AuthProvider,
@@ -34,6 +66,7 @@ export {
 } from "./auth.js";
 export {
   DEFAULT_INSTRUMENT,
+  UNAUTHORIZED_RESULT,
   withParticipant,
   handleAppendResponse,
   handleAppendTranscript,

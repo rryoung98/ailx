@@ -16,6 +16,14 @@
 export const SITE_INDEX = "index.html";
 
 /**
+ * `payload.kind` of the append-only `responses` row that records a T1 site
+ * submission. Defined here (client-safe) rather than in `./t1`, because the
+ * share pipeline must find an attempt's snapshot digest without pulling in
+ * node:zlib. One definition; `./t1` re-exports it.
+ */
+export const T1_SITE_RESPONSE_KIND = "t1-site-snapshot";
+
+/**
  * The file a snapshot request resolves to: directory-ish requests ("" or a
  * trailing slash) mean the directory index. The serve route redirects such
  * requests to the canonical form; the serve handler resolves them directly so

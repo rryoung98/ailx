@@ -57,6 +57,13 @@ function errorResult(code: keyof typeof STATUS_BY_CODE | "unauthorized", message
   return { status, body: { error: { code, message } } };
 }
 
+/**
+ * The single 401 body. Adapters that authenticate BEFORE the handler runs
+ * (apps/web `apiRoute` must know the caller before it buffers a body) reuse
+ * it, so a pre-handler rejection is byte-identical to a handler one.
+ */
+export const UNAUTHORIZED_RESULT: ApiResult = errorResult("unauthorized", "authentication required");
+
 /** Auth + participant projection + StoreError mapping — shared with ./t1/. */
 export async function withParticipant(
   ctx: ApiContext,
@@ -64,7 +71,7 @@ export async function withParticipant(
   fn: (participantId: string) => Promise<ApiResult>,
 ): Promise<ApiResult> {
   const identity = await ctx.auth.verify(headers);
-  if (identity === null) return errorResult("unauthorized", "authentication required");
+  if (identity === null) return UNAUTHORIZED_RESULT;
   try {
     const participant = await ensureParticipant(ctx.db, identity.authRef);
     return await fn(participant.id);

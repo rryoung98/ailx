@@ -45,15 +45,43 @@ export class DevAuthProvider implements AuthProvider {
 export type AuthMode = "dev" | "clerk";
 
 /**
- * Select the provider from the environment. `AILX_AUTH=clerk` requires
- * `CLERK_SECRET_KEY`; the default (`dev`) needs no keys at all, so tests and
- * local dev never touch Clerk.
+ * Wrap an identity that has ALREADY been verified, so an adapter that
+ * authenticates before it reaches the handler (see apps/web `apiRoute`,
+ * which must know the caller before it buffers a request body) does not pay
+ * for — or diverge from — a second `verify()` call.
+ */
+export function verifiedAuthProvider(name: string, identity: AuthContext): AuthProvider {
+  return { name, verify: async () => identity };
+}
+
+/** Opt-in that re-enables assert-only dev auth under NODE_ENV=production. */
+export const DEV_AUTH_OVERRIDE = "AILX_ALLOW_INSECURE_DEV_AUTH";
+
+/**
+ * Select the provider from the environment — FAIL CLOSED. `AILX_AUTH` has no
+ * default: an unset (or unknown) value refuses to start rather than silently
+ * granting the assert-only dev identity to anyone who sends a header.
+ * `AILX_AUTH=clerk` requires `CLERK_SECRET_KEY`; `AILX_AUTH=dev` is refused
+ * under `NODE_ENV=production` unless `AILX_ALLOW_INSECURE_DEV_AUTH=1` is also
+ * set (the e2e suite runs a production build against a throw-away database).
  */
 export async function authProviderFromEnv(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<AuthProvider> {
-  const mode = env.AILX_AUTH ?? "dev";
-  if (mode === "dev") return new DevAuthProvider();
+  const mode = env.AILX_AUTH;
+  if (mode === undefined || mode === "") {
+    throw new Error(
+      'AILX_AUTH is not set: refusing to start. Set AILX_AUTH=clerk (with CLERK_SECRET_KEY) for any deployment real participants can reach, or AILX_AUTH=dev for local development only — dev auth accepts an asserted identity with no proof.',
+    );
+  }
+  if (mode === "dev") {
+    if (env.NODE_ENV === "production" && env[DEV_AUTH_OVERRIDE] !== "1") {
+      throw new Error(
+        `AILX_AUTH=dev is refused under NODE_ENV=production: dev auth accepts an asserted identity with no proof, so anyone could impersonate any participant. Set AILX_AUTH=clerk with CLERK_SECRET_KEY, or — only for a throw-away test deployment — set ${DEV_AUTH_OVERRIDE}=1.`,
+      );
+    }
+    return new DevAuthProvider();
+  }
   if (mode === "clerk") {
     const secretKey = env.CLERK_SECRET_KEY;
     if (!secretKey) throw new Error("AILX_AUTH=clerk requires CLERK_SECRET_KEY");

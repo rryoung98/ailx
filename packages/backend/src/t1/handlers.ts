@@ -18,12 +18,12 @@ import type { ApiContext, ApiResult } from "../handlers.js";
 import { withParticipant } from "../handlers.js";
 import { appendResponse, getAttempt } from "../store.js";
 import type { HeaderMap } from "../auth.js";
-import { canonicalSitePath, siteUrlPath } from "../site-url.js";
+import { T1_SITE_RESPONSE_KIND, canonicalSitePath, siteUrlPath } from "../site-url.js";
 import { SnapshotError, type SnapshotErrorCode } from "./errors.js";
 import { SNAPSHOT_DIGEST_RE, snapshotFromZip } from "./snapshot.js";
 import type { SnapshotStore } from "./storage.js";
 
-export const T1_SITE_RESPONSE_KIND = "t1-site-snapshot";
+export { T1_SITE_RESPONSE_KIND };
 
 export interface T1ApiContext extends ApiContext {
   snapshots: SnapshotStore;

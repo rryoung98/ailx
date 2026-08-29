@@ -111,3 +111,51 @@ CREATE TABLE scores (
   superseded_by  bigint REFERENCES scores(id),
   UNIQUE (attempt_id, rubric_version, scoring_digest)
 );
+
+-- ---------------------------------------------------------------------------
+-- Sharing (growth loop) — spec §12 + docs/SHARING.md.
+--
+-- A share link is an UNLISTED CAPABILITY: a 256-bit token, unguessable, and
+-- served `noindex`. It is NOT a public-gallery entry — the spec's
+-- approval-required gallery gate (T4 "Gallery governance") still applies to
+-- anything that becomes publicly listed, which is what `submitted_at` /
+-- `approved_at` record.
+--
+-- Only the token DIGEST is stored: a database leak yields no working link.
+-- The shared payload is FROZEN at creation (an allowlist built by
+-- @ailx/report `buildSharePayload`), so a later code change cannot widen
+-- what an already-issued link exposes.
+--
+-- Lifecycle is monotone one-way stamps, never a destructive edit (same
+-- pattern as attempts.finalized_at):
+--   created_at            -> unlisted
+--   + submitted_at        -> submitted for gallery review
+--   + approved_at         -> published in the public gallery (human approved)
+--   + revoked_at          -> revoked; nothing is served at any stage
+-- Re-sharing after a revoke inserts a NEW row with a NEW token; the revoked
+-- row stays as the audit record.
+CREATE TABLE share_links (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id   uuid NOT NULL REFERENCES attempts(id),
+  token_sha256 text NOT NULL UNIQUE,     -- sha256 hex of the capability token
+  payload      jsonb NOT NULL,           -- frozen allowlisted share payload
+  site_digest  text,                     -- set only on explicit site opt-in
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  submitted_at timestamptz,
+  approved_at  timestamptz,
+  revoked_at   timestamptz
+);
+
+-- At most one live link per attempt; revoked rows accumulate as the trail.
+CREATE UNIQUE INDEX share_links_one_active
+  ON share_links (attempt_id) WHERE revoked_at IS NULL;
+
+-- Loop measurement, deliberately anonymous: one row per served view, day
+-- granularity, no IP, no user agent, no referrer, no visitor id. Enough to
+-- answer "does the loop work", incapable of tracking a person.
+CREATE TABLE share_views (
+  id        bigserial PRIMARY KEY,
+  share_id  uuid NOT NULL REFERENCES share_links(id),
+  viewed_on date NOT NULL DEFAULT current_date
+);
+CREATE INDEX share_views_by_share ON share_views (share_id);

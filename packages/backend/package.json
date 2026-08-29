@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@ailx/core": "workspace:*",
+    "@ailx/report": "workspace:*",
     "@ailx/session": "workspace:*",
     "@clerk/backend": "^3.16.0"
   },
