@@ -63,3 +63,88 @@ applies here — we measure the run, we do not become the runtime.
 - The T1 pipeline already proves the artifact half: content-addressed submission,
   validated, stored, hosted, recomputable.
 - The gap is trajectory capture and verification, not artifact handling.
+
+## Cadence: challenges are researched and updated quarterly
+
+The four tracks are not a fixed structure. Every quarter, research feeds an update to the
+challenges themselves — not only the items inside them. "Whatever is cutting edge" is a
+rolling target, and the instrument is expected to move with it.
+
+This is a stronger claim than the spec's annual re-versioning (§14), and it changes what
+the architecture has to make cheap.
+
+### The distinction that decides the cost
+
+- **New content inside an existing interaction shape** — a new item bank, new briefs, new
+  rubrics, new judge prompts. This must stay DATA. It is already content-as-data,
+  content-addressed, and swappable without shipping code. Quarterly updates should land
+  here almost every time.
+- **A genuinely new interaction shape** — e.g. a long-horizon agentic run, which no
+  current track models. This requires a new TrackPlugin implementation. That is real
+  engineering and should be rare by design.
+
+The failure mode to avoid: treating every quarterly refresh as a new code package. If
+each quarter needs hand-written track code, the cadence becomes the bottleneck and the
+instrument stops tracking the frontier — the exact failure the product exists to fix.
+So: push as much of a "new challenge" as possible into content, parameters and rubrics,
+and reserve new plugins for genuinely new shapes of interaction.
+
+### What this demands of the architecture
+
+1. **Keep the TrackPlugin seam honest.** It is the only thing that makes a new shape
+   additive rather than a rewrite. Do not let app code accumulate track-specific special
+   cases that a new track would have to reproduce.
+2. **Do not hardcode "four tracks" or "timed sitting" anywhere.** Composite scoring, the
+   report, sharing payloads, progression and the gallery must all tolerate a changing set
+   of tracks, including asynchronous ones.
+3. **Recomputability is what makes rotation safe.** Because `score()` source is now
+   content-addressed into the snapshot, and item banks are content-addressed, a score from
+   an old quarter stays recomputable after the challenges move on. This is the property
+   that lets us change the instrument without invalidating history — protect it.
+4. **Comparability needs an explicit plan.** Quarterly rotation makes year-over-year
+   comparison harder than annual re-versioning did. The secure anchor block must not
+   rotate on the quarterly cadence; decide which parts rotate (operational forms) and
+   which are held fixed (anchor), and state it before the first quarterly update ships.
+5. **Publishing follows the cadence.** The public aggregates ("how is the world doing")
+   must label which instrument version produced them, or trends across quarters will
+   silently compare different instruments.
+
+## Archive, replay, and additional "games"
+
+As quarters advance, the instrument improves and previous quarters are ARCHIVED rather than
+deleted. The gallery persists across versions, and people can still take archived forms.
+Alongside the canonical scored sitting there is room for lighter game modes.
+
+This is the released-past-paper model, and it is a real asset: archived quarters teach,
+they are shareable, they give newcomers a low-stakes way in, and they make the library
+grow with every cycle instead of being thrown away.
+
+### The one-way door — decide this before the first archive
+
+Publishing an archived quarter BURNS its items for scoring, permanently. Once a form is
+publicly playable, its answers circulate, and any score derived from it stops meaning
+anything. That is an acceptable and normal trade, but it must be explicit:
+
+- **Archived forms are practice, never certification.** They can be played, shared and
+  enjoyed; they must never produce a score presented as comparable to a live sitting.
+- **Archiving is irreversible.** An item released to an archived form can never return to
+  a secure operational form. Track item state explicitly (secure / operational / released)
+  so this cannot happen by accident.
+- **The secure anchor block is never archived.** Comparability across quarters depends on
+  it; releasing it would destroy year-over-year equating (spec §14).
+- **Label everything with its instrument version.** Gallery entries, shared results and
+  public aggregates must all state which version produced them, or trends silently compare
+  different instruments and archived play contaminates live statistics.
+- **Separate the statistics.** Archived/practice play must be excluded from the public
+  "how is the world doing" distributions, or the barometer measures the wrong population.
+
+### Additional game modes
+
+Beyond the canonical scored sitting, the natural surface includes: short daily practice
+(the T2 Mastery loop), archived-quarter replays, and lighter challenge formats built on
+existing track shapes. The discipline from `docs/FUTURE-TRACKS.md` applies — prefer new
+CONTENT and parameters over new plugin code, and keep the tone of a well-made instrument
+rather than a mobile game (spec: no currency, no cosmetic unlocks).
+
+The product line that results: one canonical scored instrument, a growing archive people
+can play and share, and a practice loop that brings them back between sittings.

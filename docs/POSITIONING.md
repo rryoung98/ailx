@@ -118,3 +118,53 @@ distribution hook, (4) the mass consumer credential is the long game.
 Historical base rate for this path: **3–7 years to industry default** — with the
 Art. 4 vacuum and the FDE hiring boom as the kind of external demand shock that
 compressed CNCF's timeline to two.
+
+## The research flywheel — and the governance it requires
+
+The quarterly research cadence (see `docs/FUTURE-TRACKS.md`) is the technical and research
+moat. Nobody else is systematically studying what frontier practice looks like and then
+turning it into a measurable instrument every quarter.
+
+That research needs domain expertise from people at the edge, which suggests an advisory
+relationship with frontier startups and labs. The exchange is real in both directions:
+AILX gets expertise it cannot buy, and advisors get visibility and credibility from being
+named in the methodology behind the instrument that defines AI fluency.
+
+Historical precedent supports it. CompTIA was founded by competing vendors; CNCF has rival
+companies fund a vendor-neutral hands-on exam; ETS was created by institutions donating
+their own tests. Competitors cooperate on a neutral body when it grows the whole market.
+
+### The risk, stated plainly
+
+The strategic asset is NEUTRALITY (see the positioning above: every incumbent credential is
+vendor-captive, and the "ETS of AI" seat is empty). If advisory participation reads as
+sponsorship — "advise us and get advertising" — the instrument becomes exactly the thing
+it was built to replace, and the neutrality claim dies quietly. A single visible instance
+of a vendor's product appearing in a challenge they advised on is enough to do it.
+
+### Rules that keep it defensible
+
+Adopt before the first advisor is signed, not after:
+
+1. **Test the skill, not the tool.** Challenges must be model- and vendor-agnostic:
+   a candidate should be able to score well using any frontier stack. Anything that only
+   works with one vendor's product is a defect, not a feature.
+2. **Disclosed membership.** Publish who advises, and what they contributed. Undisclosed
+   influence is the thing that ends credibility.
+3. **Recusal.** An advisor may not shape, review, or approve any challenge or item where
+   their product or company is materially advantaged.
+4. **No placement, ever.** Advisors receive credit and credibility, never product
+   placement, logo positioning inside challenges, or preferential treatment of their tools.
+   If it functions as advertising, it is sponsorship and it needs a firewall.
+5. **Separation of powers.** Advisors inform research inputs; an independent examiner
+   function owns the final instrument. Keep the decision rights explicit and separate,
+   as the CNCF model does with technical control never following the money.
+6. **Say no publicly.** The ability to reject an advisor's suggestion, on the record, is
+   what makes the rest of it believable.
+
+### Why this is worth the discipline
+
+The advisory network compounds: better research produces a better instrument, which
+attracts better advisors, which improves the research. But it only compounds while the
+scores mean something. Neutrality is not a constraint on the flywheel — it is the bearing
+the flywheel spins on.
