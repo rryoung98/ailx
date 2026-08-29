@@ -15,7 +15,8 @@ definition of what an acceptable asset IS.
 Rules encoded here, once:
   * only CC0 / CC-BY / CC-BY-SA / Public domain files are ever accepted;
   * the API is called with a declared User-Agent and hard 429 backoff;
-  * assets are re-encoded to progressive JPEG, max edge 800px, <= 150 KB;
+  * assets are re-encoded to progressive JPEG, max edge 800px, <= 150 KB by
+    default; a caller may raise the cap and ask for a common target size;
   * the filename is the first 12 hex of sha256 of the ENCODED bytes, so the
     file name is a content address and two identical assets cannot be stored
     under two names.
@@ -84,7 +85,8 @@ def fetch_bytes(sess, url):
     raise RuntimeError(f"persistent 429 for {url}")
 
 
-def encode(raw, max_edge=MAX_EDGE, target=MAX_BYTES, crop=None):
+def encode(raw, max_edge=MAX_EDGE, target=MAX_BYTES, crop=None, aim=None,
+           quality_floor=50):
     """Re-encode to a budgeted progressive JPEG.
 
     ``crop`` is a (left, top, right, bottom) tuple of fractions to REMOVE from
@@ -92,6 +94,15 @@ def encode(raw, max_edge=MAX_EDGE, target=MAX_BYTES, crop=None):
     in a corner; leaving it in would make the item answerable from the badge
     rather than from the picture, which teaches nothing. Any crop is recorded
     in the item's provenance, so the derivative stays honestly attributable.
+
+    ``aim`` asks for a COMMON encoded size rather than merely a ceiling: the
+    quality that lands closest to ``aim`` without passing ``target`` is used,
+    searching upward as well as downward. Photographs carry sensor noise and
+    compress large; generations are smooth and compress small, so a corpus
+    encoded to a ceiling alone lets file size classify it without anybody
+    looking at a picture. Only a caller that mixes the two classes in one
+    corpus needs this; with ``aim=None`` the behaviour is the historical one
+    (start at 78, step down until the image fits).
     """
     im = Image.open(io.BytesIO(raw)).convert("RGB")
     if crop is not None:
@@ -99,12 +110,29 @@ def encode(raw, max_edge=MAX_EDGE, target=MAX_BYTES, crop=None):
         im = im.crop((int(im.width * left), int(im.height * top),
                       int(im.width * (1 - right)), int(im.height * (1 - bottom))))
     im.thumbnail((max_edge, max_edge))
-    quality = 78
-    while True:
+
+    def at(quality):
         buf = io.BytesIO()
         im.save(buf, "JPEG", quality=quality, optimize=True, progressive=True)
-        data = buf.getvalue()
-        if len(data) <= target or quality <= 50:
+        return buf.getvalue()
+
+    if aim is not None:
+        best = None
+        for quality in range(quality_floor, 98):
+            data = at(quality)
+            if len(data) > target:
+                break
+            if best is None or abs(len(data) - aim) < abs(len(best) - aim):
+                best = data
+        # Nothing fits the cap even at the floor: fall through to the ceiling
+        # walk below, which is allowed to end over budget and be refused.
+        if best is not None:
+            return best
+
+    quality = 78
+    while True:
+        data = at(quality)
+        if len(data) <= target or quality <= quality_floor:
             return data
         quality -= 6
 

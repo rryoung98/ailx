@@ -38,6 +38,32 @@ sys.path.insert(0, str(ROOT / "instruments" / "tools"))
 
 import commons_media as cm  # noqa: E402
 
+#: Why an asset was cropped, and the phrase that records it in the credit.
+#: Every crop is a change to somebody else's work, so it is stated, and the
+#: reason is curated rather than inferred: a watermark crop removes a badge
+#: that would answer the card, a framing crop removes an ASPECT-RATIO leak
+#: (see packages/report/test/practiceCorpus.test.ts — generators default to
+#: 1:1 and cameras do not, so uncropped ratio would classify the corpus for
+#: free). Both are recorded; neither is silent.
+CROP_REASONS = {
+    "watermark": ", corner cropped to remove a generator watermark",
+    "framing": ", cropped to reframe, so the aspect ratio carries no signal",
+}
+
+#: What the picture LOOKS like, when that is not photorealistic. A candidate
+#: can answer a painterly or rendered image from its style alone and never
+#: reach the artefact, so the corpus says which items are answerable that way
+#: instead of pretending the bank is uniform.
+OK_STYLES = {"painterly", "render"}
+
+#: Encoded-size discipline. Photographs compress LARGE (sensor noise) and
+#: generations compress SMALL (smooth gradients), so a corpus encoded to a
+#: ceiling alone can be classified by `ls -l` — a shortcut that never looks at
+#: a picture. Every asset is therefore encoded towards one common size, and
+#: the cap is the hard limit /practice can ship in the static export.
+ASSET_AIM_BYTES = 140_000
+ASSET_CAP_BYTES = 200_000
+
 CURATION = HERE.parent / "curation.json"
 CORPUS = HERE.parent / "corpus.json"
 ASSETS = ROOT / "apps" / "web" / "public" / "practice-media"
@@ -79,6 +105,11 @@ def main():
     for row in rows:
         if row["commons_title"] in banned_titles:
             sys.exit(f"REFUSED: {row['commons_title']} is already in the scored bank")
+        if row.get("crop") and row.get("crop_reason") not in CROP_REASONS:
+            sys.exit(f"REFUSED: {row['slug']} crops without a known crop_reason "
+                     f"({sorted(CROP_REASONS)})")
+        if row.get("style") and row["style"] not in OK_STYLES:
+            sys.exit(f"REFUSED: {row['slug']} has unknown style {row['style']!r}")
 
     previous = {}
     if CORPUS.is_file():
@@ -119,7 +150,9 @@ def main():
 
         crop = row.get("crop")
         data = cm.encode(cm.fetch_bytes(sess, info["thumburl"]),
-                         crop=tuple(crop) if crop else None)
+                         crop=tuple(crop) if crop else None,
+                         target=ASSET_CAP_BYTES, aim=ASSET_AIM_BYTES,
+                         quality_floor=64)
         digest = hashlib.sha256(data).hexdigest()
         if digest in banned_hashes:
             sys.exit(f"REFUSED: {title} encodes to the scored asset {banned_hashes[digest]}")
@@ -132,7 +165,8 @@ def main():
             "key": row["key"],
             "difficulty": row["difficulty"],
             "tell": row["tell"],
-            "material": {"kind": "image", "src": f"practice-media/{name}.jpg", "alt": row["alt"]},
+            "material": {"kind": "image", "src": f"practice-media/{name}.jpg", "alt": row["alt"],
+                         **({"style": row["style"]} if row.get("style") else {})},
             "credit": {
                 "commons_title": title,
                 "author": info["author"],
@@ -140,7 +174,7 @@ def main():
                 "source_url": info["source_url"],
                 "retrieved": retrieved,
                 "derivative": "re-encoded JPEG, max edge 800px"
-                              + (", corner cropped to remove a generator watermark" if crop else ""),
+                              + (CROP_REASONS[row["crop_reason"]] if crop else ""),
                 **({"generator_evidence": marker.group(0)} if marker else {}),
             },
         })
