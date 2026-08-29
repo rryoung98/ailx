@@ -225,3 +225,50 @@ describe("the moderation dashboard is legible staff tooling", () => {
     }
   });
 });
+
+describe("the credential surfaces are legible and never colour-only", () => {
+  /** Every rule the verification view and the diagnosis introduce. */
+  const CREDENTIAL_RULES = [
+    ".verify-card", ".verify-status", ".verify-valid", ".verify-revoked",
+    ".verify-unknown", ".verify-list", ".verify-limits", ".verify-facts",
+    ".diagnosis-summary", ".diagnosis-findings", ".diagnosis-actions",
+    ".diagnosis-action", ".diagnosis-watch", ".diagnosis-strength",
+  ];
+
+  it("defines each new class exactly once", () => {
+    for (const rule of CREDENTIAL_RULES) {
+      expect(css, rule).toContain(`${rule} `);
+      expect(css.split(`\n${rule} {`).length - 1, rule).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("takes every colour from a token, so contrast stays AA on all surfaces", () => {
+    for (const rule of CREDENTIAL_RULES) {
+      const block = css.slice(css.indexOf(`${rule} `));
+      const body = block.slice(block.indexOf("{"), block.indexOf("}") + 1);
+      expect(body.match(/#(?!ffffff\b)[0-9a-fA-F]{3,8}/), rule).toBeNull();
+    }
+  });
+
+  it("keeps the verdict colours above 4.5:1 on every surface they land on", () => {
+    for (const fg of ["--good", "--bad", "--warn"]) {
+      for (const surface of ["--bg", "--card", "--bg-raised"]) {
+        expect(contrast(token(fg), token(surface)), `${fg} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it("never signals the verdict with colour alone — the word says it too", () => {
+    // "Verified" / "Revoked" / "Cannot be confirmed" are TEXT in
+    // app/verify/[code]/page.api.tsx; the coloured border is decoration on
+    // top. Pinned here so a redesign cannot reduce the state to a hue.
+    const page = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "..", "app", "verify", "[code]", "page.api.tsx"),
+      "utf8",
+    );
+    for (const word of ["Verified", "Revoked", "Cannot be confirmed"]) {
+      expect(page, word).toContain(word);
+    }
+    expect(page).toContain("verify-status");
+  });
+});

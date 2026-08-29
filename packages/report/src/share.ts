@@ -25,7 +25,7 @@
  */
 import { TRACK_IDS, type Band, type SessionState, type TrackId, type TrackRawScores } from "@ailx/session";
 import { candidateComposite } from "./composite.js";
-import { trackInsights } from "./insights.js";
+import { trackInsights, type TrackProcessInsight } from "./insights.js";
 import { playerType, type Pole } from "./playerType.js";
 
 export const SHARE_PAYLOAD_VERSION = 2;
@@ -182,6 +182,29 @@ function dayOf(ms: number | undefined): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
+/**
+ * Narrow the full process insights to the SHAREABLE subset: what the
+ * candidate did with their own time, and nothing that describes the deck.
+ * `eventCount` and `verbCounts` are dropped here on purpose — a raw event
+ * count leaks how many items a track holds.
+ *
+ * One definition, so the share payload and any in-app surface that shows the
+ * same figures (the report's diagnosis) cannot disagree about what is safe.
+ */
+export function shareProcessFrom(insights: readonly TrackProcessInsight[]): ShareProcess {
+  return {
+    totalActiveSeconds: insights.reduce((a, i) => a + i.activeSeconds, 0),
+    tracks: insights.map((i) => ({
+      track: i.trackId,
+      activeSeconds: i.activeSeconds,
+      budgetSeconds: i.budgetSeconds,
+      timedOut: i.timedOut,
+      iterationRatio: i.iterationRatio,
+      verificationEvents: i.verificationEvents,
+    })),
+  };
+}
+
 /** Pure. Returns null when the run is not fully scored (nothing to share). */
 export function buildSharePayload(
   state: SessionState,
@@ -190,21 +213,7 @@ export function buildSharePayload(
   const summary = candidateComposite(state);
   if (summary === null) return null;
   const sections = options.sections ?? DEFAULT_SHARE_SECTIONS;
-  let process: ShareProcess | null = null;
-  if (sections.process) {
-    const insights = trackInsights(state);
-    process = {
-      totalActiveSeconds: insights.reduce((a, i) => a + i.activeSeconds, 0),
-      tracks: insights.map((i) => ({
-        track: i.trackId,
-        activeSeconds: i.activeSeconds,
-        budgetSeconds: i.budgetSeconds,
-        timedOut: i.timedOut,
-        iterationRatio: i.iterationRatio,
-        verificationEvents: i.verificationEvents,
-      })),
-    };
-  }
+  const process = sections.process ? shareProcessFrom(trackInsights(state)) : null;
   return sharePayloadFrom(summary.trackRaw, summary.band as Band, {
     instrument: `${state.config?.instrument ?? "ailx"} ${state.config?.version ?? "2026.1"}`,
     site: options.site ?? null,

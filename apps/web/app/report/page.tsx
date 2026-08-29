@@ -10,9 +10,11 @@ import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
 import { scoreTrack } from "../../lib/registry";
 import {
   calibrationBins, candidateComposite, narratives, participantExport, playerProfile,
-  playerType, researchExport, t2ResponsesFromArtifact, TRACK_META, trackInsights,
+  playerType, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
 } from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
+import { CredentialPanel } from "../../lib/CredentialPanel";
+import { Diagnosis } from "../../lib/Diagnosis";
 import { t2AnswerKeys } from "../../lib/instrument";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
 import { Reveal } from "../../lib/Reveal";
@@ -188,6 +190,8 @@ export default function ReportPage() {
   const summary = useMemo(() => (state ? candidateComposite(state) : null), [state]);
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
   const profile = useMemo(() => (state ? playerProfile(state, insights) : null), [state, insights]);
+  /** The shareable process subset — the SAME narrowing a share link uses. */
+  const sharedProcess = useMemo(() => shareProcessFrom(insights), [insights]);
   const calBins = useMemo(() => {
     if (!state) return [];
     // Full-bank key map for the attempt's locale: the demo deck rotates per
@@ -379,6 +383,10 @@ export default function ReportPage() {
             </Reveal>
           );
         })()}
+
+        <Diagnosis trackRaw={summary.trackRaw} process={sharedProcess} />
+
+        {!sample && state.attemptId ? <CredentialPanel attemptId={state.attemptId} /> : null}
 
         {!sample && state.attemptId ? <ShareLink attemptId={state.attemptId} /> : null}
 

@@ -1368,10 +1368,35 @@ main .card {
 .share-section.off { opacity: 0.55; }
 
 /* Share view: the opted-in sections (apps/web/app/s/[token]/page.api.tsx). */
-.share-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.9rem; margin: 0.9rem 0 0; padding: 0; }
-.share-facts div { display: grid; gap: 0.15rem; border-left: 2px solid var(--border-strong); padding-left: 0.7rem; }
-.share-facts dt { color: var(--muted); font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; }
-.share-facts dd { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
+/* Credential verification (apps/web/app/verify/[code]/page.api.tsx). SERIOUS
+   surface, docs/UX-DIRECTION.md: no motion, no ornament, one clear verdict.
+   The fact grid is the share view's, reused rather than restated. */
+.verify-card { border-left: 4px solid var(--border-strong); }
+.verify-status { font-size: 1.9rem; margin: 0 0 0.4rem; letter-spacing: -0.01em; }
+.verify-valid { border-left-color: var(--good); }
+.verify-valid .verify-status { color: var(--good); }
+.verify-revoked { border-left-color: var(--bad); }
+.verify-revoked .verify-status { color: var(--bad); }
+.verify-unknown { border-left-color: var(--warn); }
+.verify-unknown .verify-status { color: var(--warn); }
+.verify-list { margin: 0.6rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; color: var(--muted); }
+.verify-limits { color: var(--fg); }
+
+/* Diagnosis (apps/web/lib/Diagnosis.tsx) — warmer surface, same tokens. */
+.diagnosis-summary { font-family: var(--serif); font-size: 1.3rem; line-height: 1.45; margin: 0.2rem 0 0.9rem; }
+.diagnosis-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
+.diagnosis-findings li { display: grid; grid-template-columns: 2.4rem 1fr auto; gap: 0.7rem; align-items: baseline; }
+.diagnosis-findings .mono { color: var(--accent); }
+.diagnosis-watch .verdict { color: var(--warn); }
+.diagnosis-strength .verdict { color: var(--good); }
+.diagnosis-actions { display: grid; gap: 0.7rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.diagnosis-action { display: grid; gap: 0.25rem; border-left: 2px solid var(--border-strong); padding-left: 0.8rem; }
+.diagnosis-action.drill { border-left-color: var(--accent); }
+
+.share-facts, .verify-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.9rem; margin: 0.9rem 0 0; padding: 0; }
+.share-facts div, .verify-facts div { display: grid; gap: 0.15rem; border-left: 2px solid var(--border-strong); padding-left: 0.7rem; }
+.share-facts dt, .verify-facts dt { color: var(--muted); font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.share-facts dd, .verify-facts dd { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
 .share-quote {
   margin: 0; padding: 0.9rem 1.1rem; border-left: 3px solid var(--accent);
   background: var(--bg-raised); border-radius: 0 10px 10px 0; font-family: var(--serif);

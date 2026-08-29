@@ -49,6 +49,7 @@ const counted: boolean[] = [];
 
 vi.mock("../lib/server/api", () => ({
   withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) => fn({ db: {} }),
+  pageOrigin: async () => "https://ailx.example",
 }));
 vi.mock("@ailx/backend", async () => {
   const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");

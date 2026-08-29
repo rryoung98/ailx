@@ -185,6 +185,26 @@ export async function requestHeaderMap(): Promise<HeaderMap> {
   return map;
 }
 
+/**
+ * The absolute origin a browser actually reached us on, for a ROUTE. One
+ * definition, so a credential URL, a share preview and a served site can
+ * never disagree about what this deployment is called (see origin.ts for the
+ * precedence rules and why the Host header is not trusted by default).
+ */
+export async function requestOrigin(req: Request): Promise<string> {
+  const { resolvePublicOrigin } = await import("./origin");
+  return resolvePublicOrigin(process.env, new URL(req.url), req.headers);
+}
+
+/** The same origin, for a server COMPONENT, which has no `Request` to read. */
+export async function pageOrigin(): Promise<string> {
+  const { headers } = await import("next/headers");
+  const { resolvePublicOrigin } = await import("./origin");
+  const h = await headers();
+  const host = h.get("host") ?? "localhost";
+  return resolvePublicOrigin(process.env, new URL(`https://${host}`), h as unknown as Headers);
+}
+
 /** Next 15 dynamic-segment params for /api/attempts/[id]/... routes. */
 export type AttemptRouteContext = { params: Promise<{ id: string }> };
 

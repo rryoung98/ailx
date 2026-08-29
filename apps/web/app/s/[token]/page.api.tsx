@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { handleViewShare, shareCardPath, shareUrlPath } from "@ailx/backend";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
-import { withApiContext } from "../../../lib/server/api";
-import { resolvePublicOrigin } from "../../../lib/server/origin";
+import { pageOrigin, withApiContext } from "../../../lib/server/api";
 import { TrackRadar } from "../../../lib/TrackRadar";
 
 /**
@@ -45,13 +43,6 @@ async function readShare(token: string, count: boolean): Promise<SharedView | nu
   return result.status === 200 ? (result.body.share as SharedView) : null;
 }
 
-/** Absolute origin for og:image / og:url — configuration first, never the raw Host. */
-async function publicOrigin(): Promise<string> {
-  const h = await headers();
-  const host = h.get("host") ?? "localhost";
-  return resolvePublicOrigin(process.env, new URL(`https://${host}`), h);
-}
-
 export async function generateMetadata({ params }: ShareParams): Promise<Metadata> {
   const { token } = await params;
   const share = await readShare(token, false);
@@ -59,7 +50,7 @@ export async function generateMetadata({ params }: ShareParams): Promise<Metadat
     return { title: "AILX — link not found", robots: { index: false, follow: false } };
   }
   const p = share.payload;
-  const origin = await publicOrigin();
+  const origin = await pageOrigin();
   const title = `${p.playerType.code} · ${p.playerType.name} — AILX player type`;
   const description = `${p.playerType.tagline} Band: ${p.band}. Find your own type on AILX.`;
   const url = `${origin}${shareUrlPath(token)}`;

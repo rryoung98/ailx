@@ -56,7 +56,7 @@ describe("server-only files carry a server-only extension", () => {
     // The gallery, its reviewer queue, the world aggregates and one person's
     // progress all read the database; in the static export none of them may
     // exist at all.
-    for (const route of ["gallery", "world", "review", "progress"]) {
+    for (const route of ["gallery", "world", "review", "progress", "verify/[code]"]) {
       const pages = files.filter((f) => f.rel.startsWith(`${route}/page`));
       expect(pages.map((f) => f.rel), route).toEqual([`${route}/page.api.tsx`]);
     }
@@ -97,6 +97,22 @@ describe("server-only files carry a server-only extension", () => {
     expect(mod.length).toBeGreaterThanOrEqual(4);
     for (const f of mod) expect(f.rel, f.rel).toMatch(/\.api\.tsx?$/);
     expect(mod.map((f) => f.rel).sort()).toContain("review/[id]/page.api.tsx");
+  });
+
+  it("the credential surface is server-only by name, page and both routes", () => {
+    // /verify reads the store, and both credential routes reach the DB. In
+    // the static Pages export none of them may exist: a credential that
+    // cannot be verified live is worse than no credential.
+    const credential = files.filter(
+      (f) => f.rel.startsWith("verify/") || f.rel.includes("credential"),
+    );
+    expect(credential.length).toBeGreaterThanOrEqual(3);
+    for (const f of credential) expect(f.rel, f.rel).toMatch(/\.api\.tsx?$/);
+    expect(credential.map((f) => f.rel).sort()).toEqual([
+      "api/attempts/[id]/credential/route.api.ts",
+      "api/credentials/[code]/route.api.ts",
+      "verify/[code]/page.api.tsx",
+    ]);
   });
 
   it("the share view and its routes are all server-only by name", () => {
