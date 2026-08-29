@@ -23,7 +23,19 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 
 ## Server-mode environment (`apps/web`, API routes only)
 - `AILX_BACKEND=1` — compile the API routes (unset = static Pages export).
-- `AILX_AUTH` — auth adapter: `dev` (no keys) or `clerk`.
+- `AILX_AUTH` — auth adapter: `dev` (no keys) or `clerk`. **Required — there is
+  no default.** An unset/unknown value refuses to start instead of falling back
+  to `dev`: `DevAuthProvider` identity is asserted (`x-ailx-dev-user: <id>`),
+  never proven, so a forgotten variable would let anyone impersonate any
+  participant. Use `clerk` (with `CLERK_SECRET_KEY`) anywhere real participants
+  can reach.
+- `AILX_ALLOW_INSECURE_DEV_AUTH=1` — the ONLY way to run `AILX_AUTH=dev` under
+  `NODE_ENV=production` (the Playwright suite boots a production build against a
+  disposable database). Never set it on a deployment that holds real data.
+- Request bodies are capped before the handler runs: raw uploads at
+  `T1_LIMITS.maxTotalBytes` (the T1 snapshot cap — one number, not two), JSON at
+  1 MB, both rejected with 413 mid-stream. Callers are authenticated first, so
+  an anonymous client can never make the server buffer.
 - `DATABASE_URL` — Postgres for the append-only store.
 - `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root (default `<cwd>/.ailx-snapshots`).
 - `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`.

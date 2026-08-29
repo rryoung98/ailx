@@ -24,8 +24,10 @@ psql postgres://ailx:ailx@localhost:55432/ailx_e2e -f ../../db/schema.sql
 (local, disposable, not a credential). Override it — never commit another one.
 
 Playwright then runs `next build && next start` itself with `AILX_BACKEND=1`,
-`AILX_AUTH=dev`, an `AILX_PUBLIC_ORIGIN` equal to the origin it will actually
-browse, and a fresh `AILX_SNAPSHOT_DIR`. Testing the production build is what
+`AILX_AUTH=dev` (plus `AILX_ALLOW_INSECURE_DEV_AUTH=1`, because `next start`
+sets `NODE_ENV=production` and assert-only dev auth is refused there unless a
+throw-away deployment opts in), an `AILX_PUBLIC_ORIGIN` equal to the origin it
+will actually browse, and a fresh `AILX_SNAPSHOT_DIR`. Testing the production build is what
 makes the redirect and CSP behaviour reproducible.
 
 `next build` writes to `apps/web/.next`, so do not run `next dev` (or another

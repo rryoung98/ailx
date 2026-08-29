@@ -57,6 +57,11 @@ export default defineConfig({
             AILX_BACKEND: "1",
             NEXT_PUBLIC_BASE_PATH: "",
             AILX_AUTH: "dev",
+            // `next start` runs with NODE_ENV=production, where dev auth is
+            // refused by default (it is assert-only identity). This suite is
+            // a throw-away build over a throw-away database, so it opts in
+            // explicitly — nothing else may.
+            AILX_ALLOW_INSECURE_DEV_AUTH: "1",
             DATABASE_URL: databaseUrl,
             // The origin a browser really reaches: it is baked into the T1
             // sandbox CSP allowlist and the canonicalising 308, so a wrong
