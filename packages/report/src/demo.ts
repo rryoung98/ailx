@@ -13,8 +13,8 @@
 
 import type { JudgeAdapter, JudgeRequest, JudgeResponse } from "@ailx/core";
 import {
-  canonicalJson, rubricVersionOf, seededUniform, sha256Hex,
-  type TrackId,
+  canonicalJson, demoCohort, rubricVersionOf, seededUniform, sha256Hex,
+  type TrackId, type TrackRawScores,
 } from "@ailx/session";
 
 export const DEMO_MODEL_ID = "demo-judge@1";
@@ -60,3 +60,18 @@ export class DeterministicDemoJudge implements JudgeAdapter {
 
 export const DEMO_COHORT_SEED = "ailx-2026.1-demo-cohort";
 export const DEMO_COHORT_SIZE = 44; // + the candidate = n(45) of the pilot
+
+let cohort: readonly TrackRawScores[] | undefined;
+
+/**
+ * The demo cohort, built once per process. It is 2,112 sha256 digests (44
+ * peers x 4 tracks x 12 uniforms) of a pure function of two CONSTANTS, so
+ * rebuilding it per call bought nothing: `playerType()` did exactly that and
+ * cost ~8ms per classified run, which the world page pays once per
+ * participant. Caching keeps every result byte-identical — same seed, same
+ * size, same rows — and the array is frozen so no caller can drift it.
+ */
+export function demoCohortRows(): readonly TrackRawScores[] {
+  cohort ??= Object.freeze(demoCohort(DEMO_COHORT_SEED, DEMO_COHORT_SIZE).map((r) => Object.freeze(r)));
+  return cohort;
+}

@@ -3,8 +3,8 @@
  * psychometric: four axes, one per track, split at this demo cohort's
  * per-track median. The scored composite never reads this.
  */
-import { demoCohort, TRACK_IDS, type TrackRawScores } from "@ailx/session";
-import { DEMO_COHORT_SEED, DEMO_COHORT_SIZE } from "./demo.js";
+import { TRACK_IDS, type TrackRawScores } from "@ailx/session";
+import { demoCohortRows } from "./demo.js";
 
 export interface Pole {
   track: (typeof TRACK_IDS)[number];
@@ -58,7 +58,7 @@ const NAMES: Record<string, [string, string]> = {
 
 /** Per-track cohort medians (demo cohort, deterministic). */
 export function cohortMedians(): TrackRawScores {
-  const cohort = demoCohort(DEMO_COHORT_SEED, DEMO_COHORT_SIZE);
+  const cohort = demoCohortRows();
   const med = {} as TrackRawScores;
   for (const t of TRACK_IDS) {
     const v = cohort.map((r) => r[t]).sort((a, b) => a - b);

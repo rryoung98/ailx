@@ -4,10 +4,10 @@
  */
 
 import {
-  demoCohort, scoreCohort, TRACK_IDS,
+  scoreCohort, TRACK_IDS,
   type SessionState, type TrackRawScores,
 } from "@ailx/session";
-import { DEMO_COHORT_SEED, DEMO_COHORT_SIZE } from "./demo.js";
+import { demoCohortRows } from "./demo.js";
 import type { CompositeSummary } from "./exportTiers.js";
 
 export interface CandidateComposite extends CompositeSummary {
@@ -25,7 +25,7 @@ export function candidateComposite(state: SessionState): CandidateComposite | nu
     if (!s) return null;
     trackRaw[t] = s.scaled;
   }
-  const cohort = demoCohort(DEMO_COHORT_SEED, DEMO_COHORT_SIZE);
+  const cohort = demoCohortRows();
   const all = [...cohort, trackRaw];
   const r = scoreCohort(all);
   const i = all.length - 1;
