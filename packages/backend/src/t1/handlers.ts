@@ -103,6 +103,111 @@ export interface UploadSiteInput {
   clientTs: string | number;
 }
 
+/**
+ * Everything a site submission is, once the caller is known to own the
+ * attempt: validate the ZIP, record the row, THEN store the bytes.
+ *
+ * Shared by the direct POST above and the client-direct finalize path
+ * (./direct.ts), because bytes are bytes: whether they arrived in our
+ * request body or in a bucket the browser wrote to, the server is the
+ * only authority on what is accepted, and both paths must clear the
+ * same validator with the same ordering.
+ */
+export async function recordSiteSubmission(
+  ctx: T1ApiContext,
+  attemptId: string,
+  participantId: string,
+  input: UploadSiteInput,
+): Promise<ApiResult> {
+  if (!(input.zip instanceof Uint8Array) || input.zip.length === 0) {
+    return { status: 400, body: { error: { code: "bad_request", message: "request body must be the site ZIP bytes" } } };
+  }
+
+  let snapshot;
+  try {
+    snapshot = snapshotFromZip(input.zip);
+  } catch (err) {
+    if (err instanceof SnapshotError) return snapshotErrorResult(err);
+    throw err;
+  }
+
+  // One submission per attempt. This SELECT is a courtesy — it turns the
+  // common case into a clean 409 without burning a failed transaction —
+  // but the AUTHORITY is the partial unique index (see the catch below):
+  // a SELECT outside the write's transaction cannot serialize two uploads
+  // at different seqs.
+  const existing = await recordedSubmission(ctx.db, attemptId);
+  if (existing !== null && existing.digest !== snapshot.digest) return ALREADY_SUBMITTED;
+
+  // ORDER IS THE SECURITY PROPERTY: the RECORD comes first, the bytes
+  // second. Storing bytes first published servable content for uploads the
+  // append then REJECTED (finalized attempt, seq conflict, lost race) —
+  // arbitrary content at the exam origin with no row tying it to anyone.
+  // Now a rejected upload stores nothing at all, and the serve path only
+  // serves a digest some response row still points at (handleServeSite),
+  // so bytes are reachable only while they are attributable.
+  //
+  // The residue of this order is the harmless one: a crash between the
+  // commit and the put leaves a recorded digest that 404s until the client
+  // re-uploads the same bytes — which replays (200) and stores them.
+  let result: AppendResult;
+  try {
+    result = await appendResponse(ctx.db, attemptId, participantId, {
+      seq: input.seq,
+      clientTs: input.clientTs,
+      payload: {
+        kind: T1_SITE_RESPONSE_KIND,
+        digest: snapshot.digest,
+        fileCount: snapshot.fileCount,
+        totalBytes: snapshot.totalBytes,
+      },
+    });
+  } catch (err) {
+    if (!isOneSitePerAttemptViolation(err)) throw err;
+    // The DB refused a second site row. Same bytes at a different seq is
+    // still an idempotent replay (the recorded submission IS this one);
+    // different bytes is the 409 the pre-check would have given.
+    const winner = await recordedSubmission(ctx.db, attemptId);
+    if (winner === null || winner.digest !== snapshot.digest) return ALREADY_SUBMITTED;
+    result = { id: winner.id, created: false };
+  }
+  await ctx.snapshots.put(snapshot);
+  return {
+    status: result.created ? 201 : 200,
+    body: {
+      submission: {
+        responseId: result.id,
+        created: result.created,
+        digest: snapshot.digest,
+        fileCount: snapshot.fileCount,
+        totalBytes: snapshot.totalBytes,
+        path: siteUrlPath(snapshot.digest),
+      },
+    },
+  };
+}
+
+/**
+ * Ownership gate shared by every attempt-scoped T1 handler: 404 for
+ * someone else's attempt (no existence leak), and checked BEFORE any
+ * work — no stranger gets to spend our CPU on a 25 MB archive, or to
+ * learn whether an attempt id exists.
+ */
+export async function withOwnedAttempt(
+  ctx: T1ApiContext,
+  headers: HeaderMap,
+  attemptId: string,
+  fn: (participantId: string) => Promise<ApiResult>,
+): Promise<ApiResult> {
+  return withParticipant(ctx, headers, async (participantId) => {
+    const attempt = await getAttempt(ctx.db, attemptId, participantId);
+    if (attempt === null) {
+      return { status: 404, body: { error: { code: "not_found", message: "attempt not found" } } };
+    }
+    return fn(participantId);
+  });
+}
+
 /** POST /api/attempts/:id/site — body: ZIP bytes; ?seq= & x-ailx-client-ts. */
 export async function handleUploadSite(
   ctx: T1ApiContext,
@@ -110,81 +215,9 @@ export async function handleUploadSite(
   attemptId: string,
   input: UploadSiteInput,
 ): Promise<ApiResult> {
-  return withParticipant(ctx, headers, async (participantId) => {
-    if (!(input.zip instanceof Uint8Array) || input.zip.length === 0) {
-      return { status: 400, body: { error: { code: "bad_request", message: "request body must be the site ZIP bytes" } } };
-    }
-
-    // Ownership first (404 for other people's attempts — no existence leak),
-    // before spending CPU on a stranger's 25 MB archive.
-    const attempt = await getAttempt(ctx.db, attemptId, participantId);
-    if (attempt === null) {
-      return { status: 404, body: { error: { code: "not_found", message: "attempt not found" } } };
-    }
-
-    let snapshot;
-    try {
-      snapshot = snapshotFromZip(input.zip);
-    } catch (err) {
-      if (err instanceof SnapshotError) return snapshotErrorResult(err);
-      throw err;
-    }
-
-    // One submission per attempt. This SELECT is a courtesy — it turns the
-    // common case into a clean 409 without burning a failed transaction —
-    // but the AUTHORITY is the partial unique index (see the catch below):
-    // a SELECT outside the write's transaction cannot serialize two uploads
-    // at different seqs.
-    const existing = await recordedSubmission(ctx.db, attemptId);
-    if (existing !== null && existing.digest !== snapshot.digest) return ALREADY_SUBMITTED;
-
-    // ORDER IS THE SECURITY PROPERTY: the RECORD comes first, the bytes
-    // second. Storing bytes first published servable content for uploads the
-    // append then REJECTED (finalized attempt, seq conflict, lost race) —
-    // arbitrary content at the exam origin with no row tying it to anyone.
-    // Now a rejected upload stores nothing at all, and the serve path only
-    // serves a digest some response row still points at (handleServeSite),
-    // so bytes are reachable only while they are attributable.
-    //
-    // The residue of this order is the harmless one: a crash between the
-    // commit and the put leaves a recorded digest that 404s until the client
-    // re-uploads the same bytes — which replays (200) and stores them.
-    let result: AppendResult;
-    try {
-      result = await appendResponse(ctx.db, attemptId, participantId, {
-        seq: input.seq,
-        clientTs: input.clientTs,
-        payload: {
-          kind: T1_SITE_RESPONSE_KIND,
-          digest: snapshot.digest,
-          fileCount: snapshot.fileCount,
-          totalBytes: snapshot.totalBytes,
-        },
-      });
-    } catch (err) {
-      if (!isOneSitePerAttemptViolation(err)) throw err;
-      // The DB refused a second site row. Same bytes at a different seq is
-      // still an idempotent replay (the recorded submission IS this one);
-      // different bytes is the 409 the pre-check would have given.
-      const winner = await recordedSubmission(ctx.db, attemptId);
-      if (winner === null || winner.digest !== snapshot.digest) return ALREADY_SUBMITTED;
-      result = { id: winner.id, created: false };
-    }
-    await ctx.snapshots.put(snapshot);
-    return {
-      status: result.created ? 201 : 200,
-      body: {
-        submission: {
-          responseId: result.id,
-          created: result.created,
-          digest: snapshot.digest,
-          fileCount: snapshot.fileCount,
-          totalBytes: snapshot.totalBytes,
-          path: siteUrlPath(snapshot.digest),
-        },
-      },
-    };
-  });
+  return withOwnedAttempt(ctx, headers, attemptId, (participantId) =>
+    recordSiteSubmission(ctx, attemptId, participantId, input),
+  );
 }
 
 /**

@@ -148,6 +148,51 @@ export interface BlobClient {
   get(key: string): Promise<Uint8Array | null>;
 }
 
+/** One rule for a configured prefix + relative key, so no caller invents another. */
+export function prefixedKey(prefix: string, key: string): string {
+  if (prefix === "") return key;
+  return prefix.endsWith("/") ? prefix + key : `${prefix}/${key}`;
+}
+
+/** What a staged, client-uploaded object turned out to be. */
+export type StagedUploadRead =
+  | { kind: "bytes"; data: Uint8Array }
+  /** Never uploaded, already consumed, or expired. */
+  | { kind: "missing" }
+  /** Larger than the caller's cap — the bytes are NOT buffered. */
+  | { kind: "too_large"; bytes: number };
+
+export interface StagedUploadGrant {
+  /** Credential the browser presents to the object store, scoped to ONE key. */
+  token: string;
+  /** When the grant stops being usable (ms since epoch). */
+  expiresAt: number;
+}
+
+/**
+ * The client-direct upload port — the staging half of the bucket, which is
+ * NOT content-addressed and never served (see ./direct.ts for the threat
+ * model). Three operations, deliberately narrow:
+ *
+ *  - `authorize` mints a credential the browser may use for exactly ONE key,
+ *    one content type and at most `maxBytes`. Everything a client could
+ *    otherwise choose (where to write, how much) is decided here, server-side.
+ *  - `read` hands the server the uploaded bytes so they face the SAME
+ *    validator as a direct POST, and refuses oversize objects without
+ *    buffering them.
+ *  - `discard` removes staged bytes once they are validated (or rejected),
+ *    so a staging key is a scratch space, never a hosting one.
+ */
+export interface SnapshotUploadStaging {
+  authorize(input: {
+    key: string;
+    maxBytes: number;
+    contentType: string;
+  }): Promise<StagedUploadGrant>;
+  read(key: string, maxBytes: number): Promise<StagedUploadRead>;
+  discard(key: string): Promise<void>;
+}
+
 /**
  * Bucket implementation — serverless hosting, where the filesystem is
  * per-invocation and a snapshot written by one request must be readable by
@@ -155,23 +200,20 @@ export interface BlobClient {
  * `put` is atomic per object, so "manifest last" is still the commit marker.
  */
 export class BlobSnapshotStore extends ObjectSnapshotStore {
-  private readonly prefix: string;
-
-  /** `prefix` namespaces one bucket across deployments (e.g. "staging/"). */
+  /** `prefix` namespaces one bucket across deployments (e.g. "staging"). */
   constructor(
     private readonly client: BlobClient,
-    prefix = "",
+    private readonly prefix = "",
   ) {
     super();
-    this.prefix = prefix === "" || prefix.endsWith("/") ? prefix : `${prefix}/`;
   }
 
   protected putObject(key: string, data: Uint8Array): Promise<void> {
-    return this.client.put(this.prefix + key, data);
+    return this.client.put(prefixedKey(this.prefix, key), data);
   }
 
   protected getObject(key: string): Promise<Uint8Array | null> {
-    return this.client.get(this.prefix + key);
+    return this.client.get(prefixedKey(this.prefix, key));
   }
 }
 
@@ -193,5 +235,67 @@ export class MemorySnapshotStore implements SnapshotStore {
 
   async has(digest: string): Promise<boolean> {
     return this.snapshots.has(digest);
+  }
+}
+
+/**
+ * In-memory staging — tests, and a faithful stand-in for the platform's
+ * own enforcement: `upload` accepts bytes only when the presented token
+ * is the one minted for THAT key, the content type matches, and the
+ * object fits the granted cap. A test that "uploads" through it is
+ * therefore testing what a real client could actually do.
+ */
+export class MemoryUploadStaging implements SnapshotUploadStaging {
+  private readonly grants = new Map<string, { key: string; maxBytes: number; contentType: string; expiresAt: number }>();
+  private readonly objects = new Map<string, Uint8Array>();
+  private issued = 0;
+
+  /** Clock seam, so an expiry test needs no timers. */
+  now: () => number = () => Date.now();
+  /** How long a grant stays usable, matching the real adapter. */
+  ttlMs = 15 * 60 * 1000;
+
+  async authorize(input: { key: string; maxBytes: number; contentType: string }): Promise<StagedUploadGrant> {
+    const token = `staging-token-${++this.issued}`;
+    const expiresAt = this.now() + this.ttlMs;
+    this.grants.set(token, { ...input, expiresAt });
+    return { token, expiresAt };
+  }
+
+  /** Test-only: the client PUT, refused exactly as the store would. */
+  upload(
+    token: string,
+    key: string,
+    data: Uint8Array,
+    contentType = "application/zip",
+  ): "ok" | "forbidden" | "too_large" | "expired" {
+    const grant = this.grants.get(token);
+    if (grant === undefined || grant.key !== key || grant.contentType !== contentType) return "forbidden";
+    if (this.now() >= grant.expiresAt) return "expired";
+    if (data.length > grant.maxBytes) return "too_large";
+    this.objects.set(key, data);
+    return "ok";
+  }
+
+  /** Test-only: bytes that reached the key WITHOUT a grant — i.e. what
+   * a store that failed to enforce its own cap would leave us. */
+  plant(key: string, data: Uint8Array): void {
+    this.objects.set(key, data);
+  }
+
+  async read(key: string, maxBytes: number): Promise<StagedUploadRead> {
+    const data = this.objects.get(key);
+    if (data === undefined) return { kind: "missing" };
+    if (data.length > maxBytes) return { kind: "too_large", bytes: data.length };
+    return { kind: "bytes", data };
+  }
+
+  async discard(key: string): Promise<void> {
+    this.objects.delete(key);
+  }
+
+  /** Test-only: what is still staged (nothing should outlive a finalize). */
+  get stagedKeys(): string[] {
+    return [...this.objects.keys()];
   }
 }
