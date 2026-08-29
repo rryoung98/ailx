@@ -115,7 +115,44 @@ authentication at all. Never set that flag on a deployment holding real data.
   surviving a request: no in-memory counters, caches with correctness meaning,
   or work started after the response is returned.
 
-## 6. Deploy
+## 6. The build fix this deployment needs (`outputFileTracingExcludes`)
+
+Without it, `vercel build` succeeds and then dies collecting output:
+
+```
+Error: ENOENT: no such file or directory, lstat
+  '/vercel/path0/apps/web/.next/server/app/api/attempts/[id]/credential/route_client-reference-manifest.js'
+```
+
+Nothing is wrong with that route — it is simply the first API entry in
+`app-path-routes-manifest.json`. The cause is our `route.api.ts` convention
+meeting a gap in Next:
+
+1. `next-trace-entrypoints-plugin` writes `<entry>_client-reference-manifest.js`
+   into the trace of EVERY app entry (`.next/server/<entry>.js.nft.json`).
+2. `flight-manifest-plugin` only EMITS that manifest when the client entry name
+   ends in `/page`, `/page.<suffix>`, or exactly `/route`.
+3. The client entry's bundle path strips only the last extension, so
+   `route.api.ts` becomes `.../route.api`. Pages are safe — the page rule
+   allows the extra `.api`, which is why `page.api.tsx` builds — but the route
+   rule does not, so no manifest is written for any API route.
+
+The trace therefore promises 17 files that do not exist. `next build` and
+`next start` do not care (the loader reads that manifest with "missing is ok"),
+but Vercel lstats every traced file, so the deploy fails.
+
+`next.config.mjs` prunes the dangling entry in server mode only:
+
+```js
+outputFileTracingExcludes: { "/api/**": ["**/*_client-reference-manifest.js"] }
+```
+
+A route handler needs that manifest only for `use cache`, which no AILX route
+uses. Do not "fix" this by renaming the handlers to `route.ts`: that name is
+what would put the whole API into the GitHub Pages export. Delete the exclude
+when Next matches `/route(\.[^/]+)?$/` the way it already matches `/page`.
+
+## 7. Deploy
 
 ```bash
 pnpm test && pnpm -r build             # both must pass

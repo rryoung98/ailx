@@ -18,9 +18,39 @@
  */
 const serverMode = process.env.AILX_BACKEND === "1";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? (serverMode ? "" : "/ailx");
+
+/**
+ * Why the server build has to prune one traced file.
+ *
+ * Next traces every app entry into `.next/server/<entry>.js.nft.json`, and for
+ * app entries it ALWAYS lists `<entry>_client-reference-manifest.js`
+ * (next-trace-entrypoints-plugin). The webpack side only emits that manifest
+ * when the client entry name ends in `/page` (with an optional extra dot
+ * suffix) or exactly `/route` (flight-manifest-plugin).
+ *
+ * Our route handlers are `route.api.ts`. The client-entry bundle path strips
+ * only the LAST extension, so the entry is named `.../route.api`: the page
+ * rule tolerates the extra `.api` (which is why `page.api.tsx` pages are
+ * fine), the route rule does not. Result: the trace promises a file Next never
+ * writes. `next build` does not care — the loader reads that manifest with
+ * "missing is ok" — but Vercel's builder lstats every traced file and the
+ * deploy dies with ENOENT on the first API route.
+ *
+ * So drop the dangling reference instead of faking the file. Nothing is lost:
+ * a route handler only needs a client reference manifest for `use cache`,
+ * which no AILX route uses, and the runtime already treats it as optional.
+ * Delete this the day Next matches `/route(\.[^/]+)?$/` like it does `/page`.
+ */
+const dropMissingRouteManifests = {
+  "/api/**": ["**/*_client-reference-manifest.js"],
+};
+
 export default {
   ...(serverMode
-    ? { pageExtensions: ["api.ts", "api.tsx", "js", "jsx", "ts", "tsx"] }
+    ? {
+        pageExtensions: ["api.ts", "api.tsx", "js", "jsx", "ts", "tsx"],
+        outputFileTracingExcludes: dropMissingRouteManifests,
+      }
     : { output: "export" }),
   basePath,
   images: { unoptimized: true },

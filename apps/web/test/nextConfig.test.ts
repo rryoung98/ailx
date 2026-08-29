@@ -48,6 +48,22 @@ describe("next.config.mjs", () => {
     expect((cfg.env as Record<string, string>).NEXT_PUBLIC_AILX_BACKEND).toBe("1");
   });
 
+  // Next traces a `<entry>_client-reference-manifest.js` for every app entry
+  // but only EMITS one for `/route` (no extra dot suffix), so `route.api.ts`
+  // handlers leave a dangling trace entry that makes Vercel's builder fail
+  // with ENOENT. The server build must prune it; the export build has no
+  // route handlers to prune.
+  it("prunes the client reference manifest Next never writes for route.api.ts", async () => {
+    const cfg = await loadConfig({ AILX_BACKEND: "1" });
+    const excludes = cfg.outputFileTracingExcludes as Record<string, string[]>;
+    expect(Object.keys(excludes)).toEqual(["/api/**"]);
+    expect(excludes["/api/**"]).toEqual(["**/*_client-reference-manifest.js"]);
+  });
+
+  it("does not touch file tracing in the static export", async () => {
+    expect((await loadConfig({})).outputFileTracingExcludes).toBeUndefined();
+  });
+
   it("any other AILX_BACKEND value stays static (opt-in is exact)", async () => {
     const cfg = await loadConfig({ AILX_BACKEND: "true" });
     expect(cfg.output).toBe("export");
