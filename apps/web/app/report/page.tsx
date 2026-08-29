@@ -17,6 +17,8 @@ import { t2AnswerKeys } from "../../lib/instrument";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
+import { ShareLink } from "../../lib/ShareLink";
+import { TrackRadar } from "../../lib/TrackRadar";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 
@@ -121,46 +123,6 @@ function useCountUp(target: number, ms = 1400): number {
     return () => cancelAnimationFrame(raf);
   }, [target, ms]);
   return v;
-}
-
-function Radar({ values }: { values: Record<(typeof TRACK_IDS)[number], number> }) {
-  const C = 110, R = 82;
-  const pts = TRACK_IDS.map((t, i) => {
-    const a = (Math.PI * 2 * i) / 4 - Math.PI / 2;
-    const r = (values[t] / 100) * R;
-    return [C + r * Math.cos(a), C + r * Math.sin(a)];
-  });
-  const ring = (f: number) =>
-    TRACK_IDS.map((_, i) => {
-      const a = (Math.PI * 2 * i) / 4 - Math.PI / 2;
-      return `${C + R * f * Math.cos(a)},${C + R * f * Math.sin(a)}`;
-    }).join(" ");
-  return (
-    <svg viewBox="0 0 220 220" style={{ width: "100%", maxWidth: 260 }} role="img" aria-label="Track score radar">
-      {[0.25, 0.5, 0.75, 1].map((f) => (
-        <polygon key={f} points={ring(f)} fill="none" stroke="var(--border)" strokeWidth="1" />
-      ))}
-      {TRACK_IDS.map((t, i) => {
-        const a = (Math.PI * 2 * i) / 4 - Math.PI / 2;
-        return (
-          <g key={t}>
-            <line x1={C} y1={C} x2={C + R * Math.cos(a)} y2={C + R * Math.sin(a)} stroke="var(--border)" strokeWidth="1" />
-            <text
-              x={C + (R + 16) * Math.cos(a)} y={C + (R + 16) * Math.sin(a) + 4}
-              textAnchor="middle" fill="var(--muted)" fontSize="11" fontFamily="var(--mono)"
-            >
-              {t.toUpperCase()}
-            </text>
-          </g>
-        );
-      })}
-      <polygon
-        points={pts.map((p) => p.join(",")).join(" ")}
-        fill="var(--accent)" fillOpacity="0.25" stroke="var(--accent)" strokeWidth="2"
-      />
-      {pts.map((p, i) => <circle key={i} cx={p[0]} cy={p[1]} r="3.5" fill="var(--accent)" />)}
-    </svg>
-  );
 }
 
 function DistStrip({ cohort, mine }: { cohort: number[]; mine: number }) {
@@ -307,7 +269,7 @@ export default function ReportPage() {
                 <div aria-hidden="true" className="reveal-band" style={{ opacity: 0.15 }}>····</div>
               )}
             </div>
-            <Radar values={summary.trackRaw} />
+            <TrackRadar values={summary.trackRaw} />
           </div>
           <DistStrip cohort={summary.cohortComposites} mine={summary.composite} />
           <div className="share-track-bars" data-testid="share-track-bars">
@@ -417,6 +379,8 @@ export default function ReportPage() {
             </Reveal>
           );
         })()}
+
+        {!sample && state.attemptId ? <ShareLink attemptId={state.attemptId} /> : null}
 
         <h2 style={{ marginTop: 0 }}>Track breakdown</h2>
         {TRACK_IDS.map((t) => {
