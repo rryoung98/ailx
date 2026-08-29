@@ -19,7 +19,7 @@ import {
 import { trackConfig } from "../../lib/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
 // stays in the frozen data contract (always "en" at attempt start).
-import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
+import { TRACK_LIST, TRACK_META } from "@ailx/report";
 import { Annotation } from "../../lib/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
 import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";

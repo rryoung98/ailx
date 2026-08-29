@@ -7,8 +7,9 @@ import { describe, expect, it } from "vitest";
 import { append, project, type SequencedEntry, type TrackId } from "@ailx/session";
 import { buildSampleAttemptLog } from "../lib/sampleAttempt";
 import { scoreTrack } from "../lib/registry";
-import { trackInsights } from "../lib/insights";
-import { ARCHETYPES, playerProfile } from "../lib/personality";
+import {
+  trackInsights, ARCHETYPES, playerProfile,
+} from "@ailx/report";
 
 function scoredLog(): SequencedEntry[] {
   let log = buildSampleAttemptLog();

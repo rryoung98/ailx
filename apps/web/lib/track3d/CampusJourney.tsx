@@ -15,7 +15,7 @@
  * DOM order T1→T4.
  */
 import Link from "next/link";
-import { TRACK_LIST } from "../tracks";
+import { TRACK_LIST } from "@ailx/report";
 import { TrackScene } from "./TrackScene";
 import { supportLine } from "./TrackBands";
 import { assetUrl } from "../mode";

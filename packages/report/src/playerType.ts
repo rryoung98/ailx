@@ -4,7 +4,7 @@
  * per-track median. The scored composite never reads this.
  */
 import { demoCohort, TRACK_IDS, type TrackRawScores } from "@ailx/session";
-import { DEMO_COHORT_SEED, DEMO_COHORT_SIZE } from "./demo";
+import { DEMO_COHORT_SEED, DEMO_COHORT_SIZE } from "./demo.js";
 
 export interface Pole {
   track: (typeof TRACK_IDS)[number];

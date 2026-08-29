@@ -8,7 +8,7 @@
  * single link to /exam.
  */
 import Link from "next/link";
-import { TRACK_LIST } from "../tracks";
+import { TRACK_LIST } from "@ailx/report";
 import { TrackScene } from "./TrackScene";
 import { Reveal } from "../Reveal";
 

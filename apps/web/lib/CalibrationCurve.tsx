@@ -9,7 +9,7 @@
  */
 
 import * as React from "react";
-import type { CalibrationBin } from "./calibration";
+import type { CalibrationBin } from "@ailx/report";
 
 const W = 340;
 const H = 240;

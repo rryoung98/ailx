@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DeterministicDemoJudge, DEMO_MODEL_ID, demoRubricVersion,
-} from "../lib/demo";
+} from "../src/demo.js";
 
 describe("DeterministicDemoJudge (JudgeAdapter demo implementation)", () => {
   it("returns identical judgments for identical requests, labelled demo", async () => {

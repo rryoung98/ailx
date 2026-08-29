@@ -17,8 +17,8 @@ import type {
   JudgmentRecord, SequencedEntry, SessionState, TrackId,
 } from "@ailx/session";
 import { TRACK_IDS, sha256Hex } from "@ailx/session";
-import { trackInsights } from "./insights";
-import { TRACK_META } from "./tracks";
+import { trackInsights } from "./insights.js";
+import { TRACK_META } from "./tracks.js";
 
 export interface CompositeSummary {
   composite: number;

@@ -8,7 +8,7 @@ import {
   snapshotTrack, t2ExposureSeconds, t2Items, trackConfig,
 } from "../lib/instrument";
 import { canonicalJson, sha256Hex } from "@ailx/session";
-import { judgeT1, judgeT3, judgeT4 } from "../lib/judging";
+import { judgeT1, judgeT3, judgeT4 } from "@ailx/report";
 import {
   checkpointToArtifact, isValidArtifact, scoreTrack, scoreTrackArtifact,
 } from "../lib/registry";

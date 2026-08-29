@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { project } from "@ailx/session";
-import { narratives, trackInsights } from "../lib/insights";
+import { narratives, trackInsights } from "@ailx/report";
 import { buildSampleAttemptLog } from "../lib/sampleAttempt";
 
 describe("event-derived process insights", () => {

@@ -14,7 +14,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { append, project, saveAttempt, clearAttempt, type SequencedEntry, type TrackId } from "@ailx/session";
 import { buildSampleAttemptLog } from "../lib/sampleAttempt";
 import { scoreTrack } from "../lib/registry";
-import { calibrationBins, t2ResponsesFromArtifact } from "../lib/calibration";
+import { calibrationBins, t2ResponsesFromArtifact } from "@ailx/report";
 import { t2Items } from "../lib/instrument";
 import ReportPage from "../app/report/page";
 

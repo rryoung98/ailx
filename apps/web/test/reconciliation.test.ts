@@ -20,8 +20,9 @@ import { t1Plugin } from "@ailx/track-t1";
 import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
 import { plugin as t3Plugin, validateT3Config } from "@ailx/track-t3";
 import { t4Plugin } from "@ailx/track-t4";
-import { candidateComposite } from "../lib/composite";
-import { researchExport } from "../lib/exportTiers";
+import {
+  candidateComposite, researchExport,
+} from "@ailx/report";
 import { trackConfig } from "../lib/instrument";
 import { scoreTrack, type TrackScoringRecord } from "../lib/registry";
 import { buildSampleAttemptLog } from "../lib/sampleAttempt";

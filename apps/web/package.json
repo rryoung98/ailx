@@ -13,6 +13,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@ailx/core": "workspace:*",
+    "@ailx/report": "workspace:*",
     "@ailx/session": "workspace:*",
     "@ailx/track-t1": "workspace:*",
     "@ailx/track-t2": "workspace:*",

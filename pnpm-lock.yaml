@@ -16,6 +16,9 @@ importers:
       '@ailx/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@ailx/report':
+        specifier: workspace:*
+        version: link:../../packages/report
       '@ailx/session':
         specifier: workspace:*
         version: link:../../packages/session
@@ -117,6 +120,25 @@ importers:
         version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)
 
   packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)
+
+  packages/report:
+    dependencies:
+      '@ailx/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ailx/session':
+        specifier: workspace:*
+        version: link:../session
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

@@ -8,16 +8,13 @@ import {
 } from "@ailx/session";
 import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
 import { scoreTrack } from "../../lib/registry";
-import { calibrationBins, t2ResponsesFromArtifact } from "../../lib/calibration";
+import {
+  calibrationBins, candidateComposite, narratives, participantExport, playerProfile,
+  playerType, researchExport, t2ResponsesFromArtifact, TRACK_META, trackInsights,
+} from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
-import { candidateComposite } from "../../lib/composite";
-import { participantExport, researchExport } from "../../lib/exportTiers";
-import { playerType } from "../../lib/playerType";
-import { narratives, trackInsights } from "../../lib/insights";
-import { playerProfile } from "../../lib/personality";
 import { t2AnswerKeys } from "../../lib/instrument";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
-import { TRACK_META } from "../../lib/tracks";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AXES, cohortMedians, playerType } from "../lib/playerType";
+import { AXES, cohortMedians, playerType } from "../src/playerType.js";
 
 describe("player type (MBTI-style lens)", () => {
   it("all 16 codes resolve to distinct named types", () => {

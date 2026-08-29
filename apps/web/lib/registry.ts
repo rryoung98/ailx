@@ -30,7 +30,7 @@ import t3Pkg from "@ailx/track-t3/package.json";
 import t4Pkg from "@ailx/track-t4/package.json";
 import { PlaceholderRunner } from "./PlaceholderRunner";
 import { snapshotRubricVersion, trackConfig } from "./instrument";
-import { judgeT1, judgeT3, judgeT4 } from "./judging";
+import { judgeT1, judgeT3, judgeT4 } from "@ailx/report";
 
 export interface TrackModule {
   Runner: ComponentType<TrackUIProps>;

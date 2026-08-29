@@ -10,7 +10,7 @@
 import { useState } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import type { TrackId } from "@ailx/session";
-import { TRACK_META } from "./tracks";
+import { TRACK_META } from "@ailx/report";
 
 interface PlaceholderConfig {
   trackId?: TrackId;

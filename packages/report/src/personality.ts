@@ -7,7 +7,7 @@
  */
 
 import type { SessionState } from "@ailx/session";
-import type { TrackProcessInsight } from "./insights";
+import type { TrackProcessInsight } from "./insights.js";
 
 export interface ProfileAxis {
   key: "eye" | "calibration" | "process" | "making";

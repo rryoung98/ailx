@@ -5,7 +5,7 @@
  * (mirror of codex F7's missing-response rule) and nothing is imputed.
  */
 import { describe, expect, it } from "vitest";
-import { calibrationBins, t2ResponsesFromArtifact } from "../lib/calibration";
+import { calibrationBins, t2ResponsesFromArtifact } from "../src/calibration.js";
 
 const KEYS = { a: 0, b: 1, c: 0 };
 

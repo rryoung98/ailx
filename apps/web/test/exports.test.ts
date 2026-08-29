@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { append, project, TRACK_IDS } from "@ailx/session";
-import { candidateComposite } from "../lib/composite";
-import { participantExport, researchExport } from "../lib/exportTiers";
+import {
+  candidateComposite, participantExport, researchExport,
+} from "@ailx/report";
 import { scoreTrack } from "../lib/registry";
 import { buildSampleAttemptLog } from "../lib/sampleAttempt";
 

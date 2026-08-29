@@ -7,7 +7,7 @@ import { Teaser } from "../lib/Teaser";
 import { CampusJourney } from "../lib/track3d/CampusJourney";
 import { TrackBands } from "../lib/track3d/TrackBands";
 import { assetUrl } from "../lib/mode";
-import { TRACK_LIST } from "../lib/tracks";
+import { TRACK_LIST } from "@ailx/report";
 
 /**
  * Decorative paper artifacts drifting at different scroll rates behind the

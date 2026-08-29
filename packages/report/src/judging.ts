@@ -9,8 +9,7 @@
  * empty checkpoint therefore scores a legitimate zero, never seeded
  * pseudo-points (F1).
  */
-import type { Judgment } from "@ailx/core";
-import { sha256Hex } from "@ailx/track-t1";
+import { sha256Hex, type Judgment } from "@ailx/core";
 
 function seeded01(seed: string): number {
   return parseInt(sha256Hex(seed).slice(0, 8), 16) / 0xffffffff;
