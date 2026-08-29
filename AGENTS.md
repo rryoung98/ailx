@@ -16,6 +16,7 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 
 ## Commands
 - `pnpm install` · `pnpm -r test` · `pnpm -r build` (both must pass before any commit)
+- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm -r test`: it boots its own server build and needs a disposable Postgres. See `apps/web/e2e/README.md`.
 
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
