@@ -6,6 +6,7 @@
  * app. No module in this package may touch `fetch`, `Date.now`, `Math.random`,
  * `window`, `localStorage` or `process.env`; impure capability is injected.
  */
+export * from "./aggregates.js";
 export * from "./calibration.js";
 export * from "./composite.js";
 export * from "./demo.js";
