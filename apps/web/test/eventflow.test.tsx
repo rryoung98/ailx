@@ -57,6 +57,18 @@ function clickByText(container: HTMLElement, text: string) {
   act(() => btn.click());
 }
 
+/** Confidence is scored, so it is never assumed: the slider must be moved
+ *  before "Lock in" is enabled. */
+function setConfidence(container: HTMLElement, value: number) {
+  const slider = container.querySelector('input[type="range"]') as HTMLInputElement | null;
+  if (!slider) throw new Error("confidence slider not found");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+  act(() => {
+    setter.call(slider, String(value));
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
 describe("runner → session log event flow (audit: zero silent drops)", () => {
   let container: HTMLElement;
   let root: Root;
@@ -115,6 +127,7 @@ describe("runner → session log event flow (audit: zero silent drops)", () => {
     // Item 1 (timed): wait exactly 3 s from ITEM RENDER before answering.
     act(() => { vi.advanceTimersByTime(3000); });
     clickByText(container, "AI-generated / hostile");
+    setConfidence(container, 70);
     clickByText(container, "Lock in");
     const r0 = (emitted[0] as { result?: { latencyMs?: number } }).result;
     expect(emitted[0].verb).toBe("responded");
@@ -133,9 +146,13 @@ describe("runner → session log event flow (audit: zero silent drops)", () => {
     expect(r1?.choice).toBe(-1);       // lapse recorded verbatim
     expect(r1?.confidence).toBe(0);
     log = append(log, { type: "resumed", ts: stamp() });
+    // The lapse notice briefly disables the deck so a click meant for the
+    // lapsed item cannot land on the next one — let it clear.
+    act(() => { vi.advanceTimersByTime(2000); });
 
     // Item 3 (untimed provenance): answer normally.
     clickByText(container, "b");
+    setConfidence(container, 40);
     clickByText(container, "Lock in");
 
     // Replay phase teaches all 3 items, then Finish emits "submitted".

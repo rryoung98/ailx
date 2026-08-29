@@ -62,6 +62,8 @@ function typePrompt(c: HTMLElement, text: string) {
 }
 const genBtn = (c: HTMLElement) =>
   [...c.querySelectorAll("button")].find((b) => (b.textContent ?? "").startsWith("Generate draft")) as HTMLButtonElement;
+const regenBtn = (c: HTMLElement) =>
+  [...c.querySelectorAll("button")].find((b) => (b.textContent ?? "").trim() === "Regenerate last") as HTMLButtonElement;
 const flush = () => act(async () => {});
 
 describe("T4 sequential generations", () => {
@@ -109,7 +111,9 @@ describe("T4 sequential generations", () => {
     typePrompt(c, "chicken nuggets");
     act(() => genBtn(c).click());
     await flush();
-    act(() => genBtn(c).click());
+    // The box clears on submit, so a re-roll is the explicit "Regenerate
+    // last" act (papercut 4: a second Enter must not re-send silently).
+    act(() => regenBtn(c).click());
     await flush();
     const last = cps.at(-1) as { drafts: Array<{ svg?: string; prompt: string }> };
     expect(last.drafts).toHaveLength(2);

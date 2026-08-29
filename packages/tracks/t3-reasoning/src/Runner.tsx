@@ -67,6 +67,49 @@ const T3_CSS = `
 
 type ChatMsg = T3ChatMsg;
 
+type Stance = "challenged" | "accepted";
+
+/**
+ * Per-claim stance toggle. The selected state must survive both a screen
+ * reader (aria-pressed) and a glance (filled tone + check glyph, never a
+ * colour-only cue) — a border tint alone was invisible to both.
+ */
+function StanceButton({
+  claimId,
+  stance,
+  label,
+  tone,
+  selected,
+  onSelect,
+}: {
+  claimId: string;
+  stance: Stance;
+  label: string;
+  tone: string;
+  selected: boolean;
+  onSelect: (id: string, stance: Stance) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      aria-describedby={`claim-${claimId}`}
+      data-testid={`stance-${stance}-${claimId}`}
+      style={{
+        ...ghost,
+        ...tiny,
+        borderColor: selected ? tone : "var(--border)",
+        background: selected ? tone : "transparent",
+        color: selected ? "#ffffff" : "var(--fg)",
+        fontWeight: selected ? 700 : 400,
+      }}
+      onClick={() => onSelect(claimId, stance)}
+    >
+      {selected ? `✓ ${label}` : label}
+    </button>
+  );
+}
+
 export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoint, onCheckpoint }: TrackUIProps) {
   const cfg: T3Config = useMemo(() => validateT3Config(config), [config]);
   // Rehydrate from the persisted checkpoint on (re)mount — F2.
@@ -437,19 +480,23 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
             </div>
             {surfaced.map((id) => (
               <div key={id} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.45rem" }}>
-                <span style={{ flex: 1, fontSize: "0.85rem" }}>{claimText.get(id)}</span>
-                <button
-                  style={{ ...ghost, ...tiny, borderColor: stances[id] === "challenged" ? "var(--bad, #b91c1c)" : "var(--border)", color: stances[id] === "challenged" ? "var(--bad, #b91c1c)" : "var(--fg)" }}
-                  onClick={() => setStance(id, "challenged")}
-                >
-                  Challenge
-                </button>
-                <button
-                  style={{ ...ghost, ...tiny, borderColor: stances[id] === "accepted" ? "var(--good, #15803d)" : "var(--border)", color: stances[id] === "accepted" ? "var(--good, #15803d)" : "var(--fg)" }}
-                  onClick={() => setStance(id, "accepted")}
-                >
-                  Accept
-                </button>
+                <span id={`claim-${id}`} style={{ flex: 1, fontSize: "0.85rem" }}>{claimText.get(id)}</span>
+                <StanceButton
+                  claimId={id}
+                  stance="challenged"
+                  label="Challenge"
+                  tone="var(--bad, #b91c1c)"
+                  selected={stances[id] === "challenged"}
+                  onSelect={setStance}
+                />
+                <StanceButton
+                  claimId={id}
+                  stance="accepted"
+                  label="Accept"
+                  tone="var(--good, #15803d)"
+                  selected={stances[id] === "accepted"}
+                  onSelect={setStance}
+                />
               </div>
             ))}
           </div>

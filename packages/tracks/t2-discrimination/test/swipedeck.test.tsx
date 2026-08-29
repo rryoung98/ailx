@@ -85,6 +85,21 @@ function topCard(): Element {
   return el;
 }
 
+function setSliderValue(el: HTMLInputElement, value: number) {
+  // React tracks the input's value via a patched setter; assigning
+  // el.value directly makes React see "no change". Use the native setter.
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  setter?.call(el, String(value));
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/** Move the confidence slider — "Lock in" stays disabled until it is set. */
+function setConfidence(value: number) {
+  const slider = container.querySelector<HTMLInputElement>('input[type="range"]');
+  if (!slider) throw new Error("confidence slider not rendered");
+  act(() => setSliderValue(slider, value));
+}
+
 function sheet(): HTMLElement {
   const el = container.querySelector<HTMLElement>('[data-testid="confidence-sheet"]');
   if (!el) throw new Error("confidence sheet not rendered");
@@ -117,6 +132,7 @@ describe("keyboard path (arrow keys fling like a swipe)", () => {
     startDeck();
     key("ArrowRight");
     expect(sheet().textContent).toContain(`Your call: ${items[0].options[1]}`);
+    setConfidence(70);
     clickByText("Lock in");
     expect(events).toHaveLength(1);
     const r = events[0].result as { choice: number; confidence: number };
@@ -130,6 +146,7 @@ describe("keyboard path (arrow keys fling like a swipe)", () => {
     startDeck();
     key("ArrowLeft");
     expect(sheet().textContent).toContain(`Your call: ${items[0].options[0]}`);
+    setConfidence(70);
     clickByText("Lock in");
     expect((events[0].result as { choice: number }).choice).toBe(0);
   });
@@ -140,6 +157,7 @@ describe("keyboard path (arrow keys fling like a swipe)", () => {
     startDeck();
     key("ArrowRight");
     key("ArrowLeft"); // must be a no-op
+    setConfidence(70);
     clickByText("Lock in");
     expect(events).toHaveLength(1);
     expect((events[0].result as { choice: number }).choice).toBe(1);
@@ -159,6 +177,7 @@ describe("pointer drag physics", () => {
     firePointer(card, "pointermove", { clientX: 330, clientY: 105 });
     firePointer(card, "pointerup", { clientX: 330, clientY: 105 });
     expect(sheet().textContent).toContain(`Your call: ${items[0].options[1]}`);
+    setConfidence(70);
     clickByText("Lock in");
     expect((events[0].result as { choice: number }).choice).toBe(1);
   });
@@ -172,6 +191,7 @@ describe("pointer drag physics", () => {
     firePointer(card, "pointermove", { clientX: 180, clientY: 100 });
     firePointer(card, "pointermove", { clientX: 160, clientY: 100 });
     firePointer(card, "pointerup", { clientX: 160, clientY: 100 });
+    setConfidence(70);
     clickByText("Lock in");
     expect((events[0].result as { choice: number }).choice).toBe(0);
   });

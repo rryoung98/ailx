@@ -76,12 +76,27 @@ describe("T2 a11y", () => {
     expect(container.textContent).toContain("primary path");
   });
 
-  it("confidence slider is labeled with its current value", () => {
+  it("confidence slider announces itself as unset until it is moved", () => {
     mount("en", deckCheckpoint());
-    const slider = container.querySelector('input[type="range"]');
+    const slider = container.querySelector<HTMLInputElement>('input[type="range"]');
     expect(slider).not.toBeNull();
-    expect(slider!.getAttribute("aria-label")).toBe("Confidence: 50 out of 100");
-    expect(slider!.getAttribute("aria-valuetext")).toBe("50 out of 100");
+    expect(slider!.getAttribute("aria-label")).toBe(
+      "Confidence: not set — move the slider to choose 0 to 100",
+    );
+    expect(slider!.getAttribute("aria-valuetext")).toBe("not set");
+  });
+
+  it("confidence slider is labeled with its current value once set", () => {
+    mount("en", deckCheckpoint());
+    const slider = container.querySelector<HTMLInputElement>('input[type="range"]')!;
+    act(() => {
+      // React patches the value setter for change tracking — go native.
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(slider, "40");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(slider.getAttribute("aria-label")).toBe("Confidence: 40 out of 100");
+    expect(slider.getAttribute("aria-valuetext")).toBe("40 out of 100");
   });
 
   it("localized decks mark item content with the content language (ja)", () => {

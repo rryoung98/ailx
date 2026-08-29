@@ -135,6 +135,8 @@ export function Runner(props: TrackUIProps) {
   // Rehydrate from the persisted checkpoint on (re)mount — F2.
   const restored = useMemo(() => decodeT4Checkpoint(props.checkpoint), []);
   const [prompt, setPrompt] = useState("");
+  // Mirrors `prompt` for submit-time reads (see generateDraft).
+  const promptRef = useRef("");
   const [drafts, setDrafts] = useState<T4Draft[]>(restored?.drafts ?? []);
   const [finals, setFinals] = useState<T4Finals>(restored?.finals ?? { images: [] });
   const [chosenSet, setChosenSet] = useState<number[]>(restored?.chosenSet ?? []);
@@ -155,6 +157,7 @@ export function Runner(props: TrackUIProps) {
   const completed = useRef(false);
   const latest = useRef<T4CheckpointState>({ drafts, finals, chosenSet, note, disclosed, submitted });
   latest.current = { drafts, finals, chosenSet, note, disclosed, submitted };
+  promptRef.current = prompt;
   const galleryHeadingRef = useRef<HTMLHeadingElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -221,9 +224,17 @@ export function Runner(props: TrackUIProps) {
     saveCheckpoint({ drafts: nextDrafts });
   };
 
-  const generateDraft = async () => {
-    const p = prompt.trim();
-    if (!p || submitted || genBusy) return;
+  /** Put a failed prompt back, unless the candidate already typed a new one. */
+  const restorePrompt = (p: string) => {
+    // promptRef re-syncs from state on the next render.
+    setPrompt((cur) => (cur === "" ? p : cur));
+  };
+
+  /**
+   * Run ONE generation for an explicit prompt. `onFail` is how the caller
+   * recovers the candidate's text when nothing was produced.
+   */
+  const runGeneration = async (p: string, onFail: () => void = () => {}) => {
     if (!hasKey) {
       // No key → deterministic offline demo, labeled as such. Repeating the
       // same prompt gets a fresh VARIATION (like a real model's sampling):
@@ -246,6 +257,7 @@ export function Runner(props: TrackUIProps) {
     const realDrafts = latest.current.drafts.filter((d) => d.dataUri).length;
     if (realDrafts >= REAL_DRAFT_CAP) {
       setGenError(`Run budget reached (${REAL_DRAFT_CAP} real generations) — promote your best drafts or refine with the demo model.`);
+      onFail();
       return;
     }
     setGenBusy(true);
@@ -272,9 +284,32 @@ export function Runner(props: TrackUIProps) {
       setGenError(
         e instanceof ImageGenError ? e.message : "Image generation failed.",
       );
+      onFail();
     } finally {
       setGenBusy(false);
     }
+  };
+
+  const generateDraft = async () => {
+    // promptRef, not `prompt`: two Enter presses in one React batch share the
+    // same render closure, so a stale `prompt` would generate the same draft
+    // twice. Clearing the ref makes the second press a no-op immediately.
+    const p = promptRef.current.trim();
+    if (!p || submitted || genBusy) return;
+    // Clear on submit (same contract as T1's assist prompt); a failed
+    // generation puts the text back so nothing typed is ever lost.
+    promptRef.current = "";
+    setPrompt("");
+    await runGeneration(p, () => restorePrompt(p));
+  };
+
+  /** Deliberate re-roll of the last prompt — the box is empty after a
+   *  submit, so varying a generation must be an explicit act, not a
+   *  second Enter on text the candidate thought was already sent. */
+  const regenerateLast = async () => {
+    const last = latest.current.drafts.at(-1)?.prompt;
+    if (!last || submitted || genBusy) return;
+    await runGeneration(last);
   };
 
   const promote = (draft: T4Draft, kind: "image" | "video") => {
@@ -644,6 +679,15 @@ export function Runner(props: TrackUIProps) {
               disabled={submitted || genBusy}
             >
               {genBusy ? "Generating…" : "Generate draft (unlimited)"}
+            </button>
+            <button
+              type="button"
+              className="t4-btn"
+              title="Generate another variation of your last prompt"
+              onClick={() => void regenerateLast()}
+              disabled={submitted || genBusy || drafts.length === 0}
+            >
+              Regenerate last
             </button>
           </div>
         </section>

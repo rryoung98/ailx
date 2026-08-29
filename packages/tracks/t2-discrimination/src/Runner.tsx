@@ -14,6 +14,14 @@ import { SwipeDeck, isImageMaterial } from "./SwipeDeck.js";
 
 type Phase = T2Phase;
 
+/** How long the "exposure lapsed" notice holds the deck inert. Long enough
+ *  to read, short enough not to feel like a penalty. */
+const LAPSE_NOTICE_MS = 1600;
+
+/** Slider position shown before the candidate has chosen a confidence.
+ *  It is a POSITION only — nothing is recorded until the slider is used. */
+const DEFAULT_CONFIDENCE = 50;
+
 const card: CSSProperties = {
   background: "var(--card)",
   border: "1px solid var(--border)",
@@ -91,8 +99,14 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   const [choice, setChoice] = useState<number | null>(null);
   const choiceRef = useRef<number | null>(null);
   choiceRef.current = choice;
-  const [confidence, setConfidence] = useState(50);
+  // null until the candidate actually moves/taps the slider: an untouched
+  // default would silently record a confidence nobody chose (calibration is
+  // scored). The STORED shape is unchanged — a number, always.
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  // Set when a timed exposure runs out: the deck freezes for a beat and
+  // says so, so the click aimed at the lapsed item cannot land on the next.
+  const [lapse, setLapse] = useState<{ index: number } | null>(null);
   const [responses, setResponses] = useState<T2Response[]>(restored?.responses ?? []);
   const [replayIdx, setReplayIdx] = useState(restored?.replayIdx ?? 0);
   const shownAt = useRef(0);
@@ -154,7 +168,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
       const nextResponses = [...responses, r];
       setResponses(nextResponses);
       setChoice(null);
-      setConfidence(50);
+      setConfidence(null);
       if (idx + 1 < cfg.items.length) {
         setIdx(idx + 1);
         saveCheckpoint({ responses: nextResponses, deckIndex: idx + 1 });
@@ -193,9 +207,10 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   }, [phase, idx, stimulusReady]);
 
   // Fixed-exposure countdown per timed item; a lapse is recorded as choice -1.
-  // Starts only once the stimulus is visible (stimulusReady).
+  // Starts only once the stimulus is visible (stimulusReady) and once any
+  // lapse notice has cleared (the next item must get its full exposure).
   useEffect(() => {
-    if (phase !== "deck" || !item || !stimulusReady) return;
+    if (phase !== "deck" || !item || !stimulusReady || lapse) return;
     shownAt.current = performance.now();
     decisionLatency.current = null;
     if (untimed) {
@@ -213,14 +228,25 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     }, 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, idx, stimulusReady]);
+  }, [phase, idx, stimulusReady, lapse === null]);
 
   useEffect(() => {
     if (phase === "deck" && secondsLeft !== null && secondsLeft <= 0) {
-      record(choice ?? -1, choice === null ? 0 : confidence);
+      // A lapse records "no response" (choice -1, confidence 0) and raises
+      // the notice; an already-cast verdict cannot lapse (the clock freezes
+      // while the confidence sheet is open) but is honoured if it ever does.
+      if (choice === null) setLapse({ index: idx });
+      record(choice ?? -1, choice === null ? 0 : confidence ?? 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondsLeft]);
+
+  // The notice clears itself; until it does the deck is inert.
+  useEffect(() => {
+    if (!lapse) return;
+    const t = setTimeout(() => setLapse(null), LAPSE_NOTICE_MS);
+    return () => clearTimeout(t);
+  }, [lapse]);
 
   const finish = useCallback(() => {
     if (completed.current) return;
@@ -288,15 +314,33 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             {untimed ? "untimed" : `${Math.max(0, secondsLeft ?? exposure)}s`}
           </span>
         </div>
+        {lapse && (
+          <p
+            data-testid="lapse-notice"
+            role="alert"
+            style={{
+              margin: 0,
+              padding: "0.6rem 0.8rem",
+              borderRadius: 8,
+              border: "1px solid var(--bad, #b91c1c)",
+              background: "rgba(185,28,28,0.12)",
+              color: "var(--bad, #b91c1c)",
+              fontWeight: 600,
+            }}
+          >
+            Item {lapse.index + 1} missed — the exposure ran out, so no response was
+            recorded. The deck resumes in a moment.
+          </p>
+        )}
         <SwipeDeck
           item={item}
           nextItems={cfg.items.slice(idx + 1, idx + 3)}
           deckHasImages={deckHasImages}
           lang={contentLang}
-          enabled={!sheetOpen}
+          enabled={!sheetOpen && !lapse}
           maskUpcoming={sheetOpen}
           onChoose={(i) => {
-            if (choice !== null) return;
+            if (choice !== null || lapse) return;
             decisionLatency.current = Math.max(0, Math.round(performance.now() - shownAt.current));
             setChoice(i);
           }}
@@ -329,15 +373,23 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             Your call: <span lang={contentLang}>{choice !== null ? item.options[choice] : "—"}</span>
           </p>
           <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-            How sure? {confidence}
+            How sure? {confidence === null ? "not set" : confidence}
             <input
               type="range"
               min={0}
               max={100}
-              value={confidence}
-              aria-label={`Confidence: ${confidence} out of 100`}
-              aria-valuetext={`${confidence} out of 100`}
+              value={confidence ?? DEFAULT_CONFIDENCE}
+              aria-label={
+                confidence === null
+                  ? "Confidence: not set — move the slider to choose 0 to 100"
+                  : `Confidence: ${confidence} out of 100`
+              }
+              aria-valuetext={confidence === null ? "not set" : `${confidence} out of 100`}
               onChange={(e) => setConfidence(Number(e.target.value))}
+              // A tap/click that lands exactly on the shown default fires no
+              // change event; treat the press itself as the interaction so
+              // "I did choose 50" is not an unreachable answer.
+              onPointerDown={() => setConfidence((c) => c ?? DEFAULT_CONFIDENCE)}
               // 16px floor: iOS Safari auto-zooms the page when a focused
               // form control's font is smaller, then snaps back out on
               // lock-in when the sheet closes — the reported mobile "zoom
@@ -345,10 +397,26 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
               style={{ width: "100%", accentColor: "var(--accent)", fontSize: 16 }}
             />
           </label>
+          {sheetOpen && confidence === null && (
+            <p
+              data-testid="confidence-hint"
+              style={{ margin: "0.5rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}
+            >
+              Set how sure you are before locking in — confidence is scored, so it
+              is never assumed for you.
+            </p>
+          )}
           <button
-            style={{ ...btn, marginTop: "0.8rem", opacity: sheetOpen ? 1 : 0.5, display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
-            disabled={!sheetOpen}
-            onClick={() => record(choice ?? -1, confidence)}
+            style={{
+              ...btn,
+              marginTop: "0.8rem",
+              opacity: sheetOpen && confidence !== null ? 1 : 0.5,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.45rem",
+            }}
+            disabled={!sheetOpen || confidence === null}
+            onClick={() => confidence !== null && record(choice ?? -1, confidence)}
           >
             {/* Inline padlock glyph — decorative; the label carries meaning. */}
             <svg
