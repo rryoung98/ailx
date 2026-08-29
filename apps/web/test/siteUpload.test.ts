@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readZip, snapshotFromZip, T1_LIMITS } from "@ailx/backend/t1";
 import {
+  PLATFORM_TOO_LARGE_MESSAGE,
   T1_SITE_SEQ,
   buildSiteZip,
   clearSiteSubmission,
@@ -195,6 +196,18 @@ describe("uploadSiteZip", () => {
     server.state.respond = [status, { error: { code, message } }];
     const r = await upload(storage, server);
     expect(r).toEqual({ ok: false, kind: "rejected", message });
+  });
+
+  // Vercel rejects an oversized body before our handler runs, with a
+  // plain-text "Request Entity Too Large" instead of our JSON envelope. The
+  // participant must learn WHY, not just "HTTP 413".
+  it("platform 413 (non-JSON body) → rejected, with the upload-limit explanation", async () => {
+    const storage = mirroredStorage();
+    const server = fakeUploadServer();
+    server.state.respond = [413, "Request Entity Too Large\n\nFUNCTION_PAYLOAD_TOO_LARGE"];
+    const r = await upload(storage, server);
+    expect(r).toEqual({ ok: false, kind: "rejected", message: PLATFORM_TOO_LARGE_MESSAGE });
+    expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
   });
 
   it("network failure → unavailable, nothing recorded, and a retry succeeds", async () => {

@@ -110,6 +110,16 @@ authentication at all. Never set that flag on a deployment holding real data.
   an asset over ~4.5 MB cannot be served back through the site route. Staging
   is fine for realistic hand-written sites; do not read a platform 413 as an
   AILX bug. A fix means client-direct upload to Blob, which is not built.
+
+  Measured on staging (6 MB ZIP): the platform answers `413` with the
+  plain-text body `Request Entity Too Large / FUNCTION_PAYLOAD_TOO_LARGE` —
+  our handler never runs, so there is no JSON error envelope and no
+  `responses` row. `uploadSiteZip` maps that case to a `rejected` result
+  carrying `PLATFORM_TOO_LARGE_MESSAGE`, so the participant reads the real
+  reason (and that the run is still saved and scored locally) instead of
+  "Upload failed (HTTP 413)". Our own 413s — the validator's `file_too_large`
+  / `total_too_large` — still arrive as JSON and still win, because a parsed
+  server message always replaces the platform default.
 - **Function duration.** Default 10 s (Hobby) / 15 s (Pro) unless raised.
 - **No warm process between requests.** Nothing may rely on in-memory state
   surviving a request: no in-memory counters, caches with correctness meaning,

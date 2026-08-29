@@ -129,6 +129,15 @@ export interface SiteSubmission {
   url: string;
 }
 
+/**
+ * A 413 with no JSON error envelope did not come from our validator: a
+ * serverless platform caps the request body (Vercel at ~4.5 MB) well below
+ * T1_LIMITS.maxTotalBytes, and rejects the upload before the handler runs.
+ * Explain that instead of showing a bare status code. See docs/DEPLOY.md §5.
+ */
+export const PLATFORM_TOO_LARGE_MESSAGE =
+  "This site is too large for the hosted upload limit (about 4.5 MB per request). Your work is saved locally and still scored.";
+
 const siteKey = (clientAttemptId: string) => `ailx:site:v1:${clientAttemptId}`;
 
 /** The recorded live-site submission for an attempt, if any (report page). */
@@ -212,7 +221,7 @@ export async function uploadSiteZip(
     return { ok: true, digest, url, created: body.submission?.created === true };
   }
 
-  let message = `Upload failed (HTTP ${res.status}).`;
+  let message = res.status === 413 ? PLATFORM_TOO_LARGE_MESSAGE : `Upload failed (HTTP ${res.status}).`;
   try {
     const body = (await res.json()) as { error?: { message?: string } };
     if (typeof body.error?.message === "string") message = body.error.message;
