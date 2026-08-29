@@ -19,7 +19,9 @@
     "@ailx/track-t3": "workspace:*",
     "@ailx/track-t4": "workspace:*",
     "three": "^0.182.0",
-    "@react-three/fiber": "^9.0.0"
+    "@react-three/fiber": "^9.0.0",
+    "@ailx/backend": "workspace:*",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
@@ -27,6 +29,7 @@
     "@types/node": "^22.0.0",
     "jsdom": "^25.0.1",
     "vitest": "^2.1.0",
-    "@types/three": "^0.182.0"
+    "@types/three": "^0.182.0",
+    "@types/pg": "^8.11.0"
   }
 }
