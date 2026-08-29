@@ -24,6 +24,12 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   how it upgrades to a scored claim without reissuing, and why a revoked
   credential still resolves while a revoked share token 404s.
 
+## Deploying the hosted mode
+- `docs/DEPLOY.md` — Vercel (serverless) deploy: required env vars, T1 snapshot
+  storage on Vercel Blob, Neon connection pooling, platform body-size limits,
+  and why staging should use Clerk rather than assert-only dev auth. The
+  default GitHub Pages static export is unaffected by any of it.
+
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
 
@@ -48,7 +54,17 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   `*` entry is dropped, never read as "everyone". There is no staff/roles
   table on purpose — see `docs/SHARING.md` §7.2.
 - `DATABASE_URL` — Postgres for the append-only store.
-- `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root (default `<cwd>/.ailx-snapshots`).
+- `AILX_SNAPSHOT_STORE` — where T1 candidate sites live: `fs` (default, local
+  disk) or `blob` (Vercel Blob, private objects). Serverless MUST use `blob`:
+  its filesystem is per-invocation, so an `fs` upload is invisible to the
+  request that serves it. Selection lives only in `apps/web/lib/server/site.ts`.
+- `BLOB_READ_WRITE_TOKEN` — required by `AILX_SNAPSHOT_STORE=blob` (Vercel
+  injects it when a Blob store is linked). `AILX_SNAPSHOT_BLOB_PREFIX`
+  (default `t1`) namespaces one bucket across deployments.
+- `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root for `fs` (default `<cwd>/.ailx-snapshots`).
+- `AILX_PG_POOL_MAX` — pg clients per instance (default 3). Serverless keeps one
+  pool per warm instance, so point `DATABASE_URL` at a POOLED endpoint (Neon's
+  `-pooler` host) and keep this small.
 - `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`.
   Required behind any proxy/CDN: it is baked into the served-site CSP allowlist and the
   bare-digest 308 redirect. Must be an absolute http(s) origin with no path/query/fragment.
