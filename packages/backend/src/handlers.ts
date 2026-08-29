@@ -57,7 +57,8 @@ function errorResult(code: keyof typeof STATUS_BY_CODE | "unauthorized", message
   return { status, body: { error: { code, message } } };
 }
 
-async function withParticipant(
+/** Auth + participant projection + StoreError mapping — shared with ./t1/. */
+export async function withParticipant(
   ctx: ApiContext,
   headers: HeaderMap,
   fn: (participantId: string) => Promise<ApiResult>,

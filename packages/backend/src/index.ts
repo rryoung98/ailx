@@ -33,6 +33,7 @@ export {
 } from "./auth.js";
 export {
   DEFAULT_INSTRUMENT,
+  withParticipant,
   handleAppendResponse,
   handleAppendTranscript,
   handleCreateAttempt,

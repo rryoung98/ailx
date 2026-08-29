@@ -74,6 +74,9 @@ importers:
 
   packages/backend:
     dependencies:
+      '@ailx/core':
+        specifier: workspace:*
+        version: link:../core
       '@ailx/session':
         specifier: workspace:*
         version: link:../session
