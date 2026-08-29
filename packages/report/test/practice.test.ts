@@ -9,6 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { runPure } from "@ailx/core";
 import {
   ARTEFACT_FAMILIES,
@@ -17,6 +19,7 @@ import {
   PRACTICE_BANK,
   PRACTICE_BANK_VERSION,
   PRACTICE_DECK_SIZE,
+  PRACTICE_DIFFICULTIES,
   PRACTICE_ID_PREFIX,
   PRACTICE_OPTIONS,
   SIGNAL_CHOICE,
@@ -33,7 +36,7 @@ const BANK_PATH = new URL(
 
 interface ScoredItem {
   id: string;
-  material?: { kind?: string; text?: string };
+  material?: { kind?: string; text?: string; src?: string; alt?: string };
   rationale?: string;
 }
 
@@ -64,7 +67,17 @@ describe("practice never touches the scored item bank", () => {
     // reach it. Strip comments, then assert on what actually executes.
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     const imports = [...code.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]);
-    expect(imports).toEqual(["@ailx/session"]);
+    expect(imports).toEqual(["@ailx/session", "./practiceCorpus.js"]);
+    expect(code).not.toMatch(/instruments|bank\.jsonl|readFile|import\(|require\(/);
+  });
+
+  it("the generated corpus module reaches no instrument content either", () => {
+    // Moving the content out of practice.ts moved the risk with it, so the
+    // same assertion follows it into the generated module.
+    const source = readFileSync(new URL("../src/practiceCorpus.ts", import.meta.url), "utf8");
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    const imports = [...code.matchAll(/from\s+"([^"]+)"/g)].map((m) => m[1]);
+    expect(imports).toEqual(["./practice.js"]);
     expect(code).not.toMatch(/instruments|bank\.jsonl|readFile|import\(|require\(/);
   });
 
@@ -78,19 +91,53 @@ describe("practice never touches the scored item bank", () => {
     for (const item of scored) expect(item.id.startsWith(PRACTICE_ID_PREFIX)).toBe(false);
   });
 
-  it("shares no passage, and no near-duplicate passage, with scored material", () => {
+  it("shares no text, and no near-duplicate text, with scored material", () => {
+    // Practice is media now, but its alt text and its tells are still prose,
+    // and prose lifted from a scored rationale would leak just as surely.
     const scoredTexts = scored
-      .map((i) => i.material?.text ?? "")
+      .flatMap((i) => [i.material?.text ?? "", i.material?.alt ?? "", i.rationale ?? ""])
       .filter((t) => t.length > 0);
     expect(scoredTexts.length).toBeGreaterThan(0);
     const scoredFingerprints = scoredTexts.map(contentWords);
     for (const item of PRACTICE_BANK) {
-      const words = contentWords(item.passage);
+      const words = contentWords(`${item.material.alt} ${item.tell}`);
       for (const [i, fp] of scoredFingerprints.entries()) {
         const shared = [...words].filter((w) => fp.has(w));
         // A shared long word or two is English; a shared half is a copy.
         expect(shared.length / Math.max(1, words.size), `${item.id} vs scored #${i}`).toBeLessThan(0.5);
       }
+    }
+  });
+
+  it("shares no IMAGE with the scored deck — by path, and by content hash", () => {
+    // The decisive one for a media corpus. Two picture sets can collide on a
+    // photograph without sharing a single word, so the fingerprint that
+    // matters is the sha256 of the bytes actually shipped. Serving the same
+    // picture in practice and in the scored deck would burn the scored item
+    // even though every string in this repo stayed different.
+    const scoredSrcs = new Set(
+      scored.map((i) => i.material?.src ?? "").filter((s) => s.length > 0),
+    );
+    expect(scoredSrcs.size).toBeGreaterThan(0);
+    const digest = (path: string): string =>
+      createHash("sha256").update(readFileSync(path)).digest("hex");
+
+    const scoredHashes = new Map<string, string>();
+    for (const src of scoredSrcs) {
+      const file = new URL(`../../../apps/web/public/${src}`, import.meta.url);
+      scoredHashes.set(digest(fileURLToPath(file)), src);
+    }
+    expect(scoredHashes.size).toBeGreaterThan(0);
+
+    for (const item of PRACTICE_BANK) {
+      expect(scoredSrcs.has(item.material.src), item.id).toBe(false);
+      expect(item.material.src.startsWith("practice-media/"), item.id).toBe(true);
+      const file = fileURLToPath(
+        new URL(`../../../apps/web/public/${item.material.src}`, import.meta.url),
+      );
+      const hash = digest(file);
+      expect(scoredHashes.get(hash), `${item.id} ships the scored asset ${scoredHashes.get(hash)}`)
+        .toBeUndefined();
     }
   });
 
@@ -126,7 +173,9 @@ describe("practice bank shape", () => {
       expect(ARTEFACT_FAMILIES).toContain(item.family);
       expect(item.id).toBe(`${PRACTICE_ID_PREFIX}${item.family}:${item.id.split(":")[2]}`);
       expect(item.key === SIGNAL_CHOICE || item.key === CLEAN_CHOICE).toBe(true);
-      expect(item.passage.length).toBeGreaterThan(40);
+      expect(PRACTICE_DIFFICULTIES).toContain(item.difficulty);
+      expect(item.material.kind).toBe("image");
+      expect(item.material.alt.length).toBeGreaterThan(20);
       expect(item.tell.length).toBeGreaterThan(40);
     }
   });
