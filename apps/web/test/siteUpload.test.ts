@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readZip, snapshotFromZip, T1_LIMITS } from "@ailx/backend/t1";
 import {
+  DIRECT_UPLOAD_MIN_BYTES,
   PLATFORM_TOO_LARGE_MESSAGE,
   T1_SITE_SEQ,
   buildSiteZip,
@@ -16,6 +17,10 @@ import {
   uploadSiteZip,
   type SiteUploadResult,
 } from "../lib/siteUpload";
+
+/** The Blob SDK is a network client: mocked, never reached. */
+const blobPut = vi.fn(async () => ({ pathname: "staged" }));
+vi.mock("@vercel/blob/client", () => ({ put: (...args: unknown[]) => blobPut(...(args as [])) }));
 
 const enc = new TextEncoder();
 const utf8 = (s: string) => enc.encode(s);
@@ -250,6 +255,156 @@ describe("uploadSiteZip", () => {
 });
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------
+// Client-direct upload — the path a 25 MB site must take, because
+// a serverless request body caps out at ~4.5 MB (DEPLOY.md §5.1).
+// ---------------------------------------------------------------
+
+interface DirectServerState {
+  /** Ticket endpoint response: [status, body]. */
+  ticket: [number, unknown];
+  /** Finalize endpoint response: [status, body]. */
+  finalize: [number, unknown];
+}
+
+const DIGEST = `sha256:${"d".repeat(64)}`;
+
+/** Programmable fetch double routing the two direct-upload endpoints. */
+function fakeDirectServer() {
+  const calls: Call[] = [];
+  const state: DirectServerState = {
+    ticket: [
+      201,
+      {
+        upload: {
+          uploadId: "f".repeat(32),
+          pathname: `uploads/${SERVER_ID}/${"f".repeat(32)}.zip`,
+          token: "vercel_blob_client_scoped",
+          contentType: "application/zip",
+          maxBytes: T1_LIMITS.maxTotalBytes,
+        },
+      },
+    ],
+    finalize: [201, { submission: { digest: DIGEST, created: true } }],
+  };
+  const fetchFn = (async (url: unknown, init?: RequestInit) => {
+    const path = String(url);
+    calls.push({
+      path,
+      headers: (init?.headers ?? {}) as Record<string, string>,
+      body: init?.body as Uint8Array,
+    });
+    const [status, body] = path.endsWith("/upload-ticket")
+      ? state.ticket
+      : path.endsWith("/finalize")
+        ? state.finalize
+        : [201, { submission: { digest: DIGEST, created: true } }];
+    return { ok: status >= 200 && status < 300, status, json: async () => body } as Response;
+  }) as typeof fetch;
+  return { fetchFn, calls, state };
+}
+
+/** A ZIP over the platform request cap — the whole reason this path exists. */
+function oversizeZip(): Uint8Array<ArrayBuffer> {
+  const zip = buildSiteZip([
+    { path: "index.html", data: utf8("<h1>big</h1>") },
+    { path: "assets/photo.png", data: new Uint8Array(DIRECT_UPLOAD_MIN_BYTES).fill(7) },
+  ]);
+  expect(zip.length).toBeGreaterThanOrEqual(DIRECT_UPLOAD_MIN_BYTES);
+  return zip;
+}
+
+describe("uploadSiteZip — large sites", () => {
+  afterEach(() => blobPut.mockClear());
+
+  it("tickets, PUTs to the object store, then finalizes by uploadId", async () => {
+    const storage = mirroredStorage();
+    const server = fakeDirectServer();
+    const zip = oversizeZip();
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
+    expect(r).toMatchObject({ ok: true, digest: DIGEST, created: true });
+
+    expect(server.calls.map((c) => c.path)).toEqual([
+      `/api/attempts/${SERVER_ID}/site/upload-ticket`,
+      `/api/attempts/${SERVER_ID}/site/finalize`,
+    ]);
+    // The bytes never went through our function.
+    expect(server.calls.every((c) => !(c.body instanceof Uint8Array))).toBe(true);
+
+    // The PUT used the server's key and the server's scoped token —
+    // the client chooses neither.
+    expect(blobPut).toHaveBeenCalledTimes(1);
+    const [pathname, , opts] = blobPut.mock.calls[0] as unknown as [string, unknown, Record<string, unknown>];
+    expect(pathname).toBe(`uploads/${SERVER_ID}/${"f".repeat(32)}.zip`);
+    expect(opts).toMatchObject({ token: "vercel_blob_client_scoped", access: "private" });
+
+    // Finalize names the upload, never a digest.
+    const body = JSON.parse(String(server.calls[1].body)) as Record<string, unknown>;
+    expect(body).toEqual({ uploadId: "f".repeat(32), seq: T1_SITE_SEQ });
+    expect(server.calls[1].headers["x-ailx-dev-user"]).toMatch(/^web-/);
+
+    expect(loadSiteSubmission(storage, ATTEMPT)).toEqual({
+      digest: DIGEST,
+      url: `/api/site/${DIGEST}/index.html`,
+    });
+  });
+
+  it("small sites keep the single POST — no ticket, no object store", async () => {
+    const storage = mirroredStorage();
+    const server = fakeDirectServer();
+    const zip = buildSiteZip([{ path: "index.html", data: utf8("<h1>small</h1>") }]);
+    expect(zip.length).toBeLessThan(DIRECT_UPLOAD_MIN_BYTES);
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
+    expect(r).toMatchObject({ ok: true });
+    expect(server.calls.map((c) => c.path)).toEqual([`/api/attempts/${SERVER_ID}/site?seq=${T1_SITE_SEQ}`]);
+    expect(blobPut).not.toHaveBeenCalled();
+  });
+
+  it("no direct target (501, or an older deployment's 404) falls back to the POST", async () => {
+    for (const status of [501, 404, 401]) {
+      const storage = mirroredStorage();
+      const server = fakeDirectServer();
+      server.state.ticket = [status, { error: { code: "direct_upload_unavailable", message: "no" } }];
+      const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+      expect(r).toMatchObject({ ok: true });
+      expect(server.calls.map((c) => c.path)).toEqual([
+        `/api/attempts/${SERVER_ID}/site/upload-ticket`,
+        `/api/attempts/${SERVER_ID}/site?seq=${T1_SITE_SEQ}`,
+      ]);
+      expect(blobPut).not.toHaveBeenCalled();
+    }
+  });
+
+  it("a refused or failed PUT is unavailable, and never finalizes", async () => {
+    const storage = mirroredStorage();
+    const server = fakeDirectServer();
+    blobPut.mockRejectedValueOnce(new Error("content type not allowed"));
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+    expect(r).toMatchObject({ ok: false, kind: "unavailable" });
+    expect(server.calls.map((c) => c.path)).toEqual([`/api/attempts/${SERVER_ID}/site/upload-ticket`]);
+    expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
+  });
+
+  it("surfaces a finalize rejection exactly as the POST path does", async () => {
+    const storage = mirroredStorage();
+    const server = fakeDirectServer();
+    server.state.finalize = [413, { error: { code: "total_too_large", message: "too big" } }];
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+    expect(r).toEqual({ ok: false, kind: "rejected", message: "too big" });
+    expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
+  });
+
+  it("a malformed ticket is treated as no ticket", async () => {
+    const storage = mirroredStorage();
+    const server = fakeDirectServer();
+    server.state.ticket = [201, { upload: { uploadId: 7 } }];
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+    expect(r).toMatchObject({ ok: true });
+    expect(blobPut).not.toHaveBeenCalled();
+    expect(server.calls[1].path).toBe(`/api/attempts/${SERVER_ID}/site?seq=${T1_SITE_SEQ}`);
+  });
+});
+
 // Submission bookkeeping
 // ---------------------------------------------------------------------------
 

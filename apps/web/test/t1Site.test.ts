@@ -14,6 +14,7 @@ import { buildSiteZip } from "../lib/siteUpload";
 import {
   BLOB_TOKEN_ENV,
   makeSnapshotStore,
+  makeUploadStaging,
   snapshotBlobPrefix,
   snapshotDir,
   snapshotStoreMode,
@@ -48,6 +49,26 @@ describe("route registration", () => {
     // Reading the files at these exact paths IS the assertion.
     expect(routeSource("attempts/[id]/site")).toContain("handleUploadSite");
     expect(routeSource("site/[digest]/[[...path]]")).toContain("handleServeSite");
+    expect(routeSource("attempts/[id]/site/upload-ticket")).toContain("handleCreateSiteUpload");
+    expect(routeSource("attempts/[id]/site/finalize")).toContain("handleFinalizeSiteUpload");
+  });
+
+  /**
+   * The direct path must not become a second, weaker submission
+   * API: both routes wire the SAME staging seam and the same
+   * store, and neither reads a storage env var itself.
+   */
+  it("direct-upload routes take staging from the one wiring point", () => {
+    for (const rel of ["attempts/[id]/site/upload-ticket", "attempts/[id]/site/finalize"]) {
+      const src = routeSource(rel);
+      expect(src).toContain("getUploadStaging()");
+      expect(src).toContain("getSnapshotStore()");
+      expect(src).not.toMatch(/process\.env/);
+    }
+    // Finalize takes an uploadId, never a digest or a path.
+    const finalize = routeSource("attempts/[id]/site/finalize");
+    expect(finalize).toContain("uploadId");
+    expect(finalize).not.toContain("digest");
   });
 
   it("upload route passes raw ZIP bytes, seq and client timestamp", () => {
@@ -104,6 +125,28 @@ describe("snapshot store selection", () => {
   it("namespaces blob keys, defaulting to t1", () => {
     expect(snapshotBlobPrefix({})).toBe("t1");
     expect(snapshotBlobPrefix({ AILX_SNAPSHOT_BLOB_PREFIX: "staging" })).toBe("staging");
+  });
+
+  /**
+   * Client-direct upload (DEPLOY.md §5.1) needs a target a browser can
+   * PUT to. The filesystem store is not one, so `fs` mode has no
+   * staging at all and the endpoint says so instead of pretending.
+   */
+  it("offers client-direct staging only in blob mode", () => {
+    expect(makeUploadStaging({})).toBeNull();
+    expect(makeUploadStaging(TOKEN)).toBeNull();
+    expect(makeUploadStaging({ AILX_SNAPSHOT_STORE: "fs", ...TOKEN })).toBeNull();
+    expect(makeUploadStaging({ AILX_SNAPSHOT_STORE: "blob", ...TOKEN })).toMatchObject({
+      authorize: expect.any(Function),
+      read: expect.any(Function),
+      discard: expect.any(Function),
+    });
+  });
+
+  it("refuses blob staging without a token, with the same one message", () => {
+    expect(() => makeUploadStaging({ AILX_SNAPSHOT_STORE: "blob" })).toThrow(
+      new RegExp(BLOB_TOKEN_ENV),
+    );
   });
 });
 

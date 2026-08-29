@@ -163,48 +163,16 @@ export function clearSiteSubmission(storage: StorageLike, clientAttemptId: strin
 }
 
 /**
- * Upload the site ZIP against the mirrored server attempt. Never throws:
- * every failure mode collapses to a typed result the UI can explain.
+ * Turn one submission response — from the plain POST or from
+ * /site/finalize, which answer identically — into a typed result,
+ * remembering the live URL on success.
  */
-export async function uploadSiteZip(
+async function siteResultFrom(
   storage: StorageLike,
   opts: ApiPersistenceOptions,
   clientAttemptId: string,
-  zip: Uint8Array<ArrayBuffer>,
+  res: Response,
 ): Promise<SiteUploadResult> {
-  const serverAttemptId = getServerAttemptId(storage, clientAttemptId);
-  if (!serverAttemptId) {
-    // Offline-start fallback: the mirror creates the server attempt on its
-    // next successful pass — a retry then finds it here.
-    return {
-      ok: false,
-      kind: "unavailable",
-      message: "This run is not mirrored to the server yet — your work is saved locally.",
-    };
-  }
-
-  let res: Response;
-  try {
-    res = await opts.fetchFn(
-      `${opts.baseUrl}/attempts/${serverAttemptId}/site?seq=${T1_SITE_SEQ}`,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/zip",
-          [DEV_USER_HEADER]: devUser(storage),
-          "x-ailx-client-ts": new Date().toISOString(),
-        },
-        body: zip,
-      },
-    );
-  } catch {
-    return {
-      ok: false,
-      kind: "unavailable",
-      message: "The backend could not be reached — your work is saved locally.",
-    };
-  }
-
   if (res.ok) {
     const body = (await res.json()) as { submission?: { digest?: string; created?: boolean } };
     const digest = body.submission?.digest;
@@ -231,6 +199,169 @@ export async function uploadSiteZip(
   if (res.status === 409) return { ok: false, kind: "conflict", message };
   if (res.status === 400 || res.status === 413) return { ok: false, kind: "rejected", message };
   return { ok: false, kind: "unavailable", message };
+}
+
+/**
+ * Above this size the plain POST cannot work on a serverless host
+ * (the platform caps a request body at ~4.5 MB and answers 413 before
+ * our handler runs), so the client asks for a direct upload instead.
+ * Below it the POST is one round trip against no extra service, and
+ * stays exactly as it was.
+ */
+export const DIRECT_UPLOAD_MIN_BYTES = 4 * 1024 * 1024;
+
+interface UploadTicket {
+  uploadId: string;
+  pathname: string;
+  token: string;
+  contentType: string;
+}
+
+/** The ticket, or null when this deployment offers no direct upload. */
+async function requestUploadTicket(
+  opts: ApiPersistenceOptions,
+  storage: StorageLike,
+  serverAttemptId: string,
+): Promise<UploadTicket | null> {
+  let res: Response;
+  try {
+    res = await opts.fetchFn(`${opts.baseUrl}/attempts/${serverAttemptId}/site/upload-ticket`, {
+      method: "POST",
+      headers: { [DEV_USER_HEADER]: devUser(storage) },
+    });
+  } catch {
+    return null;
+  }
+  if (!res.ok) return null; // 501 (fs-mode host), 404, 401 — all mean "POST it".
+  try {
+    const body = (await res.json()) as { upload?: Partial<UploadTicket> };
+    const t = body.upload;
+    if (
+      typeof t?.uploadId === "string" &&
+      typeof t.pathname === "string" &&
+      typeof t.token === "string" &&
+      typeof t.contentType === "string"
+    ) {
+      return { uploadId: t.uploadId, pathname: t.pathname, token: t.token, contentType: t.contentType };
+    }
+  } catch {
+    // Unexpected body — treat as no ticket.
+  }
+  return null;
+}
+
+/**
+ * Client-direct upload: PUT the ZIP into the object store with the
+ * server's scoped token, then ask the server to validate and record
+ * it. Returns null when the handshake is unavailable, so the caller
+ * can still try the plain POST.
+ *
+ * The token names one key, one content type and one size cap, all
+ * chosen server-side; this function cannot widen any of them, and the
+ * bytes are worth nothing until /site/finalize accepts them.
+ */
+async function uploadSiteZipDirect(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  clientAttemptId: string,
+  serverAttemptId: string,
+  zip: Uint8Array<ArrayBuffer>,
+): Promise<SiteUploadResult | null> {
+  const ticket = await requestUploadTicket(opts, storage, serverAttemptId);
+  if (ticket === null) return null;
+
+  try {
+    const { put } = await import("@vercel/blob/client");
+    await put(ticket.pathname, new Blob([zip], { type: ticket.contentType }), {
+      access: "private",
+      token: ticket.token,
+      contentType: ticket.contentType,
+      multipart: true, // Resumes part-wise instead of restarting a 25 MB PUT.
+    });
+  } catch {
+    // Refused (cap/scope), offline, or blocked: nothing was recorded,
+    // and the staged object — if any — expires unreferenced.
+    return {
+      ok: false,
+      kind: "unavailable",
+      message: "The upload could not be completed — your work is saved locally.",
+    };
+  }
+
+  let res: Response;
+  try {
+    res = await opts.fetchFn(`${opts.baseUrl}/attempts/${serverAttemptId}/site/finalize`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        [DEV_USER_HEADER]: devUser(storage),
+        "x-ailx-client-ts": new Date().toISOString(),
+      },
+      body: JSON.stringify({ uploadId: ticket.uploadId, seq: T1_SITE_SEQ }),
+    });
+  } catch {
+    return {
+      ok: false,
+      kind: "unavailable",
+      message: "The backend could not be reached — your work is saved locally.",
+    };
+  }
+  return siteResultFrom(storage, opts, clientAttemptId, res);
+}
+
+/**
+ * Upload the site ZIP against the mirrored server attempt. Never throws:
+ * every failure mode collapses to a typed result the UI can explain.
+ *
+ * Large sites go through the client-direct path (the platform would
+ * reject the request body first); small ones keep the single POST.
+ */
+export async function uploadSiteZip(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  clientAttemptId: string,
+  zip: Uint8Array<ArrayBuffer>,
+): Promise<SiteUploadResult> {
+  const serverAttemptId = getServerAttemptId(storage, clientAttemptId);
+  if (!serverAttemptId) {
+    // Offline-start fallback: the mirror creates the server attempt on its
+    // next successful pass — a retry then finds it here.
+    return {
+      ok: false,
+      kind: "unavailable",
+      message: "This run is not mirrored to the server yet — your work is saved locally.",
+    };
+  }
+
+  if (zip.length >= DIRECT_UPLOAD_MIN_BYTES) {
+    const direct = await uploadSiteZipDirect(storage, opts, clientAttemptId, serverAttemptId, zip);
+    // null = no direct target here (local/fs host, or an older
+    // deployment): the POST below still works up to the host's cap.
+    if (direct !== null) return direct;
+  }
+
+  let res: Response;
+  try {
+    res = await opts.fetchFn(
+      `${opts.baseUrl}/attempts/${serverAttemptId}/site?seq=${T1_SITE_SEQ}`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/zip",
+          [DEV_USER_HEADER]: devUser(storage),
+          "x-ailx-client-ts": new Date().toISOString(),
+        },
+        body: zip,
+      },
+    );
+  } catch {
+    return {
+      ok: false,
+      kind: "unavailable",
+      message: "The backend could not be reached — your work is saved locally.",
+    };
+  }
+  return siteResultFrom(storage, opts, clientAttemptId, res);
 }
 
 /**
