@@ -8,8 +8,7 @@
  * demo scenario remains code-side (no content-package changes); its hash is
  * pinned and asserted at test time.
  */
-import { seededUniform, sha256Hex } from "@ailx/session";
-import { D_PRIME_CEILING, maxAttainableDPrime } from "@ailx/track-t2";
+import { D_PRIME_CEILING, maxAttainableDPrime, sampleT2DeckIds, t2DeckSeed } from "@ailx/track-t2";
 import snapshotRaw from "../../../instruments/2026.1/snapshot.json";
 
 interface BankItem {
@@ -131,8 +130,8 @@ function materialToString(m: BankItem["material"]): string {
   return JSON.stringify(m);
 }
 
-/** Snapshot bank items (content-addressed upstream) → T2Config item shape. */
-export function t2Items(locale: string = "en", attemptId?: string) {
+/** Full localized bank in T2Config item shape (pre-sampling). */
+function t2TransformedItems(locale: string) {
   const bank = snapshotTrack("t2").bank;
   if (!bank) throw new Error("snapshot t2 bank missing");
   const exposure = t2ExposureSeconds();
@@ -157,79 +156,66 @@ export function t2Items(locale: string = "en", attemptId?: string) {
         ...(exposure[type] !== undefined ? { exposureSeconds: exposure[type] } : {}),
       };
     });
-  // Demo deck: keep the sitting short & fun — 6 items across difficulties:
-  // 2 media (1 AI + 1 real, difficulty-matched), 2 text/message (1 signal +
-  // 1 benign), 2 provenance. Real-media photo items (repo-local files) lead
-  // the deck; both binary blocks stay class-balanced so d' stays measurable.
-  //
-  // DEMO-ONLY ROTATION: the OPERATIONAL instrument uses fixed, equated
-  // forms (spec §T2) — every candidate on a form sees the same items. This
-  // per-attempt rotation exists only so the static showcase stays fresh on
-  // replay. It is deterministic (seed = sha256(attemptId), via the
-  // @ailx/session seeded PRNG) so a given attempt always re-derives the
-  // SAME deck for presentation and scoring. Without an attemptId the fixed
-  // default deck is returned (used by sample fixtures and /validate).
-  const isMedia = (i: { material: string }) => i.material.startsWith("/");
-  const binary = items.filter((i) => i.type !== "provenance");
-  const prov = items.filter((i) => i.type === "provenance");
-  const mediaAi = binary.filter((i) => isMedia(i) && i.signal === i.key);
-  const mediaReal = binary.filter((i) => isMedia(i) && i.signal !== i.key);
-  const textAi = binary.filter((i) => !isMedia(i) && i.signal === i.key);
-  const textReal = binary.filter((i) => !isMedia(i) && i.signal !== i.key);
-  type DeckItem = (typeof items)[number];
-  // Nearest-difficulty real partner per AI pick (splices from the pool) —
-  // both branches use this so a single pair is never class-confounded with
-  // difficulty. Both branches also back-fill a missing text class from the
-  // remaining text pool so the deck size stays content-independent.
-  const matchByDifficulty = (aiPick: DeckItem[], realPool: DeckItem[]) =>
-    aiPick.map((a) => {
-      let best = 0;
-      for (let j = 1; j < realPool.length; j++) {
-        if (Math.abs(realPool[j].difficulty - a.difficulty) <
-            Math.abs(realPool[best].difficulty - a.difficulty)) best = j;
-      }
-      return realPool.splice(best, 1)[0];
-    });
-  const backfillText = (picked: DeckItem[]) => {
-    const pool = [...textAi, ...textReal].filter((i) => !picked.includes(i));
-    while (picked.length < 2 && pool.length > 0) picked.push(pool.shift()!);
-    return picked;
-  };
-  if (attemptId === undefined) {
-    const aiPick = mediaAi.slice(0, Math.min(1, mediaReal.length));
-    const realPick = matchByDifficulty(aiPick, [...mediaReal]);
-    const media = aiPick.flatMap((a, k) => [a, realPick[k]]);
-    const text = backfillText([textAi[0], textReal[0]].filter(Boolean));
-    return [...media, ...text, ...prov.slice(0, 2)];
-  }
-  const seed = sha256Hex(attemptId);
-  // 1 AI photo, then 1 real photo difficulty-matched to it.
-  const aiPick = seededShuffle(mediaAi, seed, "media-ai").slice(0, 1);
-  const realPick = matchByDifficulty(aiPick, seededShuffle(mediaReal, seed, "media-real"));
-  // Interleave as pairs; seeded order per pair so AI never has a fixed slot.
-  const media = aiPick.flatMap((a, k) => {
-    const pair = [a, realPick[k]];
-    return seededUniform(`${seed}:pair-order`, k) < 0.5 ? pair : pair.reverse();
-  });
-  // 1 signal (AI/hostile) + 1 benign text, seeded pick and seeded order.
-  const textPair = backfillText([
-    seededShuffle(textAi, seed, "text-ai")[0],
-    seededShuffle(textReal, seed, "text-real")[0],
-  ].filter(Boolean));
-  const textPick =
-    seededUniform(`${seed}:text-order`, 0) < 0.5 ? textPair : [...textPair].reverse();
-  const provPick = seededShuffle(prov, seed, "prov").slice(0, 2);
-  return [...media, ...textPick, ...provPick];
+  return items;
 }
 
-/** Deterministic Fisher–Yates over the @ailx/session seeded PRNG. */
-function seededShuffle<T>(arr: readonly T[], seed: string, salt: string): T[] {
-  const out = [...arr];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(seededUniform(`${seed}:${salt}`, i) * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
+/** Snapshot bank items (content-addressed upstream) → T2Config item shape. */
+export function t2Items(locale: string = "en", attemptId?: string) {
+  const items = t2TransformedItems(locale);
+  const byId = new Map(items.map((i) => [i.id, i]));
+  return t2DeckItemIds(locale, attemptId).map((id) => byId.get(id)!);
+}
+
+/** Repo-local real-media items (served files) vs data-URI/text material. */
+const isMediaMaterial = (material: string) => material.startsWith("/");
+
+/** Content-addressed sha256 of the embedded T2 bank. */
+export function t2BankSha256(): string {
+  const sha = snapshotTrack("t2").bank?.sha256;
+  if (!sha) throw new Error("snapshot t2 bank sha256 missing");
+  return sha;
+}
+
+/**
+ * PER-ATTEMPT DECK: presented item ids, sampled by the pure @ailx/track-t2
+ * sampler. Seed = sha256(attemptId + bank sha) so the deck is re-derivable
+ * from stored inputs alone (server records the same ids at attempt
+ * creation; scoring recomputes them). Without an attemptId the fixed
+ * default deck is returned (sample fixtures, /validate).
+ *
+ * NOTE: the OPERATIONAL instrument uses fixed, equated forms (spec §T2) —
+ * per-attempt variation is the hosted-demo exposure model. Static mode
+ * seeds from the LOCAL attempt id; server mode seeds from the SERVER
+ * attempt id (the session adopts it at start), same derivation.
+ */
+export function t2DeckItemIds(locale: string = "en", attemptId?: string): string[] {
+  const candidates = t2TransformedItems(locale).map((i) => ({
+    id: i.id,
+    kind:
+      i.type === "provenance"
+        ? ("provenance" as const)
+        : isMediaMaterial(i.material)
+          ? ("media" as const)
+          : ("text" as const),
+    signal: i.signal === i.key,
+    difficulty: i.difficulty,
+  }));
+  return sampleT2DeckIds(
+    candidates,
+    attemptId === undefined ? undefined : t2DeckSeed(attemptId, t2BankSha256()),
+  );
+}
+
+/**
+ * Deck records for server-side exposure logging: what @ailx/backend persists
+ * (attempt_decks) at attempt creation. MUST stay byte-identical to what the
+ * client presents — both sides call t2DeckItemIds with the same attempt id.
+ */
+export function t2DeckRecords(
+  attemptId: string,
+  locale: string = "en",
+): Array<{ trackId: "t2"; bankSha256: string; itemIds: string[] }> {
+  return [{ trackId: "t2", bankSha256: t2BankSha256(), itemIds: t2DeckItemIds(locale, attemptId) }];
 }
 
 /**

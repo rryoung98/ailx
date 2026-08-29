@@ -81,6 +81,35 @@ function readSyncState(storage: StorageLike, clientAttemptId: string): SyncState
   return { syncedThrough: 0, finalized: false };
 }
 
+function writeSyncState(storage: StorageLike, clientAttemptId: string, state: SyncState): void {
+  try {
+    storage.setItem(syncKey(clientAttemptId), JSON.stringify(state));
+  } catch {
+    // Quota/private mode: next pass re-sends from the last persisted point.
+  }
+}
+
+/** Single POST path shared by the mirror and attempt pre-creation. */
+async function postJson(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  path: string,
+  body?: unknown,
+): Promise<Record<string, unknown>> {
+  const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      [DEV_USER_HEADER]: devUser(storage),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`POST ${path} failed: ${res.status}`);
+  }
+  return (await res.json()) as Record<string, unknown>;
+}
+
 /** Stable per-browser dev identity (dev AuthProvider asserts, never proves). */
 function devUser(storage: StorageLike): string {
   let user = storage.getItem(DEV_USER_KEY);
@@ -114,19 +143,8 @@ class ServerMirror {
     return this.inflight;
   }
 
-  private async post(path: string, body?: unknown): Promise<Record<string, unknown>> {
-    const res = await this.opts.fetchFn(`${this.opts.baseUrl}${path}`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [DEV_USER_HEADER]: devUser(this.storage),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    if (!res.ok) {
-      throw new Error(`POST ${path} failed: ${res.status}`);
-    }
-    return (await res.json()) as Record<string, unknown>;
+  private post(path: string, body?: unknown): Promise<Record<string, unknown>> {
+    return postJson(this.storage, this.opts, path, body);
   }
 
   private async syncPass(): Promise<void> {
@@ -161,11 +179,7 @@ class ServerMirror {
   }
 
   private write(clientAttemptId: string, state: SyncState): void {
-    try {
-      this.storage.setItem(syncKey(clientAttemptId), JSON.stringify(state));
-    } catch {
-      // Quota/private mode: next pass re-sends from the last persisted point.
-    }
+    writeSyncState(this.storage, clientAttemptId, state);
   }
 }
 
@@ -198,6 +212,47 @@ export function createApiPersistence(
   };
 }
 
+/**
+ * Create the server attempt UP FRONT (before `attempt_started` is
+ * committed) so the T2 deck can be keyed to — and its item ids recorded
+ * against — the SERVER attempt id. `decks: true` commits this client to
+ * presenting exactly the deck derived from the returned id.
+ *
+ * The sync state is pre-written under the returned id, so when the session
+ * adopts it as its attemptId the mirror reuses this attempt instead of
+ * creating a second one.
+ */
+export async function createServerAttempt(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  locale: string,
+): Promise<string> {
+  const created = await postJson(storage, opts, "/attempts", { locale, decks: true });
+  const id = (created.attempt as { id: string }).id;
+  writeSyncState(storage, id, { serverAttemptId: id, syncedThrough: 0, finalized: false });
+  return id;
+}
+
+/**
+ * Browser entry point for run start. Server mode: returns the pre-created
+ * server attempt id to adopt as the session attemptId. Static mode — or a
+ * server-mode create that fails (offline, backend down) — returns null and
+ * the caller falls back to a client-local attempt id: the deck derivation
+ * is identical, it is just keyed to the local id and not recorded
+ * server-side (the mirror will still lazily create an attempt for the log).
+ */
+export async function startServerAttempt(locale: string): Promise<string | null> {
+  if (process.env.NEXT_PUBLIC_AILX_BACKEND !== "1" || typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return await createServerAttempt(window.localStorage, browserApiOptions(), locale);
+  } catch (err) {
+    console.warn("[ailx sync] server attempt creation failed; using a local attempt id", err);
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Env-selected browser singleton
 // ---------------------------------------------------------------------------
@@ -209,6 +264,13 @@ export function createApiPersistence(
  */
 const byStorage = new WeakMap<object, AttemptPersistence>();
 
+function browserApiOptions(): ApiPersistenceOptions {
+  return {
+    baseUrl: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api`,
+    fetchFn: (...args) => window.fetch(...args),
+  };
+}
+
 /** Browser-only (call from effects/handlers, never during SSR render). */
 export function getAttemptPersistence(): AttemptPersistence {
   const storage = window.localStorage;
@@ -216,10 +278,7 @@ export function getAttemptPersistence(): AttemptPersistence {
   if (!p) {
     p =
       process.env.NEXT_PUBLIC_AILX_BACKEND === "1"
-        ? createApiPersistence(storage, {
-            baseUrl: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api`,
-            fetchFn: (...args) => window.fetch(...args),
-          })
+        ? createApiPersistence(storage, browserApiOptions())
         : createLocalPersistence(storage);
     byStorage.set(storage, p);
   }

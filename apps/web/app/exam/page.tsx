@@ -8,7 +8,7 @@ import {
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
-import { getAttemptPersistence } from "../../lib/persistence";
+import { getAttemptPersistence, startServerAttempt } from "../../lib/persistence";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
 } from "../../lib/checkpoints";
@@ -56,6 +56,7 @@ export default function ExamPage() {
   const [connected, setConnected] = useState(false);
   const [connectAttention, setConnectAttention] = useState(0);
   const logRef = useRef<SequencedEntry[] | null>(null);
+  const startingRef = useRef(false); // run-start in flight (server attempt pre-creation)
   logRef.current = log;
 
   // Hydrate from localStorage (client-only; static export has no SSR data).
@@ -237,15 +238,26 @@ export default function ExamPage() {
           </Reveal>
           <PillCTA
             disabled={!connected}
-            onClick={() => {
+            onClick={async () => {
               if (!connected) {
                 // Redirect attention to the connect panel instead of starting.
                 setConnectAttention((a) => a + 1);
                 return;
               }
-              const ts = Date.now();
-              const attemptId = `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;
-              commit([{ type: "attempt_started", attemptId, config: cfg, ts }]);
+              if (startingRef.current) return; // ignore double-clicks mid-await
+              startingRef.current = true;
+              try {
+                // Server mode: adopt the pre-created SERVER attempt id so the
+                // per-attempt T2 deck is keyed to (and recorded against) it.
+                // Static mode / backend unreachable: local id, same derivation.
+                const serverId = await startServerAttempt(cfg.locale);
+                const ts = Date.now();
+                const attemptId =
+                  serverId ?? `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;
+                commit([{ type: "attempt_started", attemptId, config: cfg, ts }]);
+              } finally {
+                startingRef.current = false;
+              }
             }}
           >
             {connected ? "Start your run" : "Connect a model to start"}

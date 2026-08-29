@@ -1,15 +1,15 @@
 /**
- * T2 demo deck rotation — regression tests.
- * The deck is deterministic per attemptId (seed = sha256(attemptId) through
- * the @ailx/session seeded PRNG), varies across attempts, and holds the
- * balance invariants: 6 items = 2 media (1 AI + 1 real, difficulty-
+ * T2 per-attempt deck rotation — regression tests.
+ * The deck is deterministic per attemptId (seed = sha256(attemptId + bank
+ * sha256) through the pure @ailx/track-t2 sampler), varies across attempts,
+ * and holds the balance invariants: 6 items = 2 media (1 AI + 1 real, difficulty-
  * matched) + 2 text/message (1 signal + 1 benign) + 2 provenance. Without
  * an attemptId the fixed
  * default deck is returned (fixtures, /validate). The operational
  * instrument uses fixed forms; this rotation is demo-only.
  */
 import { describe, expect, it } from "vitest";
-import { t2AnswerKeys, t2Items, trackConfig } from "../lib/instrument";
+import { t2AnswerKeys, t2DeckItemIds, t2DeckRecords, t2BankSha256, t2Items, trackConfig } from "../lib/instrument";
 import { scoreTrack } from "../lib/registry";
 
 type Item = ReturnType<typeof t2Items>[number];
@@ -44,6 +44,17 @@ describe("T2 deck rotation (demo-only)", () => {
     expect(text).toHaveLength(2);
     expect(text.filter(isAi)).toHaveLength(1);
     expect(deck.filter((i) => i.type === "provenance")).toHaveLength(2);
+  });
+
+  it("server-recorded deck records equal the presented deck ids", () => {
+    for (const a of SEEDS.slice(0, 5)) {
+      const [rec] = t2DeckRecords(a, "en");
+      expect(rec.trackId).toBe("t2");
+      expect(rec.bankSha256).toBe(t2BankSha256());
+      expect(rec.bankSha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(rec.itemIds).toEqual(ids(t2Items("en", a)));
+      expect(rec.itemIds).toEqual(t2DeckItemIds("en", a));
+    }
   });
 
   it("different attemptIds produce different decks", () => {

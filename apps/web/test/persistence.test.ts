@@ -4,6 +4,8 @@ import {
   DEV_USER_KEY,
   createApiPersistence,
   createLocalPersistence,
+  createServerAttempt,
+  startServerAttempt,
   type AttemptPersistence,
 } from "../lib/persistence";
 
@@ -244,5 +246,58 @@ describe("createApiPersistence", () => {
     await bare.flush();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+describe("createServerAttempt (per-attempt deck keying)", () => {
+  const SERVER_ID = "00000000-0000-4000-8000-0000000000aa";
+
+  it("opts in to deck sampling and pre-writes the sync state under the server id", async () => {
+    const storage = fakeStorage();
+    const server = fakeFetch(SERVER_ID);
+    const id = await createServerAttempt(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, "ja");
+    expect(id).toBe(SERVER_ID);
+    expect(server.calls).toHaveLength(1);
+    expect(server.calls[0].path).toBe("/api/attempts");
+    // The deck contract: locale travels, decks:true commits to the server deck.
+    expect(server.calls[0].body).toEqual({ locale: "ja", decks: true });
+    expect(server.calls[0].headers["x-ailx-dev-user"]).toMatch(/^web-/);
+    expect(JSON.parse(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)!)).toEqual({
+      serverAttemptId: SERVER_ID,
+      syncedThrough: 0,
+      finalized: false,
+    });
+  });
+
+  it("the mirror ADOPTS the pre-created attempt instead of creating a second one", async () => {
+    const storage = fakeStorage();
+    const server = fakeFetch(SERVER_ID);
+    const opts = { baseUrl: "/api", fetchFn: server.fetchFn };
+    const id = await createServerAttempt(storage, opts, "en");
+    // Session adopts the server id as its attemptId; mirror log follows.
+    const p = createApiPersistence(storage, opts);
+    p.save(startedLog(id));
+    await p.flush();
+    const creates = server.calls.filter((c) => c.path === "/api/attempts");
+    expect(creates).toHaveLength(1); // only the pre-creation
+    const responses = server.calls.filter((c) => c.path.endsWith("/responses"));
+    expect(responses.map((c) => c.path)).toEqual([`/api/attempts/${SERVER_ID}/responses`]);
+    expect((responses[0].body as { seq: number }).seq).toBe(0);
+  });
+
+  it("propagates a create failure (caller falls back to a local attempt id)", async () => {
+    const storage = fakeStorage();
+    const server = fakeFetch(SERVER_ID);
+    server.state.failNext = 1;
+    await expect(
+      createServerAttempt(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, "en"),
+    ).rejects.toThrow("network down");
+    expect(storage._map.size).toBeLessThanOrEqual(1); // no sync state written (dev id at most)
+  });
+});
+
+describe("startServerAttempt", () => {
+  it("returns null outside server mode — static showcase unchanged", async () => {
+    await expect(startServerAttempt("en")).resolves.toBeNull();
   });
 });
