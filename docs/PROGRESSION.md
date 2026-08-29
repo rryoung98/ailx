@@ -52,7 +52,7 @@ un-teach an answer. The separation is therefore structural, not a convention:
 
 ### 2.2 The corpus, honestly
 
-24 real, freely-licensed **images**: 12 genuine photographs and 12 genuine
+23 real, freely-licensed **images**: 12 genuine photographs and 11 genuine
 model-generated images, all from Wikimedia Commons under CC0, CC-BY, CC-BY-SA
 or public domain. The call is T2's own — **"is this a photograph or an
 AI-generated image?"** — and every card ends with a one-line **tell** naming
@@ -69,7 +69,7 @@ duplicated or answer-restating one.
 | `instruments/practice/2026.1/curation.json` | hand-written curation: title, class, family, difficulty, alt, tell |
 | `instruments/practice/2026.1/corpus.json` | the built manifest — the source of truth |
 | `packages/report/src/practiceCorpus.ts` | GENERATED from it, so the bundle can carry the corpus into the static export |
-| `apps/web/public/practice-media/` | the assets, content-addressed, ≤150 KB each |
+| `apps/web/public/practice-media/` | the assets, content-addressed, ≤200 KB each and all encoded towards one common size |
 | `instruments/tools/commons_media.py` | the one Commons fetch/licence/encode helper, shared with the scored deck's pipeline |
 
 Rebuild with
@@ -85,11 +85,40 @@ found and rejected while this corpus was built.
 **Assets live in the repo, not in Blob storage.** `/practice` ships in the
 static GitHub Pages export, which has no server to sign a Blob URL from, so a
 Blob-backed corpus would make the drill work only in the hosted build — and
-the demo is the surface that sells the loop. 24 budgeted JPEGs is about 2 MB.
+the demo is the surface that sells the loop. 23 budgeted JPEGs is about 3 MB.
+The budget is per asset (≤200 KB) and every asset is encoded towards ONE
+common size rather than merely under the cap — see "no free answers" below.
+
+**No free answers.** A practice bank fails twice over if a card can be called
+without looking: the candidate learns the shortcut instead of the artefact,
+and the bank's measured difficulty is a lie. This corpus HAD such a shortcut.
+Generators default to 1:1 and cameras shoot 3:2 or 4:3, so every near-square
+item was synthetic and "answer AI if square" took 29% of the bank blind. Six
+items are now reframed by crop — three photographs to square, three
+generations to 3:2 — and each crop is recorded in that item's
+`credit.derivative` exactly like the watermark crops. Encoded size leaked the
+same way (noise compresses large, smooth gradients compress small), so every
+asset is encoded towards one common size instead of merely under the cap.
+`packages/report/test/practiceCorpus.test.ts` now FAILS if aspect band, exact
+ratio, orientation, width, height, pixel count, file-size band or colour
+components predicts the answer better than chance — a silent shortcut is worse
+than a loud one.
+
+**Three generated items are not photorealistic, and the data says so.**
+`donkey-cart` is an oil-painting pastiche; `tower-city-haze` and
+`temple-plaza-crowd` read as CGI renders. A candidate can call these from the
+finish in a second and never reach the artefact, which teaches
+"painterly = generated" — false of every genuine painting and of every
+photorealistic generation. They are kept because freely-licensed
+photorealistic generations are scarce, but they carry `material.style`
+(`painterly` / `render`), the test refuses an undeclared or unknown value, and
+`donkey-cart`'s tell now names the shortcut and refuses it. Replacing them
+with photorealistic generations under the same licensing discipline is the
+first content job.
 
 **What is still thin, and it is said on the page.** The corpus is small, and
 the families are not equally deep: physics 3 synthetic / 4 authentic, function
-7 / 5, sociocultural 2 / 3. The sociocultural side of the *generated* half is
+6 / 5, sociocultural 2 / 3. The sociocultural side of the *generated* half is
 the hardest to fill, because a generated picture has to be culturally specific
 before it can be culturally wrong, and freely-licensed photorealistic
 generations on Commons are mostly landscape, architecture and food. A round
@@ -241,20 +270,51 @@ sharing work, not here.
 
 ## 7. Known gaps
 
-1. **The corpus is real but shallow** (§2.2). 24 licensed images now do T2's
+1. **The corpus is real but shallow** (§2.2). 23 licensed images now do T2's
    own authentic-versus-synthetic call, so the drill trains the skill it claims
-   to train — but 24 cards repeat, and the sociocultural family has only two
+   to train — but 23 cards repeat, and the sociocultural family has only two
    generated items. Depth is content work: more curated Commons titles, or real
    generations under redistributable terms. Nothing in this repository can
    generate an image, so the second route needs a human with model access.
-2. **Media is still images only.** Spec §T2 also runs video and audio blocks.
+   An independent review of all 24 shipped pictures (2026-08-30) pulled one
+   item and rewrote nine tells; what it found is worth stating, because the
+   same mistakes are easy to make again:
+   - `balcony-ironwork` was PULLED. Its tell rested on a balustrade about 20 px
+     wide — an undifferentiated smear at 8× zoom. A tell nobody can see teaches
+     a candidate to distrust their own eyes. The item was also the restoration
+     trap live: a real château, a Commons author literally named "chat gpt",
+     and a title saying "sepia" over a full-colour asset, so "AI-generated" was
+     doing double duty for "AI-edited" on provenance nobody can corroborate.
+   - `moated-palace-reflection` was KEPT with a new tell. The old one praised a
+     reflection that is not in the picture: the moat is wind-chopped edge to
+     edge and mirrors nothing. On a *photograph* that is the worst failure in
+     the set — it teaches a check, then rewards it where it returns nothing,
+     and marks a candidate wrong for looking honestly. The image is good, so
+     the tell now teaches the true rule: a rippled surface CANNOT mirror, and
+     an absent reflection is a fact about the weather, not about the pipeline.
+   - Two tells taught FALSE RULES and were rewritten: smaller front wheels are
+     normal on real horse-drawn carriages, and a lamp-post height difference
+     that is within perspective is not evidence.
+   - Three alt texts described a different picture from the one shown (a
+     tractor called a trolley, the wrong mushroom species, chopped water called
+     "still"). A screen-reader candidate answers from the alt, so a wrong alt
+     is a wrong QUESTION, not a typo.
+2. **The physics family is thin, and its synthetic tells were too alike.** All
+   three generated physics items said "nothing casts a shadow", so one trick
+   cleared the family. Two are re-told: `tower-city-haze` on glass that mirrors
+   nothing while the ponds below it mirror the trees, and `promenade-lamp-posts`
+   on the DISAGREEMENT between objects that cast shadows and objects that do
+   not in the same sunlight. `chapel-golden-hour` remains the shadow item and is
+   the clearest of the three. A fourth generated physics item with a different
+   failure is still wanted.
+3. **Media is still images only.** Spec §T2 also runs video and audio blocks.
    Practice drills neither, and the corpus format has no place for them yet.
-3. **Pre/post is not wired.** Spec §13 wants the training round recorded as a
+4. **Pre/post is not wired.** Spec §13 wants the training round recorded as a
    measured intervention against the scored deck. Practice is deliberately
    decoupled from sittings today; linking them is a psychometrics decision.
-4. **`/progress` needs a proven identity.** Under `AILX_AUTH=clerk` a page
+5. **`/progress` needs a proven identity.** Under `AILX_AUTH=clerk` a page
    render carries the session; under `AILX_AUTH=dev` the browser sends no
    asserted header on a navigation, so the page shows its honest "we do not know
    who you are" state. The drill itself works either way.
-5. **No E2E yet.** FRONTEND.md §6.4 lists the required specs; a practice→streak
+6. **No E2E yet.** FRONTEND.md §6.4 lists the required specs; a practice→streak
    journey belongs on that list once Playwright covers the exam path.

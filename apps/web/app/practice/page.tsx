@@ -61,9 +61,11 @@ export default function PracticePage() {
             CC-BY, CC-BY-SA or public domain, credited under each card. It is a{" "}
             <strong>small</strong> set, and the three families are not equally deep: the
             sociocultural side of the generated half is the thinnest, because a generated picture
-            has to be culturally specific before it can be culturally wrong. So a round repeats
-            material sooner than the scored deck would, and the drill is training, not a measure
-            of anything.{" "}
+            has to be culturally specific before it can be culturally wrong. Three of the
+            generated pictures are a painting or a CGI render rather than a photorealistic
+            generation, so they can be called from their finish alone — they are marked as such
+            in the corpus data. So a round repeats material sooner than the scored deck would,
+            and the drill is training, not a measure of anything.{" "}
             {isServerMode() ? (
               <>
                 Your rounds are recorded and your streak is worked out on the server.{" "}

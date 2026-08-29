@@ -27,6 +27,7 @@ import {
   PRACTICE_BANK,
   PRACTICE_BANK_VERSION,
   PRACTICE_DECK_SIZE,
+  PRACTICE_STYLES,
   SIGNAL_CHOICE,
 } from "../src/practice.js";
 
@@ -39,8 +40,8 @@ const MEDIA_DIR = repoUrl("apps/web/public/practice-media");
 /** The licences the pipeline is allowed to accept — the same set it enforces. */
 const ALLOWED_LICENSE = /^(CC0|CC BY(-SA)? \d(\.\d)?|Public domain|PD)/i;
 
-/** 150 KB per asset: /practice ships in the static export, over the network. */
-const ASSET_BUDGET_BYTES = 150_000;
+/** 200 KB per asset: /practice ships in the static export, over the network. */
+const ASSET_BUDGET_BYTES = 200_000;
 
 interface CorpusFile {
   version: string;
@@ -50,10 +51,60 @@ interface CorpusFile {
     family: string;
     difficulty: string;
     tell: string;
-    material: { kind: string; src: string; alt: string };
+    material: { kind: string; src: string; alt: string; style?: string };
     credit: Record<string, string>;
   }[];
 }
+
+/**
+ * Width, height and colour-component count, read from the JPEG's own SOF
+ * marker. No image library: the test may not add a dependency to learn a
+ * property a candidate's five-line script could read.
+ */
+const jpegShape = (bytes: Buffer): { width: number; height: number; components: number } => {
+  let at = 2; // skip SOI
+  while (at + 9 < bytes.length) {
+    if (bytes[at] !== 0xff) {
+      at += 1;
+      continue;
+    }
+    const marker = bytes[at + 1];
+    const length = bytes.readUInt16BE(at + 2);
+    // SOF0..SOF15, excluding the non-frame markers DHT (c4), JPG (c8), DAC (cc).
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return {
+        height: bytes.readUInt16BE(at + 5),
+        width: bytes.readUInt16BE(at + 7),
+        components: bytes[at + 9],
+      };
+    }
+    at += 2 + length;
+  }
+  throw new Error("no JPEG frame header");
+};
+
+/** Aspect band, named the way a person would name it. */
+const ratioBand = (ratio: number): string =>
+  ratio < 0.9 ? "portrait" : ratio <= 1.11 ? "square" : "landscape";
+
+/**
+ * The trivially computable properties of an asset — everything a script can
+ * know WITHOUT looking at the picture. Continuous ones are bucketed coarsely
+ * and on round numbers, chosen before the measurement rather than after it.
+ */
+const shortcutFeatures = (bytes: Buffer): Record<string, string | number> => {
+  const { width, height, components } = jpegShape(bytes);
+  return {
+    ratioBand: ratioBand(width / height),
+    ratioQuarter: Math.round((width / height) * 4) / 4,
+    orientation: width === height ? "exact-square" : width > height ? "wide" : "tall",
+    fileSizeBand25k: Math.floor(bytes.length / 25_000),
+    pixelBand100k: Math.floor((width * height) / 100_000),
+    widthBand100: Math.floor(width / 100),
+    heightBand100: Math.floor(height / 100),
+    colourComponents: components,
+  };
+};
 
 const corpus = JSON.parse(readFileSync(CORPUS_PATH, "utf8")) as CorpusFile;
 
@@ -218,5 +269,109 @@ describe("the corpus can fill a balanced deck", () => {
 
   it("varies difficulty rather than shipping one setting", () => {
     expect(new Set(PRACTICE_BANK.map((i) => i.difficulty)).size).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("no trivially computable property of an asset predicts the answer", () => {
+  /**
+   * THE SHORTCUT TEST. A practice corpus fails at its job twice over if the
+   * answer can be had without looking: the candidate learns the shortcut
+   * instead of the artefact, and the bank's measured difficulty is a lie.
+   * This corpus HAD one — generators default to 1:1 and cameras do not, so
+   * every near-square item was synthetic and "answer AI if square" scored 29%
+   * of the bank blind. It was broken by reframing crops (recorded, per item,
+   * in `credit.derivative`), and file size was broken the same way by
+   * encoding every asset towards one common size.
+   *
+   * A shortcut that returns silently is worse than a loud one, so the rule is
+   * asserted rather than remembered, over EVERY property a script can read
+   * without a model: aspect, orientation, dimensions, pixel count, encoded
+   * size and colour components.
+   */
+  const rows = PRACTICE_BANK.map((item) => ({
+    id: item.id,
+    key: item.key,
+    features: shortcutFeatures(readFileSync(repoUrl(`apps/web/public/${item.material.src}`))),
+  }));
+  const featureNames = Object.keys(rows[0]!.features);
+
+  /** Items grouped by one feature's value: bucket -> counts per class. */
+  const tally = (feature: string): Map<string, { signal: number; clean: number }> => {
+    const buckets = new Map<string, { signal: number; clean: number }>();
+    for (const row of rows) {
+      const bucket = String(row.features[feature]);
+      const seen = buckets.get(bucket) ?? { signal: 0, clean: 0 };
+      if (row.key === SIGNAL_CHOICE) seen.signal += 1;
+      else seen.clean += 1;
+      buckets.set(bucket, seen);
+    }
+    return buckets;
+  };
+
+  /**
+   * The bound. Chance for the best CONSTANT answer is the majority class,
+   * about 0.52 here; 0.70 is 16 of 23 cards, which an uninformative property
+   * does not reach. Anything above it is a rule worth learning instead of
+   * looking, which is the thing this corpus must not teach.
+   */
+  const LEAK_CEILING = 0.7;
+
+  it("scores near chance for a candidate who guesses from the feature alone", () => {
+    for (const feature of featureNames) {
+      const buckets = tally(feature);
+      let correct = 0;
+      for (const { signal, clean } of buckets.values()) correct += Math.max(signal, clean);
+      const accuracy = correct / rows.length;
+      expect(
+        accuracy,
+        `'${feature}' predicts the answer ${(accuracy * 100).toFixed(0)}% of the time — ` +
+          `a candidate could score that without looking at a picture`,
+      ).toBeLessThanOrEqual(LEAK_CEILING);
+    }
+  });
+
+  it("leaves no populated bucket that is purely one class", () => {
+    // The aspect-ratio leak was exactly this shape: seven near-square items,
+    // all seven synthetic. A bound on average accuracy alone can miss a small
+    // bucket that is a free, perfectly reliable answer whenever it comes up.
+    for (const feature of featureNames) {
+      for (const [bucket, { signal, clean }] of tally(feature)) {
+        if (signal + clean < 4) continue;
+        expect(
+          signal > 0 && clean > 0,
+          `every one of the ${signal + clean} items with ${feature}=${bucket} is ` +
+            `${signal > 0 ? "AI-generated" : "a photograph"}`,
+        ).toBe(true);
+      }
+    }
+  });
+});
+
+describe("an item answerable from its STYLE says so", () => {
+  /**
+   * A painterly or rendered picture is called in a second from its finish,
+   * and the candidate never reaches the artefact — which teaches
+   * "painterly = generated", false of every genuine painting and of every
+   * photorealistic generation. The corpus may still carry such items (found,
+   * freely-licensed generations are scarce), but it may not carry them
+   * silently: the flag is data, and the gaps document names them.
+   */
+  it("declares only known styles, and only on generated items", () => {
+    for (const item of PRACTICE_BANK) {
+      const style = item.material.style;
+      if (style === undefined) continue;
+      expect(PRACTICE_STYLES, `${item.id} has unknown style '${style}'`).toContain(style);
+      expect(item.key, `${item.id} is a photograph flagged as non-photorealistic`)
+        .toBe(SIGNAL_CHOICE);
+    }
+  });
+
+  it("names every flagged item in docs/PROGRESSION.md", () => {
+    const gaps = readFileSync(repoUrl("docs/PROGRESSION.md"), "utf8");
+    for (const item of PRACTICE_BANK) {
+      if (item.material.style === undefined) continue;
+      expect(gaps, `PROGRESSION.md does not admit that ${item.id} is not photorealistic`)
+        .toContain(item.id.split(":")[2]!);
+    }
   });
 });
