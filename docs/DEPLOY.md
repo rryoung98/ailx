@@ -106,24 +106,83 @@ authentication at all. Never set that flag on a deployment holding real data.
 ## 5. Vercel platform limits that bite AILX
 
 - **Request/response body cap (4.5 MB).** `T1_LIMITS.maxTotalBytes` is 25 MB,
-  so a large T1 ZIP is rejected by the platform before our handler sees it, and
-  an asset over ~4.5 MB cannot be served back through the site route. Staging
-  is fine for realistic hand-written sites; do not read a platform 413 as an
-  AILX bug. A fix means client-direct upload to Blob, which is not built.
+  so a large T1 ZIP cannot go through a request body at all, and an asset
+  over ~4.5 MB cannot be served back through the site route. Uploads
+  above 4 MB take the client-direct path in §5.1 instead; the POST path
+  below is what small ones still use, unchanged.
 
-  Measured on staging (6 MB ZIP): the platform answers `413` with the
-  plain-text body `Request Entity Too Large / FUNCTION_PAYLOAD_TOO_LARGE` —
-  our handler never runs, so there is no JSON error envelope and no
-  `responses` row. `uploadSiteZip` maps that case to a `rejected` result
-  carrying `PLATFORM_TOO_LARGE_MESSAGE`, so the participant reads the real
-  reason (and that the run is still saved and scored locally) instead of
-  "Upload failed (HTTP 413)". Our own 413s — the validator's `file_too_large`
-  / `total_too_large` — still arrive as JSON and still win, because a parsed
-  server message always replaces the platform default.
+  Measured on staging (6 MB ZIP) before that path existed: the platform
+  answers `413` with the plain-text body `Request Entity Too Large /
+  FUNCTION_PAYLOAD_TOO_LARGE` — our handler never runs, so there is no
+  JSON error envelope and no `responses` row. `uploadSiteZip` still maps
+  that case to a `rejected` result carrying `PLATFORM_TOO_LARGE_MESSAGE`,
+  which is now the last-resort message for a host with no Blob store
+  (`AILX_SNAPSHOT_STORE=fs`), not the normal outcome. Our own 413s — the
+  validator's `file_too_large` / `total_too_large` — still arrive as JSON
+  and still win, because a parsed server message always replaces the
+  platform default.
 - **Function duration.** Default 10 s (Hobby) / 15 s (Pro) unless raised.
+  Finalizing a direct upload reads the staged ZIP back and re-uploads the
+  validated files, so a 25 MB site is the slowest request the app makes.
 - **No warm process between requests.** Nothing may rely on in-memory state
   surviving a request: no in-memory counters, caches with correctness meaning,
   or work started after the response is returned.
+
+### 5.1 Client-direct upload to Blob (large T1 sites)
+
+The browser PUTs the ZIP straight into the Blob store and then asks us
+to accept it, so the bytes never traverse a function request body:
+
+```
+POST /api/attempts/:id/site/upload-ticket   → { uploadId, pathname, token, ... }
+PUT  <blob store>/uploads/<attemptId>/<uploadId>.zip   (browser → Blob, scoped token)
+POST /api/attempts/:id/site/finalize        { uploadId, seq }
+```
+
+Selection is by size and is automatic: `DIRECT_UPLOAD_MIN_BYTES` (4 MB,
+`apps/web/lib/siteUpload.ts`). Under it, the single POST is one round
+trip and stays exactly as it was. Over it, the client asks for a ticket;
+if the deployment has no Blob store the ticket endpoint answers `501`
+and the client falls back to the POST, so `AILX_SNAPSHOT_STORE=fs`,
+`next dev` and the static export are all unaffected.
+
+**Who authorises.** `/site/upload-ticket` authenticates the caller
+through the same `AuthProvider` as every other route and 404s an attempt
+that is not theirs (no existence leak). Only then is a ticket minted.
+A ticket records nothing and reserves nothing — an unused one expires.
+
+**What the token is scoped to.** The server chooses everything a client
+would otherwise choose. The key is
+`<prefix>/uploads/<attemptId>/<uploadId>.zip`, where `uploadId` is 128
+server-generated random bits, and the client token is issued for exactly
+that pathname, `application/zip` only, at most `T1_LIMITS.maxTotalBytes`,
+for 15 minutes, with `addRandomSuffix: false` and `allowOverwrite:
+false`. So a stolen, replayed or hand-edited grant reaches ONE scratch
+key inside the uploader's own attempt — never a content-addressed
+`blobs/` object, never a `manifests/` commit marker, never another
+attempt. Staged objects are `access: "private"` like every other object
+we write.
+
+**How the server validates AFTER the bytes land.** `/site/finalize`
+re-checks ownership, reads the staged object back, refuses it from its
+metadata if it is over the cap (without buffering it), and then runs the
+SAME `snapshotFromZip` a POSTed ZIP runs — zip bombs, zip slip,
+symlinks, disallowed types and §12 caps are refused by identical code.
+The client never names a digest: the digest is computed from the bytes
+we read, so nobody can register a snapshot they did not upload. Once
+validated, `recordSiteSubmission` runs the unchanged pipeline — the
+`responses` row FIRST, the content-addressed bytes second — so the
+one-submission-per-attempt index, the append-only store and the
+record-before-store ordering are exactly as before.
+
+**What happens to bytes that fail validation.** Nothing is recorded and
+nothing is stored under a content address, so the serve path 404s them
+(it serves only a digest a `responses` row still points at, and only
+from `manifests/` + `blobs/`). The staged object is deleted whether the
+submission was accepted or refused; a staged key is never servable even
+before that, since `uploads/` is not a namespace `handleServeSite`
+reads. A crash between PUT and finalize leaves one private, unreferenced
+scratch object that no URL resolves to.
 
 ## 6. The build fix this deployment needs (`outputFileTracingExcludes`)
 
