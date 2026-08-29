@@ -23,6 +23,7 @@ import { TRACK_LIST, TRACK_META } from "../../lib/tracks";
 import { Annotation } from "../../lib/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
 import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
+import { PersistWarning } from "../../lib/PersistWarning";
 import { PillCTA } from "../../lib/PillCTA";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
@@ -244,11 +245,7 @@ export default function ExamPage() {
 
   if (!hydrated) {
     return <main className="page">
-      {persistWarning ? (
-        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
-          ⚠ Persistence warning: {persistWarning}
-        </div>
-      ) : null}
+      <PersistWarning warning={persistWarning} />
       <div className="container"><p className="muted">Loading your run…</p></div></main>;
   }
 
@@ -257,12 +254,7 @@ export default function ExamPage() {
     const cfg = demoConfig("en");
     return (
       <main className="page">
-      {persistWarning ? (
-        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
-          ⚠ Persistence warning: {persistWarning}
-        </div>
-      ) : null}
-      
+      <PersistWarning warning={persistWarning} />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · AILX 2026.1</div>
           <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
@@ -323,12 +315,7 @@ export default function ExamPage() {
   if (state.phase === "completed") {
     return (
       <main className="page">
-      {persistWarning ? (
-        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
-          ⚠ Persistence warning: {persistWarning}
-        </div>
-      ) : null}
-      
+      <PersistWarning warning={persistWarning} />
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Run complete</h1>
           <p className="lede">All four tracks are scored. The diagnostic report is the real reward.</p>
@@ -348,12 +335,7 @@ export default function ExamPage() {
     const done = state.order.filter((t) => state.tracks[t].status === "completed");
     return (
       <main className="page">
-      {persistWarning ? (
-        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
-          ⚠ Persistence warning: {persistWarning}
-        </div>
-      ) : null}
-      
+      <PersistWarning warning={persistWarning} />
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">run {state.attemptId}</div>
           <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
@@ -438,12 +420,7 @@ export default function ExamPage() {
 
   return (
     <main className="page">
-      {persistWarning ? (
-        <div role="alert" style={{ background: "#3a1f1f", border: "1px solid #7a3b3b", color: "#ffd9d9", padding: "0.6rem 0.9rem", borderRadius: 8, margin: "0.6rem auto", maxWidth: 980, fontSize: "0.85rem" }}>
-          ⚠ Persistence warning: {persistWarning}
-        </div>
-      ) : null}
-      
+      <PersistWarning warning={persistWarning} />
       {/* Full-width workspace while a track is live: the runners are
           two-pane environments and need the room (~1400px). */}
       <div className="container" style={{ maxWidth: 1400 }}>
