@@ -118,7 +118,7 @@ authentication at all. Never set that flag on a deployment holding real data.
 ## 6. Deploy
 
 ```bash
-pnpm -r test && pnpm -r build          # both must pass
+pnpm test && pnpm -r build             # both must pass
 AILX_BACKEND=1 pnpm --filter @ailx/web build   # the server build specifically
 
 vercel link                            # root directory: apps/web

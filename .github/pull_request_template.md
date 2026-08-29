@@ -6,7 +6,7 @@
 
 <!-- Commands run and what you saw. -->
 
-- [ ] `pnpm -r test` and `pnpm -r build` pass locally
+- [ ] `pnpm test` and `pnpm -r build` pass locally
 - [ ] Server mode still builds if API routes changed (`AILX_BACKEND=1 pnpm --filter @ailx/web build`)
 - [ ] New/changed behaviour has tests at the cheapest level that can observe it (`FRONTEND.md` §6.2)
 

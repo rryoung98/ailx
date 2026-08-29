@@ -1,6 +1,6 @@
 # E2E suite
 
-Playwright, per FRONTEND.md §6. It is deliberately **not** part of `pnpm -r test`:
+Playwright, per FRONTEND.md §6. It is deliberately **not** part of `pnpm test`:
 it needs a real server and a database, and the unit run must stay fast and
 dependency-free.
 

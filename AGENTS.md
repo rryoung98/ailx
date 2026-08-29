@@ -15,8 +15,11 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 - `infra/` — GCP infrastructure
 
 ## Commands
-- `pnpm install` · `pnpm -r test` · `pnpm -r build` (both must pass before any commit)
-- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm -r test`: it boots its own server build and needs a disposable Postgres. See `apps/web/e2e/README.md`.
+- `pnpm install` · `pnpm test` · `pnpm -r build` (both must pass before any commit)
+- `pnpm test` is ONE vitest for the whole monorepo (`vitest-workspace.ts`), with one worker pool capped at 4 forks — the ceiling is memory, not CPU. Raise it with `AILX_TEST_FORKS=8 pnpm test` on a big machine. `pnpm -r test` still works and still runs the same tests, but it starts a vitest per package, so it costs more RAM and more time.
+- `vitest run` inside a package is the way to debug one package.
+- `pnpm test:reap` — kill vitest workers orphaned by an interrupted run (reparented to pid 1, each still holding its heap). The capped pool and the per-file PGlite close make this rare rather than routine.
+- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm test`: it boots its own server build and needs a disposable Postgres. See `apps/web/e2e/README.md`.
 
 ## Credential and diagnosis
 - `docs/CREDENTIAL.md` — what an AILX credential asserts (a completed sitting,

@@ -668,7 +668,7 @@ Run this on every frontend PR. Each item is checkable in under a minute.
 - [ ] Edge cases covered by unit tests, not by more E2E.
 - [ ] E2E asserts a terminal user-visible state (`toHaveURL` + visible element), not a status code.
 - [ ] No `waitForTimeout`, no `if`, no unseeded deck, no unpinned clock.
-- [ ] `pnpm -r test` and `pnpm -r build` pass — **and the static export build too**.
+- [ ] `pnpm test` and `pnpm -r build` pass — **and the static export build too**.
 
 ---
 

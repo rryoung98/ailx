@@ -9,7 +9,7 @@
  * shipped CSS custom properties — and no stray hex left in the page.
  */
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { URL as NodeURL, fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -153,7 +153,14 @@ describe("every exam-page call site uses it", () => {
 
 describe("the dark-theme copies are gone", () => {
   it("leaves no inline alert hex in the exam page", () => {
-    const src = readFileSync(join(process.cwd(), "app/exam/page.tsx"), "utf8");
+    // Resolved from this file, not `process.cwd()`: the working directory is
+    // the monorepo root when the whole workspace runs as one vitest. Node's
+    // URL, not jsdom's global — jsdom resolves against the document base
+    // (http://localhost:3000) and would silently drop the file:// origin.
+    const src = readFileSync(
+      fileURLToPath(new NodeURL("../app/exam/page.tsx", import.meta.url)),
+      "utf8",
+    );
     for (const hex of ["#3a1f1f", "#7a3b3b", "#ffd9d9"]) {
       expect(src, `${hex} is a dark-theme leftover`).not.toContain(hex);
     }

@@ -22,6 +22,6 @@ subresource blocked — a `curl` of one asset still returns 200, so only a real 
 (or the tests in `apps/web/test/publicOrigin.test.ts`) catches it.
 
 ## CI gates
-- `pnpm -r build && pnpm -r test` (all packages, golden fixtures, purity harness).
+- `pnpm -r build && pnpm test` (all packages, golden fixtures, purity harness).
 - Static export build of `@ailx/web`.
 - Pages deploy must succeed for `main` to be considered healthy.

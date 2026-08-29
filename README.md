@@ -34,9 +34,13 @@ docs/                  Plan, ADRs, runbooks
 
 ```
 pnpm install
-pnpm -r test
+pnpm test      # the whole monorepo in ONE vitest, one capped worker pool
 pnpm -r build
 ```
+
+`pnpm test` caps the pool at 4 forks because the ceiling is memory, not CPU;
+`AILX_TEST_FORKS=8 pnpm test` raises it. `pnpm -r test` runs the same tests one
+package at a time, and `vitest run` inside a package debugs just that package.
 
 ## Contributing
 
@@ -44,7 +48,7 @@ Branch → PR → green CI → merge → auto-deploy. `main` is protected; push 
 
 1. Branch off `main` and commit small, conventional commits.
 2. Open a PR. The `ci` workflow gates it: install, `pnpm -r build` (which typechecks every
-   package), `pnpm -r test`, and the `AILX_BACKEND=1` server build, then the Playwright `e2e`
+   package), `pnpm test`, and the `AILX_BACKEND=1` server build, then the Playwright `e2e`
    job against a Postgres service. Both checks must be green to merge.
 3. On merge, `pages` runs only after `ci` succeeds on that commit: it rebuilds the static
    export, stamps `/version.json` with the deployed commit, deploys to GitHub Pages, and tags

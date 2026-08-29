@@ -37,8 +37,13 @@ jobs:
       - name: Build (typechecks all packages + static export)
         run: pnpm -r build
 
+      # ONE vitest for every package (vitest-workspace.ts). The hosted runner
+      # has more cores than the 4-fork laptop default, and no other work to do
+      # with them.
       - name: Test
-        run: pnpm -r test
+        env:
+          AILX_TEST_FORKS: "8"
+        run: pnpm test
 
       # Dual-mode drift is invisible unless both builds run (FRONTEND.md 6.5).
       # The static export above has no API surface at all; this one compiles
