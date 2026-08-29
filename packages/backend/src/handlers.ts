@@ -1,5 +1,5 @@
 /**
- * Framework-agnostic API handlers: plain (context, input) \u2192 {status, body}.
+ * Framework-agnostic API handlers: plain (context, input) → {status, body}.
  * Next.js route handlers (server mode) are thin adapters over these; tests
  * hit them directly against in-process Postgres. Every handler authenticates
  * via the AuthProvider seam and maps StoreError codes onto HTTP statuses.

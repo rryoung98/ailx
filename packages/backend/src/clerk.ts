@@ -1,7 +1,7 @@
 /**
  * Clerk adapter for the AuthProvider seam. Verifies the session JWT locally
- * against Clerk\u2019s JWKS (spec §11: "verified locally at the edge of every
- * Cloud Run handler ... never by an API call per request" — @clerk/backend\u2019s
+ * against Clerk’s JWKS (spec §11: "verified locally at the edge of every
+ * Cloud Run handler ... never by an API call per request" — @clerk/backend’s
  * verifyToken caches the JWKS).
  */
 

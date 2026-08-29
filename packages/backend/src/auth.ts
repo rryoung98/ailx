@@ -16,7 +16,7 @@ export type HeaderMap = Readonly<Record<string, string | undefined>>;
 
 export interface AuthProvider {
   readonly name: string;
-  /** Resolve the caller\u2019s identity, or null when unauthenticated. */
+  /** Resolve the caller’s identity, or null when unauthenticated. */
   verify(headers: HeaderMap): Promise<AuthContext | null>;
 }
 
