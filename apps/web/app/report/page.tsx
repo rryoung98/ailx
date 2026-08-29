@@ -16,6 +16,7 @@ import { playerType } from "../../lib/playerType";
 import { narratives, trackInsights } from "../../lib/insights";
 import { playerProfile } from "../../lib/personality";
 import { t2AnswerKeys } from "../../lib/instrument";
+import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
 import { TRACK_META } from "../../lib/tracks";
 import { Reveal } from "../../lib/Reveal";
 
@@ -74,6 +75,27 @@ function ShareToGallery({ artifact }: { artifact: unknown }) {
         Opt-in and public. Uploads the chosen finals + direction note, nothing else.
       </span>
     </div>
+  );
+}
+
+/**
+ * Live sandboxed snapshot of the T1 submission (server mode only — static
+ * mode never records a submission, so this renders nothing there).
+ */
+function SiteLiveLink({ attemptId }: { attemptId?: string }) {
+  const [sub, setSub] = useState<SiteSubmission | null>(null);
+  useEffect(() => {
+    setSub(attemptId ? loadSiteSubmission(window.localStorage, attemptId) : null);
+  }, [attemptId]);
+  if (!sub) return null;
+  return (
+    <p className="small" style={{ marginTop: "0.6rem" }}>
+      Live snapshot:{" "}
+      <a href={sub.url} target="_blank" rel="noreferrer" className="mono" style={{ wordBreak: "break-all" }}>
+        {sub.url}
+      </a>{" "}
+      <span className="faint">— served sandboxed; anyone with the link can view it.</span>
+    </p>
   );
 }
 
@@ -429,6 +451,7 @@ export default function ReportPage() {
                   </div>
                 );
               })}
+              {t === "t1" && !sample && <SiteLiveLink attemptId={state.attemptId ?? undefined} />}
               {t === "t4" && !sample && <ShareToGallery artifact={ts.artifact} />}
               {t === "t2" && calBins.some((b) => b.n > 0) && (
                 <>

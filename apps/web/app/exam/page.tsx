@@ -9,6 +9,7 @@ import {
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
 import { getAttemptPersistence, startServerAttempt } from "../../lib/persistence";
+import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
 } from "../../lib/checkpoints";
@@ -40,6 +41,13 @@ function demoConfig(locale: "en"): SessionConfig {
   };
 }
 
+/** T1 live-site upload lifecycle (server mode only; "idle" renders nothing). */
+type SiteStatus =
+  | { state: "idle" }
+  | { state: "uploading" }
+  | { state: "live"; url: string }
+  | { state: "error"; kind: SiteUploadFailureKind; message: string };
+
 function fmt(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -55,6 +63,10 @@ export default function ExamPage() {
   // Start gate: a run needs a connected model (key or custom base URL).
   const [connected, setConnected] = useState(false);
   const [connectAttention, setConnectAttention] = useState(0);
+  // T1 live-site upload (server mode). The last submission is kept for the
+  // retry affordance; static mode never leaves "idle".
+  const [siteStatus, setSiteStatus] = useState<SiteStatus>({ state: "idle" });
+  const siteRetryRef = useRef<{ attemptId: string; artifact: unknown } | null>(null);
   const logRef = useRef<SequencedEntry[] | null>(null);
   const startingRef = useRef(false); // run-start in flight (server attempt pre-creation)
   logRef.current = log;
@@ -63,6 +75,13 @@ export default function ExamPage() {
   useEffect(() => {
     const v = getAttemptPersistence().load();
     setLog(v && v.log.length > 0 ? v.log : null);
+    // A site published before a reload stays surfaced (static mode never
+    // records a submission, so this cannot fire there).
+    const started = v?.log[0];
+    if (started?.type === "attempt_started") {
+      const sub = loadSiteSubmission(window.localStorage, started.attemptId);
+      if (sub) setSiteStatus({ state: "live", url: sub.url });
+    }
     if (v && v.dropped > 0) {
       setPersistWarning(`stored run log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
     }
@@ -143,6 +162,30 @@ export default function ExamPage() {
   }, [attemptId, activeTrack]);
 
   /**
+   * Server mode: publish the submitted T1 site and surface its live URL.
+   * submitT1Site() is null in static mode / for empty artifacts — the
+   * status then stays "idle" and no upload UI ever renders.
+   */
+  const uploadT1Site = useCallback((attemptId: string, artifact: unknown) => {
+    const pending = submitT1Site(attemptId, artifact);
+    if (!pending) return;
+    siteRetryRef.current = { attemptId, artifact };
+    setSiteStatus({ state: "uploading" });
+    void pending.then((r) => {
+      setSiteStatus(
+        r.ok
+          ? { state: "live", url: r.url }
+          : { state: "error", kind: r.kind, message: r.message },
+      );
+    });
+  }, []);
+
+  const retrySiteUpload = useCallback(() => {
+    const last = siteRetryRef.current;
+    if (last) uploadT1Site(last.attemptId, last.artifact);
+  }, [uploadT1Site]);
+
+  /**
    * Complete + score a track through the REAL plugins. timedOut is DERIVED
    * from budget accounting (the machine rejects a disagreeing flag). On
    * timeout the artifact is rebuilt from the last checkpoint — a partial
@@ -167,7 +210,9 @@ export default function ExamPage() {
       },
     ]);
     if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
-  }, [commit, stamp]);
+    // T1's artifact is a servable site: publish it (server mode; no-op otherwise).
+    if (t === "t1" && cur.attemptId) uploadT1Site(cur.attemptId, artifact);
+  }, [commit, stamp, uploadT1Site]);
 
   // Timeout watchdog: budget exhausted → score the last checkpoint (F1/F2).
   useEffect(() => {
@@ -185,8 +230,13 @@ export default function ExamPage() {
 
   const resetAttempt = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
-    if (cur?.attemptId) clearAllCheckpoints(window.localStorage, cur.attemptId);
+    if (cur?.attemptId) {
+      clearAllCheckpoints(window.localStorage, cur.attemptId);
+      clearSiteSubmission(window.localStorage, cur.attemptId);
+    }
     getAttemptPersistence().clear();
+    siteRetryRef.current = null;
+    setSiteStatus({ state: "idle" });
     setLog(null);
   }, []);
 
@@ -280,6 +330,7 @@ export default function ExamPage() {
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Run complete</h1>
           <p className="lede">All four tracks are scored. The diagnostic report is the real reward.</p>
+          <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
           <p style={{ display: "flex", gap: "0.8rem" }}>
             <Link href="/report" className="btn primary">Open the diagnostic report →</Link>
             <ResetButton onReset={resetAttempt} />
@@ -324,6 +375,7 @@ export default function ExamPage() {
               );
             })}
           </ul>
+          <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
           {next ? (
             <>
               <p className="muted" style={{ margin: "0 0 0.8rem" }}>{TRACK_META[next].hype}</p>
@@ -449,6 +501,55 @@ export default function ExamPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * T1 live-site status card (server mode only — "idle" renders nothing, so
+ * the static showcase is untouched). One-submission and validation errors
+ * are terminal explanations; only reachability errors offer a retry (the
+ * same bytes would fail validation the same way again).
+ */
+function SiteUploadNotice({ status, onRetry }: { status: SiteStatus; onRetry: () => void }) {
+  if (status.state === "idle") return null;
+  return (
+    <div
+      role="status"
+      className="card"
+      style={{ margin: "1rem 0", padding: "0.7rem 1rem", fontSize: "0.9rem" }}
+    >
+      <span className="mono" style={{ color: "var(--accent)", marginRight: "0.6rem" }}>T1</span>
+      {status.state === "uploading" ? (
+        <span className="muted">Publishing your site snapshot…</span>
+      ) : status.state === "live" ? (
+        <>
+          Your site is live:{" "}
+          <a href={status.url} target="_blank" rel="noreferrer" className="mono" style={{ wordBreak: "break-all" }}>
+            {status.url}
+          </a>
+          <span className="faint small" style={{ display: "block", marginTop: "0.2rem" }}>
+            Served sandboxed; anyone with the link can view it.
+          </span>
+        </>
+      ) : status.kind === "conflict" ? (
+        <span className="muted">
+          This run already has a different site submission on record — one site
+          submission per run, and the first one stands. {status.message}
+        </span>
+      ) : status.kind === "rejected" ? (
+        <span className="muted">
+          The site snapshot was rejected by the server ({status.message}). Your
+          work is saved locally and scored as normal.
+        </span>
+      ) : (
+        <>
+          <span className="muted">Could not publish the site snapshot: {status.message}</span>{" "}
+          <button className="btn small-btn" style={{ marginLeft: "0.4rem" }} onClick={onRetry}>
+            Retry upload
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 

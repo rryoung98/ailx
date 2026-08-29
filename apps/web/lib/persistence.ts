@@ -111,13 +111,22 @@ async function postJson(
 }
 
 /** Stable per-browser dev identity (dev AuthProvider asserts, never proves). */
-function devUser(storage: StorageLike): string {
+export function devUser(storage: StorageLike): string {
   let user = storage.getItem(DEV_USER_KEY);
   if (!user || !/^[A-Za-z0-9_.@-]{1,64}$/.test(user)) {
     user = `web-${Math.random().toString(36).slice(2, 12)}`;
     storage.setItem(DEV_USER_KEY, user);
   }
   return user;
+}
+
+/**
+ * Server attempt id the mirror is (or will be) writing this attempt's rows
+ * under — undefined until the attempt exists server-side. Consumed by the T1
+ * site upload, which posts to the same attempt as the mirrored log.
+ */
+export function getServerAttemptId(storage: StorageLike, clientAttemptId: string): string | undefined {
+  return readSyncState(storage, clientAttemptId).serverAttemptId;
 }
 
 class ServerMirror {
@@ -264,7 +273,7 @@ export async function startServerAttempt(locale: string): Promise<string | null>
  */
 const byStorage = new WeakMap<object, AttemptPersistence>();
 
-function browserApiOptions(): ApiPersistenceOptions {
+export function browserApiOptions(): ApiPersistenceOptions {
   return {
     baseUrl: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api`,
     fetchFn: (...args) => window.fetch(...args),
