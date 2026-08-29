@@ -23,13 +23,27 @@ export function footerModeCopy(): string {
 }
 
 /**
- * Absolute URL for a file served out of `apps/web/public`, prefixed with the
- * build's basePath. `next.config.mjs` always bakes NEXT_PUBLIC_BASE_PATH
- * ("/ailx" for the Pages export, "" for the hosted build); the fallback only
- * matters in unit tests, which render components outside a Next build.
+ * The build's basePath — the ONLY place NEXT_PUBLIC_BASE_PATH is read.
+ *
+ * `next.config.mjs` always bakes the variable ("/ailx" for the Pages export,
+ * "" for the hosted build), so the fallback only matters in unit tests, which
+ * render components outside a Next build. The fallback deliberately mirrors
+ * `next.config.mjs`'s own rule — `env ?? (serverMode ? "" : "/ailx")` — so
+ * there is one basePath rule, not two. Six modules used to inline this
+ * expression with two different defaults, and the same media file resolved to
+ * two different URLs depending on which one asked.
+ */
+export function basePath(): string {
+  return process.env.NEXT_PUBLIC_BASE_PATH ?? (isServerMode() ? "" : "/ailx");
+}
+
+/**
+ * Absolute URL for a path served by this build — a file out of
+ * `apps/web/public`, or an API route in the hosted build. `path` must start
+ * with "/".
  */
 export function assetUrl(path: string): string {
-  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx"}${path}`;
+  return `${basePath()}${path}`;
 }
 
 /** Where the event log lives, for the run-intro lede. */

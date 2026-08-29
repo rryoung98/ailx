@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Annotation } from "../../lib/Annotation";
 import { useEffect, useState } from "react";
 import { runAllChecks, type CheckResult } from "../../lib/validateChecks";
+import { assetUrl } from "../../lib/mode";
 import { Reveal } from "../../lib/Reveal";
 
 export default function ValidatePage() {
@@ -29,7 +30,7 @@ export default function ValidatePage() {
         <div className="page-hero">
           <div className="page-hero-media" aria-hidden="true">
             <img
-              src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/media/hero-desk.jpg`}
+              src={assetUrl("/media/hero-desk.jpg")}
               alt="" width={1600} height={872} decoding="async"
             />
             <div className="page-hero-scrim" />

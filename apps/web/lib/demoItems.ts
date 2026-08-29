@@ -51,6 +51,7 @@ export const T2_ITEMS: T2Item[] = [
  * Items are pinned by content-addressed id; a test asserts they exist.
  */
 import { snapshotTrack } from "./instrument";
+import { assetUrl } from "./mode";
 
 export type TeaserKind = "media" | "text" | "message";
 
@@ -99,11 +100,10 @@ function toTeaserItem(raw: RawBankItem): TeaserItem {
   const key = SYNTHETIC_KEYS.has(raw.key) ? "synthetic" : "authentic";
   const m = raw.material;
   if (raw.type === "image-provenance" && typeof m.src === "string") {
-    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx";
     return {
       id: raw.id, kind: "media", key,
       title: m.alt ?? "Photograph",
-      imgSrc: `${base}/${m.src.replace(/^\/+/, "")}`,
+      imgSrc: assetUrl(`/${m.src.replace(/^\/+/, "")}`),
       imgAlt: m.alt ?? "photo",
       tell: raw.rationale,
     };

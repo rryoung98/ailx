@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Annotation } from "../../lib/Annotation";
+import { assetUrl } from "../../lib/mode";
 
 export const metadata: Metadata = { title: "Methodology — AILX" };
 
@@ -14,7 +15,7 @@ export default function Methodology() {
         <div className="page-hero">
           <div className="page-hero-media" aria-hidden="true">
             <img
-              src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/media/pastoral.jpg`}
+              src={assetUrl("/media/pastoral.jpg")}
               alt="" width={2000} height={1200} decoding="async"
             />
             <div className="page-hero-scrim" />

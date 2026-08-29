@@ -21,7 +21,7 @@ import {
   type ValidatedLog,
 } from "@ailx/session";
 import { DEV_USER_HEADER } from "@ailx/backend";
-import { isServerMode } from "./mode";
+import { assetUrl, isServerMode } from "./mode";
 
 export interface AttemptPersistence {
   load(): ValidatedLog | null;
@@ -46,7 +46,9 @@ export function createLocalPersistence(storage: StorageLike): AttemptPersistence
 // ---------------------------------------------------------------------------
 
 export const DEV_USER_KEY = "ailx:dev-user";
-const syncKey = (clientAttemptId: string) => `ailx:sync:v1:${clientAttemptId}`;
+/** Mirror progress key for an attempt. Exported so the E2E fixtures can seed
+ *  a resumed run exactly as the app would have written it. */
+export const syncKey = (clientAttemptId: string) => `ailx:sync:v1:${clientAttemptId}`;
 
 interface SyncState {
   /** Server-side attempts.id (uuid) — the client attempt id stays in payloads. */
@@ -276,7 +278,7 @@ const byStorage = new WeakMap<object, AttemptPersistence>();
 
 export function browserApiOptions(): ApiPersistenceOptions {
   return {
-    baseUrl: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api`,
+    baseUrl: assetUrl("/api"),
     fetchFn: (...args) => window.fetch(...args),
   };
 }

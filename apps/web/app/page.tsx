@@ -6,6 +6,7 @@ import { Reveal } from "../lib/Reveal";
 import { Teaser } from "../lib/Teaser";
 import { CampusJourney } from "../lib/track3d/CampusJourney";
 import { TrackBands } from "../lib/track3d/TrackBands";
+import { assetUrl } from "../lib/mode";
 import { TRACK_LIST } from "../lib/tracks";
 
 /**
@@ -106,8 +107,6 @@ function MiniReportCard() {
   );
 }
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-
 /** One showcase row: copy on the left, painterly panel with floating minis on the right. */
 function ShowcaseRow({
   href, flip = false, title, note, line, cta, cards,
@@ -129,7 +128,7 @@ function ShowcaseRow({
         <p><Link className="btn" href={href}>{cta}</Link></p>
       </div>
       <Link href={href} className="showcase-panel" tabIndex={-1} aria-hidden="true">
-        <img src={`${BASE}/media/pastoral.jpg`} alt="" width={2000} height={1200} loading="lazy" decoding="async" />
+        <img src={assetUrl("/media/pastoral.jpg")} alt="" width={2000} height={1200} loading="lazy" decoding="async" />
         <span className="showcase-scrim" />
         <span className="showcase-cards">{cards}</span>
       </Link>
@@ -189,7 +188,7 @@ export default function Home() {
         <div className="desk-stage">
           <div className="desk-panel media-panel" aria-hidden="true">
             <img
-              src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/media/hero-desk.jpg`}
+              src={assetUrl("/media/hero-desk.jpg")}
               alt="" width={1600} height={872} loading="lazy" decoding="async"
             />
             <div className="desk-scrim" />

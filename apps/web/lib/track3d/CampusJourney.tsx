@@ -18,8 +18,7 @@ import Link from "next/link";
 import { TRACK_LIST } from "../tracks";
 import { TrackScene } from "./TrackScene";
 import { supportLine } from "./TrackBands";
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+import { assetUrl } from "../mode";
 
 export function CampusJourney() {
   return (
@@ -28,7 +27,7 @@ export function CampusJourney() {
         <div
           className="campus-map"
           aria-hidden="true"
-          style={{ backgroundImage: `url(${BASE}/media/campus-map.jpg)` }}
+          style={{ backgroundImage: `url(${assetUrl("/media/campus-map.jpg")})` }}
         />
         <div className="campus-scrim" aria-hidden="true" />
         {TRACK_LIST.map((t, i) => (

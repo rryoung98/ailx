@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { snapshotTrack } from "./instrument";
+import { assetUrl } from "./mode";
 
 export interface VizMedia {
   src: string;
@@ -42,11 +43,10 @@ export function t2VisualMedia(): VizMedia[] {
   const imgs = items.filter((i) => i.type === "image-provenance" && typeof i.material.src === "string");
   const real = imgs.filter((i) => i.key === "real");
   const ai = imgs.filter((i) => i.key !== "real");
-  const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx";
   return [ai[0], real[0], ai[1]]
     .filter((i): i is RawImgItem => Boolean(i))
     .map((i) => ({
-      src: `${base}/${String(i.material.src).replace(/^\/+/, "")}`,
+      src: assetUrl(`/${String(i.material.src).replace(/^\/+/, "")}`),
       alt: i.material.alt ?? "photo",
       real: i.key === "real",
     }));

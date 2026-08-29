@@ -10,6 +10,7 @@
  */
 import { D_PRIME_CEILING, maxAttainableDPrime, sampleT2DeckIds, t2DeckSeed } from "@ailx/track-t2";
 import snapshotRaw from "../../../instruments/2026.1/snapshot.json";
+import { assetUrl } from "./mode";
 
 interface BankItem {
   id: string;
@@ -107,8 +108,7 @@ function materialToString(m: BankItem["material"]): string {
   // svg too so image items always render as images (F3).
   if (m.kind === "image" && typeof m.src === "string") {
     // Real media files under apps/web/public, served beneath the basePath.
-    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx";
-    return `${base}/${String(m.src).replace(/^\/+/, "")}`;
+    return assetUrl(`/${String(m.src).replace(/^\/+/, "")}`);
   }
   if (typeof m.data_uri === "string") return m.data_uri;
   if (typeof m.dataUri === "string") return m.dataUri;
