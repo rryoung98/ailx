@@ -3,7 +3,7 @@
  *
  * In server mode the submitted T1 artifact (a single self-contained HTML
  * document) is packaged as a store-only ZIP and uploaded, yielding a live,
- * sandboxed, content-addressed URL (/api/site/<digest>/). The ZIP writer is
+ * sandboxed, content-addressed URL (see siteUrlPath in @ailx/backend). The ZIP writer is
  * deliberately deterministic (store method, zeroed timestamps): the same
  * document always produces the same bytes, so the same digest — which makes
  * accidental resubmits idempotent replays server-side instead of 409s.
@@ -12,8 +12,9 @@
  * the event log (and is scored) whether or not the upload ever succeeds.
  */
 import { crc32 } from "@ailx/core";
+import { isServerMode } from "./mode";
 import type { StorageLike } from "@ailx/session";
-import { DEV_USER_HEADER } from "@ailx/backend";
+import { DEV_USER_HEADER, canonicalSitePath, siteUrlPath } from "@ailx/backend";
 import {
   browserApiOptions,
   devUser,
@@ -137,7 +138,10 @@ export function loadSiteSubmission(storage: StorageLike, clientAttemptId: string
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<SiteSubmission>;
     if (typeof parsed.digest === "string" && typeof parsed.url === "string") {
-      return { digest: parsed.digest, url: parsed.url };
+      // Records written before the canonical URL was index.html hold the
+      // trailing-slash form, which now redirects; canonicalise on read so an
+      // in-flight run's report links straight at the served file.
+      return { digest: parsed.digest, url: canonicalSitePath(parsed.url) };
     }
   } catch {
     // Corrupt record — treat as absent; the snapshot itself lives server-side.
@@ -198,7 +202,7 @@ export async function uploadSiteZip(
     if (typeof digest !== "string") {
       return { ok: false, kind: "unavailable", message: "The server returned an unexpected response." };
     }
-    const url = `${opts.baseUrl}/site/${digest}/`;
+    const url = siteUrlPath(digest, opts.baseUrl);
     try {
       storage.setItem(siteKey(clientAttemptId), JSON.stringify({ digest, url }));
     } catch {
@@ -227,7 +231,7 @@ export async function uploadSiteZip(
  * timed-out track). Otherwise resolves to a typed upload result.
  */
 export function submitT1Site(clientAttemptId: string, artifact: unknown): Promise<SiteUploadResult> | null {
-  if (process.env.NEXT_PUBLIC_AILX_BACKEND !== "1" || typeof window === "undefined") return null;
+  if (!isServerMode() || typeof window === "undefined") return null;
   const html = (artifact as { html?: unknown } | null | undefined)?.html;
   if (typeof html !== "string" || html.trim() === "") return null;
   const zip = buildSiteZip([{ path: "index.html", data: new TextEncoder().encode(html) }]);

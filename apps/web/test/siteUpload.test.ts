@@ -59,7 +59,7 @@ function fakeUploadServer(digest = `sha256:${"a".repeat(64)}`) {
     }
     const [status, body] = state.respond ?? [
       201,
-      { submission: { digest, created: true, fileCount: 1, totalBytes: 1, path: `/api/site/${digest}/` } },
+      { submission: { digest, created: true, fileCount: 1, totalBytes: 1, path: `/api/site/${digest}/index.html` } },
     ];
     state.respond = null;
     return { ok: status >= 200 && status < 300, status, json: async () => body } as Response;
@@ -141,7 +141,7 @@ describe("uploadSiteZip", () => {
     const r = await upload(storage, server, zip);
     expect(r).toMatchObject({ ok: true, digest: `sha256:${"a".repeat(64)}`, created: true });
     if (!r.ok) throw new Error("unreachable");
-    expect(r.url).toBe(`/api/site/sha256:${"a".repeat(64)}/`);
+    expect(r.url).toBe(`/api/site/sha256:${"a".repeat(64)}/index.html`);
 
     expect(server.calls).toHaveLength(1);
     expect(server.calls[0].path).toBe(`/api/attempts/${SERVER_ID}/site?seq=${T1_SITE_SEQ}`);
@@ -152,8 +152,17 @@ describe("uploadSiteZip", () => {
 
     expect(loadSiteSubmission(storage, ATTEMPT)).toEqual({
       digest: `sha256:${"a".repeat(64)}`,
-      url: `/api/site/sha256:${"a".repeat(64)}/`,
+      url: `/api/site/sha256:${"a".repeat(64)}/index.html`,
     });
+  });
+
+  it("canonicalises a legacy trailing-slash URL recorded before the index.html fix", () => {
+    const storage = mirroredStorage();
+    const digest = `sha256:${"c".repeat(64)}`;
+    storage.setItem(`ailx:site:v1:${ATTEMPT}`, JSON.stringify({ digest, url: `/api/site/${digest}/` }));
+    // The old form now redirects (Next strips the slash); the report page must
+    // link straight at the served file.
+    expect(loadSiteSubmission(storage, ATTEMPT)).toEqual({ digest, url: `/api/site/${digest}/index.html` });
   });
 
   it("treats an idempotent 200 replay as success", async () => {

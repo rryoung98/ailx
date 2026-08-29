@@ -1,3 +1,4 @@
+import { SITE_INDEX, canonicalSitePath } from "@ailx/backend";
 import { handleServeSite } from "@ailx/backend/t1";
 import { getSnapshotStore } from "../../../../../lib/server/site";
 import { resolvePublicOrigin } from "../../../../../lib/server/origin";
@@ -8,8 +9,12 @@ type SiteRouteContext = { params: Promise<{ digest: string; path?: string[] }> }
  * GET /api/site/:digest/*path — serves a stored submission snapshot. No auth
  * or DB: the 256-bit content digest is the capability, and every response
  * carries the §12 sandbox headers (see sandboxHeaders in @ailx/backend).
- * The bare-digest URL redirects to its trailing-slash form so relative asset
- * URLs inside the page resolve under the snapshot prefix.
+ *
+ * Directory-ish requests (bare digest, or any trailing slash) 308 ONCE to the
+ * canonical `.../index.html` — see site-url.ts for why the trailing-slash form
+ * is not a stable target (it 308s back here: an infinite loop, staging P0).
+ * The canonical URL ends in a real file name, so no framework rewrites it and
+ * the next hop is the 200.
  */
 export async function GET(req: Request, { params }: SiteRouteContext): Promise<Response> {
   const { digest, path } = await params;
@@ -20,11 +25,14 @@ export async function GET(req: Request, { params }: SiteRouteContext): Promise<R
   // misconfigured origin fails visibly instead of silently blocking assets.
   const origin = resolvePublicOrigin(process.env, url, req.headers);
   const segments = path ?? [];
-  if (segments.length === 0 && !url.pathname.endsWith("/")) {
-    return Response.redirect(`${origin}${url.pathname}/`, 308);
+  const requested = url.pathname.endsWith("/") ? `${segments.join("/")}/` : segments.join("/");
+  if (canonicalSitePath(requested) !== requested) {
+    // The path minus any trailing slash is exactly what was asked for, still
+    // percent-encoded, so appending the index name needs no re-encoding.
+    return Response.redirect(`${origin}${url.pathname.replace(/\/+$/, "")}/${SITE_INDEX}`, 308);
   }
   try {
-    const result = await handleServeSite(getSnapshotStore(), origin, digest, segments.join("/"));
+    const result = await handleServeSite(getSnapshotStore(), origin, digest, requested);
     // Our snapshot bytes are always ArrayBuffer-backed; the cast bridges the
     // lib.dom BodyInit typing, which rejects Uint8Array<ArrayBufferLike>.
     const body = result.data === null ? "not found" : (result.data as Uint8Array<ArrayBuffer>);
