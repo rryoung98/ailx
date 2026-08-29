@@ -21,6 +21,7 @@ import {
   type ValidatedLog,
 } from "@ailx/session";
 import { DEV_USER_HEADER } from "@ailx/backend";
+import { t2DeckRecords } from "./instrument";
 import { assetUrl, isServerMode } from "./mode";
 
 export interface AttemptPersistence {
@@ -224,11 +225,62 @@ export function createApiPersistence(
   };
 }
 
+/** One track's exposure record, as POST /attempts returns it. */
+interface DeckRecord {
+  trackId: string;
+  bankSha256: string;
+  itemIds: string[];
+}
+
+/**
+ * The server recorded a deck this build cannot present — the exposure log
+ * (attempt_decks) would claim items were shown that never were. Thrown
+ * instead of starting the run: a divergent deck is a measurement-validity
+ * defect, and a silent one is worse than a blocked start.
+ */
+export class DeckMismatchError extends Error {
+  constructor(
+    readonly recorded: readonly DeckRecord[],
+    readonly expected: readonly DeckRecord[],
+  ) {
+    super(
+      "server-recorded deck does not match the deck this build would present " +
+        `(recorded banks: ${recorded.map((d) => `${d.trackId}=${d.bankSha256.slice(0, 12)}`).join(",") || "none"}; ` +
+        `this build: ${expected.map((d) => `${d.trackId}=${d.bankSha256.slice(0, 12)}`).join(",") || "none"})`,
+    );
+    this.name = "DeckMismatchError";
+  }
+}
+
+/** Field-by-field (not JSON-shape) equality: same track, same bank, same order. */
+function sameDeck(a: DeckRecord, b: DeckRecord): boolean {
+  return (
+    a.trackId === b.trackId &&
+    a.bankSha256 === b.bankSha256 &&
+    a.itemIds.length === b.itemIds.length &&
+    a.itemIds.every((id, i) => id === b.itemIds[i])
+  );
+}
+
+function readDecks(created: Record<string, unknown>): DeckRecord[] | undefined {
+  const decks = created.decks;
+  return Array.isArray(decks) ? (decks as DeckRecord[]) : undefined;
+}
+
 /**
  * Create the server attempt UP FRONT (before `attempt_started` is
  * committed) so the T2 deck can be keyed to — and its item ids recorded
  * against — the SERVER attempt id. `decks: true` commits this client to
  * presenting exactly the deck derived from the returned id.
+ *
+ * The returned `decks` are the ROW the server just wrote, so they are
+ * verified here against what this build would actually present — the two
+ * are derived by the same pure function, but from each side's OWN bundled
+ * snapshot. A tab whose chunks predate a bank change would otherwise sample
+ * from the old bank and present a deck the exposure log says was never
+ * shown, with nothing anywhere to notice. On divergence we throw rather
+ * than present: the item ids the server recorded may not even exist in this
+ * build's bank, so "adopt the server deck" is not available — refusing is.
  *
  * The sync state is pre-written under the returned id, so when the session
  * adopts it as its attemptId the mirror reuses this attempt instead of
@@ -241,6 +293,15 @@ export async function createServerAttempt(
 ): Promise<string> {
   const created = await postJson(storage, opts, "/attempts", { locale, decks: true });
   const id = (created.attempt as { id: string }).id;
+  const recorded = readDecks(created);
+  if (recorded !== undefined) {
+    // No decks in the response = the host wired no sampler, so no exposure
+    // row exists to diverge from; anything else must match exactly.
+    const expected = t2DeckRecords(id, locale);
+    if (recorded.length !== expected.length || !expected.every((d, i) => sameDeck(recorded[i], d))) {
+      throw new DeckMismatchError(recorded, expected);
+    }
+  }
   writeSyncState(storage, id, { serverAttemptId: id, syncedThrough: 0, finalized: false });
   return id;
 }
@@ -252,6 +313,10 @@ export async function createServerAttempt(
  * the caller falls back to a client-local attempt id: the deck derivation
  * is identical, it is just keyed to the local id and not recorded
  * server-side (the mirror will still lazily create an attempt for the log).
+ *
+ * A DeckMismatchError is NOT that kind of failure and is rethrown: falling
+ * back would present a deck while the server holds an exposure row claiming
+ * a different one. The caller must show it and let the run stay unstarted.
  */
 export async function startServerAttempt(locale: string): Promise<string | null> {
   if (!isServerMode() || typeof window === "undefined") {
@@ -260,6 +325,7 @@ export async function startServerAttempt(locale: string): Promise<string | null>
   try {
     return await createServerAttempt(window.localStorage, browserApiOptions(), locale);
   } catch (err) {
+    if (err instanceof DeckMismatchError) throw err;
     console.warn("[ailx sync] server attempt creation failed; using a local attempt id", err);
     return null;
   }

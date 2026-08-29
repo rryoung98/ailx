@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { append, SaveConflictError, ATTEMPT_KEY, type SequencedEntry, type SessionConfig } from "@ailx/session";
 import {
   DEV_USER_KEY,
+  DeckMismatchError,
   createApiPersistence,
   createLocalPersistence,
   createServerAttempt,
   startServerAttempt,
   type AttemptPersistence,
 } from "../lib/persistence";
+import { t2DeckRecords } from "../lib/instrument";
 
 // ---------------------------------------------------------------------------
 // Doubles
@@ -293,6 +295,90 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
       createServerAttempt(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, "en"),
     ).rejects.toThrow("network down");
     expect(storage._map.size).toBeLessThanOrEqual(1); // no sync state written (dev id at most)
+  });
+});
+
+/**
+ * P1-4: the client used to DISCARD the decks the server recorded and re-derive
+ * its own from its OWN bundled snapshot. After a bank change, a stale tab
+ * presented a deck attempt_decks says was never shown — a silent corruption of
+ * the exposure log per-item stats and IRT depend on.
+ */
+describe("createServerAttempt deck verification", () => {
+  const SERVER_ID = "00000000-0000-4000-8000-0000000000bb";
+
+  /** POST /attempts double that answers with the given exposure decks. */
+  function serverWithDecks(decks: unknown) {
+    const calls: unknown[] = [];
+    const fetchFn = (async (url: unknown) => {
+      calls.push(String(url));
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({ attempt: { id: SERVER_ID }, ...(decks === undefined ? {} : { decks }) }),
+      } as Response;
+    }) as typeof fetch;
+    return { fetchFn, calls };
+  }
+
+  const create = (decks: unknown, locale = "en") => {
+    const storage = fakeStorage();
+    const server = serverWithDecks(decks);
+    return { storage, promise: createServerAttempt(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, locale) };
+  };
+
+  /** Exactly what the server's sampler (the same pure function) records. */
+  const recordedDecks = (locale = "en") => t2DeckRecords(SERVER_ID, locale);
+
+  it("accepts the deck the server actually recorded", async () => {
+    const { storage, promise } = create(recordedDecks());
+    await expect(promise).resolves.toBe(SERVER_ID);
+    expect(JSON.parse(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)!).serverAttemptId).toBe(SERVER_ID);
+  });
+
+  it("refuses a deck sampled from a DIFFERENT bank (the stale-tab deploy)", async () => {
+    const stale = recordedDecks().map((d) => ({ ...d, bankSha256: "f".repeat(64) }));
+    const { storage, promise } = create(stale);
+    await expect(promise).rejects.toBeInstanceOf(DeckMismatchError);
+    // Nothing adopted: no sync state, so no half-started attempt is mirrored.
+    expect(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)).toBeNull();
+  });
+
+  it("refuses a deck with different item ids", async () => {
+    const swapped = recordedDecks().map((d) => ({ ...d, itemIds: [...d.itemIds.slice(1), "t2-ghost-item"] }));
+    await expect(create(swapped).promise).rejects.toBeInstanceOf(DeckMismatchError);
+  });
+
+  it("refuses the same items in a different PRESENTED order", async () => {
+    const reordered = recordedDecks().map((d) => ({ ...d, itemIds: [...d.itemIds].reverse() }));
+    await expect(create(reordered).promise).rejects.toBeInstanceOf(DeckMismatchError);
+  });
+
+  it("refuses a deck for a track this build does not present, or a missing one", async () => {
+    const extra = [...recordedDecks(), { trackId: "t3", bankSha256: "a".repeat(64), itemIds: ["x"] }];
+    await expect(create(extra).promise).rejects.toBeInstanceOf(DeckMismatchError);
+    await expect(create([]).promise).rejects.toBeInstanceOf(DeckMismatchError);
+  });
+
+  it("refuses a deck recorded for another LOCALE", async () => {
+    // The server samples with the locale it was sent; a client that presents
+    // a different locale's items is the same divergence.
+    const jaDecks = t2DeckRecords(SERVER_ID, "ja");
+    const en = recordedDecks();
+    if (JSON.stringify(jaDecks) !== JSON.stringify(en)) {
+      await expect(create(jaDecks, "en").promise).rejects.toBeInstanceOf(DeckMismatchError);
+    }
+    // The matching locale is accepted.
+    await expect(create(jaDecks, "ja").promise).resolves.toBe(SERVER_ID);
+  });
+
+  it("accepts a response with no decks at all (host wired no sampler)", async () => {
+    await expect(create(undefined).promise).resolves.toBe(SERVER_ID);
+  });
+
+  it("carries the recorded and expected banks in the error message", async () => {
+    const stale = recordedDecks().map((d) => ({ ...d, bankSha256: "f".repeat(64) }));
+    await expect(create(stale).promise).rejects.toThrow(/ffffffffffff/);
   });
 });
 

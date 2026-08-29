@@ -8,7 +8,7 @@ import {
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
-import { getAttemptPersistence, startServerAttempt } from "../../lib/persistence";
+import { DeckMismatchError, getAttemptPersistence, startServerAttempt } from "../../lib/persistence";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
@@ -80,6 +80,8 @@ export default function ExamPage() {
   // Start gate: a run needs a connected model (key or custom base URL).
   const [connected, setConnected] = useState(false);
   const [connectAttention, setConnectAttention] = useState(0);
+  /** Start blocked because the server's recorded deck is not this build's. */
+  const [staleBuild, setStaleBuild] = useState<string | null>(null);
   // T1 live-site upload (server mode). The last submission is kept for the
   // retry affordance; static mode never leaves "idle".
   const [siteStatus, setSiteStatus] = useState<SiteStatus>({ state: "idle" });
@@ -329,6 +331,7 @@ export default function ExamPage() {
     return (
       <main className="page">
       <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={staleBuild} label="Update required" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · AILX 2026.1</div>
           <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
@@ -368,7 +371,20 @@ export default function ExamPage() {
                 // Server mode: adopt the pre-created SERVER attempt id so the
                 // per-attempt T2 deck is keyed to (and recorded against) it.
                 // Static mode / backend unreachable: local id, same derivation.
-                const serverId = await startServerAttempt(cfg.locale);
+                let serverId: string | null;
+                try {
+                  serverId = await startServerAttempt(cfg.locale);
+                } catch (err) {
+                  // This tab's bundled instrument is not the server's. Starting
+                  // would present a deck the exposure log contradicts, so the
+                  // run does NOT start — a reload picks up the current build.
+                  if (!(err instanceof DeckMismatchError)) throw err;
+                  setStaleBuild(
+                    "this tab loaded an older version of the exam content — reload the page before starting your run",
+                  );
+                  return;
+                }
+                setStaleBuild(null);
                 const ts = Date.now();
                 const attemptId =
                   serverId ?? `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;

@@ -95,6 +95,15 @@ describe("PersistWarning component", () => {
     expect(style).toContain("var(--card)");
     for (const hex of ["#3a1f1f", "#7a3b3b", "#ffd9d9"]) expect(style).not.toContain(hex);
   });
+
+  it("takes a label so a non-persistence block reuses the same banner", async () => {
+    await render(
+      createElement(PersistWarning, { warning: "reload before starting", label: "Update required" }),
+    );
+    const el = warning()!;
+    expect(el.textContent).toContain("Update required: reload before starting");
+    expect(el.textContent).not.toContain("Persistence warning");
+  });
 });
 
 describe("every exam-page call site uses it", () => {
@@ -148,7 +157,8 @@ describe("the dark-theme copies are gone", () => {
     for (const hex of ["#3a1f1f", "#7a3b3b", "#ffd9d9"]) {
       expect(src, `${hex} is a dark-theme leftover`).not.toContain(hex);
     }
-    // One component, five call sites.
-    expect(src.split("<PersistWarning ").length - 1).toBe(5);
+    // One component, six call sites: five phase branches + the start gate's
+    // stale-build block (same banner, different label).
+    expect(src.split("<PersistWarning ").length - 1).toBe(6);
   });
 });

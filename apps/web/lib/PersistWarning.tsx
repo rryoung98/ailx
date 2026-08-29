@@ -1,15 +1,23 @@
 "use client";
 /**
- * Persistence warning banner — ONE component for the five phase branches of
- * the exam page (start gate, hydrating, between tracks, in track, completed).
- * It was copy-pasted inline five times with hardcoded dark-theme hex colours
- * that survived the light-palette migration; the shipped tokens are the
- * single source of truth for colour (AGENTS.md: DRY).
+ * Warning banner — ONE component for the five phase branches of the exam page
+ * (start gate, hydrating, between tracks, in track, completed). It was
+ * copy-pasted inline five times with hardcoded dark-theme hex colours that
+ * survived the light-palette migration; the shipped tokens are the single
+ * source of truth for colour (AGENTS.md: DRY).
  *
  * Renders nothing when there is no warning, so every call site is a plain
- * `<PersistWarning warning={persistWarning} />`.
+ * `<PersistWarning warning={persistWarning} />`. `label` names the kind of
+ * warning (default: persistence) — the start gate also uses it for the
+ * stale-build block, same banner, no second component.
  */
-export function PersistWarning({ warning }: { warning: string | null }) {
+export function PersistWarning({
+  warning,
+  label = "Persistence warning",
+}: {
+  warning: string | null;
+  label?: string;
+}) {
   if (!warning) return null;
   return (
     <div
@@ -27,7 +35,7 @@ export function PersistWarning({ warning }: { warning: string | null }) {
         fontSize: "0.85rem",
       }}
     >
-      ⚠ Persistence warning: {warning}
+      ⚠ {label}: {warning}
     </div>
   );
 }
