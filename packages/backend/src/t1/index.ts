@@ -15,8 +15,10 @@ export {
   type SnapshotManifestEntry,
 } from "./snapshot.js";
 export {
+  BlobSnapshotStore,
   FsSnapshotStore,
   MemorySnapshotStore,
+  type BlobClient,
   type SnapshotStore,
   type StoredSiteFile,
 } from "./storage.js";
