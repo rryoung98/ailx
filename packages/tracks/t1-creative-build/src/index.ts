@@ -14,6 +14,8 @@ export {
   OPENROUTER_CHAT_URL,
   OPENROUTER_MODELS_URL,
   LLM_BASE_URL_STORAGE,
+  LLM_CONNECTION_KEYS,
+  clearLlmConnection,
   DEFAULT_BASE_URL,
   normalizeBaseUrl,
   chatCompletionsUrl,

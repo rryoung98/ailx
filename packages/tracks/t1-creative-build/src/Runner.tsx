@@ -7,6 +7,7 @@ import { buildPreviewSrcdoc, SANDBOX_ATTR } from "./sandbox.js";
 import { decodeT1Checkpoint, encodeT1Checkpoint } from "./checkpoint.js";
 import {
   buildVibeRequest,
+  clearLlmConnection,
   CURATED_MODELS,
   DEFAULT_BASE_URL,
   extractHtmlFence,
@@ -187,6 +188,10 @@ export function Runner(props: TrackUIProps) {
   const [modelOptions, setModelOptions] = useState<ReadonlyArray<string>>(CURATED_MODELS);
   const [assistBusy, setAssistBusy] = useState(false);
   const [assistError, setAssistError] = useState<string | null>(null);
+  // The prompt whose real-model call failed: it stays available so the
+  // error offers a way forward (retry, or fall back to the offline demo
+  // assist) instead of a dead end.
+  const [failedPrompt, setFailedPrompt] = useState<string | null>(null);
   const [selfReport, setSelfReport] = useState(restored?.selfReport ?? "");
   const [rationaleOpen, setRationaleOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -274,6 +279,30 @@ export function Runner(props: TrackUIProps) {
     } catch {
       /* non-fatal */
     }
+  };
+
+  /**
+   * Leave real mode for good: clear BOTH stored slots and reset the local
+   * state. Clearing only the key left a custom base URL behind, which kept
+   * realMode true and every retry failing.
+   */
+  const disconnect = () => {
+    setOrKey("");
+    setBaseUrl(DEFAULT_BASE_URL);
+    setAssistError(null);
+    setFailedPrompt(null);
+    try {
+      clearLlmConnection(window.localStorage);
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  /** Drop the dead connection and answer the failed prompt offline. */
+  const fallbackToDemo = () => {
+    const p = failedPrompt;
+    disconnect();
+    if (p) askDemo(p);
   };
 
   // In real mode, optionally populate the selector from GET /models.
@@ -367,10 +396,13 @@ export function Runner(props: TrackUIProps) {
   const askVibe = async (p: string) => {
     if (realCalls >= REAL_ASSIST_CAP) {
       setAssistError(`Run budget reached (${REAL_ASSIST_CAP} real-model calls) — refine by hand or use shorter prompts.`);
+      // Terminal: retrying the same prompt would hit the same cap.
+      setFailedPrompt(null);
       return;
     }
     setAssistBusy(true);
     setAssistError(null);
+    setFailedPrompt(null);
     setChat((c) => [...c, { role: "user", text: p }]);
     const promptedEntry: PromptLogEntry = {
       kind: "prompted",
@@ -429,6 +461,7 @@ export function Runner(props: TrackUIProps) {
       setAssistError(
         e instanceof OpenRouterError ? e.message : "Unexpected error calling OpenRouter.",
       );
+      setFailedPrompt(p);
     } finally {
       setAssistBusy(false);
     }
@@ -527,9 +560,31 @@ export function Runner(props: TrackUIProps) {
         </div>
 
         {assistError && (
-          <p role="alert" style={{ margin: 0, color: "var(--bad, #b91c1c)", fontSize: 12 }}>
-            {assistError}
-          </p>
+          <div role="alert" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ color: "var(--bad, #b91c1c)", fontSize: 12 }}>{assistError}</span>
+            {failedPrompt !== null && (
+              <>
+                <button
+                  type="button"
+                  className="t1-btn ghost"
+                  style={{ padding: "4px 10px", fontSize: 12 }}
+                  onClick={() => void askVibe(failedPrompt)}
+                  disabled={assistBusy}
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  className="t1-btn ghost"
+                  style={{ padding: "4px 10px", fontSize: 12 }}
+                  onClick={fallbackToDemo}
+                  disabled={assistBusy}
+                >
+                  Use the offline demo assist
+                </button>
+              </>
+            )}
+          </div>
         )}
 
         {/* Model row (kept compact above the input). Phone layout: the CSS
@@ -556,8 +611,8 @@ export function Runner(props: TrackUIProps) {
             placeholder="custom model id (optional)"
             disabled={!realMode}
           />
-          {hasKey ? (
-            <button type="button" className="t1-btn ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => updateKey("")}>
+          {realMode ? (
+            <button type="button" className="t1-btn ghost" style={{ padding: "4px 10px", fontSize: 12 }} onClick={disconnect}>
               Disconnect
             </button>
           ) : null}

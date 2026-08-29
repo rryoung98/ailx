@@ -15,6 +15,36 @@ export const OPENROUTER_KEY_STORAGE = "ailx:openrouter-key";
 /** Persisted OpenAI-compatible API base (Ollama/vLLM/etc. for local models). */
 export const LLM_BASE_URL_STORAGE = "ailx:llm-base-url";
 export const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
+
+/** Every browser-local slot that makes up "a connected model". */
+export const LLM_CONNECTION_KEYS: ReadonlyArray<string> = [
+  OPENROUTER_KEY_STORAGE,
+  LLM_BASE_URL_STORAGE,
+];
+
+/** Minimal write surface of localStorage (keeps this module DOM-free). */
+export interface ClearableStorage {
+  removeItem(key: string): void;
+}
+
+/**
+ * Fully disconnect the browser-local model connection.
+ *
+ * Clearing only the key leaves a custom base URL behind, which keeps the
+ * runner in real mode pointed at the endpoint that just failed: the user is
+ * stuck with a dead assistant and no way out short of clearing localStorage
+ * by hand. Never throws — storage can be unavailable (private mode).
+ */
+export function clearLlmConnection(storage: ClearableStorage | null | undefined): void {
+  if (!storage) return;
+  for (const key of LLM_CONNECTION_KEYS) {
+    try {
+      storage.removeItem(key);
+    } catch {
+      /* non-fatal — the in-memory state reset is what unblocks the user */
+    }
+  }
+}
 export const OPENROUTER_CHAT_URL = `${DEFAULT_BASE_URL}/chat/completions`;
 export const OPENROUTER_MODELS_URL = `${DEFAULT_BASE_URL}/models`;
 

@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import {
   buildAuthUrl,
   cleanCallbackUrl,
+  clearLlmConnection,
   computeCodeChallenge,
   DEFAULT_BASE_URL,
   exchangeCodeForKey,
@@ -120,6 +121,21 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
     announceChange();
   };
 
+  /** Disconnect means disconnected: key AND endpoint. Dropping only the key
+   *  left the shared-demo/custom base URL in place, so the track runners
+   *  stayed in real mode against a dead endpoint. */
+  const disconnect = () => {
+    setOrKey("");
+    setBaseUrl("");
+    setError(null);
+    try {
+      clearLlmConnection(window.localStorage);
+    } catch {
+      /* non-fatal */
+    }
+    announceChange();
+  };
+
   const connect = async () => {
     if (ssoBusy) return;
     setSsoBusy(true);
@@ -163,12 +179,12 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <strong style={{ fontSize: 15 }}>Bring a real model</strong>
         <span className="small faint" style={{ flex: 1, minWidth: 220 }}>
-          Required to start: T1 vibe coding and T4 image generation run on your model. If a call fails mid-run, the free offline demo simulators take over.
+          Required to start: T1 vibe coding and T4 image generation run on your model. If a call fails mid-run, you can retry it or switch to the free offline demo simulators in one click.
         </span>
         {connected ? (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "var(--good)" }}>{sharedDemo ? "● Shared demo model — capped, no key needed" : "● Connected — key stays in this browser"}</span>
-            <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => { updateKey(""); if (sharedDemo) updateBaseUrl(""); }}>
+            <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={disconnect}>
               Disconnect
             </button>
           </span>

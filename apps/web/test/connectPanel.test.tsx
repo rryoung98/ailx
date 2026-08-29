@@ -94,4 +94,29 @@ describe("ConnectPanel", () => {
     expect(window.localStorage.getItem("ailx:openrouter-key")).toBeNull();
     expect(window.localStorage.getItem("ailx:llm-base-url")).toBeNull();
   });
+
+  it("disconnect clears a manually set custom endpoint too (no stuck real mode)", () => {
+    mount();
+    click("Manual setup");
+    setInput("API base URL", "http://localhost:11434/v1");
+    setInput("OpenRouter API key", "sk-or-test-123");
+    expect(window.localStorage.getItem("ailx:llm-base-url")).toBe("http://localhost:11434/v1");
+    click("Disconnect");
+    expect(window.localStorage.getItem("ailx:openrouter-key")).toBeNull();
+    expect(window.localStorage.getItem("ailx:llm-base-url")).toBeNull();
+    expect(host.textContent).toContain("Connect OpenRouter");
+  });
+
+  it("disconnect leaves unrelated slots alone", () => {
+    window.localStorage.setItem("ailx:dev-user", "ui-worker-1");
+    mount();
+    click("Try the shared demo model");
+    click("Disconnect");
+    expect(window.localStorage.getItem("ailx:dev-user")).toBe("ui-worker-1");
+  });
+
+  it("promises a recoverable failure, not an automatic simulator takeover", () => {
+    mount();
+    expect(host.textContent).toContain("you can retry it or switch to the free offline demo simulators");
+  });
 });

@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import {
   buildVibeRequest,
   buildFetchInit,
+  clearLlmConnection,
   extractHtmlFence,
+  LLM_CONNECTION_KEYS,
   requestVibeCompletion,
   parseModelsResponse,
   fetchModelIds,
@@ -205,5 +207,48 @@ describe("custom API base URL (local OpenAI-compatible servers)", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:11434/v1/models");
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+  });
+});
+
+describe("clearLlmConnection", () => {
+  const spy = () => {
+    const removed: string[] = [];
+    return { removed, removeItem: (k: string) => void removed.push(k) };
+  };
+
+  it("removes BOTH connection slots (key alone would keep real mode alive)", () => {
+    const s = spy();
+    clearLlmConnection(s);
+    expect(s.removed).toEqual([OPENROUTER_KEY_STORAGE, LLM_BASE_URL_STORAGE]);
+  });
+
+  it("covers exactly the documented key list", () => {
+    expect(LLM_CONNECTION_KEYS).toEqual([OPENROUTER_KEY_STORAGE, LLM_BASE_URL_STORAGE]);
+  });
+
+  it("is a no-op for null/undefined storage (SSR, private mode)", () => {
+    expect(() => clearLlmConnection(null)).not.toThrow();
+    expect(() => clearLlmConnection(undefined)).not.toThrow();
+  });
+
+  it("keeps clearing the remaining slots when one removal throws", () => {
+    const removed: string[] = [];
+    clearLlmConnection({
+      removeItem: (k: string) => {
+        if (k === OPENROUTER_KEY_STORAGE) throw new Error("blocked");
+        removed.push(k);
+      },
+    });
+    expect(removed).toEqual([LLM_BASE_URL_STORAGE]);
+  });
+
+  it("leaves unrelated keys alone", () => {
+    const store = new Map([
+      [OPENROUTER_KEY_STORAGE, "sk-or-1"],
+      [LLM_BASE_URL_STORAGE, "http://localhost:11434/v1"],
+      ["ailx:attempt", "keep-me"],
+    ]);
+    clearLlmConnection({ removeItem: (k: string) => void store.delete(k) });
+    expect([...store.keys()]).toEqual(["ailx:attempt"]);
   });
 });
