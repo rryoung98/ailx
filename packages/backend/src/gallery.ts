@@ -126,8 +126,13 @@ export function parseGalleryQuery(raw: Record<string, string | undefined> = {}):
  */
 const LISTED = `s.approved_at IS NOT NULL AND ${PUBLICLY_SERVED}`;
 
-/** Pending human review: submitted, undecided, and still servable. */
-const PENDING = `s.submitted_at IS NOT NULL AND s.approved_at IS NULL AND ${PUBLICLY_SERVED}`;
+/**
+ * Pending human review: submitted, undecided, and still servable. Exported
+ * because the moderation dashboard's "pending" lane IS this queue — one
+ * definition, so the two surfaces cannot disagree about what is waiting.
+ */
+export const PENDING_SUBMISSION = `s.submitted_at IS NOT NULL AND s.approved_at IS NULL AND ${PUBLICLY_SERVED}`;
+const PENDING = PENDING_SUBMISSION;
 
 /**
  * ORDER BY fragments, keyed by a validated union — never interpolated from a
@@ -140,7 +145,12 @@ const ORDER: Record<GallerySort, string> = {
   type: "s.payload->'playerType'->>'code' ASC, s.approved_at DESC, s.id",
 };
 
-function entryFrom(row: QueryResultRow, at: unknown): GalleryEntry | null {
+/**
+ * Row -> entry. Shared with the moderation dashboard (moderation.ts), which
+ * shows the same card the reviewer queue and the public wall show — a case
+ * and a tile must never render from two different mappings.
+ */
+export function galleryEntryFrom(row: QueryResultRow, at: unknown): GalleryEntry | null {
   const payload = parseSharePayload(
     typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload,
   );
@@ -186,7 +196,7 @@ export async function listGallery(
     params.slice(0, params.length - 2),
   );
   const entries = rows
-    .map((r) => entryFrom(r, r.approved_at))
+    .map((r) => galleryEntryFrom(r, r.approved_at))
     .filter((e): e is GalleryEntry => e !== null);
   return {
     entries,
@@ -232,7 +242,7 @@ export async function listSubmissions(db: Queryable, limit = GALLERY_MAX_PAGE_SI
     [clampInt(limit, 1, GALLERY_MAX_PAGE_SIZE, GALLERY_MAX_PAGE_SIZE)],
   );
   return rows
-    .map((r) => entryFrom(r, r.submitted_at))
+    .map((r) => galleryEntryFrom(r, r.submitted_at))
     .filter((e): e is GalleryEntry => e !== null);
 }
 
@@ -277,13 +287,25 @@ export async function rejectSubmission(
 // Handlers
 // ---------------------------------------------------------------------------
 
-/** GET /gallery data — public, unauthenticated, no per-person field in it. */
+/**
+ * GET /gallery data — public, unauthenticated, no per-person field in it.
+ * `approvedBy` names the human who approved the listing, which is a fact for
+ * the moderation dashboard and nobody else, so it is dropped here rather than
+ * left to a renderer to omit.
+ */
+export type PublicGalleryEntry = Omit<GalleryEntry, "approvedBy">;
+
+export function publicEntry(entry: GalleryEntry): PublicGalleryEntry {
+  const { approvedBy: _approvedBy, ...rest } = entry;
+  return rest;
+}
+
 export async function handleListGallery(
   ctx: ApiContext,
   raw: Record<string, string | undefined> = {},
 ): Promise<ApiResult> {
   const listing = await listGallery(ctx.db, parseGalleryQuery(raw));
-  return { status: 200, body: { gallery: listing } };
+  return { status: 200, body: { gallery: { ...listing, entries: listing.entries.map(publicEntry) } } };
 }
 
 /** Reviewer-only: the pending queue. */
