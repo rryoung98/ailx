@@ -28,6 +28,13 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   `AILX_PUBLIC_ORIGIN` is unset. Only set this when a trusted proxy always overwrites
   those headers; otherwise they are attacker-controlled (host-header injection, CSP widening).
 
+## Shared-demo proxy environment (`services/openrouter-proxy`)
+- `AILX_ALLOWED_ORIGINS` — optional comma/whitespace separated list of extra allowed CORS
+  origins, e.g. a staging or ngrok deployment. Each entry must be a bare absolute http(s)
+  origin with no path or trailing slash; the prod and localhost origins stay allowed and
+  `*` / `null` are never accepted. Without it, only GitHub Pages and localhost can call the
+  shared demo model.
+
 ## Core invariants (never violate)
 - Any score ever issued is byte-identically recomputable from stored inputs.
 - `score()` is pure — no I/O, clock, or randomness (CI-enforced sandbox).
