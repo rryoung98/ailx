@@ -82,9 +82,12 @@ function moveSlider(value: number) {
   });
 }
 
+/** Arrow keys are bound to the deck, not window (audit P1-3). */
 function answer(choice: 0 | 1) {
+  const deck = container.querySelector('[data-testid="swipe-deck"]');
+  if (!deck) throw new Error("deck not rendered");
   act(() => {
-    window.dispatchEvent(
+    deck.dispatchEvent(
       new KeyboardEvent("keydown", { key: choice === 0 ? "ArrowLeft" : "ArrowRight", bubbles: true }),
     );
   });

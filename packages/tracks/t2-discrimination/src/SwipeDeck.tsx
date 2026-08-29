@@ -91,12 +91,14 @@ const T2_DECK_CSS = `
 }
 .t2-answer-btn.tone-left { color: var(--bad, #b91c1c); border: 1px solid var(--bad, #b91c1c); }
 .t2-answer-btn.tone-right { color: var(--good, #15803d); border: 1px solid var(--good, #15803d); }
-.t2-answer-btn:hover:not(:disabled), .t2-option-btn:hover:not(:disabled) {
+.t2-answer-btn:hover:not([aria-disabled="true"]), .t2-option-btn:hover:not([aria-disabled="true"]) {
   background: var(--accent, #0b6b47); color: #fff; border-color: var(--accent, #0b6b47);
 }
-.t2-answer-btn:active:not(:disabled), .t2-option-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.t2-answer-btn:active:not([aria-disabled="true"]), .t2-option-btn:active:not([aria-disabled="true"]) { transform: translateY(0) scale(0.98); }
 .t2-answer-btn:focus-visible, .t2-option-btn:focus-visible { outline: 2px solid var(--accent, #0b6b47); outline-offset: 2px; }
-.t2-answer-btn:disabled, .t2-option-btn:disabled { opacity: 0.55; cursor: default; }
+/* Inert-but-focusable: the answer buttons never take the disabled attribute,
+   so focus is never yanked off the control the candidate just pressed. */
+.t2-answer-btn[aria-disabled="true"], .t2-option-btn[aria-disabled="true"] { opacity: 0.55; cursor: default; }
 .t2-option-btn {
   background: var(--card, #fff); color: var(--fg, #1a1a1a); border: 1px solid var(--border, #e3ddd6);
   border-radius: 8px; padding: 0.55rem 0.9rem; font-size: 0.92rem; font-family: inherit;
@@ -235,9 +237,15 @@ export interface SwipeDeckProps {
    * flies off.
    */
   maskUpcoming?: boolean;
+  /**
+   * Ref to the FIRST answer/option button. The Runner uses it to hand focus
+   * back to the deck when the confidence sheet closes, so a keyboard user is
+   * never dropped on <body> between items (audit P0-2).
+   */
+  answerRef?: Ref<HTMLButtonElement>;
 }
 
-export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, maskUpcoming }: SwipeDeckProps) {
+export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, maskUpcoming, answerRef }: SwipeDeckProps) {
   const swipeable = item.options.length === 2;
   const [webgl, setWebgl] = useState(false);
   useEffect(() => {
@@ -281,20 +289,36 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
     onCommit: (choice) => onChoose(choice),
   });
 
-  // Keyboard path: arrow keys answer binary items with the same fling.
+  /**
+   * Keyboard path: arrow keys answer binary items with the same fling.
+   *
+   * The listener is bound to the DECK, not to window (audit P1-3). A window
+   * listener with an unconditional preventDefault swallowed browser-back
+   * (Alt/Cmd+Arrow), broke caret movement in any field on the page, and —
+   * worst for a scored instrument — let a screen-reader user arrowing through
+   * the page in BROWSE MODE fire an irreversible answer. Bound to the deck,
+   * the event only arrives when focus is already inside the deck (i.e. on an
+   * answer button), and preventDefault only runs when we actually answer.
+   */
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!enabled || !swipeable) return;
+    const root = rootRef.current;
+    if (!root || !enabled || !swipeable) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        flingForChoice(0);
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        flingForChoice(1);
-      }
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      // Modified arrows belong to the browser/OS; an IME composition and an
+      // already-handled event are never a verdict either.
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.isComposing || e.defaultPrevented) return;
+      const target = e.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
+      ) return;
+      e.preventDefault();
+      flingForChoice(e.key === "ArrowLeft" ? 0 : 1);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    root.addEventListener("keydown", onKey);
+    return () => root.removeEventListener("keydown", onKey);
   }, [enabled, swipeable, flingForChoice]);
 
   const m = motion.current;
@@ -379,7 +403,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
   const promoteTransition = "transform 340ms cubic-bezier(0.2, 1.4, 0.4, 1), opacity 340ms ease";
 
   return (
-    <div data-testid="swipe-deck" data-webgl={useGL ? "1" : "0"}>
+    <div ref={rootRef} data-testid="swipe-deck" data-webgl={useGL ? "1" : "0"}>
       <style>{T2_DECK_CSS}</style>
       <div
         ref={containerRef}
@@ -503,10 +527,14 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
         >
           <span aria-hidden style={{ color: "var(--muted)", fontSize: "1.1rem" }}>←</span>
           <button
+            ref={answerRef}
             lang={lang}
             className="t2-answer-btn tone-left"
-            onClick={() => flingForChoice(0)}
-            disabled={!enabled}
+            onClick={() => { if (enabled) flingForChoice(0); }}
+            // aria-disabled, NOT disabled: disabling the button the candidate
+            // just pressed drops focus to <body> mid-item, and decisionLatency
+            // is scored (audit P0-2). The control stays focusable and inert.
+            aria-disabled={!enabled}
           >
             {item.options[0]}
           </button>
@@ -516,8 +544,8 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
           <button
             lang={lang}
             className="t2-answer-btn tone-right"
-            onClick={() => flingForChoice(1)}
-            disabled={!enabled}
+            onClick={() => { if (enabled) flingForChoice(1); }}
+            aria-disabled={!enabled}
           >
             {item.options[1]}
           </button>
@@ -539,10 +567,11 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
           {item.options.map((opt, i) => (
             <button
               key={i}
+              ref={i === 0 ? answerRef : undefined}
               lang={lang}
               className="t2-option-btn"
-              onClick={() => onChoose(i)}
-              disabled={!enabled}
+              onClick={() => { if (enabled) onChoose(i); }}
+              aria-disabled={!enabled}
             >
               {opt}
             </button>

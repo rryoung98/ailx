@@ -112,7 +112,13 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   const shownAt = useRef(0);
   const decisionLatency = useRef<number | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const sliderRef = useRef<HTMLInputElement>(null);
+  const answerRef = useRef<HTMLButtonElement>(null);
+  const replayBtnRef = useRef<HTMLButtonElement>(null);
   const deckTopRef = useRef<HTMLParagraphElement>(null);
+  // True while focus was moved INTO the confidence sheet by us: the sheet
+  // then owns focus (trap) and hands it back to the deck on close.
+  const focusInSheetRef = useRef(false);
   const completed = useRef(false);
 
   // Checkpoint every meaningful mutation with explicit next values (state
@@ -137,6 +143,64 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
       sheetRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [choice]);
+
+  /**
+   * Focus management for the confidence sheet (audit P0-2).
+   *
+   * The sheet is a modal step of a SCORED, TIMED item: the candidate cannot
+   * proceed without setting confidence. Answering used to leave focus on
+   * <body> (the answer button disabled itself under the user's fingers), so
+   * an AT user then had to tab in from the top of the document — seconds
+   * that land in decisionLatency and in the exposure budget.
+   *
+   * Open  → focus the slider (the control that must be used).
+   * Open  → Tab cycles inside the sheet only (trap).
+   * Close → focus returns to the deck's first answer button, so the next
+   *         item is answerable immediately with no tabbing.
+   */
+  useEffect(() => {
+    if (choice === null) {
+      // Closing: hand focus back to the deck, but only if WE had taken it.
+      if (focusInSheetRef.current) {
+        focusInSheetRef.current = false;
+        // Deck first; on the LAST item the deck is gone and the replay's own
+        // button is the sensible landing spot. Focus never falls to <body>.
+        (answerRef.current ?? replayBtnRef.current)?.focus();
+      }
+      return;
+    }
+    focusInSheetRef.current = true;
+    sliderRef.current?.focus();
+  }, [choice]);
+
+  /** Focusable controls inside the sheet, in DOM order. */
+  const sheetFocusables = useCallback((): HTMLElement[] => {
+    const el = sheetRef.current;
+    if (!el) return [];
+    return [...el.querySelectorAll<HTMLElement>("input, button, select, textarea, [href], [tabindex]")]
+      .filter((n) => !n.hasAttribute("disabled") && n.getAttribute("aria-hidden") !== "true");
+  }, []);
+
+  const onSheetKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "Tab") return;
+      const nodes = sheetFocusables();
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      // Wrap at both ends: focus can never leave the sheet while it is open,
+      // and can never land on the (inert) deck behind it.
+      if (e.shiftKey && (active === first || !sheetRef.current?.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !sheetRef.current?.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    },
+    [sheetFocusables],
+  );
 
   const item = cfg.items[idx];
   // Localized ITEM content (stems, materials, options, rationales) is
@@ -345,12 +409,21 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             setChoice(i);
           }}
           onStimulusReady={handleStimulusReady}
+          answerRef={answerRef}
         />
         {/* Confidence sheet — slides up under the deck after each swipe. */}
         <div
           ref={sheetRef}
           data-testid="confidence-sheet"
+          // A modal step of a scored item: while it is open it owns focus,
+          // and while it is closed it is inert so its slider is not a stray
+          // tab stop behind the deck.
+          role="dialog"
+          aria-modal={sheetOpen || undefined}
+          aria-label="Set your confidence"
           aria-hidden={!sheetOpen}
+          inert={!sheetOpen}
+          onKeyDown={onSheetKeyDown}
           style={{
             ...card,
             transform: sheetOpen ? "translateY(0)" : "translateY(115%)",
@@ -375,6 +448,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
             How sure? {confidence === null ? "not set" : confidence}
             <input
+              ref={sliderRef}
               type="range"
               min={0}
               max={100}
@@ -478,6 +552,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           )}
           {replayIdx + 1 < cfg.items.length ? (
             <button
+              ref={replayBtnRef}
               style={btn}
               onClick={() => {
                 setReplayIdx(replayIdx + 1);
@@ -487,7 +562,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
               Next
             </button>
           ) : (
-            <button style={btn} onClick={finish}>
+            <button ref={replayBtnRef} style={btn} onClick={finish}>
               Finish track
             </button>
           )}

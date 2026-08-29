@@ -62,9 +62,17 @@ function startDeck() {
   clickByText("Start the deck");
 }
 
-function key(k: string) {
+/**
+ * Arrow keys are handled on the DECK, not on window (audit P1-3): a window
+ * listener fired scored answers from anywhere on the page, including a
+ * screen reader's browse-mode arrowing. The keyboard path therefore starts
+ * from inside the deck, which is where a keyboard user's focus already is.
+ */
+function key(k: string, target?: Element) {
+  const el = target ?? container.querySelector('[data-testid="swipe-deck"]');
+  if (!el) throw new Error("deck not rendered");
   act(() => {
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
+    el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
   });
 }
 

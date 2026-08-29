@@ -102,10 +102,17 @@ describe("T2 exposure lapse feedback", () => {
   it("blocks the stale click: answer buttons and arrow keys are inert during the notice", () => {
     mount();
     advance(EXPOSURE_MS);
-    for (const b of answerButtons()) expect(b.disabled).toBe(true);
+    // aria-disabled, never `disabled`: a disabled control drops focus to
+    // <body> (audit P0-2), so the deck is made inert without losing focus.
+    for (const b of answerButtons()) {
+      expect(b.getAttribute("aria-disabled")).toBe("true");
+      expect(b.disabled).toBe(false);
+    }
     act(() => answerButtons()[1].click());
     act(() => {
-      window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+      container
+        .querySelector('[data-testid="swipe-deck"]')!
+        .dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
     });
     // Nothing beyond the lapse itself, and no confidence sheet opened.
     expect(responded()).toHaveLength(1);
@@ -117,7 +124,7 @@ describe("T2 exposure lapse feedback", () => {
     advance(EXPOSURE_MS);
     advance(NOTICE_MS);
     expect(notice()).toBeNull();
-    for (const b of answerButtons()) expect(b.disabled).toBe(false);
+    for (const b of answerButtons()) expect(b.getAttribute("aria-disabled")).toBe("false");
     expect(container.textContent).toContain("Item 2 / ");
     // The clock only starts once the notice is gone: one tick short of the
     // exposure the second item is still live.
