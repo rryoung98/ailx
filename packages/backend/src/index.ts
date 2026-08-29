@@ -37,6 +37,8 @@ export {
   type ShareStatus,
 } from "./share-url.js";
 export {
+  AUTO_APPROVER,
+  approveShare,
   attemptSiteDigest,
   createShare,
   getShareForAttempt,
@@ -45,12 +47,15 @@ export {
   handleRevokeShare,
   handleViewShare,
   hashShareToken,
+  needsHumanApproval,
   newShareToken,
+  publishShare,
   resolveShare,
   revokeShare,
   shareStatus,
   type CreateShareOptions,
   type CreatedShare,
+  type PublishResult,
   type ShareRecord,
 } from "./share.js";
 export {

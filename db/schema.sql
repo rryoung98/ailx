@@ -129,9 +129,19 @@ CREATE TABLE scores (
 -- Lifecycle is monotone one-way stamps, never a destructive edit (same
 -- pattern as attempts.finalized_at):
 --   created_at            -> unlisted
---   + submitted_at        -> submitted for gallery review
---   + approved_at         -> published in the public gallery (human approved)
+--   + submitted_at        -> submitted for the public gallery
+--   + approved_at         -> published in the public gallery
 --   + revoked_at          -> revoked; nothing is served at any stage
+--
+-- The approval policy is HYBRID and derived from `site_digest`, which is a
+-- stored column, never a client-supplied field:
+--   site_digest IS NULL     — a derived player-type card. Low risk, high
+--                             volume, the viral engine: submit and approve
+--                             stamp together (auto-publish, no human queue).
+--   site_digest IS NOT NULL — candidate-authored HTML hosted at our origin.
+--                             Spec §12 / "Gallery governance" stands: a HUMAN
+--                             stamps approved_at (+ approved_by) before it is
+--                             publicly listed.
 -- Re-sharing after a revoke inserts a NEW row with a NEW token; the revoked
 -- row stays as the audit record.
 CREATE TABLE share_links (
@@ -143,7 +153,11 @@ CREATE TABLE share_links (
   created_at   timestamptz NOT NULL DEFAULT now(),
   submitted_at timestamptz,
   approved_at  timestamptz,
-  revoked_at   timestamptz
+  approved_by  text,                     -- 'auto:card' or the human approver
+  revoked_at   timestamptz,
+  -- An approved row must always say who approved it (auto or human).
+  CONSTRAINT share_links_approval_recorded
+    CHECK ((approved_at IS NULL) = (approved_by IS NULL))
 );
 
 -- At most one live link per attempt; revoked rows accumulate as the trail.

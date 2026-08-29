@@ -12,13 +12,17 @@ import type { ApiContext } from "../src/handlers.js";
 import type { Queryable } from "../src/db.js";
 import { SHARE_TOKEN_RE, shareCardPath, shareUrlPath } from "../src/share-url.js";
 import {
+  AUTO_APPROVER,
+  approveShare,
   createShare,
   handleCreateShare,
   handleGetShare,
   handleRevokeShare,
   handleViewShare,
   hashShareToken,
+  needsHumanApproval,
   newShareToken,
+  publishShare,
   resolveShare,
   revokeShare,
   shareStatus,
@@ -266,8 +270,7 @@ describe("lifecycle states", () => {
   it("revokes a gallery-published link too (approval never outranks the candidate)", async () => {
     const { participantId, attemptId } = await scoredAttempt();
     const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
-    // A human approver's action, modelled the way the gallery slice will do it.
-    await db.query("UPDATE share_links SET submitted_at = now(), approved_at = now() WHERE id = $1", [share.id]);
+    await publishShare(db, attemptId, participantId);
     expect((await resolveShare(db, share.token))!.status).toBe("published");
     await revokeShare(db, attemptId, participantId);
     expect(await resolveShare(db, share.token)).toBeNull();
@@ -315,6 +318,116 @@ describe("handlers", () => {
     expect((await handleGetShare(ctx, stranger, attemptId)).status).toBe(404);
     expect((await handleRevokeShare(ctx, stranger, attemptId)).status).toBe(404);
     expect((await handleGetShare(ctx, owner, attemptId)).status).toBe(200);
+  });
+});
+
+describe("hybrid publication policy", () => {
+  /** Give an attempt a T1 snapshot row so `includeSite` has something to opt into. */
+  async function withSite(attemptId: string, participantId: string, seq = 98) {
+    const digest = `sha256:${"b".repeat(64)}`;
+    await appendResponse(db, attemptId, participantId, {
+      seq,
+      payload: { kind: "t1-site-snapshot", digest, fileCount: 1, totalBytes: 10 },
+      clientTs: 1_767_225_800_000,
+    });
+    return digest;
+  }
+
+  it("decides from the stored payload, not from any request field", () => {
+    expect(needsHumanApproval({ site: null })).toBe(false);
+    expect(needsHumanApproval({ site: "/api/site/x/index.html" })).toBe(true);
+  });
+
+  it("auto-publishes a card: no human, one step, recorded as auto", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    expect(share.needsHumanApproval).toBe(false);
+    expect(await publishShare(db, attemptId, participantId)).toEqual({
+      status: "published",
+      awaitingApproval: false,
+    });
+    const live = (await resolveShare(db, share.token))!;
+    expect(live.status).toBe("published");
+    expect(live.approvedBy).toBe(AUTO_APPROVER);
+  });
+
+  it("publishing a card twice is idempotent", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    await createShare(db, attemptId, participantId);
+    const first = await publishShare(db, attemptId, participantId);
+    expect(await publishShare(db, attemptId, participantId)).toEqual(first);
+  });
+
+  it("holds a site-carrying share at `submitted` until a HUMAN approves", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    await withSite(attemptId, participantId);
+    const share = (await createShare(db, attemptId, participantId, { includeSite: true })) as CreatedShare;
+    expect(share.needsHumanApproval).toBe(true);
+
+    expect(await publishShare(db, attemptId, participantId)).toEqual({
+      status: "submitted",
+      awaitingApproval: true,
+    });
+    // Repeated candidate calls can never promote it past the gate.
+    await publishShare(db, attemptId, participantId);
+    await publishShare(db, attemptId, participantId);
+    const held = (await resolveShare(db, share.token))!;
+    expect(held.status).toBe("submitted");
+    expect(held.approvedBy).toBeNull();
+
+    expect(await approveShare(db, share.id, "human:reviewer-1")).toEqual({ approved: true });
+    const published = (await resolveShare(db, share.token))!;
+    expect(published.status).toBe("published");
+    expect(published.approvedBy).toBe("human:reviewer-1");
+  });
+
+  it("cannot be bypassed by client-supplied fields on create", async () => {
+    const user = { [DEV_USER_HEADER]: "share-bypass" };
+    const { ensureParticipant, createAttempt } = await import("../src/store.js");
+    const participant = await ensureParticipant(db, "dev:share-bypass");
+    const attempt = await createAttempt(db, participant.id, { instrumentId: "ailx", instrumentVer: "2026.1" });
+    await mirrorScoredRun(attempt.id, participant.id);
+    await withSite(attempt.id, participant.id);
+
+    const res = await handleCreateShare(ctx, user, attempt.id, {
+      includeSite: true,
+      // Everything a hostile client might try to smuggle in:
+      status: "published",
+      approvedAt: "2026-01-01T00:00:00.000Z",
+      approvedBy: "human:me",
+      needsHumanApproval: false,
+      payload: { site: null },
+    });
+    const share = res.body.share as CreatedShare;
+    expect(share.status).toBe("unlisted");
+    expect(share.approvedBy).toBeNull();
+    expect(share.needsHumanApproval).toBe(true);
+    expect(await publishShare(db, attempt.id, participant.id)).toEqual({
+      status: "submitted",
+      awaitingApproval: true,
+    });
+  });
+
+  it("refuses a non-human approver reference", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    await expect(approveShare(db, share.id, AUTO_APPROVER)).rejects.toThrow(/human approver/);
+    await expect(approveShare(db, share.id, "")).rejects.toThrow(/human approver/);
+  });
+
+  it("will not approve an unsubmitted or revoked share", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    expect(await approveShare(db, share.id, "human:r")).toEqual({ approved: false });
+    await publishShare(db, attemptId, participantId);
+    await revokeShare(db, attemptId, participantId);
+    expect(await approveShare(db, share.id, "human:r")).toEqual({ approved: false });
+    expect(await resolveShare(db, share.token)).toBeNull();
+  });
+
+  it("refuses to publish when there is no live link", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    await expect(publishShare(db, attemptId, participantId)).rejects.toThrow(/no live share link/);
   });
 });
 

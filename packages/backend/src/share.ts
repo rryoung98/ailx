@@ -62,6 +62,10 @@ export async function hashShareToken(token: string): Promise<string> {
 export interface ShareRecord {
   id: string;
   status: ShareStatus;
+  /** Who approved publication: "auto:card", a human approver ref, or null. */
+  approvedBy: string | null;
+  /** True when a HUMAN must approve before this may be publicly listed. */
+  needsHumanApproval: boolean;
   createdAt: string;
   revokedAt: string | null;
   submittedAt: string | null;
@@ -98,6 +102,8 @@ function shareFromRow(row: QueryResultRow): ShareRecord | null {
   return {
     id: row.id as string,
     status: shareStatus(stamps),
+    approvedBy: (row.approved_by as string | null) ?? null,
+    needsHumanApproval: needsHumanApproval(payload),
     createdAt: iso(row.created_at)!,
     ...stamps,
     views: Number(row.views ?? 0),
@@ -105,7 +111,7 @@ function shareFromRow(row: QueryResultRow): ShareRecord | null {
   };
 }
 
-const SELECT_SHARE = `SELECT s.id, s.payload, s.created_at, s.submitted_at, s.approved_at, s.revoked_at,
+const SELECT_SHARE = `SELECT s.id, s.payload, s.created_at, s.submitted_at, s.approved_at, s.approved_by, s.revoked_at,
         (SELECT count(*) FROM share_views v WHERE v.share_id = s.id) AS views
    FROM share_links s`;
 
@@ -188,7 +194,7 @@ export async function createShare(
   const { rows } = await db.query(
     `INSERT INTO share_links (attempt_id, token_sha256, payload, site_digest)
      VALUES ($1, $2, $3::jsonb, $4)
-     RETURNING id, payload, created_at, submitted_at, approved_at, revoked_at, 0 AS views`,
+     RETURNING id, payload, created_at, submitted_at, approved_at, approved_by, revoked_at, 0 AS views`,
     [attemptId, tokenSha, JSON.stringify(payload), site],
   );
   const record = shareFromRow(rows[0]!);
@@ -257,6 +263,83 @@ export async function resolveShare(
     await db.query("INSERT INTO share_views (share_id) VALUES ($1)", [record.id]);
   }
   return record;
+}
+
+// ---------------------------------------------------------------------------
+// Publication policy (hybrid — see db/schema.sql)
+// ---------------------------------------------------------------------------
+
+/** Recorded approver for an auto-published derived card. */
+export const AUTO_APPROVER = "auto:card";
+
+/**
+ * Does entering the PUBLIC gallery need a human?
+ *
+ * Derived from the STORED payload — never from a request field, so no client
+ * can talk its way past the gate:
+ *  - a player-type card is a derived figure over four aggregate numbers, with
+ *    no candidate-authored bytes in it: auto-publish;
+ *  - a share carrying the candidate's built SITE hosts arbitrary user HTML on
+ *    our origin, which is exactly what spec §12's approval-required gallery
+ *    rule exists for: a human approves it or it stays unpublished.
+ */
+export function needsHumanApproval(payload: { site: string | null }): boolean {
+  return payload.site !== null;
+}
+
+export interface PublishResult {
+  status: ShareStatus;
+  /** True when the caller must now wait for a human approver. */
+  awaitingApproval: boolean;
+}
+
+/**
+ * Candidate action: put this share into the public gallery queue. A card is
+ * published in the same statement it is submitted; a share with a site stops
+ * at `submitted` and no candidate-reachable path can move it further.
+ */
+export async function publishShare(
+  db: Queryable,
+  attemptId: string,
+  participantId: string,
+): Promise<PublishResult> {
+  const share = await getShareForAttempt(db, attemptId, participantId);
+  if (share === null) throw new StoreError("not_found", "no live share link");
+  if (share.status === "published") return { status: "published", awaitingApproval: false };
+  const auto = !share.needsHumanApproval;
+  await db.query(
+    `UPDATE share_links
+        SET submitted_at = coalesce(submitted_at, now()),
+            approved_at  = CASE WHEN $2 THEN coalesce(approved_at, now()) ELSE approved_at END,
+            approved_by  = CASE WHEN $2 THEN coalesce(approved_by, $3) ELSE approved_by END
+      WHERE id = $1 AND revoked_at IS NULL`,
+    [share.id, auto, AUTO_APPROVER],
+  );
+  return auto
+    ? { status: "published", awaitingApproval: false }
+    : { status: "submitted", awaitingApproval: true };
+}
+
+/**
+ * REVIEWER action, deliberately not reachable from any candidate route: a
+ * named human stamps approval on a submitted, site-carrying share. Refuses
+ * anything not submitted, and anything already revoked.
+ */
+export async function approveShare(
+  db: Queryable,
+  shareId: string,
+  approver: string,
+): Promise<{ approved: boolean }> {
+  if (approver === "" || approver === AUTO_APPROVER) {
+    throw new StoreError("bad_request", "a human approver reference is required");
+  }
+  const { rows } = await db.query(
+    `UPDATE share_links SET approved_at = now(), approved_by = $2
+      WHERE id = $1 AND revoked_at IS NULL AND submitted_at IS NOT NULL AND approved_at IS NULL
+      RETURNING id`,
+    [shareId, approver],
+  );
+  return { approved: rows.length > 0 };
 }
 
 // ---------------------------------------------------------------------------
