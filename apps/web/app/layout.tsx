@@ -8,7 +8,7 @@ const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--fon
 import Link from "next/link";
 import { Loader } from "../lib/Loader";
 import { NavLink } from "../lib/NavLink";
-import { assetUrl, footerModeCopy } from "../lib/mode";
+import { assetUrl, footerModeCopy, isServerMode } from "../lib/mode";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
@@ -31,7 +31,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="site-nav" aria-label="Primary">
               <NavLink href="/methodology">Methodology</NavLink>
               <NavLink href="/report">Report</NavLink>
-              <NavLink href="/gallery">Gallery</NavLink>
+              {/* The share gallery reads the database, so it exists only in
+                  the hosted build; the static export links the T4 community
+                  wall instead. One nav slot, never a link that cannot work. */}
+              {isServerMode() ? (
+                <>
+                  <NavLink href="/gallery">Gallery</NavLink>
+                  <NavLink href="/world">World</NavLink>
+                </>
+              ) : (
+                <NavLink href="/wall">Wall</NavLink>
+              )}
               <NavLink href="/validate">Validate</NavLink>
               {/* Compact pill twin of the bottom .pill-cta, aligned right. */}
               <NavLink href="/exam" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>

@@ -141,4 +141,21 @@ describe("design-token contrast (AA)", () => {
     expect(css).toContain(".skip-link");
     expect(css).toContain(".skip-link:focus-visible");
   });
+
+  // The gallery filters are LINKS, so they are keyboard reachable for free —
+  // but a pill-shaped link with no focus ring is invisible when tabbed to
+  // (WCAG 2.2 2.4.13), and the active pill is white-on-accent like .btn.
+  it("gives the gallery filter chips a visible focus indicator", () => {
+    expect(css).toMatch(/\.chip:focus-visible \{[^}]*outline: 2px solid var\(--fg\)/);
+  });
+
+  it("paints the active filter chip with the pinned white-on-accent pairing", () => {
+    expect(css).toMatch(/\.chip\.on \{[^}]*background: var\(--accent\)[^}]*color: #ffffff/);
+  });
+
+  it("draws the gallery and world figures from tokens, never hard-coded colour", () => {
+    const scoped = css.slice(css.indexOf("/* ---- /gallery public wall"));
+    const hexes = [...scoped.matchAll(/#[0-9a-fA-F]{3,6}/g)].map((m) => m[0]);
+    expect(hexes.filter((h) => h.toLowerCase() !== "#ffffff")).toEqual([]);
+  });
 });

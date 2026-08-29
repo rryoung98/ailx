@@ -52,6 +52,26 @@ describe("server-only files carry a server-only extension", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("every page that reads the store is server-only by name", () => {
+    // The gallery, its reviewer queue and the world aggregates all read the
+    // database; in the static export none of them may exist at all.
+    for (const route of ["gallery", "world", "review"]) {
+      const pages = files.filter((f) => f.rel.startsWith(`${route}/page`));
+      expect(pages.map((f) => f.rel), route).toEqual([`${route}/page.api.tsx`]);
+    }
+  });
+
+  it("no route has both a static and a server-only page (duplicate route)", () => {
+    const pages = files.filter((f) => /(^|\/)page\.(api\.)?tsx$/.test(f.rel));
+    const byDir = new Map<string, string[]>();
+    for (const f of pages) {
+      const dir = f.rel.split("/").slice(0, -1).join("/");
+      byDir.set(dir, [...(byDir.get(dir) ?? []), f.rel]);
+    }
+    const clashes = [...byDir.values()].filter((v) => v.length > 1);
+    expect(clashes).toEqual([]);
+  });
+
   it("the share view and its routes are all server-only by name", () => {
     const shareFiles = files.filter((f) => f.rel.includes("share") || f.rel.startsWith("s/"));
     expect(shareFiles.length).toBeGreaterThanOrEqual(3);

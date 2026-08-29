@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
- * /gallery community wall: renders shared sets from the service, upvote is
+ * /wall community wall: renders shared sets from the service, upvote is
  * optimistic + deduped via localStorage; votes are labeled as non-score.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import GalleryPage from "../app/gallery/page";
+import WallPage from "../app/wall/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -44,7 +44,7 @@ async function mount() {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
-  await act(async () => root!.render(createElement(GalleryPage)));
+  await act(async () => root!.render(createElement(WallPage)));
   await act(async () => { await Promise.resolve(); });
 }
 

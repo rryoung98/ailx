@@ -1287,7 +1287,7 @@ main .card {
 }
 
 
-/* ---- /gallery community wall ------------------------------------------ */
+/* ---- /wall community wall (T4 sets, static-export friendly) ------------------------------------------ */
 .gallery-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.2rem;
@@ -1325,3 +1325,50 @@ main .card {
 .ptype-letter.hi { background: var(--accent); border-color: var(--accent); color: #fff; }
 .ptype-axes { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .ptype-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }
+
+
+/* ---- /gallery public wall of published player types -------------------- */
+.gallery-filters { display: grid; gap: 0.5rem; margin: 1.2rem 0 0.6rem; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border: 1px solid var(--border-strong); border-radius: 999px;
+  padding: 0.3rem 0.8rem; font-size: 0.82rem; font-weight: 600;
+  background: var(--card); color: var(--fg); text-decoration: none;
+  /* 44px hit target on touch without changing the visual size on desktop. */
+  min-height: 32px;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.chip.on .faint { color: rgba(255, 255, 255, 0.85); }
+.chip:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+@media (pointer: coarse) { .chip { min-height: 44px; padding: 0.5rem 1rem; } }
+
+.type-tile { gap: 0.5rem; }
+.type-tile-head { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
+.type-tile-name { margin: 0; font-size: 1.1rem; }
+.ptype-letter.small { width: 30px; height: 30px; border-radius: 8px; font-size: 0.95rem; }
+.type-tile-tracks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; margin: 0; }
+.type-tile-tracks div { display: grid; gap: 0.1rem; text-align: center; }
+.type-tile-tracks dt { color: var(--accent); }
+.type-tile-tracks dd { margin: 0; color: var(--muted); }
+.type-tile-meta { margin: 0; }
+.gallery-pager { display: flex; gap: 0.6rem; margin: 1.6rem 0; }
+.review-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+/* ---- /world aggregate figures (hand-rolled, no chart library) ---------- */
+.histogram {
+  display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
+  height: 110px; align-items: end; margin: 0.6rem 0 0.2rem;
+}
+.histogram-col { display: grid; align-content: end; gap: 2px; height: 100%; }
+.histogram-bar { background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
+.histogram-tick { font-size: 0.6rem; color: var(--faint); text-align: center; }
+.type-bars { list-style: none; margin: 0.8rem 0; padding: 0; display: grid; gap: 0.45rem; }
+.type-bars li { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: 0.7rem; align-items: center; }
+.type-bar-code { color: var(--accent); font-weight: 700; }
+.type-bar-meter { display: block; }
+.trend-table { border-collapse: collapse; margin: 0.8rem 0; min-width: 22rem; }
+.trend-table caption { caption-side: bottom; text-align: left; padding-top: 0.4rem; }
+.trend-table th, .trend-table td { border-bottom: 1px solid var(--border); padding: 0.35rem 1.2rem 0.35rem 0; text-align: left; }
+.trend-table thead th { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }

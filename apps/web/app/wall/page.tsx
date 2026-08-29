@@ -1,6 +1,11 @@
 "use client";
 /**
- * /gallery — community wall of shared T4 final sets.
+ * /wall — community wall of shared T4 final sets.
+ *
+ * NOT the public gallery: /gallery is the server-rendered wall of published
+ * player-type cards (app/gallery/page.api.tsx), which needs a database and so
+ * exists only in the hosted build. This page reads a public demo service and
+ * works in the static export, which is where it is linked from.
  *
  * Reads the public gallery service (Vercel Blob behind the shared-demo
  * proxy). Upvotes are a HUMAN AESTHETIC SIGNAL only: they never touch the

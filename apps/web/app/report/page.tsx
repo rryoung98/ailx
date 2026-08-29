@@ -64,10 +64,10 @@ function ShareToGallery({ artifact }: { artifact: unknown }) {
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: "0.6rem", flexWrap: "wrap" }}>
       {state === "done" ? (
-        <Link className="btn small-btn" href="/gallery">On the wall — see the gallery →</Link>
+        <Link className="btn small-btn" href="/wall">On the wall — see the sets →</Link>
       ) : (
         <button className="btn small-btn" onClick={share} disabled={state === "busy"}>
-          {state === "busy" ? "Sharing…" : "Share this set to the public gallery"}
+          {state === "busy" ? "Sharing…" : "Share this set to the community wall"}
         </button>
       )}
       {state === "error" ? <span className="small faint">Could not share — try again later.</span> : null}
