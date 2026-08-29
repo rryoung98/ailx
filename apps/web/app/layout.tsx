@@ -8,6 +8,7 @@ const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--fon
 import Link from "next/link";
 import { Loader } from "../lib/Loader";
 import { NavLink } from "../lib/NavLink";
+import { footerModeCopy } from "../lib/mode";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
@@ -44,11 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
         <footer className="site-footer">
           <div className="container">
-            <p>
-              AILX 2026.1 · static demo build. Every model call is a deterministic
-              simulator, seeded by SHA-256 of its inputs. No network calls. Everything
-              runs in your browser.
-            </p>
+            <p>{footerModeCopy()}</p>
             <p>AILX plays like a game and is built like an instrument.</p>
             <p>
               Instrument spec: <span className="mono">AILX-Spec-2026.1</span> · pilot cohort

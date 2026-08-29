@@ -19,6 +19,7 @@ import { t2AnswerKeys } from "../../lib/instrument";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
 import { TRACK_META } from "../../lib/tracks";
 import { Reveal } from "../../lib/Reveal";
+import { SiteLink } from "../../lib/SiteLink";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 
@@ -90,10 +91,7 @@ function SiteLiveLink({ attemptId }: { attemptId?: string }) {
   if (!sub) return null;
   return (
     <p className="small" style={{ marginTop: "0.6rem" }}>
-      Live snapshot:{" "}
-      <a href={sub.url} target="_blank" rel="noreferrer" className="mono" style={{ wordBreak: "break-all" }}>
-        {sub.url}
-      </a>{" "}
+      Live snapshot: <SiteLink url={sub.url} />{" "}
       <span className="faint">— served sandboxed; anyone with the link can view it.</span>
     </p>
   );

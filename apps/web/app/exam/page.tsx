@@ -25,6 +25,8 @@ import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
 import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
 import { PillCTA } from "../../lib/PillCTA";
 import { Reveal } from "../../lib/Reveal";
+import { SiteLink } from "../../lib/SiteLink";
+import { eventLogCopy } from "../../lib/mode";
 
 function demoConfig(locale: "en"): SessionConfig {
   return {
@@ -266,7 +268,7 @@ export default function ExamPage() {
           <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
           <p className="lede">
             T1 to T4 in sequence, each on its own clock. You can pause between
-            moves, never mid-swipe. The event log stays in this browser.
+            moves, never mid-swipe. {eventLogCopy()}
           </p>
           <div style={{ textAlign: "right" }}><Annotation side="left">no accounts — just play</Annotation></div>
           {/* AI connection FIRST — users must see it before the Start pill
@@ -523,10 +525,7 @@ function SiteUploadNotice({ status, onRetry }: { status: SiteStatus; onRetry: ()
         <span className="muted">Publishing your site snapshot…</span>
       ) : status.state === "live" ? (
         <>
-          Your site is live:{" "}
-          <a href={status.url} target="_blank" rel="noreferrer" className="mono" style={{ wordBreak: "break-all" }}>
-            {status.url}
-          </a>
+          Your site is live: <SiteLink url={status.url} />
           <span className="faint small" style={{ display: "block", marginTop: "0.2rem" }}>
             Served sandboxed; anyone with the link can view it.
           </span>

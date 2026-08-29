@@ -21,6 +21,7 @@ import {
   type ValidatedLog,
 } from "@ailx/session";
 import { DEV_USER_HEADER } from "@ailx/backend";
+import { isServerMode } from "./mode";
 
 export interface AttemptPersistence {
   load(): ValidatedLog | null;
@@ -251,7 +252,7 @@ export async function createServerAttempt(
  * server-side (the mirror will still lazily create an attempt for the log).
  */
 export async function startServerAttempt(locale: string): Promise<string | null> {
-  if (process.env.NEXT_PUBLIC_AILX_BACKEND !== "1" || typeof window === "undefined") {
+  if (!isServerMode() || typeof window === "undefined") {
     return null;
   }
   try {
@@ -285,10 +286,9 @@ export function getAttemptPersistence(): AttemptPersistence {
   const storage = window.localStorage;
   let p = byStorage.get(storage);
   if (!p) {
-    p =
-      process.env.NEXT_PUBLIC_AILX_BACKEND === "1"
-        ? createApiPersistence(storage, browserApiOptions())
-        : createLocalPersistence(storage);
+    p = isServerMode()
+      ? createApiPersistence(storage, browserApiOptions())
+      : createLocalPersistence(storage);
     byStorage.set(storage, p);
   }
   return p;
