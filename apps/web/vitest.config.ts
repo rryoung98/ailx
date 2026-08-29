@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
@@ -12,5 +12,6 @@ export default defineConfig({
       "next/font/google": fileURLToPath(new URL("./test/mocks/nextFontGoogle.ts", import.meta.url)),
     },
   },
-  test: { passWithNoTests: true },
+  // e2e/ is Playwright's (it needs a server); vitest must not try to run it.
+  test: { passWithNoTests: true, exclude: [...configDefaults.exclude, "e2e/**"] },
 });

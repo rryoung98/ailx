@@ -7,4 +7,7 @@ dist/
 coverage/
 .DS_Store
 apps/web/out/
+# Playwright (e2e) artefacts
+test-results/
+playwright-report/
 next-env.d.ts
