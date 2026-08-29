@@ -1,5 +1,6 @@
 import { handleServeSite } from "@ailx/backend/t1";
 import { getSnapshotStore } from "../../../../../lib/server/site";
+import { resolvePublicOrigin } from "../../../../../lib/server/origin";
 
 type SiteRouteContext = { params: Promise<{ digest: string; path?: string[] }> };
 
@@ -13,12 +14,17 @@ type SiteRouteContext = { params: Promise<{ digest: string; path?: string[] }> }
 export async function GET(req: Request, { params }: SiteRouteContext): Promise<Response> {
   const { digest, path } = await params;
   const url = new URL(req.url);
+  // Behind a proxy req.url carries the internal origin, which would poison
+  // both the redirect Location and the CSP allowlist. Resolve once and use the
+  // same value for both: an absolute Location keeps the two in lockstep, so a
+  // misconfigured origin fails visibly instead of silently blocking assets.
+  const origin = resolvePublicOrigin(process.env, url, req.headers);
   const segments = path ?? [];
   if (segments.length === 0 && !url.pathname.endsWith("/")) {
-    return Response.redirect(`${url.origin}${url.pathname}/`, 308);
+    return Response.redirect(`${origin}${url.pathname}/`, 308);
   }
   try {
-    const result = await handleServeSite(getSnapshotStore(), url.origin, digest, segments.join("/"));
+    const result = await handleServeSite(getSnapshotStore(), origin, digest, segments.join("/"));
     // Our snapshot bytes are always ArrayBuffer-backed; the cast bridges the
     // lib.dom BodyInit typing, which rejects Uint8Array<ArrayBufferLike>.
     const body = result.data === null ? "not found" : (result.data as Uint8Array<ArrayBuffer>);

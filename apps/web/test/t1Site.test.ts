@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FsSnapshotStore, type SiteSnapshot } from "@ailx/backend/t1";
 import { snapshotDir } from "../lib/server/site";
 
@@ -86,6 +86,48 @@ describe("GET /api/site/[digest]/[[...path]]", () => {
     const res = await GET(request(`/api/site/${digest}`), params(digest));
     expect(res.status).toBe(308);
     expect(res.headers.get("location")).toBe(`https://sandbox.example/api/site/${digest}/`);
+  });
+
+  describe("public origin behind a reverse proxy (staging P0 regression)", () => {
+    // The dogfood bug: req.url is the INTERNAL origin behind ngrok/Cloud Run,
+    // so both the CSP allowlist and the 308 Location pointed at localhost.
+    const internal = (path: string) =>
+      new Request(`https://localhost:3111${path}`, {
+        headers: { "x-forwarded-proto": "https", "x-forwarded-host": "abc.ngrok-free.app" },
+      });
+
+    afterEach(() => {
+      delete process.env.AILX_PUBLIC_ORIGIN;
+      delete process.env.AILX_TRUST_PROXY;
+    });
+
+    it("leaks the internal origin only when nothing is configured", async () => {
+      const res = await GET(internal(`/api/site/${digest}/`), params(digest));
+      expect(res.headers.get("content-security-policy")).toContain("script-src 'self' https://localhost:3111");
+      const redirect = await GET(internal(`/api/site/${digest}`), params(digest));
+      expect(redirect.headers.get("location")).toBe(`https://localhost:3111/api/site/${digest}/`);
+    });
+
+    it("puts AILX_PUBLIC_ORIGIN in the CSP and the redirect", async () => {
+      process.env.AILX_PUBLIC_ORIGIN = "https://ailx.example";
+      const res = await GET(internal(`/api/site/${digest}/`), params(digest));
+      const csp = res.headers.get("content-security-policy")!;
+      for (const directive of ["script-src", "style-src", "img-src", "media-src", "font-src", "manifest-src"]) {
+        expect(csp).toContain(`${directive} 'self' https://ailx.example`);
+      }
+      expect(csp).not.toContain("localhost:3111");
+      const redirect = await GET(internal(`/api/site/${digest}`), params(digest));
+      expect(redirect.status).toBe(308);
+      expect(redirect.headers.get("location")).toBe(`https://ailx.example/api/site/${digest}/`);
+    });
+
+    it("honours forwarded headers when AILX_TRUST_PROXY is set", async () => {
+      process.env.AILX_TRUST_PROXY = "1";
+      const res = await GET(internal(`/api/site/${digest}/`), params(digest));
+      expect(res.headers.get("content-security-policy")).toContain("script-src 'self' https://abc.ngrok-free.app");
+      const redirect = await GET(internal(`/api/site/${digest}`), params(digest));
+      expect(redirect.headers.get("location")).toBe(`https://abc.ngrok-free.app/api/site/${digest}/`);
+    });
   });
 
   it("404s unknown digests and paths", async () => {
