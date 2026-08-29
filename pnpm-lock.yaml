@@ -83,6 +83,9 @@ importers:
       '@ailx/core':
         specifier: workspace:*
         version: link:../core
+      '@ailx/report':
+        specifier: workspace:*
+        version: link:../report
       '@ailx/session':
         specifier: workspace:*
         version: link:../session
