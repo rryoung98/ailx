@@ -106,3 +106,23 @@ function sha256Words(input: string | Uint8Array): Uint32Array {
 function rotr(x: number, n: number): number {
   return ((x >>> n) | (x << (32 - n))) >>> 0;
 }
+
+// ---------------------------------------------------------------------------
+// CRC-32 (ISO 3309) — shared by the backend ZIP validator (readZip) and the
+// browser-side store-only ZIP writer, so both ends of the T1 site submission
+// pipeline agree on entry checksums by construction.
+// ---------------------------------------------------------------------------
+
+const CRC_TABLE = new Uint32Array(256);
+for (let n = 0; n < 256; n++) {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  CRC_TABLE[n] = c >>> 0;
+}
+
+/** CRC-32 of raw bytes as an unsigned 32-bit integer. */
+export function crc32(data: Uint8Array): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < data.length; i++) c = CRC_TABLE[(c ^ data[i]!) & 0xff]! ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}

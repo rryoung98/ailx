@@ -13,7 +13,11 @@
  */
 
 import { inflateRawSync } from "node:zlib";
+import { crc32 } from "@ailx/core";
 import { SnapshotError } from "./errors.js";
+
+// Re-exported so backend test fixtures keep a single import site.
+export { crc32 };
 
 export interface ZipLimits {
   /** Maximum number of file entries (directories excluded). */
@@ -40,20 +44,6 @@ const EOCD_MIN = 22;
 const MAX_COMMENT = 0xffff;
 const ZIP64_U16 = 0xffff;
 const ZIP64_U32 = 0xffffffff;
-
-// -- CRC-32 (ISO 3309), needed to verify entry integrity and by test fixtures.
-const CRC_TABLE = new Uint32Array(256);
-for (let n = 0; n < 256; n++) {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  CRC_TABLE[n] = c >>> 0;
-}
-
-export function crc32(data: Uint8Array): number {
-  let c = 0xffffffff;
-  for (let i = 0; i < data.length; i++) c = CRC_TABLE[(c ^ data[i]!) & 0xff]! ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
 
 function bad(message: string): never {
   throw new SnapshotError("bad_zip", message);

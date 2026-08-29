@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { canonicalJson, sha256Bytes, sha256Hex } from "../src/hash.js";
+import { crc32 as zlibCrc32 } from "node:zlib";
+import { canonicalJson, crc32, sha256Bytes, sha256Hex } from "../src/hash.js";
 import { itemId, rubricVersion } from "../src/content-address.js";
 
 // ---------------------------------------------------------------------------
@@ -43,6 +44,28 @@ describe("sha256Bytes", () => {
   it("returns the raw 32-byte digest matching node:crypto", () => {
     for (const s of ["", "abc", "rubric v1"]) {
       expect(Buffer.from(sha256Bytes(s))).toEqual(createHash("sha256").update(s).digest());
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// crc32 — shared by the backend ZIP validator and the client ZIP writer.
+// ---------------------------------------------------------------------------
+
+describe("crc32", () => {
+  it("matches the ISO 3309 check vector", () => {
+    expect(crc32(new TextEncoder().encode("123456789"))).toBe(0xcbf43926);
+  });
+
+  it("matches node:zlib across empty, binary and long inputs", () => {
+    const samples = [
+      new Uint8Array(0),
+      new Uint8Array([0, 1, 2, 255, 254, 128, 64]),
+      new TextEncoder().encode("x".repeat(10_000)),
+      new TextEncoder().encode("<!doctype html><html>\u3053\u3093\u306b\u3061\u306f</html>"),
+    ];
+    for (const s of samples) {
+      expect(crc32(s)).toBe(zlibCrc32(s));
     }
   });
 });
