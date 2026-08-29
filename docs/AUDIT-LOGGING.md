@@ -161,3 +161,28 @@ runners — a trap for any future audit. Deleted (nothing imported them).
 - Fixed: multi-tab CAS (SaveConflictError), duplicate `track_scored` rejection, unknown-entry rejection, validated hydration + visible persistence warnings, honest landing/OG copy, report event-log copy accuracy, disputed item now carries its verified Commons AI category.
 - Confirmed false positive: `afc954936e1d…` (Plaza Calderon) IS in Commons "Category:AI-generated images of architecture" (live category query); retained with category evidence embedded.
 - Accepted residual: content tests gate id/hash/link-manifest consistency but not live Commons category membership (network-free CI); localStorage quota exhaustion surfaces a warning rather than a durable fallback store; duplicated Commons source files across 3 item pairs deferred to next bank revision.
+
+
+## Runner faults and the clock (2026-08, exam-integrity fix)
+
+A track Runner that throws is now caught by `apps/web/lib/RunnerErrorBoundary.tsx`
+(plus route-level `app/error.tsx` / `app/global-error.tsx`). Before that, one
+uncaught render error unmounted the tree and left a candidate on a white page
+while their own clock ran on.
+
+**Declared timer policy: a fault on OUR side does not consume the candidate's
+budget.** On catch, the exam page appends, in this order:
+
+1. `track_event` with `verb: "runner_crashed"` — the auditable cause, so a
+   later reviewer can see why the attempt has an involuntary pause;
+2. `paused` — the track clock stops.
+
+`resumed` is appended only when the candidate presses "Reload this track and
+continue"; a pause the candidate chose before the crash is never auto-resumed.
+Either entry is skipped when the machine would reject it (an exhausted budget
+legitimately refuses further track events), so recovery can never itself throw.
+The stored log stays authoritative and untouched: retry remounts the runner
+from its last checkpoint.
+
+**Tests:** `apps/web/test/examCrash.test.tsx` (crash → recovery panel, log
+intact, clock frozen across 5 s, retry resumes), `apps/web/test/routeError.test.tsx`.

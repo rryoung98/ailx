@@ -24,6 +24,7 @@ import { Annotation } from "../../lib/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
 import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
 import { PersistWarning } from "../../lib/PersistWarning";
+import { RunnerErrorBoundary } from "../../lib/RunnerErrorBoundary";
 import { PillCTA } from "../../lib/PillCTA";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
@@ -63,6 +64,19 @@ export default function ExamPage() {
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
+  /**
+   * Runner crash handling (P0-1). The clock is the candidate's, not ours:
+   * a fault in OUR code pauses the track so the crash is never charged to
+   * their budget, and the fault itself is recorded in the append-only log
+   * so a later audit can see the paused interval was involuntary.
+   * `runnerEpoch` remounts the runner (and re-reads the checkpoint) on retry.
+   */
+  const [runnerEpoch, setRunnerEpoch] = useState(0);
+  // True while a crashed runner is showing its recovery panel: the pause veil
+  // must not cover the one affordance that gets the candidate moving again.
+  const [crashed, setCrashed] = useState(false);
+  const crashPausedRef = useRef(false);
+
   // Start gate: a run needs a connected model (key or custom base URL).
   const [connected, setConnected] = useState(false);
   const [connectAttention, setConnectAttention] = useState(0);
@@ -150,6 +164,9 @@ export default function ExamPage() {
   useEffect(() => {
     let cancelled = false;
     setMod(null);
+    // A new track mounts a new runner: clear any crash state from the last one.
+    setCrashed(false);
+    crashPausedRef.current = false;
     if (activeTrack) {
       loadTrackModule(activeTrack).then((m) => { if (!cancelled) setMod(m); });
     }
@@ -161,8 +178,11 @@ export default function ExamPage() {
   const initialCheckpoint = useMemo(() => {
     if (!attemptId || !activeTrack || typeof window === "undefined") return undefined;
     return loadCheckpoint(window.localStorage, attemptId, activeTrack);
-    // Reload only when the mounted track changes — the runner owns live state.
-  }, [attemptId, activeTrack]);
+    // Reload when the mounted track changes, or when a crashed runner is
+    // remounted (runnerEpoch) — otherwise the retry would rehydrate from the
+    // checkpoint as it looked at mount time and lose the crash-time work.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, activeTrack, runnerEpoch]);
 
   /**
    * Server mode: publish the submitted T1 site and surface its live URL.
@@ -230,6 +250,60 @@ export default function ExamPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, state]);
+
+  /**
+   * Append only the entries the machine will accept, dropping the rest.
+   * Crash recovery must never itself throw: an exhausted budget legitimately
+   * refuses further track events, and that must not re-break the page.
+   */
+  const commitIfLegal = useCallback((entries: readonly (Parameters<typeof append>[1])[]) => {
+    let probe = logRef.current ?? [];
+    const accepted: (Parameters<typeof append>[1])[] = [];
+    for (const e of entries) {
+      try {
+        probe = append(probe, e);
+        accepted.push(e);
+      } catch {
+        // Illegal for the current phase — drop it, keep the log consistent.
+      }
+    }
+    if (accepted.length > 0) commit(accepted);
+  }, [commit]);
+
+  const handleRunnerCrash = useCallback((error: Error) => {
+    const cur = logRef.current ? project(logRef.current) : null;
+    if (!cur || !cur.currentTrack) return;
+    const t = cur.currentTrack;
+    const ts = stamp();
+    if (cur.phase === "in_track") crashPausedRef.current = true;
+    commitIfLegal([
+      // Audit trail: the involuntary pause has a recorded cause.
+      {
+        type: "track_event", trackId: t, ts,
+        event: {
+          verb: "runner_crashed",
+          object: `track:${t}`,
+          result: { message: error.message },
+          context: { track: t, recovery: "checkpoint" },
+          clientTs: new Date().toISOString(),
+        },
+      },
+      // Stop the clock: our fault is not charged to the candidate.
+      { type: "paused", ts },
+    ]);
+    setCrashed(true);
+  }, [commitIfLegal, stamp]);
+
+  const retryRunner = useCallback(() => {
+    const cur = logRef.current ? project(logRef.current) : null;
+    // Only auto-resume a pause WE forced; a candidate-initiated pause stands.
+    if (crashPausedRef.current && cur?.phase === "paused") {
+      crashPausedRef.current = false;
+      commitIfLegal([{ type: "resumed", ts: stamp() }]);
+    }
+    setCrashed(false);
+    setRunnerEpoch((e) => e + 1);
+  }, [commitIfLegal, stamp]);
 
   const resetAttempt = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
@@ -452,13 +526,23 @@ export default function ExamPage() {
           {/* F2: the Runner stays MOUNTED while paused — a veil covers it so
               content is hidden but in-progress state survives. */}
           {mod ? (
-            <div aria-hidden={paused} style={paused ? { visibility: "hidden" } : undefined}>
-              <mod.Runner {...uiProps} />
+            <div aria-hidden={paused && !crashed} style={paused && !crashed ? { visibility: "hidden" } : undefined}>
+              {/* P0-1: a runner throw must never white-screen a timed run.
+                  The boundary is keyed by runnerEpoch so "retry" remounts a
+                  clean runner from the last stored checkpoint. */}
+              <RunnerErrorBoundary
+                key={runnerEpoch}
+                context={{ attemptId: state.attemptId, track: t, phase: state.phase, secondsRemaining: remaining, runnerEpoch }}
+                onError={handleRunnerCrash}
+                onRetry={retryRunner}
+              >
+                <mod.Runner {...uiProps} />
+              </RunnerErrorBoundary>
             </div>
           ) : (
             <p className="muted">Loading track runner…</p>
           )}
-          {paused && (
+          {paused && !crashed && (
             <div
               role="dialog" aria-label="Paused"
               style={{
