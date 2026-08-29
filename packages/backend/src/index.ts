@@ -1,0 +1,41 @@
+export { withTransaction, type Queryable, type QueryResultRow } from "./db.js";
+export {
+  StoreError,
+  TRANSCRIPT_VERBS,
+  appendResponse,
+  appendTranscript,
+  createAttempt,
+  ensureInstrument,
+  ensureParticipant,
+  finalizeAttempt,
+  getAttempt,
+  type AppendResult,
+  type Attempt,
+  type AttemptSummary,
+  type FinalizeResult,
+  type InstrumentRef,
+  type Participant,
+  type ResponseInput,
+  type StoreErrorCode,
+  type TranscriptInput,
+  type TranscriptVerb,
+} from "./store.js";
+export {
+  DEV_USER_HEADER,
+  DevAuthProvider,
+  authProviderFromEnv,
+  type AuthContext,
+  type AuthMode,
+  type AuthProvider,
+  type HeaderMap,
+} from "./auth.js";
+export {
+  DEFAULT_INSTRUMENT,
+  handleAppendResponse,
+  handleAppendTranscript,
+  handleCreateAttempt,
+  handleFinalizeAttempt,
+  handleGetAttempt,
+  type ApiContext,
+  type ApiResult,
+} from "./handlers.js";
