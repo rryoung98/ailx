@@ -38,12 +38,44 @@ const TOO_LARGE: ApiResult = {
   body: { error: { code: "payload_too_large", message: "request body is too large" } },
 };
 
+/**
+ * Pure: pool settings for a process that may be a long-lived server OR one of
+ * many short-lived serverless instances.
+ *
+ * Serverless is the constraint that sets the numbers. Every warm instance
+ * keeps its own pool, so the cluster-wide connection count is
+ * `instances x max` — a Postgres-sized default like 10 exhausts a Neon
+ * project in a handful of cold starts. Hence a SMALL max (one request checks
+ * out one client; a few in flight per instance is the whole story), a short
+ * idle timeout so a frozen instance stops holding a session it cannot use,
+ * and `allowExitOnIdle` so an idle instance can exit instead of being killed
+ * with connections open. Point DATABASE_URL at a POOLER endpoint (Neon's
+ * `-pooler` host) as well: see docs/DEPLOY.md.
+ */
+export function poolConfig(env: Readonly<Record<string, string | undefined>>): {
+  connectionString: string;
+  max: number;
+  idleTimeoutMillis: number;
+  connectionTimeoutMillis: number;
+  allowExitOnIdle: boolean;
+} {
+  const connectionString = env.DATABASE_URL;
+  if (!connectionString) throw new Error("server mode requires DATABASE_URL");
+  const configured = Number(env.AILX_PG_POOL_MAX);
+  return {
+    connectionString,
+    max: Number.isInteger(configured) && configured > 0 ? configured : DEFAULT_POOL_MAX,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+    allowExitOnIdle: true,
+  };
+}
+
+/** Small on purpose — see poolConfig. Override with AILX_PG_POOL_MAX. */
+export const DEFAULT_POOL_MAX = 3;
+
 function getPool(): Pool {
-  if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) throw new Error("server mode requires DATABASE_URL");
-    pool = new Pool({ connectionString });
-  }
+  pool ??= new Pool(poolConfig(process.env));
   return pool;
 }
 

@@ -294,7 +294,7 @@ describe("apiRoute normal traffic", () => {
     expect(released.count).toBe(1);
   });
 
-  it("releases the DB client when the handler throws, and hides the error", async () => {
+it("releases the DB client when the handler throws, and hides the error", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { apiRoute } = await load();
     const res = await apiRoute(
@@ -307,5 +307,39 @@ describe("apiRoute normal traffic", () => {
     expect(JSON.stringify(await res.json())).not.toContain("secret");
     expect(released.count).toBe(1);
     expect(error).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Pool sizing is a serverless-correctness property: every warm instance keeps
+ * its own pool, so the default must be small and an idle instance must be
+ * able to exit rather than sit on a Postgres session.
+ */
+describe("poolConfig", () => {
+  it("defaults to a small pool that can go idle and exit", async () => {
+    const { poolConfig, DEFAULT_POOL_MAX } = await load();
+    const cfg = poolConfig({ DATABASE_URL: "postgres://u@h/db" });
+    expect(cfg.connectionString).toBe("postgres://u@h/db");
+    expect(cfg.max).toBe(DEFAULT_POOL_MAX);
+    expect(DEFAULT_POOL_MAX).toBeLessThanOrEqual(5);
+    expect(cfg.allowExitOnIdle).toBe(true);
+    expect(cfg.idleTimeoutMillis).toBeGreaterThan(0);
+    expect(cfg.connectionTimeoutMillis).toBeGreaterThan(0);
+  });
+
+  it("honours AILX_PG_POOL_MAX and ignores nonsense", async () => {
+    const { poolConfig, DEFAULT_POOL_MAX } = await load();
+    const max = (v: string | undefined) =>
+      poolConfig({ DATABASE_URL: "postgres://u@h/db", AILX_PG_POOL_MAX: v }).max;
+    expect(max("1")).toBe(1);
+    expect(max("12")).toBe(12);
+    for (const bad of [undefined, "", "0", "-4", "2.5", "lots"]) {
+      expect(max(bad)).toBe(DEFAULT_POOL_MAX);
+    }
+  });
+
+  it("refuses to start without DATABASE_URL", async () => {
+    const { poolConfig } = await load();
+    expect(() => poolConfig({})).toThrow(/DATABASE_URL/);
   });
 });
