@@ -1,6 +1,6 @@
 # AGENTS.md — AILX (resilience)
 
-Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Plan: `docs/PLAN.md`. Positioning: `docs/POSITIONING.md`.
+Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Plan: `docs/PLAN.md`. Positioning: `docs/POSITIONING.md`. Progression/streaks loop: `docs/PROGRESSION.md`.
 
 ## Layout
 - `apps/web/` — Next.js platform (currently static export on GitHub Pages; hosted backend in progress)
