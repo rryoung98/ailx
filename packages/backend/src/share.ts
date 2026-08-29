@@ -418,8 +418,23 @@ export async function handleCreateShare(
       sections,
       note,
     });
-    return { status: created ? 201 : 200, body: { share } };
+    return { status: created ? 201 : 200, body: { share: ownerShareView(share) } };
   });
+}
+
+/**
+ * The OWNER's view of their own share.
+ *
+ * `approvedBy` and `rejectedBy` are dropped: a candidate is shown the
+ * DECISION and, on a refusal, the reason verbatim — never which human made
+ * it (docs/SHARING.md §7.3). Redacting in the shape rather than in the
+ * renderer means a future page cannot re-leak it by accident.
+ */
+export type OwnerShare = Omit<ShareRecord, "approvedBy" | "rejectedBy">;
+
+export function ownerShareView(share: ShareRecord): OwnerShare {
+  const { approvedBy: _approvedBy, rejectedBy: _rejectedBy, ...rest } = share;
+  return rest;
 }
 
 /** GET /api/attempts/:id/share — the owner's view of their own link. */
@@ -433,7 +448,7 @@ export async function handleGetShare(
     if (share === null) {
       return { status: 404, body: { error: { code: "not_found", message: "no live share link" } } };
     }
-    return { status: 200, body: { share } };
+    return { status: 200, body: { share: ownerShareView(share) } };
   });
 }
 

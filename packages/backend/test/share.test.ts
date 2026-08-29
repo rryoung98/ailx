@@ -379,7 +379,11 @@ describe("hybrid publication policy", () => {
     });
     const share = res.body.share as ShareRecord;
     expect(share.status).toBe("unlisted");
-    expect(share.approvedBy).toBeNull();
+    // The owner's view carries no approver or refuser AT ALL: a candidate is
+    // shown the decision and its reason, never which human made it
+    // (`ownerShareView`, docs/SHARING.md §7.3).
+    expect(Object.keys(share)).not.toContain("approvedBy");
+    expect(Object.keys(share)).not.toContain("rejectedBy");
     expect(share.needsHumanApproval).toBe(true);
     expect(await publishShare(db, attempt.id, participant.id)).toEqual({
       status: "submitted",
