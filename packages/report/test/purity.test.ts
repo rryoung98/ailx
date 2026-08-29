@@ -14,7 +14,7 @@ import {
   calibrationBins, candidateComposite, cohortMedians, demoRubricVersion,
   judgeT1, judgeT3, judgeT4, narratives, participantExport, playerProfile,
   playerType, researchExport, t2ResponsesFromArtifact, trackInsights,
-  buildSharePayload, ALL_SHARE_SECTIONS,
+  buildSharePayload, ALL_SHARE_SECTIONS, buildCredentialClaim, credentialDocument, diagnose,
 } from "../src/index.js";
 
 /** A fully scored synthetic attempt — no app, no storage, no clock. */
@@ -22,6 +22,7 @@ function scoredState(): SessionState {
   const s = initialState();
   s.attemptId = "attempt-fixture";
   s.phase = "completed";
+  s.lastTs = Date.parse("2026-01-01T00:05:00.000Z");
   s.config = {
     instrument: "ailx", version: "2026.1", locale: "en", demo: true,
     budgets: { t1: 600, t2: 300, t3: 600, t4: 480 },
@@ -85,6 +86,13 @@ describe("@ailx/report purity", () => {
           site: "/api/site/abc/index.html",
           note: "a note about the build",
         }),
+        diagnosis: diagnose({
+          trackRaw: composite.trackRaw,
+          process: buildSharePayload(state, { sections: ALL_SHARE_SECTIONS })?.process ?? null,
+        }),
+        credential: buildCredentialClaim(state, composite.trackRaw, {
+          artifact: "/api/site/abc/index.html",
+        }),
         profile: playerProfile(state, insights),
         participant: participantExport(state, composite),
         research: researchExport(state, LOG, composite),
@@ -105,6 +113,19 @@ describe("@ailx/report purity", () => {
     });
     expect(out.composite.cohortSize).toBe(45);
     expect(out.share?.site).toBe("/api/site/abc/index.html");
+    expect(out.diagnosis.weakest ?? out.diagnosis.strongest).not.toBeNull();
+    expect(out.credential?.claims).toEqual(["sitting-completed"]);
+    expect(
+      runPure(() =>
+        credentialDocument(out.credential!, {
+          code: "AILX-2026.1-AB12-CD34-EF56-GH78",
+          status: "valid",
+          issuedAt: "2026-02-04T09:30:00.000Z",
+          revokedAt: null,
+          revokeReason: null,
+        }, "https://ailx.example"),
+      ).id,
+    ).toBe("https://ailx.example/verify/AILX-2026.1-AB12-CD34-EF56-GH78");
     expect(out.profile).not.toBeNull();
     expect(out.research.schema).toBe("ailx.research.v2");
   });
