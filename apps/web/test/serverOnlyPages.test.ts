@@ -88,6 +88,17 @@ describe("server-only files carry a server-only extension", () => {
     expect(clashes).toEqual([]);
   });
 
+  it("the whole moderation surface is server-only by name", () => {
+    // The dashboard, the case page and both moderation API twins read the
+    // store and enforce the reviewer gate; in the static Pages export none of
+    // them may exist at all, so a "moderation" file with a static extension
+    // is a build failure rather than a review comment.
+    const mod = files.filter((f) => f.rel.startsWith("review/") || f.rel.includes("moderation"));
+    expect(mod.length).toBeGreaterThanOrEqual(4);
+    for (const f of mod) expect(f.rel, f.rel).toMatch(/\.api\.tsx?$/);
+    expect(mod.map((f) => f.rel).sort()).toContain("review/[id]/page.api.tsx");
+  });
+
   it("the share view and its routes are all server-only by name", () => {
     const shareFiles = files.filter((f) => f.rel.includes("share") || f.rel.startsWith("s/"));
     expect(shareFiles.length).toBeGreaterThanOrEqual(3);

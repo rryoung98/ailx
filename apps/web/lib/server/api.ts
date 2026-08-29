@@ -170,6 +170,21 @@ export async function apiRoute(
   }
 }
 
+/**
+ * The current request's headers, lower-cased, for a server COMPONENT — a page
+ * has no `Request` to read, and every server-gated page needs exactly this.
+ * Defined once so two pages cannot build the map differently.
+ */
+export async function requestHeaderMap(): Promise<HeaderMap> {
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  const map: Record<string, string> = {};
+  h.forEach((value, key) => {
+    map[key.toLowerCase()] = value;
+  });
+  return map;
+}
+
 /** Next 15 dynamic-segment params for /api/attempts/[id]/... routes. */
 export type AttemptRouteContext = { params: Promise<{ id: string }> };
 

@@ -181,3 +181,47 @@ describe("the share and review surfaces reuse the shipped tokens", () => {
     }
   });
 });
+
+describe("the moderation dashboard is legible staff tooling", () => {
+  /** Every rule the moderation surface introduces. */
+  const MOD_RULES = [
+    ".mod-lanes", ".mod-lane", ".mod-table", ".mod-facts", ".mod-reason",
+    ".mod-case", ".mod-thread", ".mod-comments", ".mod-comment",
+    ".mod-comment-head", ".mod-comment-body", ".mod-composer", ".mod-visibility",
+    ".mod-status-submitted", ".mod-status-published", ".mod-status-rejected",
+    ".mod-status-revoked", ".mod-status-appeal", ".mod-vis-internal", ".mod-vis-shared",
+  ];
+
+  it("defines each new class exactly once", () => {
+    for (const rule of MOD_RULES) {
+      expect(css, rule).toContain(`${rule} `);
+      // Top-level only: a responsive override inside @media is a second
+      // declaration of the same class on purpose.
+      expect(css.split(`\n${rule} {`).length - 1, rule).toBe(1);
+    }
+  });
+
+  it("takes every colour from a token, so contrast stays AA on all surfaces", () => {
+    for (const rule of MOD_RULES) {
+      const block = css.slice(css.indexOf(`${rule} `));
+      const body = block.slice(block.indexOf("{"), block.indexOf("}") + 1);
+      // #ffffff is the pinned white-on-accent pairing, asserted above.
+      expect(body.match(/#(?!ffffff\b)[0-9a-fA-F]{3,8}/), rule).toBeNull();
+    }
+  });
+
+  it("keeps every status colour above 4.5:1 on the surface it is drawn on", () => {
+    // The badges paint token text on --bg-raised, the worst-case surface.
+    for (const fg of ["--bad", "--warn", "--muted", "--faint"]) {
+      expect(contrast(token(fg), token("--bg-raised")), fg).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(contrast(token("--accent-ink"), token("--accent-dim"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("does not rely on colour alone: each status badge carries its own border", () => {
+    for (const rule of [".mod-status-rejected", ".mod-status-appeal", ".mod-status-revoked"]) {
+      const block = css.slice(css.indexOf(`${rule} `));
+      expect(block.slice(0, block.indexOf("}")), rule).toMatch(/border:/);
+    }
+  });
+});

@@ -28,6 +28,7 @@ import {
   type ShareSections,
 } from "@ailx/report";
 import { assetUrl, basePath, isServerMode } from "./mode";
+import { CandidateThread } from "./Moderation";
 import { browserApiOptions, devUser, getServerAttemptId } from "./persistence";
 import { loadSiteSubmission } from "./siteUpload";
 
@@ -57,7 +58,7 @@ interface ShareState {
   token: string;
   views: number;
   payload: SharePayload;
-  rejectedBy: string | null;
+  /** The refusal reason, verbatim. The refuser is never sent to the owner. */
   rejectReason: string | null;
 }
 
@@ -270,11 +271,15 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
           </p>
           {share.status === "rejected" ? (
             <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
-              A reviewer refused this submission for the public gallery, so it is no longer served.
-              Their reason: &ldquo;{share.rejectReason}&rdquo; Revoke it and create a new link
-              without the part they objected to.
+              A moderator refused this submission for the public gallery, so it is no longer
+              served. Their reason: &ldquo;{share.rejectReason}&rdquo; Revoke it and create a new
+              link without the part they objected to — or respond below if you think the decision
+              was wrong.
             </p>
           ) : null}
+          {/* Their side of the moderation record: the messages exchanged about
+              this decision, never who wrote them (docs/SHARING.md §7.6). */}
+          <CandidateThread attemptId={attemptId} />
         </div>
       ) : null}
 

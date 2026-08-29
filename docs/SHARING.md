@@ -284,3 +284,70 @@ so they exist only under `AILX_BACKEND=1`. The static Pages export links the
 T4 community wall at `/wall` instead — never a nav link the build cannot
 serve. `apps/web/test/serverOnlyPages.test.ts` fails the build if any of them
 is renamed, or if a route ever has both a `page.tsx` and a `page.api.tsx`.
+
+### 7.6 Moderating out loud — notes, responses and appeals
+
+The queue records WHAT was decided. `moderation_comments` records the
+conversation around it, because "we refused this and here is one sentence" was
+not enough to run a moderation practice on: the next moderator needs to know
+what the last one saw, and the candidate needs somewhere to answer.
+
+**One table, two audiences, one column that separates them.**
+
+| | Internal note (`visibility = 'internal'`) | Message (`visibility = 'shared'`) |
+|---|---|---|
+| Written by | a moderator | a moderator, or the candidate |
+| Seen by | AILX staff on `/review/<case>` | that candidate, and staff |
+| Carries the author's identity | yes, the verified `author_ref` | **never** to the candidate |
+
+A candidate cannot write an internal note at any layer: the API gives their
+role `shared` unconditionally, the store re-checks it, and a schema CHECK
+refuses the row. Internal notes are excluded **in SQL** from every
+candidate-audience read (`listComments`, one predicate), and the
+candidate-facing shape has no `author` or `visibility` field at all — leaking
+the moderator's name would take adding a field, not forgetting a redaction.
+That is the same posture as a refusal (§7.3): the reason is shown verbatim,
+the human is not.
+
+**Linear, not threaded.** A case has one conversation ordered by insertion.
+Threading buys sub-discussions on a surface whose entire content is "one
+site, one decision, usually two or three comments" — it would cost a parent
+pointer, a render tree and a per-branch permission story for no question it
+answers. If a case ever needs two arguments at once, the internal note is
+where they go.
+
+**Append-only, so the trail is evidence.** Every write is an INSERT. An edit
+inserts a new row pointing at the one it replaces (`supersedes_id`, unique, so
+a chain can never fork), and a retraction inserts an empty row the same way. A
+moderator sees the whole chain, superseded rows struck through and kept; the
+candidate sees the current state. Visibility is INHERITED on an edit: a
+message the candidate already read cannot be edited into an internal note, and
+an internal note cannot be quietly republished to them. Only the author can
+replace their own words.
+
+**The appeal, and why it does not reopen anything.** A refused candidate may
+respond once. The response moves the CASE into the moderators' "answered back"
+lane; it does not touch the ROW, which stays refused — `rejected_at` is never
+cleared and `share_links_one_decision` makes an approval after a refusal
+impossible. Turn-taking is enforced server-side: the candidate may write again
+only after a moderator answers, which is the same anti-grinding rule that made
+a refusal terminal in the first place. If the moderator agrees they were
+wrong, the remedy is the one the state model already had — the candidate
+revokes and creates a new share, which enters the queue normally. So an appeal
+costs one lane and one predicate, and buys a documented right of reply without
+a second decision state.
+
+**Where it lives.** `/review` is the staff dashboard: the waiting queue (cards,
+because you must LOOK at a site before approving it), the appeals lane and the
+decision history (dense tables, because you read those). `/review/<share id>`
+is one case: the card, the decision, the trail and the composer. Both are
+`page.api.tsx` and both call `withReviewer` server-side, and both answer a
+stranger with a 404 page; the API twins (`/api/moderation/<id>`, and
+`/api/attempts/<id>/moderation` for the candidate's own case) answer 401/403.
+The candidate's half is resolved from the ATTEMPT they own, so there is no
+case id for anyone to guess.
+
+**One leak closed on the way past.** The owner's own read of their share used
+to return `rejectedBy` and `approvedBy` — the reviewer's identity, to the
+person they had just refused. `ownerShareView` drops both, and the public
+gallery listing drops `approvedBy` for the same reason.
