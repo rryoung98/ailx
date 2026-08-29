@@ -3,9 +3,9 @@
  * Site-wide accessibility regression tests (WCAG 2.1 AA pass):
  *  - html lang="en" with a skip-to-content link targeting the #main wrapper;
  *  - primary nav is a labeled landmark;
- *  - design tokens keep AA contrast: --fg, --muted and --faint body text
- *    measure >= 4.5:1 against --bg, --card AND --bg-raised (computed, not
- *    eyeballed), and --accent link colour >= 4.5:1 on --bg;
+ *  - design tokens keep AA contrast: every text token measures >= 4.5:1
+ *    against --bg, --card AND --bg-raised (computed, not eyeballed), and
+ *    white-on---accent (the only text-on-fill pairing we ship) does too;
  *  - .sr-only / .skip-link utilities exist in the stylesheet.
  */
 import { readFileSync } from "node:fs";
@@ -96,15 +96,44 @@ describe("design-token contrast (AA)", () => {
   const card = token("--card");
   const raised = token("--bg-raised");
 
-  it.each(["--fg", "--muted", "--faint"])("%s meets 4.5:1 on bg, card, and raised surfaces", (t) => {
+  // Every token the UI paints text with, on every surface the UI paints it
+  // on. --bg-raised is the worst case (pre, blockquote, .runner-frame,
+  // .meter, .time-bar) and is where --warn (4.34) and --distinction (4.42)
+  // used to fail AA; nothing forbids a badge or band label from landing
+  // there, so the tokens themselves have to clear the bar.
+  const TEXT_TOKENS = [
+    "--fg",
+    "--muted",
+    "--faint",
+    "--participation",
+    "--accent",
+    "--good",
+    "--bad",
+    "--merit",
+    "--pass",
+    "--distinction",
+    "--warn",
+  ];
+
+  it.each(TEXT_TOKENS)("%s meets 4.5:1 on bg, card, and raised surfaces", (t) => {
     const fg = token(t);
     for (const surface of [bg, card, raised]) {
       expect(contrast(fg, surface)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
-  it("accent link color meets 4.5:1 on bg", () => {
-    expect(contrast(token("--accent"), bg)).toBeGreaterThanOrEqual(4.5);
+  // The accent fill carries WHITE text (.btn.primary, .skip-link, every
+  // runner primary button). Darkening that text is the failure, not the fix:
+  // --accent-ink on --accent measures 2.22:1, so the pairing is pinned in
+  // both directions.
+  it("white text on the accent fill meets 4.5:1", () => {
+    expect(contrast("#ffffff", token("--accent"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("does not use --accent-ink as text on the accent fill", () => {
+    expect(contrast(token("--accent-ink"), token("--accent"))).toBeLessThan(4.5);
+    expect(css).not.toMatch(/background:\s*var\(--accent\)[^}]*color:\s*var\(--accent-ink\)/);
+    expect(css).not.toMatch(/color:\s*var\(--accent-ink\)[^}]*background:\s*var\(--accent\)/);
   });
 
   it("ships .sr-only and .skip-link utilities", () => {
