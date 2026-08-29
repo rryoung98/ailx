@@ -1,0 +1,227 @@
+/**
+ * Attempt persistence seam for the exam flow.
+ *
+ * Static showcase (default): localStorage only — exactly the previous
+ * behaviour, via @ailx/session’s validated save/load.
+ *
+ * Server mode (NEXT_PUBLIC_AILX_BACKEND=1): localStorage stays the
+ * synchronous source of truth for the running tab, and every save also
+ * mirrors NEW log entries to the backend as append-only `responses` rows
+ * (payload = the session log entry, seq = its log seq — so the server holds
+ * the same event-sourced record the client replays). Sync is best-effort
+ * and resumable: progress is persisted per attempt, retries happen on the
+ * next save, and server-side seq idempotency makes re-sends safe.
+ */
+import {
+  clearAttempt,
+  loadAttemptValidated,
+  saveAttempt,
+  type SequencedEntry,
+  type StorageLike,
+  type ValidatedLog,
+} from "@ailx/session";
+import { DEV_USER_HEADER } from "@ailx/backend";
+
+export interface AttemptPersistence {
+  load(): ValidatedLog | null;
+  /** Synchronous; throws SaveConflictError on multi-tab races (unchanged). */
+  save(log: readonly SequencedEntry[]): void;
+  clear(): void;
+  /** Resolves when pending server sync (if any) has settled. */
+  flush(): Promise<void>;
+}
+
+export function createLocalPersistence(storage: StorageLike): AttemptPersistence {
+  return {
+    load: () => loadAttemptValidated(storage),
+    save: (log) => saveAttempt(storage, log),
+    clear: () => clearAttempt(storage),
+    flush: () => Promise.resolve(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Server mirror
+// ---------------------------------------------------------------------------
+
+export const DEV_USER_KEY = "ailx:dev-user";
+const syncKey = (clientAttemptId: string) => `ailx:sync:v1:${clientAttemptId}`;
+
+interface SyncState {
+  /** Server-side attempts.id (uuid) — the client attempt id stays in payloads. */
+  serverAttemptId?: string;
+  /** Count of log entries already mirrored (log seq is contiguous from 0). */
+  syncedThrough: number;
+  finalized: boolean;
+}
+
+export interface ApiPersistenceOptions {
+  baseUrl: string;
+  fetchFn: typeof fetch;
+  /** Called when a sync pass fails; the pass is retried on the next save. */
+  onSyncError?: (err: unknown) => void;
+}
+
+function readSyncState(storage: StorageLike, clientAttemptId: string): SyncState {
+  try {
+    const raw = storage.getItem(syncKey(clientAttemptId));
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<SyncState>;
+      if (typeof parsed.syncedThrough === "number" && parsed.syncedThrough >= 0) {
+        return {
+          serverAttemptId: typeof parsed.serverAttemptId === "string" ? parsed.serverAttemptId : undefined,
+          syncedThrough: Math.floor(parsed.syncedThrough),
+          finalized: parsed.finalized === true,
+        };
+      }
+    }
+  } catch {
+    // Corrupt state — restart the mirror; server idempotency absorbs re-sends.
+  }
+  return { syncedThrough: 0, finalized: false };
+}
+
+/** Stable per-browser dev identity (dev AuthProvider asserts, never proves). */
+function devUser(storage: StorageLike): string {
+  let user = storage.getItem(DEV_USER_KEY);
+  if (!user || !/^[A-Za-z0-9_.@-]{1,64}$/.test(user)) {
+    user = `web-${Math.random().toString(36).slice(2, 12)}`;
+    storage.setItem(DEV_USER_KEY, user);
+  }
+  return user;
+}
+
+class ServerMirror {
+  private lastLog: readonly SequencedEntry[] = [];
+  private inflight: Promise<void> = Promise.resolve();
+
+  constructor(
+    private readonly storage: StorageLike,
+    private readonly opts: ApiPersistenceOptions,
+  ) {}
+
+  /** Queue a sync pass for `log`. Passes are serialized; failures retry on the next call. */
+  enqueue(log: readonly SequencedEntry[]): void {
+    this.lastLog = log;
+    this.inflight = this.inflight.then(() =>
+      this.syncPass().catch((err) => {
+        (this.opts.onSyncError ?? ((e) => console.warn("[ailx sync]", e)))(err);
+      }),
+    );
+  }
+
+  flush(): Promise<void> {
+    return this.inflight;
+  }
+
+  private async post(path: string, body?: unknown): Promise<Record<string, unknown>> {
+    const res = await this.opts.fetchFn(`${this.opts.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        [DEV_USER_HEADER]: devUser(this.storage),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!res.ok) {
+      throw new Error(`POST ${path} failed: ${res.status}`);
+    }
+    return (await res.json()) as Record<string, unknown>;
+  }
+
+  private async syncPass(): Promise<void> {
+    const log = this.lastLog;
+    if (log.length === 0) return;
+    const first = log[0];
+    if (first.type !== "attempt_started") return; // Validated logs always start here.
+    const clientAttemptId = first.attemptId;
+    const state = readSyncState(this.storage, clientAttemptId);
+    if (state.finalized) return;
+
+    if (!state.serverAttemptId) {
+      const created = await this.post("/attempts", {});
+      state.serverAttemptId = (created.attempt as { id: string }).id;
+      this.write(clientAttemptId, state);
+    }
+    for (let i = state.syncedThrough; i < log.length; i++) {
+      const entry = log[i];
+      await this.post(`/attempts/${state.serverAttemptId}/responses`, {
+        seq: entry.seq,
+        payload: entry,
+        clientTs: entry.ts,
+      });
+      state.syncedThrough = i + 1;
+      this.write(clientAttemptId, state);
+    }
+    if (log[log.length - 1].type === "attempt_completed") {
+      await this.post(`/attempts/${state.serverAttemptId}/finalize`);
+      state.finalized = true;
+      this.write(clientAttemptId, state);
+    }
+  }
+
+  private write(clientAttemptId: string, state: SyncState): void {
+    try {
+      this.storage.setItem(syncKey(clientAttemptId), JSON.stringify(state));
+    } catch {
+      // Quota/private mode: next pass re-sends from the last persisted point.
+    }
+  }
+}
+
+export function createApiPersistence(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+): AttemptPersistence {
+  const local = createLocalPersistence(storage);
+  const mirror = new ServerMirror(storage, opts);
+  return {
+    load: () => {
+      const v = local.load();
+      if (v && v.log.length > 0) mirror.enqueue(v.log); // Resume an interrupted sync.
+      return v;
+    },
+    save: (log) => {
+      local.save(log); // Local write is authoritative — throws before any mirroring.
+      mirror.enqueue([...log]);
+    },
+    clear: () => {
+      // Server rows are append-only and stay; only local state is dropped.
+      const v = local.load();
+      const started = v?.log[0];
+      if (started?.type === "attempt_started") {
+        storage.removeItem(syncKey(started.attemptId));
+      }
+      local.clear();
+    },
+    flush: () => mirror.flush(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Env-selected browser singleton
+// ---------------------------------------------------------------------------
+
+/**
+ * Keyed by the storage object (same pattern as @ailx/session’s rev
+ * tracking): if localStorage is swapped out — jsdom tests do — a fresh
+ * persistence (and mirror state) is built for it.
+ */
+const byStorage = new WeakMap<object, AttemptPersistence>();
+
+/** Browser-only (call from effects/handlers, never during SSR render). */
+export function getAttemptPersistence(): AttemptPersistence {
+  const storage = window.localStorage;
+  let p = byStorage.get(storage);
+  if (!p) {
+    p =
+      process.env.NEXT_PUBLIC_AILX_BACKEND === "1"
+        ? createApiPersistence(storage, {
+            baseUrl: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api`,
+            fetchFn: (...args) => window.fetch(...args),
+          })
+        : createLocalPersistence(storage);
+    byStorage.set(storage, p);
+  }
+  return p;
+}

@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
 import {
-  append, clearAttempt, loadAttemptValidated, nextTrack, project, saveAttempt,
+  append, nextTrack, project,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
+import { getAttemptPersistence } from "../../lib/persistence";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
 } from "../../lib/checkpoints";
@@ -59,7 +60,7 @@ export default function ExamPage() {
 
   // Hydrate from localStorage (client-only; static export has no SSR data).
   useEffect(() => {
-    const v = loadAttemptValidated(window.localStorage);
+    const v = getAttemptPersistence().load();
     setLog(v && v.log.length > 0 ? v.log : null);
     if (v && v.dropped > 0) {
       setPersistWarning(`stored run log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
@@ -109,7 +110,7 @@ export default function ExamPage() {
       let next = prev ?? [];
       for (const e of entries) next = append(next, e);
       try {
-        saveAttempt(window.localStorage, next);
+        getAttemptPersistence().save(next);
         setPersistWarning(null);
       } catch (err) {
         // Multi-tab conflict or storage quota/security failure: keep the
@@ -184,7 +185,7 @@ export default function ExamPage() {
   const resetAttempt = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
     if (cur?.attemptId) clearAllCheckpoints(window.localStorage, cur.attemptId);
-    clearAttempt(window.localStorage);
+    getAttemptPersistence().clear();
     setLog(null);
   }, []);
 
