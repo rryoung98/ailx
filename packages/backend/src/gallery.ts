@@ -16,10 +16,12 @@
  *     enforced upstream by `publishShare`, which reads the STORED
  *     `site_digest` column, never a request field. Nothing here can stamp an
  *     approval; only `approveShare` can, and only a reviewer reaches it.
- *  3. NO TOKEN IS RECOVERABLE. The database holds only sha256(token), so a
- *     gallery card cannot link back to /s/<token> even in principle. Each
- *     card is self-contained: the frozen payload, and the candidate's own
- *     site path when they opted in. That is a security property, not a gap.
+ *  3. A LISTED CARD LINKS TO ITS OWN SHARE VIEW. The token is stored
+ *     (docs/SHARING.md §2), so an entry carries it and the tile links to
+ *     /s/<token>. That is safe precisely because the entry is LISTED: its
+ *     owner published it, the view serves the same frozen payload the tile
+ *     already shows, and revocation kills both in the same statement. An
+ *     unlisted or refused share is never returned by anything here.
  */
 
 import { parseSharePayload, type SharePayload } from "@ailx/report";
@@ -27,7 +29,7 @@ import type { Queryable, QueryResultRow } from "./db.js";
 import type { HeaderMap } from "./auth.js";
 import { UNAUTHORIZED_RESULT, type ApiContext, type ApiResult } from "./handlers.js";
 import { StoreError } from "./store.js";
-import { approveShare } from "./share.js";
+import { PUBLICLY_SERVED, approveShare } from "./share.js";
 
 // ---------------------------------------------------------------------------
 // Shape
@@ -41,14 +43,16 @@ import { approveShare } from "./share.js";
  */
 export interface GalleryEntry {
   id: string;
+  /** Capability token of the LISTED share, so the tile links to its view. */
+  token: string;
   /** ISO stamp the entry was listed at (approval), or submitted at (queue). */
   at: string;
-  instrument: string;
-  playerType: SharePayload["playerType"];
-  band: SharePayload["band"];
-  tracks: SharePayload["tracks"];
-  /** The candidate's own T1 site path, or null. Same-origin by construction. */
-  site: string | null;
+  /**
+   * The share's own FROZEN payload, carried whole rather than re-copied field
+   * by field. A gallery tile and a share view must show the same thing, and a
+   * new opt-in section must not need a second allowlist here to appear.
+   */
+  payload: SharePayload;
   /** Who listed it: "auto:card" for a derived card, a human ref otherwise. */
   approvedBy: string | null;
 }
@@ -115,11 +119,15 @@ export function parseGalleryQuery(raw: Record<string, string | undefined> = {}):
 // Reads
 // ---------------------------------------------------------------------------
 
-/** THE listing predicate. Approved, and not revoked. Defined once. */
-const LISTED = "s.approved_at IS NOT NULL AND s.revoked_at IS NULL";
+/**
+ * THE listing predicate: approved, on top of the shared "may be served at all"
+ * rule (`PUBLICLY_SERVED` — not revoked by its owner, not refused by a
+ * reviewer). Defined once, composed from one source of truth.
+ */
+const LISTED = `s.approved_at IS NOT NULL AND ${PUBLICLY_SERVED}`;
 
-/** Pending human review: submitted, not yet approved, not revoked. */
-const PENDING = "s.submitted_at IS NOT NULL AND s.approved_at IS NULL AND s.revoked_at IS NULL";
+/** Pending human review: submitted, undecided, and still servable. */
+const PENDING = `s.submitted_at IS NOT NULL AND s.approved_at IS NULL AND ${PUBLICLY_SERVED}`;
 
 /**
  * ORDER BY fragments, keyed by a validated union — never interpolated from a
@@ -139,12 +147,9 @@ function entryFrom(row: QueryResultRow, at: unknown): GalleryEntry | null {
   if (payload === null) return null;
   return {
     id: row.id as string,
+    token: row.token as string,
     at: new Date(at as string | Date).toISOString(),
-    instrument: payload.instrument,
-    playerType: payload.playerType,
-    band: payload.band,
-    tracks: payload.tracks,
-    site: payload.site,
+    payload,
     approvedBy: (row.approved_by as string | null) ?? null,
   };
 }
@@ -169,7 +174,7 @@ export async function listGallery(
 
   params.push(query.limit, query.offset);
   const { rows } = await db.query(
-    `SELECT s.id, s.payload, s.approved_at, s.approved_by
+    `SELECT s.id, s.token, s.payload, s.approved_at, s.approved_by
        FROM share_links s
       WHERE ${filter}
       ORDER BY ${ORDER[query.sort]}
@@ -219,7 +224,7 @@ export async function galleryFacets(db: Queryable): Promise<GalleryFacet[]> {
  */
 export async function listSubmissions(db: Queryable, limit = GALLERY_MAX_PAGE_SIZE): Promise<GalleryEntry[]> {
   const { rows } = await db.query(
-    `SELECT s.id, s.payload, s.submitted_at, s.approved_by
+    `SELECT s.id, s.token, s.payload, s.submitted_at, s.approved_by
        FROM share_links s
       WHERE ${PENDING} AND s.site_digest IS NOT NULL
       ORDER BY s.submitted_at ASC, s.id
@@ -231,18 +236,39 @@ export async function listSubmissions(db: Queryable, limit = GALLERY_MAX_PAGE_SI
     .filter((e): e is GalleryEntry => e !== null);
 }
 
+/** Longest refusal reason stored. Long enough to be useful, not a document. */
+export const REJECT_REASON_MAX = 500;
+
 /**
- * REVIEWER action: refuse a submission. The schema has no "rejected" stamp
- * and this module does not add one — the only reason to refuse a
- * site-carrying share is the hosted content itself, and in that case we must
- * stop serving it at all, so refusal revokes. The row is never deleted (it is
- * the audit trail), and the candidate can create a new share without the site.
+ * REVIEWER action: refuse a submission, ON THE RECORD.
+ *
+ * Refusal used to revoke, which stopped the serving but recorded nothing: the
+ * schema said who APPROVED and never who refused, or why. It now stamps
+ * `rejected_at`, `rejected_by` and `reject_reason` together (a schema CHECK
+ * enforces all-three-or-none), which is append-only in the same sense as every
+ * other stamp here — a new monotone state, never a destructive edit, and the
+ * row is never deleted.
+ *
+ * A refused share stops being served publicly (it fails `PUBLICLY_SERVED`, so
+ * the gallery, the share view and the OG image all 404) but stays visible to
+ * its OWNER, because the point of recording a reason is that the candidate
+ * gets to read it. They can then revoke and share again without the site.
  */
-export async function rejectSubmission(db: Queryable, shareId: string): Promise<{ rejected: boolean }> {
+export async function rejectSubmission(
+  db: Queryable,
+  shareId: string,
+  reviewer: string,
+  reason: string,
+): Promise<{ rejected: boolean }> {
+  const who = reviewer.trim();
+  const why = reason.replace(/\s+/g, " ").trim().slice(0, REJECT_REASON_MAX);
+  if (who === "") throw new StoreError("bad_request", "a human reviewer reference is required");
+  if (why === "") throw new StoreError("bad_request", "a refusal must carry a reason");
   const { rows } = await db.query(
-    `UPDATE share_links s SET revoked_at = now()
+    `UPDATE share_links s
+        SET rejected_at = now(), rejected_by = $2, reject_reason = $3
       WHERE s.id = $1 AND ${PENDING} RETURNING s.id`,
-    [shareId],
+    [shareId, who, why],
   );
   return { rejected: rows.length > 0 };
 }
@@ -276,9 +302,10 @@ export const REVIEW_DECISIONS = ["approve", "reject"] as const;
 export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
 
 /**
- * Reviewer-only: decide one submission. The approver reference is the
- * VERIFIED caller identity, never a body field — "who approved this" has to
- * be a fact about the session, not a claim in the request.
+ * Reviewer-only: decide one submission. The reviewer reference is the
+ * VERIFIED caller identity, never a body field — "who decided this" has to be
+ * a fact about the session, not a claim in the request. A refusal additionally
+ * requires a reason, which is the one thing the candidate will read.
  */
 export async function handleReviewDecision(
   ctx: ApiContext,
@@ -290,17 +317,24 @@ export async function handleReviewDecision(
     const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
     const shareId = typeof b.shareId === "string" ? b.shareId : "";
     const decision = b.decision;
+    const reason = typeof b.reason === "string" ? b.reason : "";
     if (!UUID_RE.test(shareId) || typeof decision !== "string" || !(REVIEW_DECISIONS as readonly string[]).includes(decision)) {
       return {
         status: 400,
         body: { error: { code: "bad_request", message: "shareId (uuid) and decision (approve|reject) are required" } },
       };
     }
+    if (decision === "reject" && reason.trim() === "") {
+      return {
+        status: 400,
+        body: { error: { code: "bad_request", message: "a refusal must carry a reason the candidate can read" } },
+      };
+    }
     try {
       const result =
         decision === "approve"
           ? await approveShare(ctx.db, shareId, reviewer)
-          : await rejectSubmission(ctx.db, shareId);
+          : await rejectSubmission(ctx.db, shareId, reviewer, reason);
       const done = "approved" in result ? result.approved : result.rejected;
       if (!done) {
         return {

@@ -1,7 +1,7 @@
 /**
  * Share links — the growth-loop primitive (docs/SHARING.md).
  *
- * Three properties this module exists to guarantee:
+ * Four properties this module exists to guarantee:
  *
  *  1. PRIVATE BY DEFAULT. A share row only exists after an explicit
  *     candidate action on an attempt they own.
@@ -10,16 +10,27 @@
  *     token gets, so revocation is not observable as "this existed".
  *  3. AN ALLOWLIST, NOT A REDACTION. What is shared is built ONCE by the pure
  *     `buildSharePayload` (@ailx/report) from the stored log and frozen into
- *     the row. Nothing else is ever serialized: no item ids, no per-item
- *     responses, no event log, no attempt id, no participant reference.
- *
- * Only the token's sha256 is stored, so the database never holds a working
- * capability. Lookup is by digest, which is also why the token needs no
- * database-side index on a secret.
+ *     the row, and only for the SECTIONS the candidate switched on. Section
+ *     selection is applied HERE, server-side, so hiding a checkbox is never
+ *     what keeps a section out. Nothing else is ever serialized: no item ids,
+ *     no per-item responses, no event log, no attempt id, no participant ref.
+ *  4. RECOVERABLE BY ITS OWNER, AND ONLY BY ITS OWNER. The token is stored,
+ *     so the owner can re-copy their own link and a published gallery card
+ *     can link to its own share view. Every owner read goes through
+ *     `getAttempt(db, attemptId, participantId)` first, so a stranger asking
+ *     for someone else's attempt gets 404, never a token.
  */
 
 import { project, type SequencedEntry } from "@ailx/session";
-import { buildSharePayload, parseSharePayload, type SharePayload } from "@ailx/report";
+import {
+  DEFAULT_SHARE_SECTIONS,
+  buildSharePayload,
+  parseShareNote,
+  parseShareSections,
+  parseSharePayload,
+  type SharePayload,
+  type ShareSections,
+} from "@ailx/report";
 import type { Queryable, QueryResultRow } from "./db.js";
 import type { HeaderMap } from "./auth.js";
 import { withParticipant, type ApiContext, type ApiResult } from "./handlers.js";
@@ -49,12 +60,6 @@ export function newShareToken(): string {
   return base64url(bytes);
 }
 
-/** sha256 hex of a token — what the row stores, and what lookup keys on. */
-export async function hashShareToken(token: string): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 // ---------------------------------------------------------------------------
 // Records
 // ---------------------------------------------------------------------------
@@ -62,6 +67,12 @@ export async function hashShareToken(token: string): Promise<string> {
 export interface ShareRecord {
   id: string;
   status: ShareStatus;
+  /**
+   * The capability token. Returned to the OWNER (so they can re-copy their
+   * link) and carried on PUBLISHED gallery entries (which their owner chose
+   * to make public); never on the anonymous `/api/share/:token` read.
+   */
+  token: string;
   /** Who approved publication: "auto:card", a human approver ref, or null. */
   approvedBy: string | null;
   /** True when a HUMAN must approve before this may be publicly listed. */
@@ -70,6 +81,11 @@ export interface ShareRecord {
   revokedAt: string | null;
   submittedAt: string | null;
   approvedAt: string | null;
+  /** The named human who refused publication, or null. */
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  /** Why it was refused, shown verbatim to the candidate. */
+  rejectReason: string | null;
   /** Anonymous view count (day-granular rows; no visitor identity exists). */
   views: number;
   payload: SharePayload;
@@ -81,9 +97,11 @@ const iso = (v: unknown): string | null => (v == null ? null : new Date(v as str
 export function shareStatus(row: {
   revokedAt: string | null;
   approvedAt: string | null;
+  rejectedAt: string | null;
   submittedAt: string | null;
 }): ShareStatus {
   if (row.revokedAt !== null) return "revoked";
+  if (row.rejectedAt !== null) return "rejected";
   if (row.approvedAt !== null) return "published";
   if (row.submittedAt !== null) return "submitted";
   return "unlisted";
@@ -97,21 +115,33 @@ function shareFromRow(row: QueryResultRow): ShareRecord | null {
   const stamps = {
     revokedAt: iso(row.revoked_at),
     approvedAt: iso(row.approved_at),
+    rejectedAt: iso(row.rejected_at),
     submittedAt: iso(row.submitted_at),
   };
   return {
     id: row.id as string,
     status: shareStatus(stamps),
+    token: row.token as string,
     approvedBy: (row.approved_by as string | null) ?? null,
     needsHumanApproval: needsHumanApproval(payload),
     createdAt: iso(row.created_at)!,
     ...stamps,
+    rejectedBy: (row.rejected_by as string | null) ?? null,
+    rejectReason: (row.reject_reason as string | null) ?? null,
     views: Number(row.views ?? 0),
     payload,
   };
 }
 
-const SELECT_SHARE = `SELECT s.id, s.payload, s.created_at, s.submitted_at, s.approved_at, s.approved_by, s.revoked_at,
+/**
+ * THE public-serving predicate, defined once: not revoked by its owner, and
+ * not refused by a reviewer. The gallery's own listing predicate adds
+ * "approved" on top of this (packages/backend/src/gallery.ts).
+ */
+export const PUBLICLY_SERVED = "s.revoked_at IS NULL AND s.rejected_at IS NULL";
+
+const SELECT_SHARE = `SELECT s.id, s.token, s.payload, s.created_at, s.submitted_at, s.approved_at, s.approved_by,
+        s.rejected_at, s.rejected_by, s.reject_reason, s.revoked_at,
         (SELECT count(*) FROM share_views v WHERE v.share_id = s.id) AS views
    FROM share_links s`;
 
@@ -155,51 +185,60 @@ export async function attemptSiteDigest(db: Queryable, attemptId: string): Promi
 // ---------------------------------------------------------------------------
 
 export interface CreateShareOptions {
-  /** Separate, explicit opt-in: the candidate's OWN built site. */
-  includeSite?: boolean;
-}
-
-export interface CreatedShare extends ShareRecord {
-  /** The only moment the plaintext token exists outside the sharer's clipboard. */
-  token: string;
+  /**
+   * Which parts of the run may be serialized. Normalized through
+   * `parseShareSections`, so an unknown or non-boolean key cannot turn a
+   * section on. THIS is the enforcement point — the checkbox is only a hint.
+   */
+  sections?: ShareSections;
+  /** Candidate-authored "what I built" note; kept only if `sections.note`. */
+  note?: string | null;
 }
 
 /**
  * Create (or return) the attempt's live share link. Idempotent while a link
- * is live: a second call returns the SAME record — but never the token again,
- * because the token was only ever held in the first response. A caller that
- * wants a fresh token revokes first.
+ * is live: a second call returns the SAME record, `created: false`, with the
+ * same token — the token is stored, so recovering it is the point. A caller
+ * that wants a DIFFERENT selection of sections revokes and creates again,
+ * because an issued payload is frozen.
  */
 export async function createShare(
   db: Queryable,
   attemptId: string,
   participantId: string,
   options: CreateShareOptions = {},
-): Promise<CreatedShare | ShareRecord> {
+): Promise<{ share: ShareRecord; created: boolean }> {
   const attempt = await getAttempt(db, attemptId, participantId);
   if (attempt === null) throw new StoreError("not_found", "attempt not found");
 
   const existing = await getShareForAttempt(db, attemptId, participantId);
-  if (existing !== null) return existing;
+  if (existing !== null) return { share: existing, created: false };
 
-  const site = options.includeSite === true ? await attemptSiteDigest(db, attemptId) : null;
+  const sections = parseShareSections(options.sections ?? DEFAULT_SHARE_SECTIONS);
+  const note = sections.note ? parseShareNote(options.note) : null;
+  // The site opt-in can only reference the attempt's OWN recorded snapshot.
+  const site = sections.site ? await attemptSiteDigest(db, attemptId) : null;
   const state = await projectAttempt(db, attemptId);
-  const payload = buildSharePayload(state, { site: site === null ? null : siteUrlPath(site) });
+  const payload = buildSharePayload(state, {
+    sections,
+    note,
+    site: site === null ? null : siteUrlPath(site),
+  });
   if (payload === null) {
     throw new StoreError("bad_request", "nothing to share yet — finish and score every track first");
   }
 
   const token = newShareToken();
-  const tokenSha = await hashShareToken(token);
   const { rows } = await db.query(
-    `INSERT INTO share_links (attempt_id, token_sha256, payload, site_digest)
+    `INSERT INTO share_links (attempt_id, token, payload, site_digest)
      VALUES ($1, $2, $3::jsonb, $4)
-     RETURNING id, payload, created_at, submitted_at, approved_at, approved_by, revoked_at, 0 AS views`,
-    [attemptId, tokenSha, JSON.stringify(payload), site],
+     RETURNING id, token, payload, created_at, submitted_at, approved_at, approved_by,
+               rejected_at, rejected_by, reject_reason, revoked_at, 0 AS views`,
+    [attemptId, token, JSON.stringify(payload), site],
   );
   const record = shareFromRow(rows[0]!);
   if (record === null) throw new StoreError("bad_request", "share payload failed to round-trip");
-  return { ...record, token };
+  return { share: record, created: true };
 }
 
 /** The attempt's live (non-revoked) share, or null. Ownership enforced. */
@@ -239,8 +278,9 @@ export async function revokeShare(
 
 /**
  * Public read by capability token. No auth: possession of the token IS the
- * authorization. Revoked links, malformed tokens and unknown tokens are all
- * indistinguishable (null), so a revoked link cannot be confirmed to exist.
+ * authorization. Revoked links, REFUSED links, malformed tokens and unknown
+ * tokens are all indistinguishable (null), so neither a revocation nor a
+ * moderation refusal can be confirmed from outside.
  *
  * `countView` appends ONE anonymous view row (see db/schema.sql) — the whole
  * of our analytics.
@@ -251,10 +291,9 @@ export async function resolveShare(
   countView = false,
 ): Promise<ShareRecord | null> {
   if (!SHARE_TOKEN_RE.test(token)) return null;
-  const tokenSha = await hashShareToken(token);
   const { rows } = await db.query(
-    `${SELECT_SHARE} WHERE s.token_sha256 = $1 AND s.revoked_at IS NULL`,
-    [tokenSha],
+    `${SELECT_SHARE} WHERE s.token = $1 AND ${PUBLICLY_SERVED}`,
+    [token],
   );
   if (rows.length === 0) return null;
   const record = shareFromRow(rows[0]!);
@@ -281,10 +320,13 @@ export const AUTO_APPROVER = "auto:card";
  *    no candidate-authored bytes in it: auto-publish;
  *  - a share carrying the candidate's built SITE hosts arbitrary user HTML on
  *    our origin, which is exactly what spec §12's approval-required gallery
- *    rule exists for: a human approves it or it stays unpublished.
+ *    rule exists for: a human approves it or it stays unpublished;
+ *  - a share carrying the candidate's own NOTE puts authored text on a public
+ *    wall. It is escaped and length-capped, so it is not an XSS question — it
+ *    is a moderation question, and the same human answers it.
  */
-export function needsHumanApproval(payload: { site: string | null }): boolean {
-  return payload.site !== null;
+export function needsHumanApproval(payload: { site: string | null; note?: string | null }): boolean {
+  return payload.site !== null || (payload.note ?? null) !== null;
 }
 
 export interface PublishResult {
@@ -306,13 +348,18 @@ export async function publishShare(
   const share = await getShareForAttempt(db, attemptId, participantId);
   if (share === null) throw new StoreError("not_found", "no live share link");
   if (share.status === "published") return { status: "published", awaitingApproval: false };
+  // A refusal is terminal for THIS row: re-submitting it would let a candidate
+  // grind a reviewer down. Revoke and create a new share instead.
+  if (share.status === "rejected") {
+    throw new StoreError("bad_request", "this share was refused — revoke it and create a new one");
+  }
   const auto = !share.needsHumanApproval;
   await db.query(
     `UPDATE share_links
         SET submitted_at = coalesce(submitted_at, now()),
             approved_at  = CASE WHEN $2 THEN coalesce(approved_at, now()) ELSE approved_at END,
             approved_by  = CASE WHEN $2 THEN coalesce(approved_by, $3) ELSE approved_by END
-      WHERE id = $1 AND revoked_at IS NULL`,
+      WHERE id = $1 AND revoked_at IS NULL AND rejected_at IS NULL`,
     [share.id, auto, AUTO_APPROVER],
   );
   return auto
@@ -335,7 +382,8 @@ export async function approveShare(
   }
   const { rows } = await db.query(
     `UPDATE share_links SET approved_at = now(), approved_by = $2
-      WHERE id = $1 AND revoked_at IS NULL AND submitted_at IS NOT NULL AND approved_at IS NULL
+      WHERE id = $1 AND revoked_at IS NULL AND rejected_at IS NULL
+        AND submitted_at IS NOT NULL AND approved_at IS NULL
       RETURNING id`,
     [shareId, approver],
   );
@@ -346,17 +394,30 @@ export async function approveShare(
 // Handlers
 // ---------------------------------------------------------------------------
 
-/** POST /api/attempts/:id/share — body: { includeSite?: boolean } */
+/**
+ * POST /api/attempts/:id/share — body: { sections?: Record<string, boolean>,
+ * note?: string }.
+ *
+ * The body says which SECTIONS to include and supplies the candidate's own
+ * note. It cannot supply a payload, a site path or a status: everything
+ * serialized is rebuilt server-side from the stored log, and the selection is
+ * re-normalized by `parseShareSections` — a request naming a section that does
+ * not exist changes nothing.
+ */
 export async function handleCreateShare(
   ctx: ApiContext,
   headers: HeaderMap,
   attemptId: string,
   body: unknown,
 ): Promise<ApiResult> {
-  const includeSite = (body as { includeSite?: unknown } | null)?.includeSite === true;
+  const raw = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
+  const sections = parseShareSections(raw.sections);
+  const note = parseShareNote(raw.note);
   return withParticipant(ctx, headers, async (participantId) => {
-    const share = await createShare(ctx.db, attemptId, participantId, { includeSite });
-    const created = "token" in share;
+    const { share, created } = await createShare(ctx.db, attemptId, participantId, {
+      sections,
+      note,
+    });
     return { status: created ? 201 : 200, body: { share } };
   });
 }

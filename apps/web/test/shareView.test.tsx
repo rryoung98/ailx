@@ -7,13 +7,35 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { sharePayloadFrom } from "@ailx/report";
+import { ALL_SHARE_SECTIONS, sharePayloadFrom } from "@ailx/report";
+import { TRACK_IDS } from "@ailx/session";
 
 const payload = sharePayloadFrom(
   { t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 },
   "Distinction",
   { instrument: "ailx 2026.1" },
 );
+
+/** A share with every opt-in section on — the widest thing we ever serve. */
+// A MIXED shape on purpose: strengths and watch-outs both need a pole each.
+const fullPayload = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 5, t4: 4 }, "Merit", {
+  instrument: "ailx 2026.1",
+  sections: ALL_SHARE_SECTIONS,
+  site: "/api/site/sha256:abc/index.html",
+  completedOn: "2026-02-03",
+  note: "I built a site for a bike-repair co-op.",
+  process: {
+    totalActiveSeconds: 1800,
+    tracks: TRACK_IDS.map((track, i) => ({
+      track,
+      activeSeconds: 300 + i * 60,
+      budgetSeconds: 600,
+      timedOut: i === 3,
+      iterationRatio: 0.5,
+      verificationEvents: i,
+    })),
+  },
+});
 
 const view = {
   status: "unlisted",
@@ -158,9 +180,38 @@ describe("share view page", () => {
   it("is honest about what the band is and is not", async () => {
     const html = await markup();
     expect(html).toContain("demo\n          cohort".replace("\n          ", " "));
-    expect(html).toMatch(/no exam items/);
+    expect(html).toMatch(/never an exam item/);
     expect(html).toMatch(/unlisted/);
     expect(html).toContain("7 views");
+  });
+
+  it("renders every opted-in section, and only sections that are present", async () => {
+    result = { status: 200, body: { share: { ...view, payload: fullPayload } } };
+    const html = await markup();
+    expect(html).toContain("What they chose to show");
+    expect(html).toContain("I built a site for a bike-repair co-op.");
+    expect(html).toContain("30 min");
+    expect(html).toContain("2026-02-03");
+    expect(html).toContain("on the clock");
+    expect(html).toContain("What they are good at");
+    expect(html).toContain("What to watch");
+    // A card-only payload shows none of it.
+    result = { status: 200, body: { share: view } };
+    const bare = await markup();
+    expect(bare).not.toContain("min on task");
+    expect(bare).not.toContain("bike-repair");
+  });
+
+  it("leaks nothing beyond the allowlist even at full width", async () => {
+    result = { status: 200, body: { share: { ...view, payload: fullPayload } } };
+    const html = await markup();
+    for (const forbidden of [
+      "itemId", "item_id", "confidence", "responses", "eventLog", "answerKey",
+      "attemptId", "participant", "percentile", "composite", "dev:", "authRef",
+      "dPrime", "brier", "verbCounts", "eventCount",
+    ]) {
+      expect(html, forbidden).not.toContain(forbidden);
+    }
   });
 
   it("uses semantic headings and a labelled radar for assistive tech", async () => {

@@ -9,10 +9,13 @@ import { apiRoute, type AttemptRouteContext } from "../../../../../lib/server/ap
  * The candidate's own share link for one attempt. Every verb is
  * owner-authenticated (a stranger's attempt reads as 404, no existence leak).
  *
- *  POST   — create the unlisted link; body { includeSite?: boolean }. The
- *           plaintext token is returned HERE AND NOWHERE ELSE.
- *  GET    — the owner's view: status, anonymous view count, frozen payload.
- *  DELETE — revoke. The link stops resolving immediately.
+ *  POST   — create the unlisted link; body { sections?, note? }. The section
+ *           selection is re-normalized and applied SERVER-SIDE; the body can
+ *           never supply a payload, a site path or a status.
+ *  GET    — the owner's view: status, token, anonymous view count, frozen
+ *           payload, and a reviewer's refusal reason when there is one. The
+ *           token is returned so a lost link is recoverable, never revoked.
+ *  DELETE — revoke. The link stops resolving immediately, everywhere.
  */
 export async function POST(req: Request, { params }: AttemptRouteContext): Promise<Response> {
   const { id } = await params;

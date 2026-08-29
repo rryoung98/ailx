@@ -3,7 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { handleViewShare, shareCardPath, shareUrlPath } from "@ailx/backend";
-import type { SharePayload } from "@ailx/report";
+import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { withApiContext } from "../../../lib/server/api";
 import { resolvePublicOrigin } from "../../../lib/server/origin";
@@ -146,6 +146,94 @@ export default async function SharePage({ params }: ShareParams) {
           </div>
         </section>
 
+        {p.note !== null || p.profile !== null || p.process !== null || p.completedOn !== null ? (
+          <section className="card" style={{ marginBottom: "1.6rem" }}>
+            <h2 style={{ marginTop: 0 }}>What they chose to show</h2>
+            <p className="muted small" style={{ marginTop: "-0.4rem" }}>
+              Every part below was switched on by the person who made this link. Anything they
+              left off is simply not here.
+            </p>
+
+            {p.note !== null ? (
+              <blockquote className="share-quote">{p.note}</blockquote>
+            ) : null}
+
+            {p.process !== null || p.completedOn !== null ? (
+              <dl className="share-facts">
+                {p.process !== null ? (
+                  <div>
+                    <dt>Time on task</dt>
+                    <dd className="mono">{shareMinutes(p.process.totalActiveSeconds)} min</dd>
+                  </div>
+                ) : null}
+                {p.process !== null ? (
+                  <div>
+                    <dt>Verification actions</dt>
+                    <dd className="mono">
+                      {p.process.tracks.reduce((a, t) => a + t.verificationEvents, 0)}
+                    </dd>
+                  </div>
+                ) : null}
+                {p.completedOn !== null ? (
+                  <div>
+                    <dt>Finished</dt>
+                    <dd className="mono">{p.completedOn}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            ) : null}
+
+            {p.process !== null ? (
+              <div className="share-process">
+                <p className="small muted" style={{ margin: "0.6rem 0 0" }}>
+                  Minutes worked per track, against that track&rsquo;s budget. Speed is never
+                  rewarded with points — this is how the run was spent, not how well it went.
+                </p>
+                {p.process.tracks.map((t) => (
+                  <div className="row" key={t.track}>
+                    <span className="mono">{t.track.toUpperCase()}</span>
+                    <div className="meter">
+                      <div
+                        style={{
+                          width: `${t.budgetSeconds > 0 ? Math.min(100, Math.round((t.activeSeconds / t.budgetSeconds) * 100)) : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="mono muted">
+                      {shareMinutes(t.activeSeconds)} min{t.timedOut ? " · on the clock" : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {p.profile !== null ? (
+              <div style={{ marginTop: "1.1rem" }}>
+                {p.profile.strengths.length > 0 ? (
+                  <>
+                    <h3 style={{ margin: "0 0 0.2rem", fontSize: "1rem" }}>What they are good at</h3>
+                    <ul className="share-points">
+                      {p.profile.strengths.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+                {p.profile.watchouts.length > 0 ? (
+                  <>
+                    <h3 style={{ margin: "1rem 0 0.2rem", fontSize: "1rem" }}>What to watch</h3>
+                    <ul className="share-points">
+                      {p.profile.watchouts.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
         {p.site ? (
           <section className="card" style={{ marginBottom: "1.6rem" }}>
             <h2 style={{ marginTop: 0 }}>The thing they actually built</h2>
@@ -177,8 +265,9 @@ export default async function SharePage({ params }: ShareParams) {
 
         <p className="faint small" style={{ marginBottom: 0 }}>
           Issued by AILX on {issued} from a completed run, and served from this origin — that is
-          what makes the card checkable. It shows a player type, a four-track shape and a band, and
-          nothing else: no exam items, no answers, no per-question detail, no personal data. Bands
+          what makes the card checkable. It shows a player type, a four-track shape, a band and the
+          extra sections its owner switched on — never an exam item, an answer, a per-question
+          result or a personal identifier. Bands
           are derived from the run's stored artifacts by the instrument's own scorers over the demo
           cohort; the summit judging pipeline is not part of this card.{" "}
           <span className="mono">{share.views} view{share.views === 1 ? "" : "s"}</span> · unlisted

@@ -136,16 +136,24 @@ CREATE TABLE scores (
 -- anything that becomes publicly listed, which is what `submitted_at` /
 -- `approved_at` record.
 --
--- Only the token DIGEST is stored: a database leak yields no working link.
+-- The token itself is stored (docs/SHARING.md §2). The deliberate trade: a
+-- share link must be RECOVERABLE by its owner — a candidate who lost the URL
+-- can re-copy it instead of revoking, and a published gallery card can link
+-- to the view it came from. The token stays 256 unguessable bits, the view
+-- stays `noindex`, ownership is re-checked on every owner read, and
+-- revocation still fully works, which is what actually bounds the exposure.
 -- The shared payload is FROZEN at creation (an allowlist built by
--- @ailx/report `buildSharePayload`), so a later code change cannot widen
--- what an already-issued link exposes.
+-- @ailx/report `buildSharePayload`, only the SECTIONS the candidate opted
+-- into), so a later code change cannot widen what an already-issued link
+-- exposes.
 --
 -- Lifecycle is monotone one-way stamps, never a destructive edit (same
 -- pattern as attempts.finalized_at):
 --   created_at            -> unlisted
 --   + submitted_at        -> submitted for the public gallery
 --   + approved_at         -> published in the public gallery
+--   + rejected_at         -> refused by a named human, with a reason the
+--                            candidate is shown; never publicly served again
 --   + revoked_at          -> revoked; nothing is served at any stage
 --
 -- The approval policy is HYBRID and derived from `site_digest`, which is a
@@ -160,19 +168,28 @@ CREATE TABLE scores (
 -- Re-sharing after a revoke inserts a NEW row with a NEW token; the revoked
 -- row stays as the audit record.
 CREATE TABLE share_links (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  attempt_id   uuid NOT NULL REFERENCES attempts(id),
-  token_sha256 text NOT NULL UNIQUE,     -- sha256 hex of the capability token
-  payload      jsonb NOT NULL,           -- frozen allowlisted share payload
-  site_digest  text,                     -- set only on explicit site opt-in
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  submitted_at timestamptz,
-  approved_at  timestamptz,
-  approved_by  text,                     -- 'auto:card' or the human approver
-  revoked_at   timestamptz,
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id    uuid NOT NULL REFERENCES attempts(id),
+  token         text NOT NULL UNIQUE,     -- the capability token, recoverable
+  payload       jsonb NOT NULL,           -- frozen allowlisted share payload
+  site_digest   text,                     -- set only on explicit site opt-in
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  submitted_at  timestamptz,
+  approved_at   timestamptz,
+  approved_by   text,                     -- 'auto:card' or the human approver
+  rejected_at   timestamptz,
+  rejected_by   text,                     -- the human who refused it
+  reject_reason text,                     -- shown to the candidate, verbatim
+  revoked_at    timestamptz,
   -- An approved row must always say who approved it (auto or human).
   CONSTRAINT share_links_approval_recorded
-    CHECK ((approved_at IS NULL) = (approved_by IS NULL))
+    CHECK ((approved_at IS NULL) = (approved_by IS NULL)),
+  -- A refusal is never anonymous and never silent: all three stamps or none.
+  CONSTRAINT share_links_rejection_recorded
+    CHECK (num_nonnulls(rejected_at, rejected_by, reject_reason) IN (0, 3)),
+  -- Approved and rejected are mutually exclusive terminal decisions.
+  CONSTRAINT share_links_one_decision
+    CHECK (approved_at IS NULL OR rejected_at IS NULL)
 );
 
 -- At most one live link per attempt; revoked rows accumulate as the trail.

@@ -47,9 +47,10 @@ export default async function ReviewPage() {
         <h1 style={{ maxWidth: "20ch" }}>Sites waiting for a human.</h1>
         <p className="lede">
           A player-type card publishes itself. A share that carries the candidate&rsquo;s own
-          built site hosts arbitrary HTML on our origin, so it is listed only after somebody here
-          opens it and says yes. Approving stamps your identity on the row; refusing revokes the
-          link, so the site stops being served at all.
+          built site — or their own words — puts content nobody vetted on a public wall, so it is
+          listed only after somebody here opens it and says yes. Both decisions stamp your
+          identity on the row. Refusing also stores your reason, which the candidate is shown,
+          and stops the share being served publicly at all.
         </p>
         <p className="small faint">
           Open every site before you decide — it is served sandboxed, in a new tab.
@@ -61,7 +62,7 @@ export default async function ReviewPage() {
           <div className="gallery-grid">
             {submissions.map((entry) => (
               <GalleryCard key={entry.id} entry={entry}>
-                <ReviewActions shareId={entry.id} name={entry.playerType.name} />
+                <ReviewActions shareId={entry.id} name={entry.payload.playerType.name} />
               </GalleryCard>
             ))}
           </div>

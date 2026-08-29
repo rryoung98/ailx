@@ -11,21 +11,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parseGalleryQuery, type GalleryEntry, type GalleryListing } from "@ailx/backend";
-import { sharePayloadFrom } from "@ailx/report";
+import { ALL_SHARE_SECTIONS, sharePayloadFrom, type SharePayload } from "@ailx/report";
 
-const payload = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 }, "Distinction", {
-  instrument: "ailx 2026.1",
+const TOKEN = "g".repeat(43);
+
+const payloadWith = (over: Partial<SharePayload> = {}): SharePayload => ({
+  ...sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 }, "Distinction", {
+    instrument: "ailx 2026.1",
+    sections: ALL_SHARE_SECTIONS,
+    completedOn: "2026-03-01",
+    process: { totalActiveSeconds: 1800, tracks: [] },
+  }),
+  ...over,
 });
+
+const payload = payloadWith();
 
 function entry(over: Partial<GalleryEntry> = {}): GalleryEntry {
   return {
     id: "11111111-2222-3333-4444-555555555555",
+    token: TOKEN,
     at: "2026-03-01T12:00:00.000Z",
-    instrument: payload.instrument,
-    playerType: payload.playerType,
-    band: payload.band,
-    tracks: payload.tracks,
-    site: null,
+    payload,
     approvedBy: "auto:card",
     ...over,
   };
@@ -86,16 +93,28 @@ describe("the wall", () => {
     expect(html).not.toContain("gallery-card");
   });
 
-  it("carries no token, attempt, participant or site digest", async () => {
-    listing = listingOf([entry({ site: "/api/site/sha256:abc/index.html" })]);
+  it("links each card to its own share view, and leaks nothing else", async () => {
+    listing = listingOf([entry({ payload: payloadWith({ site: "/api/site/sha256:abc/index.html" }) })]);
     const html = await markup();
-    for (const forbidden of ["token", "attemptId", "attempt_id", "participant", "site_digest"]) {
+    // The listed card's own capability URL — its owner published it.
+    expect(html).toContain(`href="/s/${TOKEN}"`);
+    for (const forbidden of ["attemptId", "attempt_id", "participant", "site_digest", "token_sha"]) {
       expect(html, forbidden).not.toContain(forbidden);
     }
   });
 
+  it("shows the sections the owner opted into, and only those", async () => {
+    listing = listingOf([entry({ payload: payloadWith({ note: "I built a co-op site." }) })]);
+    expect(await markup()).toContain("I built a co-op site.");
+    expect(await markup()).toContain("30 min on task");
+    listing = listingOf([entry({ payload: payloadWith({ note: null, process: null }) })]);
+    const bare = await markup();
+    expect(bare).not.toContain("min on task");
+    expect(bare).not.toContain("co-op site");
+  });
+
   it("links a built site as a same-origin new-tab link, and says so to a screen reader", async () => {
-    listing = listingOf([entry({ site: "/api/site/sha256:abc/index.html", approvedBy: "human:ada" })]);
+    listing = listingOf([entry({ payload: payloadWith({ site: "/api/site/sha256:abc/index.html" }), approvedBy: "human:ada" })]);
     const html = await markup();
     expect(html).toContain('href="/api/site/sha256:abc/index.html"');
     expect(html).toContain('rel="noreferrer"');
@@ -103,7 +122,7 @@ describe("the wall", () => {
   });
 
   it("refuses to render a site path that is not one of ours", async () => {
-    listing = listingOf([entry({ site: "javascript:alert(1)" })]);
+    listing = listingOf([entry({ payload: payloadWith({ site: "javascript:alert(1)" }) })]);
     const html = await markup();
     expect(html).not.toContain("javascript:");
     expect(html).toContain("card only");

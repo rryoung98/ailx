@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
+import { sharePayloadFrom, ALL_SHARE_SECTIONS, DEFAULT_SHARE_SECTIONS } from "@ailx/report";
 import { ShareLink } from "../lib/ShareLink";
 import { syncKey } from "../lib/persistence";
 
@@ -33,8 +34,21 @@ const TOKEN = "a".repeat(43);
 let container: HTMLDivElement;
 let fetchMock: ReturnType<typeof vi.fn>;
 
+const PAYLOAD = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 }, "Distinction", {
+  instrument: "ailx 2026.1",
+});
+
 function serverShare(overrides: Record<string, unknown> = {}) {
-  return { status: "unlisted", views: 3, id: "s1", ...overrides };
+  return {
+    status: "unlisted",
+    views: 3,
+    id: "s1",
+    token: TOKEN,
+    payload: PAYLOAD,
+    rejectedBy: null,
+    rejectReason: null,
+    ...overrides,
+  };
 }
 
 async function render(): Promise<void> {
@@ -96,7 +110,7 @@ describe("ShareLink in server mode", () => {
     expect(copy).toMatch(/revoke/i);
   });
 
-  it("creates a link, stores the url once, and copies it", async () => {
+  it("creates a link, shows its url and copies it", async () => {
     const copied: string[] = [];
     Object.assign(navigator, {
       clipboard: { writeText: async (t: string) => void copied.push(t) },
@@ -112,16 +126,103 @@ describe("ShareLink in server mode", () => {
     });
     const input = container.querySelector<HTMLInputElement>("#share-url")!;
     expect(input.value).toBe(`${window.location.origin}/s/${TOKEN}`);
-    expect(window.localStorage.getItem(`ailx:share:v1:${ATTEMPT}`)).toBe(input.value);
     await act(async () => {
       byName("button", /Copy link/)!.click();
     });
     expect(copied).toEqual([input.value]);
   });
 
-  it("does not offer the site opt-in when there is no built site", async () => {
+  it("disables the site opt-in when there is no built site, and says why", async () => {
     await render();
-    expect(byName("label", /Also share the site/)).toBeUndefined();
+    const box = [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].pop()!;
+    const siteBox = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[3]!;
+    expect(siteBox.disabled).toBe(true);
+    expect(siteBox.checked).toBe(false);
+    expect(container.textContent).toContain("You did not submit a site in this run.");
+    expect(box).toBeTruthy();
+  });
+
+  it("offers one checkbox per section, with the authored ones off by default", async () => {
+    await render();
+    const boxes = [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    expect(boxes).toHaveLength(5);
+    expect(boxes.map((b) => b.checked)).toEqual([true, true, true, false, false]);
+    expect(container.textContent).toContain("How you worked");
+    expect(container.textContent).toContain("The day you finished");
+  });
+
+  it("sends the exact section selection, and never a payload", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    fetchMock.mockImplementation(async (_url: string, init: { method: string; body?: string }) => {
+      if (init.method === "POST") {
+        bodies.push(JSON.parse(init.body!));
+        return new Response(JSON.stringify({ share: serverShare() }), { status: 201 });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    await render();
+    const boxes = [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    await act(async () => {
+      boxes[0]!.click(); // turn "profile" off
+    });
+    await act(async () => {
+      byName("button", /Create a share link/)!.click();
+    });
+    expect(bodies).toEqual([
+      { sections: { ...DEFAULT_SHARE_SECTIONS, profile: false, site: false }, note: "" },
+    ]);
+    expect(Object.keys(bodies[0]!).sort()).toEqual(["note", "sections"]);
+  });
+
+  it("carries the candidate's note only when they turned that section on", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    fetchMock.mockImplementation(async (_url: string, init: { method: string; body?: string }) => {
+      if (init.method === "POST") {
+        bodies.push(JSON.parse(init.body!));
+        return new Response(JSON.stringify({ share: serverShare() }), { status: 201 });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    await render();
+    expect(container.querySelector("#share-note")).toBeNull();
+    const boxes = [...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+    await act(async () => {
+      boxes[4]!.click();
+    });
+    const note = container.querySelector<HTMLTextAreaElement>("#share-note")!;
+    await act(async () => {
+      // React tracks the DOM value, so a controlled field needs the native setter.
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+        note,
+        "I built a co-op site.",
+      );
+      note.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      byName("button", /Create a share link/)!.click();
+    });
+    expect(bodies[0]!.note).toBe("I built a co-op site.");
+  });
+
+  it("shows the refusal reason, verbatim, when a reviewer said no", async () => {
+    fetchMock.mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          share: serverShare({
+            status: "rejected",
+            rejectedBy: "dev:reviewer-1",
+            rejectReason: "The site loads a third-party tracker.",
+          }),
+        }),
+        { status: 200 },
+      ),
+    );
+    await render();
+    expect(container.querySelector('[role="alert"]')!.textContent).toContain(
+      "The site loads a third-party tracker.",
+    );
+    // Never the reviewer's identity — the candidate gets the reason, not a name.
+    expect(container.textContent).not.toContain("reviewer-1");
   });
 
   it("asks for the site as a SECOND, separate consent, defaulted off", async () => {
@@ -138,38 +239,69 @@ describe("ShareLink in server mode", () => {
       return new Response("{}", { status: 404 });
     });
     await render();
-    const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
-    expect(checkbox.checked).toBe(false);
+    const siteBox = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[3]!;
+    expect(siteBox.disabled).toBe(false);
+    expect(siteBox.checked).toBe(false);
     await act(async () => {
       byName("button", /Create a share link/)!.click();
     });
-    expect(bodies).toEqual([{ includeSite: false }]);
+    expect((bodies[0] as { sections: Record<string, boolean> }).sections.site).toBe(false);
+    await act(async () => {
+      siteBox.click();
+    });
   });
 
   it("shows a live link with its anonymous view count", async () => {
-    window.localStorage.setItem(`ailx:share:v1:${ATTEMPT}`, `https://ailx.test/s/${TOKEN}`);
     fetchMock.mockImplementation(async () =>
       new Response(JSON.stringify({ share: serverShare({ views: 12 }) }), { status: 200 }),
     );
     await render();
     expect(container.textContent).toContain("12 views");
     expect(container.querySelector<HTMLInputElement>("#share-url")!.value).toBe(
-      `https://ailx.test/s/${TOKEN}`,
+      `${window.location.origin}/s/${TOKEN}`,
     );
   });
 
-  it("explains itself when the link exists but this browser lost the url", async () => {
+  it("recovers the url from the server on a browser that never created it", async () => {
+    // No localStorage entry at all: the token comes back with the owner read.
+    window.localStorage.clear();
+    window.localStorage.setItem("ailx:dev-user", "tester");
     fetchMock.mockImplementation(async () =>
       new Response(JSON.stringify({ share: serverShare() }), { status: 200 }),
     );
     await render();
-    expect(container.querySelector("#share-url")).toBeNull();
-    expect(container.textContent).toContain("only ever shown once");
-    expect(byName("button", /Revoke link/)).toBeTruthy();
+    expect(container.querySelector<HTMLInputElement>("#share-url")!.value).toContain(TOKEN);
+    expect(container.textContent).not.toMatch(/only ever shown once/);
+    expect(byName("button", /Copy link/)).toBeTruthy();
+  });
+
+  it("says which sections a live link actually carries", async () => {
+    fetchMock.mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          share: serverShare({
+            payload: sharePayloadFrom({ t1: 1, t2: 1, t3: 1, t4: 1 }, "Pass", {
+              instrument: "ailx 2026.1",
+              sections: ALL_SHARE_SECTIONS,
+              completedOn: "2026-03-01",
+              note: "a note",
+              site: "/api/site/x/index.html",
+              process: { totalActiveSeconds: 60, tracks: [] },
+            }),
+          }),
+        }),
+        { status: 200 },
+      ),
+    );
+    await render();
+    const copy = container.textContent ?? "";
+    expect(copy).toContain("This link carries");
+    expect(copy).toContain("how you worked");
+    expect(copy).toContain("the site you built in t1");
+    expect(copy).toContain("revoke it and");
   });
 
   it("revokes: calls DELETE, forgets the url, and offers a fresh link", async () => {
-    window.localStorage.setItem(`ailx:share:v1:${ATTEMPT}`, `https://ailx.test/s/${TOKEN}`);
     const methods: string[] = [];
     fetchMock.mockImplementation(async (_url: string, init: { method: string }) => {
       methods.push(init.method);
@@ -182,7 +314,7 @@ describe("ShareLink in server mode", () => {
       byName("button", /Revoke link/)!.click();
     });
     expect(methods).toContain("DELETE");
-    expect(window.localStorage.getItem(`ailx:share:v1:${ATTEMPT}`)).toBeNull();
+    expect(container.querySelector("#share-url")).toBeNull();
     expect(byName("button", /Create a share link/)).toBeTruthy();
   });
 
@@ -205,7 +337,6 @@ describe("ShareLink in server mode", () => {
   });
 
   it("labels every control for assistive tech", async () => {
-    window.localStorage.setItem(`ailx:share:v1:${ATTEMPT}`, `https://ailx.test/s/${TOKEN}`);
     fetchMock.mockImplementation(async () =>
       new Response(JSON.stringify({ share: serverShare() }), { status: 200 }),
     );

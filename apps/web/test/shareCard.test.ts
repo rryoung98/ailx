@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { isValidElement } from "react";
-import { sharePayloadFrom } from "@ailx/report";
+import { ALL_SHARE_SECTIONS, sharePayloadFrom } from "@ailx/report";
 import {
   SHARE_CARD_COLORS,
   SHARE_CARD_HEIGHT,
@@ -18,7 +18,7 @@ import {
 const payload = sharePayloadFrom(
   { t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 },
   "Distinction",
-  { instrument: "ailx 2026.1" },
+  { instrument: "ailx 2026.1", sections: { profile: false, process: false, completed: false, site: false, note: false } },
 );
 
 /** Flatten the element tree to the strings it will draw. */
@@ -45,6 +45,34 @@ describe("share card art", () => {
     const drawn = texts(shareCardElement(payload)).join(" ");
     expect(drawn).toContain("Find your type");
     expect(drawn).not.toMatch(/item|answer|question/i);
+  });
+
+  it("draws the opted-in extras: a highlight line and footnotes", () => {
+    const full = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 5, t4: 4 }, "Merit", {
+      instrument: "ailx 2026.1",
+      sections: ALL_SHARE_SECTIONS,
+      site: "/api/site/sha256:abc/index.html",
+      completedOn: "2026-02-03",
+      note: "I built a co-op site.",
+      process: { totalActiveSeconds: 1800, tracks: [] },
+    });
+    const drawn = texts(shareCardElement(full)).join(" ");
+    expect(drawn).toContain("I built a co-op site.");
+    expect(drawn).toContain("30 min on task");
+    expect(drawn).toContain("2026-02-03");
+    expect(drawn).toContain("built a site");
+    // The site PATH is never drawn — only the fact that there is one.
+    expect(drawn).not.toContain("sha256:abc");
+  });
+
+  it("falls back to a derived strength, and draws nothing when nothing opted in", () => {
+    const noNote = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 5, t4: 4 }, "Merit", {
+      instrument: "ailx 2026.1",
+      sections: { ...ALL_SHARE_SECTIONS, note: false, process: false, completed: false, site: false },
+    });
+    expect(texts(shareCardElement(noNote)).join(" ")).toContain(noNote.profile!.strengths[0]);
+    const bare = texts(shareCardElement(payload)).join(" ");
+    expect(bare).not.toContain("min on task");
   });
 
   it("is deterministic for a given payload", () => {

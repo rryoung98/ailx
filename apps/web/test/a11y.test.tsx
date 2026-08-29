@@ -159,3 +159,25 @@ describe("design-token contrast (AA)", () => {
     expect(hexes.filter((h) => h.toLowerCase() !== "#ffffff")).toEqual([]);
   });
 });
+
+describe("the share and review surfaces reuse the shipped tokens", () => {
+  /** Every rule introduced by the share composer / share view / review form. */
+  const SHARE_RULES = [
+    ".share-sections", ".share-section", ".share-section-hint", ".share-facts",
+    ".share-quote", ".share-points", ".share-process", ".review-reason",
+  ];
+
+  it("defines each new class exactly once", () => {
+    for (const rule of SHARE_RULES) {
+      expect(css, rule).toContain(`${rule} `);
+    }
+  });
+
+  it("uses no hard-coded colour — only var(--token) (so contrast stays AA)", () => {
+    for (const rule of SHARE_RULES) {
+      const block = css.slice(css.indexOf(`${rule} `));
+      const body = block.slice(block.indexOf("{"), block.indexOf("}") + 1);
+      expect(body.match(/#[0-9a-fA-F]{3,8}/), rule).toBeNull();
+    }
+  });
+});

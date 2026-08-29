@@ -17,16 +17,14 @@ import { sharePayloadFrom } from "@ailx/report";
 const payload = sharePayloadFrom({ t1: 70, t2: 60, t3: 50, t4: 40 }, "Merit", {
   instrument: "ailx 2026.1",
   site: "/api/site/sha256:abc/index.html",
+  note: "A co-op site I built in an afternoon.",
 });
 
 const SUBMISSION: GalleryEntry = {
   id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  token: "r".repeat(43),
   at: "2026-03-02T09:00:00.000Z",
-  instrument: payload.instrument,
-  playerType: payload.playerType,
-  band: payload.band,
-  tracks: payload.tracks,
-  site: payload.site,
+  payload,
   approvedBy: null,
 };
 
@@ -113,7 +111,22 @@ describe("the queue", () => {
 
   it("tells the reviewer what approving and refusing actually do", async () => {
     const html = await markup();
-    expect(html).toContain("stamps your identity");
-    expect(html).toContain("revokes the link");
+    expect(html).toMatch(/stamp your\s+identity/);
+    expect(html).toContain("stores your reason");
+    expect(html).toContain("the candidate is shown");
+  });
+
+  it("gives the refusal a required, labelled reason field", async () => {
+    const el = document.createElement("div");
+    el.innerHTML = await markup();
+    const input = el.querySelector<HTMLInputElement>('input[type="text"]')!;
+    expect(input).toBeTruthy();
+    const label = el.querySelector<HTMLLabelElement>(`label[for="${input.id}"]`)!;
+    expect(label.textContent).toMatch(/reason/i);
+    expect(input.getAttribute("maxlength")).toBe("500");
+  });
+
+  it("links each queued card to the share view the public would get", async () => {
+    expect(await markup()).toContain(`href="/s/${SUBMISSION.token}"`);
   });
 });

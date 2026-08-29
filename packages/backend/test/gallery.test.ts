@@ -23,6 +23,7 @@ import {
   isReviewer,
   listGallery,
   listSubmissions,
+  REJECT_REASON_MAX,
   parseGalleryQuery,
   rejectSubmission,
   reviewerRefs,
@@ -34,8 +35,9 @@ import {
   publishShare,
   resolveShare,
   revokeShare,
-  type CreatedShare,
+  type ShareRecord,
 } from "../src/share.js";
+import { DEFAULT_SHARE_SECTIONS } from "@ailx/report";
 import { attachSiteSnapshot, freshDb, scoredAttempt } from "./helpers.js";
 
 let db: Queryable;
@@ -50,18 +52,18 @@ beforeEach(async () => {
 });
 
 /** A published player-type card (auto-approved), the common gallery row. */
-async function publishedCard(scaled?: readonly number[]): Promise<CreatedShare> {
+async function publishedCard(scaled?: readonly number[]): Promise<ShareRecord> {
   const { participantId, attemptId } = await scoredAttempt(db, scaled);
-  const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+  const share = (await createShare(db, attemptId, participantId)).share;
   await publishShare(db, attemptId, participantId);
   return share;
 }
 
 /** A site-carrying share, submitted and waiting on a human. */
-async function submittedSite(): Promise<{ share: CreatedShare; attemptId: string; participantId: string }> {
+async function submittedSite(): Promise<{ share: ShareRecord; attemptId: string; participantId: string }> {
   const { participantId, attemptId } = await scoredAttempt(db);
   await attachSiteSnapshot(db, attemptId, participantId);
-  const share = (await createShare(db, attemptId, participantId, { includeSite: true })) as CreatedShare;
+  const share = (await createShare(db, attemptId, participantId, { sections: { ...DEFAULT_SHARE_SECTIONS, site: true } })).share;
   await publishShare(db, attemptId, participantId);
   return { share, attemptId, participantId };
 }
@@ -73,9 +75,9 @@ describe("what the gallery lists", () => {
     expect(total).toBe(1);
     expect(entries).toHaveLength(1);
     expect(entries[0]!.id).toBe(share.id);
-    expect(entries[0]!.playerType.code).toMatch(/^[MP][ST][VA][DE]$/);
+    expect(entries[0]!.payload.playerType.code).toMatch(/^[MP][ST][VA][DE]$/);
     expect(entries[0]!.approvedBy).toBe("auto:card");
-    expect(entries[0]!.site).toBeNull();
+    expect(entries[0]!.payload.site).toBeNull();
   });
 
   it("excludes an unlisted share — creating a link is not publishing", async () => {
@@ -107,16 +109,18 @@ describe("what the gallery lists", () => {
     await approveShare(db, share.id, "human:ada");
     const { entries } = await listGallery(db);
     expect(entries).toHaveLength(1);
-    expect(entries[0]!.site).toMatch(/^\/api\/site\/sha256:[0-9a-f]{64}\/index\.html$/);
+    expect(entries[0]!.payload.site).toMatch(/^\/api\/site\/sha256:[0-9a-f]{64}\/index\.html$/);
     expect(entries[0]!.approvedBy).toBe("human:ada");
   });
 
-  it("never exposes a token, a digest, an attempt or a participant", async () => {
+  it("carries the listed card's own token, and nothing else about the row", async () => {
     const share = await publishedCard();
     await submittedSite();
     const serialized = JSON.stringify(await listGallery(db));
-    expect(serialized).not.toContain(share.token);
-    for (const forbidden of ["token_sha256", "tokenSha", "attemptId", "attempt_id", "participant", "site_digest"]) {
+    // The LISTED card carries its own token on purpose: the tile links to the
+    // share view its owner published. Nothing else about the row leaks.
+    expect(serialized).toContain(share.token);
+    for (const forbidden of ["tokenSha", "token_sha256", "attemptId", "attempt_id", "participant", "site_digest"]) {
       expect(serialized, forbidden).not.toContain(forbidden);
     }
   });
@@ -135,7 +139,7 @@ describe("browsing", () => {
     const top = facets[0]!;
     const filtered = await listGallery(db, parseGalleryQuery({ type: top.code }));
     expect(filtered.total).toBe(top.count);
-    expect(filtered.entries.every((e) => e.playerType.code === top.code)).toBe(true);
+    expect(filtered.entries.every((e) => e.payload.playerType.code === top.code)).toBe(true);
   });
 
   it("ignores a filter that is not a player-type code instead of failing", async () => {
@@ -149,7 +153,7 @@ describe("browsing", () => {
     const oldest = await listGallery(db, parseGalleryQuery({ sort: "oldest" }));
     expect(recent.entries.map((e) => e.id)).toEqual([...oldest.entries.map((e) => e.id)].reverse());
     const byType = await listGallery(db, parseGalleryQuery({ sort: "type" }));
-    const codes = byType.entries.map((e) => e.playerType.code);
+    const codes = byType.entries.map((e) => e.payload.playerType.code);
     expect([...codes].sort()).toEqual(codes);
   });
 
@@ -200,25 +204,27 @@ describe("the review queue", () => {
     const { share } = await submittedSite();
     const queue = await listSubmissions(db);
     expect(queue.map((e) => e.id)).toEqual([share.id]);
-    expect(queue[0]!.site).not.toBeNull();
+    expect(queue[0]!.payload.site).not.toBeNull();
   });
 
   it("drops an entry once it is decided, either way", async () => {
     const a = await submittedSite();
     const b = await submittedSite();
     await approveShare(db, a.share.id, "human:ada");
-    expect(await rejectSubmission(db, b.share.id)).toEqual({ rejected: true });
+    expect(await rejectSubmission(db, b.share.id, REVIEWER, "hosts a tracker")).toEqual({ rejected: true });
     expect(await listSubmissions(db)).toEqual([]);
-    // Rejection revokes: the link stops resolving at all, and never lists.
+    // Refusal stops public serving entirely, and never lists.
     expect(await resolveShare(db, b.share.token)).toBeNull();
     expect((await listGallery(db)).entries.map((e) => e.id)).toEqual([a.share.id]);
   });
 
   it("refuses to reject anything that is not waiting for review", async () => {
     const card = await publishedCard();
-    expect(await rejectSubmission(db, card.id)).toEqual({ rejected: false });
+    expect(await rejectSubmission(db, card.id, REVIEWER, "no")).toEqual({ rejected: false });
     expect((await listGallery(db)).total).toBe(1);
-    expect(await rejectSubmission(db, "00000000-0000-0000-0000-000000000000")).toEqual({ rejected: false });
+    expect(await rejectSubmission(db, "00000000-0000-0000-0000-000000000000", REVIEWER, "no")).toEqual({
+      rejected: false,
+    });
   });
 
   it("caps how much of the queue one read can pull", async () => {
@@ -299,13 +305,46 @@ describe("the decision route", () => {
     expect(listed[0]!.approvedBy).toBe(REVIEWER);
   });
 
-  it("rejects a submission by revoking it, and says so once", async () => {
+  it("records the refusal against the VERIFIED reviewer, and says so once", async () => {
     const { share } = await submittedSite();
-    const first = await handleReviewDecision(ctx, as("reviewer-1"), { shareId: share.id, decision: "reject" }, ENV);
+    const body = { shareId: share.id, decision: "reject", reason: "The site loads a third-party tracker." };
+    const first = await handleReviewDecision(ctx, as("reviewer-1"), { ...body, reviewer: "human:someone-else" }, ENV);
     expect(first.status).toBe(200);
-    const second = await handleReviewDecision(ctx, as("reviewer-1"), { shareId: share.id, decision: "reject" }, ENV);
+    const { rows } = await db.query(
+      "SELECT rejected_by, reject_reason FROM share_links WHERE id = $1",
+      [share.id],
+    );
+    expect(rows[0]!.rejected_by).toBe(REVIEWER);
+    expect(rows[0]!.reject_reason).toBe("The site loads a third-party tracker.");
+    const second = await handleReviewDecision(ctx, as("reviewer-1"), body, ENV);
     expect(second.status).toBe(404);
     expect(await resolveShare(db, share.token)).toBeNull();
+    expect((await listGallery(db)).entries).toEqual([]);
+  });
+
+  it("will not accept a refusal with no reason", async () => {
+    const { share } = await submittedSite();
+    for (const body of [
+      { shareId: share.id, decision: "reject" },
+      { shareId: share.id, decision: "reject", reason: "   " },
+      { shareId: share.id, decision: "reject", reason: 42 },
+    ]) {
+      expect((await handleReviewDecision(ctx, as("reviewer-1"), body, ENV)).status).toBe(400);
+    }
+    // Nothing was stamped, so it is still waiting for a human.
+    expect(await listSubmissions(db)).toHaveLength(1);
+  });
+
+  it("caps a very long reason rather than storing a document", async () => {
+    const { share } = await submittedSite();
+    await handleReviewDecision(
+      ctx,
+      as("reviewer-1"),
+      { shareId: share.id, decision: "reject", reason: "x".repeat(5000) },
+      ENV,
+    );
+    const { rows } = await db.query("SELECT reject_reason FROM share_links WHERE id = $1", [share.id]);
+    expect(String(rows[0]!.reject_reason)).toHaveLength(REJECT_REASON_MAX);
   });
 
   it("validates the body before it reaches the store", async () => {
@@ -331,7 +370,7 @@ describe("the decision route", () => {
   it("will not approve a share that no candidate ever submitted", async () => {
     const { participantId, attemptId } = await scoredAttempt(db);
     await attachSiteSnapshot(db, attemptId, participantId);
-    const share = (await createShare(db, attemptId, participantId, { includeSite: true })) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId, { sections: { ...DEFAULT_SHARE_SECTIONS, site: true } })).share;
     const res = await handleReviewDecision(ctx, as("reviewer-1"), { shareId: share.id, decision: "approve" }, ENV);
     expect(res.status).toBe(404);
     expect((await listGallery(db)).entries).toEqual([]);
@@ -371,7 +410,7 @@ describe("a hostile candidate cannot list a site", () => {
     const owner = as(String(rows[0]!.auth_ref).replace(/^dev:/, ""));
 
     const res = await handleCreateShare(ctx, owner, attemptId, {
-      includeSite: true,
+      sections: { site: true },
       // Everything a hostile client might try to smuggle past the gate.
       status: "published",
       approvedAt: "2026-01-01T00:00:00.000Z",
@@ -387,7 +426,7 @@ describe("a hostile candidate cannot list a site", () => {
 
   it("404s a share created against somebody else's attempt", async () => {
     const { attemptId } = await scoredAttempt(db);
-    expect((await handleCreateShare(ctx, as("intruder"), attemptId, { includeSite: true })).status).toBe(404);
+    expect((await handleCreateShare(ctx, as("intruder"), attemptId, { sections: { site: true } })).status).toBe(404);
     expect((await listGallery(db)).entries).toEqual([]);
   });
 });

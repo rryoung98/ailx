@@ -10,7 +10,10 @@
  * and the output is deterministic given the stored payload.
  *
  * The text comes from `shareCardLines` in @ailx/report, so the image can
- * never drift from the page it previews.
+ * never drift from the page it previews — including the opt-in extras: the
+ * candidate's own note (or their first strength) becomes the highlight line,
+ * and time-on-task / finish day / "built a site" become footnotes. A section
+ * the candidate left off simply produces no line.
  */
 import { createElement, type ReactElement } from "react";
 import { shareCardLines, type SharePayload } from "@ailx/report";
@@ -83,6 +86,20 @@ export function shareCardElement(payload: SharePayload): ReactElement {
         ),
       ]),
       box({ key: "foot", flexDirection: "column" }, [
+        lines.highlight === null
+          ? box({ key: "hl" }, "")
+          : box(
+              {
+                key: "hl",
+                fontSize: 27,
+                color: SHARE_CARD_COLORS.fg,
+                borderLeft: `4px solid ${SHARE_CARD_COLORS.accent}`,
+                paddingLeft: 18,
+                marginBottom: 20,
+                maxWidth: 1000,
+              },
+              lines.highlight,
+            ),
         box(
           { key: "tracks", gap: 28, fontSize: 26, fontFamily: MONO, color: SHARE_CARD_COLORS.fg },
           lines.tracks.map((t) =>
@@ -93,8 +110,13 @@ export function shareCardElement(payload: SharePayload): ReactElement {
           ),
         ),
         box(
-          { key: "cta", fontSize: 24, color: SHARE_CARD_COLORS.faint, marginTop: 18 },
-          "AILX — the AI-literacy exam you can play. Find your type.",
+          { key: "cta", fontSize: 24, color: SHARE_CARD_COLORS.faint, marginTop: 18, gap: 16 },
+          [
+            box({ key: "t" }, "AILX — the AI-literacy exam you can play. Find your type."),
+            ...lines.footnotes.map((f, i) =>
+              box({ key: `f${i}`, gap: 16 }, [box({ key: "d" }, "·"), box({ key: "v" }, f)]),
+            ),
+          ],
         ),
       ]),
     ],

@@ -7,6 +7,7 @@
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { TRACK_IDS } from "@ailx/session";
+import { ALL_SHARE_SECTIONS, DEFAULT_SHARE_SECTIONS, type ShareSections } from "@ailx/report";
 import { DEV_USER_HEADER, DevAuthProvider } from "../src/auth.js";
 import type { ApiContext } from "../src/handlers.js";
 import type { Queryable } from "../src/db.js";
@@ -15,19 +16,20 @@ import {
   AUTO_APPROVER,
   approveShare,
   createShare,
+  getShareForAttempt,
   handleCreateShare,
   handleGetShare,
   handleRevokeShare,
   handleViewShare,
-  hashShareToken,
   needsHumanApproval,
   newShareToken,
   publishShare,
   resolveShare,
   revokeShare,
   shareStatus,
-  type CreatedShare,
+  type ShareRecord,
 } from "../src/share.js";
+import { rejectSubmission } from "../src/gallery.js";
 import { appendResponse } from "../src/store.js";
 import {
   attachSiteSnapshot,
@@ -62,21 +64,25 @@ describe("share tokens", () => {
     expect(firstChars.size).toBeGreaterThan(8);
   });
 
-  it("hash to a stable sha256 hex that is not the token", async () => {
-    const token = newShareToken();
-    const digest = await hashShareToken(token);
-    expect(digest).toMatch(/^[0-9a-f]{64}$/);
-    expect(digest).not.toContain(token);
-    expect(await hashShareToken(token)).toBe(digest);
+  it("are stored verbatim, so the owner can recover their own link", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    const share = (await createShare(db, attemptId, participantId)).share;
+    const { rows } = await db.query("SELECT token FROM share_links WHERE id = $1", [share.id]);
+    expect(rows[0]!.token).toBe(share.token);
+    // Recovery goes through the owner check, never through the token alone.
+    expect((await getShareForAttempt(db, attemptId, participantId))!.token).toBe(share.token);
   });
 
-  it("stores only the digest — the database holds no working capability", async () => {
+  it("are never handed to another participant, at any surface", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
-    const { rows } = await db.query("SELECT token_sha256, payload::text AS p FROM share_links WHERE id = $1", [share.id]);
-    expect(rows[0]!.token_sha256).toBe(await hashShareToken(share.token));
-    expect(String(rows[0]!.token_sha256)).not.toContain(share.token);
-    expect(String(rows[0]!.p)).not.toContain(share.token);
+    const share = (await createShare(db, attemptId, participantId)).share;
+    const stranger = await openAttempt(db);
+    // The owner-scoped store call refuses outright.
+    expect(await getShareForAttempt(db, attemptId, stranger.participantId)).toBeNull();
+    // The public capability read serves the payload but never the token.
+    const publicBody = JSON.stringify((await handleViewShare(ctx, share.token)).body);
+    expect(publicBody).not.toContain(share.token);
+    expect(publicBody).not.toContain(share.id);
   });
 });
 
@@ -99,7 +105,7 @@ describe("creating a share", () => {
 
   it("freezes the allowlisted payload and starts unlisted", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     expect(share.status).toBe("unlisted");
     expect(share.views).toBe(0);
     expect(share.payload.playerType.code).toHaveLength(4);
@@ -107,12 +113,15 @@ describe("creating a share", () => {
     expect(share.payload.site).toBeNull();
   });
 
-  it("is idempotent while live, and never re-issues the token", async () => {
+  it("is idempotent while live, and returns the SAME recoverable token", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const first = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const first = (await createShare(db, attemptId, participantId)).share;
     const second = await createShare(db, attemptId, participantId);
-    expect(second.id).toBe(first.id);
-    expect("token" in second).toBe(false);
+    expect(second.created).toBe(false);
+    expect(second.share.id).toBe(first.id);
+    // The token is STORED, so a second call hands it back — recovering a lost
+    // link must not require destroying it.
+    expect(second.share.token).toBe(first.token);
   });
 
   it("refuses an unfinished run", async () => {
@@ -134,10 +143,10 @@ describe("creating a share", () => {
       payload: { kind: "t1-site-snapshot", digest, fileCount: 1, totalBytes: 10 },
       clientTs: 1_767_225_700_000,
     });
-    const plain = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const plain = (await createShare(db, attemptId, participantId)).share;
     expect(plain.payload.site).toBeNull();
     await revokeShare(db, attemptId, participantId);
-    const withSite = (await createShare(db, attemptId, participantId, { includeSite: true })) as CreatedShare;
+    const withSite = (await createShare(db, attemptId, participantId, { sections: { ...DEFAULT_SHARE_SECTIONS, site: true } })).share;
     expect(withSite.payload.site).toBe(`/api/site/${digest}/index.html`);
   });
 });
@@ -145,7 +154,7 @@ describe("creating a share", () => {
 describe("resolving a share by token", () => {
   it("serves an unauthenticated read for a valid token", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     const res = await handleViewShare(ctx, share.token);
     expect(res.status).toBe(200);
     expect(res.body.share).toEqual({
@@ -158,12 +167,12 @@ describe("resolving a share by token", () => {
 
   it("exposes nothing beyond the payload and the link's own state", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     const json = JSON.stringify((await handleViewShare(ctx, share.token)).body);
     expect(json).not.toContain(attemptId);
     expect(json).not.toContain(participantId);
     expect(json).not.toContain(share.id);
-    expect(json).not.toContain(await hashShareToken(share.token));
+    expect(json).not.toContain(share.token);
   });
 
   it("404s an unknown, malformed or empty token", async () => {
@@ -175,7 +184,7 @@ describe("resolving a share by token", () => {
 
   it("counts views anonymously, and only when asked", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     await resolveShare(db, share.token, false);
     expect((await resolveShare(db, share.token))!.views).toBe(0);
     await resolveShare(db, share.token, true);
@@ -190,7 +199,7 @@ describe("resolving a share by token", () => {
 describe("revocation", () => {
   it("stops serving the token immediately and stays revoked", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     expect((await handleViewShare(ctx, share.token)).status).toBe(200);
     expect(await revokeShare(db, attemptId, participantId)).toEqual({ revoked: true });
     expect((await handleViewShare(ctx, share.token)).status).toBe(404);
@@ -211,9 +220,9 @@ describe("revocation", () => {
 
   it("issues a NEW token when re-shared, and the old one never comes back", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const first = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const first = (await createShare(db, attemptId, participantId)).share;
     await revokeShare(db, attemptId, participantId);
-    const second = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const second = (await createShare(db, attemptId, participantId)).share;
     expect(second.token).not.toBe(first.token);
     expect((await handleViewShare(ctx, first.token)).status).toBe(404);
     expect((await handleViewShare(ctx, second.token)).status).toBe(200);
@@ -221,7 +230,7 @@ describe("revocation", () => {
 
   it("cannot be revoked by another participant", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     const other = await openAttempt(db);
     await expect(revokeShare(db, attemptId, other.participantId)).rejects.toThrow(/not found/);
     expect((await handleViewShare(ctx, share.token)).status).toBe(200);
@@ -230,17 +239,19 @@ describe("revocation", () => {
 
 describe("lifecycle states", () => {
   it("derives status from monotone stamps (unlisted → submitted → published)", () => {
-    const base = { revokedAt: null, approvedAt: null, submittedAt: null };
+    const base = { revokedAt: null, approvedAt: null, rejectedAt: null, submittedAt: null };
     expect(shareStatus(base)).toBe("unlisted");
     expect(shareStatus({ ...base, submittedAt: "t" })).toBe("submitted");
     expect(shareStatus({ ...base, submittedAt: "t", approvedAt: "t" })).toBe("published");
+    expect(shareStatus({ ...base, submittedAt: "t", rejectedAt: "t" })).toBe("rejected");
     // Revoked wins from ANY stage — including an approved gallery entry.
-    expect(shareStatus({ submittedAt: "t", approvedAt: "t", revokedAt: "t" })).toBe("revoked");
+    expect(shareStatus({ ...base, submittedAt: "t", approvedAt: "t", revokedAt: "t" })).toBe("revoked");
+    expect(shareStatus({ ...base, submittedAt: "t", rejectedAt: "t", revokedAt: "t" })).toBe("revoked");
   });
 
   it("revokes a gallery-published link too (approval never outranks the candidate)", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     await publishShare(db, attemptId, participantId);
     expect((await resolveShare(db, share.token))!.status).toBe("published");
     await revokeShare(db, attemptId, participantId);
@@ -265,15 +276,17 @@ describe("handlers", () => {
   it("create → read → revoke over the API surface, as the owner", async () => {
     const user = as("share-owner");
     const created = await handleCreateAttemptWithRun(user);
-    const post = await handleCreateShare(ctx, user, created, { includeSite: false });
+    const post = await handleCreateShare(ctx, user, created, {});
     expect(post.status).toBe(201);
-    const share = post.body.share as CreatedShare;
+    const share = post.body.share as ShareRecord;
     expect(share.token).toMatch(SHARE_TOKEN_RE);
 
     const get = await handleGetShare(ctx, user, created);
     expect(get.status).toBe(200);
     expect((get.body.share as { id: string }).id).toBe(share.id);
-    expect(JSON.stringify(get.body)).not.toContain(share.token);
+    // The owner's own read HANDS BACK the token: that is what makes a lost
+    // link recoverable instead of a reason to revoke.
+    expect((get.body.share as ShareRecord).token).toBe(share.token);
 
     const del = await handleRevokeShare(ctx, user, created);
     expect(del.body).toEqual({ revoked: true });
@@ -298,12 +311,15 @@ describe("hybrid publication policy", () => {
 
   it("decides from the stored payload, not from any request field", () => {
     expect(needsHumanApproval({ site: null })).toBe(false);
+    expect(needsHumanApproval({ site: null, note: null })).toBe(false);
     expect(needsHumanApproval({ site: "/api/site/x/index.html" })).toBe(true);
+    // A candidate-authored note is content nobody vetted: same human, same gate.
+    expect(needsHumanApproval({ site: null, note: "my words" })).toBe(true);
   });
 
   it("auto-publishes a card: no human, one step, recorded as auto", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     expect(share.needsHumanApproval).toBe(false);
     expect(await publishShare(db, attemptId, participantId)).toEqual({
       status: "published",
@@ -324,7 +340,7 @@ describe("hybrid publication policy", () => {
   it("holds a site-carrying share at `submitted` until a HUMAN approves", async () => {
     const { participantId, attemptId } = await scoredAttempt();
     await withSite(attemptId, participantId);
-    const share = (await createShare(db, attemptId, participantId, { includeSite: true })) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId, { sections: { ...DEFAULT_SHARE_SECTIONS, site: true } })).share;
     expect(share.needsHumanApproval).toBe(true);
 
     expect(await publishShare(db, attemptId, participantId)).toEqual({
@@ -353,7 +369,7 @@ describe("hybrid publication policy", () => {
     await withSite(attempt.id, participant.id);
 
     const res = await handleCreateShare(ctx, user, attempt.id, {
-      includeSite: true,
+      sections: { site: true },
       // Everything a hostile client might try to smuggle in:
       status: "published",
       approvedAt: "2026-01-01T00:00:00.000Z",
@@ -361,7 +377,7 @@ describe("hybrid publication policy", () => {
       needsHumanApproval: false,
       payload: { site: null },
     });
-    const share = res.body.share as CreatedShare;
+    const share = res.body.share as ShareRecord;
     expect(share.status).toBe("unlisted");
     expect(share.approvedBy).toBeNull();
     expect(share.needsHumanApproval).toBe(true);
@@ -373,14 +389,14 @@ describe("hybrid publication policy", () => {
 
   it("refuses a non-human approver reference", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     await expect(approveShare(db, share.id, AUTO_APPROVER)).rejects.toThrow(/human approver/);
     await expect(approveShare(db, share.id, "")).rejects.toThrow(/human approver/);
   });
 
   it("will not approve an unsubmitted or revoked share", async () => {
     const { participantId, attemptId } = await scoredAttempt();
-    const share = (await createShare(db, attemptId, participantId)) as CreatedShare;
+    const share = (await createShare(db, attemptId, participantId)).share;
     expect(await approveShare(db, share.id, "human:r")).toEqual({ approved: false });
     await publishShare(db, attemptId, participantId);
     await revokeShare(db, attemptId, participantId);
@@ -393,6 +409,186 @@ describe("hybrid publication policy", () => {
     await expect(publishShare(db, attemptId, participantId)).rejects.toThrow(/no live share link/);
   });
 });
+
+
+describe("what the candidate chose to share (server-side enforcement)", () => {
+  const sectionsOf = (share: ShareRecord) => ({
+    profile: share.payload.profile !== null,
+    process: share.payload.process !== null,
+    completed: share.payload.completedOn !== null,
+    site: share.payload.site !== null,
+    note: share.payload.note !== null,
+  });
+
+  it("stores the default set: derived sections on, authored sections off", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    const share = (await createShare(db, attemptId, participantId)).share;
+    expect(sectionsOf(share)).toEqual({
+      profile: true, process: true, completed: true, site: false, note: false,
+    });
+  });
+
+  it("drops every section the candidate switched off", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    const none: ShareSections = {
+      profile: false, process: false, completed: false, site: false, note: false,
+    };
+    const share = (await createShare(db, attemptId, participantId, { sections: none })).share;
+    expect(sectionsOf(share)).toEqual(none);
+    // And the STORED row carries nothing more than the response did.
+    const { rows } = await db.query("SELECT payload::text AS p FROM share_links WHERE id = $1", [share.id]);
+    const stored = JSON.parse(String(rows[0]!.p));
+    expect(stored.process).toBeNull();
+    expect(stored.profile).toBeNull();
+  });
+
+  it("carries the note only with the note section, sanitized and capped", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    const messy = `  I built\na thing  ${"x".repeat(400)}`;
+    const off = (await createShare(db, attemptId, participantId, { note: messy })).share;
+    expect(off.payload.note).toBeNull();
+    await revokeShare(db, attemptId, participantId);
+    const on = (await createShare(db, attemptId, participantId, {
+      sections: { ...DEFAULT_SHARE_SECTIONS, note: true },
+      note: messy,
+    })).share;
+    expect(on.payload.note!.startsWith("I built a thing")).toBe(true);
+    expect(on.payload.note).toHaveLength(240);
+    expect(on.needsHumanApproval).toBe(true);
+  });
+
+  it("cannot be widened by a hostile body naming sections it may not have", async () => {
+    const user = { [DEV_USER_HEADER]: "share-hostile-sections" };
+    const attemptId = await handleCreateAttemptWithRun(user);
+    await attachSiteSnapshot(db, attemptId, (await ownerOf(attemptId)), 97);
+    const res = await handleCreateShare(ctx, user, attemptId, {
+      // Real sections the candidate explicitly turned OFF...
+      sections: {
+        profile: false, process: false, completed: false, site: false, note: false,
+        // ...plus invented ones that must not exist at any layer.
+        answers: true, items: true, responses: true, transcript: true, percentile: true,
+      },
+      note: "should not appear",
+      // ...plus a whole forged payload.
+      payload: { site: "/api/site/evil/index.html", note: "forged", tracks: { t1: 100 } },
+    });
+    const share = res.body.share as ShareRecord;
+    expect(sectionsOf(share)).toEqual({
+      profile: false, process: false, completed: false, site: false, note: false,
+    });
+    const json = JSON.stringify(res.body);
+    for (const forbidden of [
+      "should not appear", "forged", "evil", "answers", "items", "responses", "percentile",
+    ]) {
+      expect(json).not.toContain(forbidden);
+    }
+  });
+
+  it("never lets a request name somebody else's site", async () => {
+    const victim = await scoredAttempt();
+    await attachSiteSnapshot(db, victim.attemptId, victim.participantId, 96);
+    const attacker = await scoredAttempt();
+    // The site opt-in reads the ATTEMPT's own recorded snapshot; there is no
+    // field in which another attempt's digest could be named.
+    const share = (await createShare(db, attacker.attemptId, attacker.participantId, {
+      sections: { ...DEFAULT_SHARE_SECTIONS, site: true },
+    })).share;
+    expect(share.payload.site).toBeNull();
+  });
+
+  it("serves the expanded payload over HTTP with no forbidden substring", async () => {
+    const { participantId, attemptId } = await scoredAttempt();
+    await attachSiteSnapshot(db, attemptId, participantId, 95);
+    const share = (await createShare(db, attemptId, participantId, {
+      sections: ALL_SHARE_SECTIONS,
+      note: "I built a site for a bike co-op.",
+    })).share;
+    const body = JSON.stringify((await handleViewShare(ctx, share.token)).body);
+    expect(body).toContain("bike co-op");
+    expect(body).toContain("totalActiveSeconds");
+    for (const forbidden of [
+      attemptId, participantId, share.id, share.token,
+      "itemId", "item_id", "deck", "answer", "correct", "confidence", "latency",
+      "authRef", "auth_ref", "percentile", "composite", "scoringDigest",
+    ]) {
+      expect(body).not.toContain(forbidden);
+    }
+  });
+});
+
+describe("a refusal is on the record", () => {
+  /** A site-carrying share, submitted and waiting on a human. */
+  async function submitted() {
+    const { participantId, attemptId } = await scoredAttempt();
+    await attachSiteSnapshot(db, attemptId, participantId, 94);
+    const share = (await createShare(db, attemptId, participantId, {
+      sections: { ...DEFAULT_SHARE_SECTIONS, site: true },
+    })).share;
+    await publishShare(db, attemptId, participantId);
+    return { participantId, attemptId, share };
+  }
+
+  it("records who refused, when, and why — and stops serving it publicly", async () => {
+    const { participantId, attemptId, share } = await submitted();
+    expect(await rejectSubmission(db, share.id, "dev:reviewer-1", "  The site\nembeds a tracker.  ")).toEqual({
+      rejected: true,
+    });
+    const { rows } = await db.query(
+      "SELECT rejected_at, rejected_by, reject_reason, revoked_at FROM share_links WHERE id = $1",
+      [share.id],
+    );
+    expect(rows[0]!.rejected_by).toBe("dev:reviewer-1");
+    expect(rows[0]!.reject_reason).toBe("The site embeds a tracker.");
+    expect(rows[0]!.rejected_at).not.toBeNull();
+    // Not a revoke: the row stays the owner's, so they can read the reason.
+    expect(rows[0]!.revoked_at).toBeNull();
+
+    // Public serving stops everywhere.
+    expect(await resolveShare(db, share.token)).toBeNull();
+    expect((await handleViewShare(ctx, share.token)).status).toBe(404);
+
+    // The OWNER still sees it, with the reason.
+    const owned = (await getShareForAttempt(db, attemptId, participantId))!;
+    expect(owned.status).toBe("rejected");
+    expect(owned.rejectedBy).toBe("dev:reviewer-1");
+    expect(owned.rejectReason).toBe("The site embeds a tracker.");
+  });
+
+  it("refuses an anonymous or reasonless refusal", async () => {
+    const { share } = await submitted();
+    await expect(rejectSubmission(db, share.id, "  ", "why")).rejects.toThrow(/reviewer reference/);
+    await expect(rejectSubmission(db, share.id, "dev:r", "   ")).rejects.toThrow(/reason/);
+  });
+
+  it("is terminal for that row: it cannot be re-submitted or approved", async () => {
+    const { participantId, attemptId, share } = await submitted();
+    await rejectSubmission(db, share.id, "dev:reviewer-1", "no");
+    await expect(publishShare(db, attemptId, participantId)).rejects.toThrow(/refused/);
+    expect(await approveShare(db, share.id, "dev:reviewer-2")).toEqual({ approved: false });
+    expect(await rejectSubmission(db, share.id, "dev:reviewer-2", "again")).toEqual({ rejected: false });
+    expect(await resolveShare(db, share.token)).toBeNull();
+  });
+
+  it("lets the candidate revoke and share again without the refused part", async () => {
+    const { participantId, attemptId, share } = await submitted();
+    await rejectSubmission(db, share.id, "dev:reviewer-1", "no");
+    expect(await revokeShare(db, attemptId, participantId)).toEqual({ revoked: true });
+    const next = (await createShare(db, attemptId, participantId)).share;
+    expect(next.id).not.toBe(share.id);
+    expect(next.status).toBe("unlisted");
+    expect(next.payload.site).toBeNull();
+    expect((await handleViewShare(ctx, next.token)).status).toBe(200);
+    // The refused row survives, stamps intact — the audit trail.
+    const { rows } = await db.query("SELECT rejected_by FROM share_links WHERE id = $1", [share.id]);
+    expect(rows[0]!.rejected_by).toBe("dev:reviewer-1");
+  });
+});
+
+/** The participant id that owns `attemptId` — test-only convenience. */
+async function ownerOf(attemptId: string): Promise<string> {
+  const { rows } = await db.query("SELECT participant_id FROM attempts WHERE id = $1", [attemptId]);
+  return rows[0]!.participant_id as string;
+}
 
 /** Create an attempt through the store for `user` and mirror a scored run. */
 async function handleCreateAttemptWithRun(headers: Record<string, string>): Promise<string> {

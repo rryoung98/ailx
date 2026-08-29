@@ -94,7 +94,7 @@ export async function scoredAttempt(
   return { participantId, attemptId: attempt.id };
 }
 
-/** Give an attempt a published T1 snapshot, so `includeSite` has a target. */
+/** Give an attempt a published T1 snapshot, so the `site` section has a target. */
 export async function attachSiteSnapshot(
   db: Queryable,
   attemptId: string,
