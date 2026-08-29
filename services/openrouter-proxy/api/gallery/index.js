@@ -1,7 +1,8 @@
 /**
  * AILX T4 gallery — submissions (Vercel Blob, public store).
  *
- * GET  → list newest 60 submissions + vote counts (one blob list per prefix).
+ * GET  → list newest 60 submissions + vote counts (cursor-paginated blob
+ *        listing, hard-capped at MAX_LIST_PAGES pages as a runaway guard).
  * POST → share a T4 final set: 1-3 images (dataURI, each ≤ 450KB decoded),
  *        direction note ≤ 800 chars, model id. Per-IP rate limited.
  *
@@ -9,54 +10,52 @@
  * instrument: the composite never reads this store.
  */
 import { put, list } from "@vercel/blob";
-import { createHash } from "node:crypto";
+import { applyCors, clientIp, createRateLimiter } from "../_lib/guards.js";
 
 const MAX_IMG_BYTES = 450 * 1024;
 const SUBMITS_PER_IP_PER_DAY = 6;
-const ipHits = new Map();
+// 25 pages x 1000 blobs. Past that, counts are deliberately truncated
+// rather than looping forever on a hostile/degenerate store.
+const MAX_LIST_PAGES = 25;
 
-function corsHeaders(req) {
-  const origin = req.headers.origin ?? "";
-  const ok = origin === "https://rryoung98.github.io" || origin.startsWith("http://localhost");
-  return {
-    "Access-Control-Allow-Origin": ok ? origin : "https://rryoung98.github.io",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "content-type",
-  };
+const limiter = createRateLimiter({ windowMs: 86400_000, max: SUBMITS_PER_IP_PER_DAY });
+
+async function listAll(prefix) {
+  const blobs = [];
+  let cursor;
+  for (let page = 0; page < MAX_LIST_PAGES; page++) {
+    const res = await list({ prefix, limit: 1000, cursor });
+    blobs.push(...res.blobs);
+    if (!res.hasMore) break;
+    cursor = res.cursor;
+  }
+  return blobs;
 }
 
 export default async function handler(req, res) {
-  for (const [k, v] of Object.entries(corsHeaders(req))) res.setHeader(k, v);
-  if (req.method === "OPTIONS") return res.status(204).end();
+  if (applyCors(req, res, ["GET", "POST"])) return;
 
   if (req.method === "GET") {
-    const [subs, votes] = await Promise.all([
-      list({ prefix: "gallery/subs/", limit: 1000 }),
-      list({ prefix: "gallery/votes/", limit: 1000 }),
-    ]);
+    const [subs, votes] = await Promise.all([listAll("gallery/subs/"), listAll("gallery/votes/")]);
     const counts = {};
-    for (const v of votes.blobs) {
+    for (const v of votes) {
       const id = v.pathname.split("/")[2]?.split("-vote-")[0];
       if (id) counts[id] = (counts[id] ?? 0) + 1;
     }
-    const items = subs.blobs
+    const items = subs
       .sort((a, b) => (a.pathname < b.pathname ? 1 : -1))
       .slice(0, 60)
-      .map((b) => ({
-        id: b.pathname.split("/")[2].replace(/\.json$/, ""),
-        url: b.url,
-        votes: counts[b.pathname.split("/")[2].replace(/\.json$/, "")] ?? 0,
-      }));
+      .map((b) => {
+        const id = b.pathname.split("/")[2].replace(/\.json$/, "");
+        return { id, url: b.url, votes: counts[id] ?? 0 };
+      });
     res.setHeader("cache-control", "s-maxage=15, stale-while-revalidate=60");
     return res.status(200).json({ items });
   }
 
-  if (req.method !== "POST") return res.status(405).json({ error: "GET or POST" });
-
-  const ip = (req.headers["x-forwarded-for"] ?? "?").split(",")[0].trim();
+  const ip = clientIp(req);
   const now = Date.now();
-  const hits = (ipHits.get(ip) ?? []).filter((t) => now - t < 86400_000);
-  if (hits.length >= SUBMITS_PER_IP_PER_DAY) {
+  if (limiter.isLimited(ip, now)) {
     return res.status(429).json({ error: "daily share limit reached" });
   }
 
@@ -87,6 +86,6 @@ export default async function handler(req, res) {
   await put(`gallery/subs/${id}.json`, JSON.stringify(doc), {
     access: "public", contentType: "application/json", addRandomSuffix: false,
   });
-  hits.push(now); ipHits.set(ip, hits);
+  limiter.record(ip, now);
   return res.status(201).json({ id, images: stored });
 }
