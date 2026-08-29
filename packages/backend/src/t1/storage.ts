@@ -165,6 +165,13 @@ export type StagedUploadRead =
 export interface StagedUploadGrant {
   /** Credential the browser presents to the object store, scoped to ONE key. */
   token: string;
+  /**
+   * The key the browser must write to, as the STORE names it — the
+   * relative key plus whatever namespace the backend prepends. The
+   * grant and the upload have to agree on it exactly, so the store
+   * is what says it, never the caller.
+   */
+  pathname: string;
   /** When the grant stops being usable (ms since epoch). */
   expiresAt: number;
 }
@@ -250,6 +257,9 @@ export class MemoryUploadStaging implements SnapshotUploadStaging {
   private readonly objects = new Map<string, Uint8Array>();
   private issued = 0;
 
+  /** Key namespace, exactly as a real bucket has one. */
+  constructor(private readonly prefix = "") {}
+
   /** Clock seam, so an expiry test needs no timers. */
   now: () => number = () => Date.now();
   /** How long a grant stays usable, matching the real adapter. */
@@ -258,8 +268,9 @@ export class MemoryUploadStaging implements SnapshotUploadStaging {
   async authorize(input: { key: string; maxBytes: number; contentType: string }): Promise<StagedUploadGrant> {
     const token = `staging-token-${++this.issued}`;
     const expiresAt = this.now() + this.ttlMs;
-    this.grants.set(token, { ...input, expiresAt });
-    return { token, expiresAt };
+    const pathname = prefixedKey(this.prefix, input.key);
+    this.grants.set(token, { ...input, key: pathname, expiresAt });
+    return { token, pathname, expiresAt };
   }
 
   /** Test-only: the client PUT, refused exactly as the store would. */
@@ -284,14 +295,14 @@ export class MemoryUploadStaging implements SnapshotUploadStaging {
   }
 
   async read(key: string, maxBytes: number): Promise<StagedUploadRead> {
-    const data = this.objects.get(key);
+    const data = this.objects.get(prefixedKey(this.prefix, key));
     if (data === undefined) return { kind: "missing" };
     if (data.length > maxBytes) return { kind: "too_large", bytes: data.length };
     return { kind: "bytes", data };
   }
 
   async discard(key: string): Promise<void> {
-    this.objects.delete(key);
+    this.objects.delete(prefixedKey(this.prefix, key));
   }
 
   /** Test-only: what is still staged (nothing should outlive a finalize). */

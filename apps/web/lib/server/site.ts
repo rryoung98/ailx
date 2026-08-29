@@ -137,10 +137,12 @@ function vercelBlobStaging(token: string, prefix: string): SnapshotUploadStaging
     async authorize({ key: relative, maxBytes, contentType }) {
       const { generateClientTokenFromReadWriteToken } = await import("@vercel/blob/client");
       const expiresAt = Date.now() + UPLOAD_GRANT_TTL_MS;
+      const pathname = key(relative);
       return {
+        pathname,
         token: await generateClientTokenFromReadWriteToken({
           token,
-          pathname: key(relative),
+          pathname,
           maximumSizeInBytes: maxBytes,
           allowedContentTypes: [contentType],
           validUntil: expiresAt,

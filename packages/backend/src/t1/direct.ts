@@ -118,7 +118,9 @@ export async function handleCreateSiteUpload(
       body: {
         upload: {
           uploadId,
-          pathname: key,
+          // What the STORE calls this key (its namespace included) —
+          // the grant is scoped to exactly this string.
+          pathname: grant.pathname,
           token: grant.token,
           contentType: SITE_ZIP_CONTENT_TYPE,
           maxBytes: T1_LIMITS.maxTotalBytes,

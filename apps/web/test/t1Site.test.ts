@@ -41,6 +41,10 @@ vi.mock("../lib/server/api", () => ({
     }),
 }));
 
+/** The Blob SDK is a network client: mocked, never reached. */
+const clientToken = vi.hoisted(() => vi.fn(async (_opts: unknown) => "vercel_blob_client_test"));
+vi.mock("@vercel/blob/client", () => ({ generateClientTokenFromReadWriteToken: clientToken }));
+
 const routePath = (rel: string) => new URL(`../app/api/${rel}/route.api.ts`, import.meta.url);
 const routeSource = (rel: string) => readFileSync(routePath(rel), "utf8");
 
@@ -147,6 +151,34 @@ describe("snapshot store selection", () => {
     expect(() => makeUploadStaging({ AILX_SNAPSHOT_STORE: "blob" })).toThrow(
       new RegExp(BLOB_TOKEN_ENV),
     );
+  });
+  /**
+   * The grant is scoped to a STRING, so the pathname we hand the
+   * browser and the pathname the token was minted for must be the
+   * same one — including the bucket namespace. They diverged once
+   * (the client wrote to the bare key and the store refused it),
+   * so this pins them together.
+   */
+  it("scopes the grant to the namespaced key it hands back", async () => {
+    const staging = makeUploadStaging({
+      AILX_SNAPSHOT_STORE: "blob",
+      AILX_SNAPSHOT_BLOB_PREFIX: "staging",
+      ...TOKEN,
+    })!;
+    const grant = await staging.authorize({
+      key: "uploads/att/up.zip",
+      maxBytes: 1024,
+      contentType: "application/zip",
+    });
+    expect(grant.pathname).toBe("staging/uploads/att/up.zip");
+    expect(clientToken.mock.calls[0][0]).toMatchObject({
+      pathname: grant.pathname,
+      allowedContentTypes: ["application/zip"],
+      maximumSizeInBytes: 1024,
+      addRandomSuffix: false,
+      allowOverwrite: false,
+    });
+    expect(grant.expiresAt).toBeGreaterThan(Date.now());
   });
 });
 

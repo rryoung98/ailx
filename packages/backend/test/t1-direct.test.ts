@@ -166,6 +166,23 @@ describe("handleCreateSiteUpload", () => {
     );
   });
 
+  /**
+   * The bucket may namespace keys (AILX_SNAPSHOT_BLOB_PREFIX), and a
+   * grant is scoped to the string the STORE uses. So the ticket
+   * carries the store's pathname, not the bare key — a client that
+   * wrote to the bare key would be refused by the store.
+   */
+  it("hands back the key as the store names it, prefix and all", async () => {
+    const c = ctx(new MemoryUploadStaging("staging/t1"));
+    const { headers, attemptId } = await ownedAttempt();
+    const ticket = await ticketFor(c, headers, attemptId);
+    expect(ticket.pathname).toBe(`staging/t1/${stagedUploadKey(attemptId, ticket.uploadId)}`);
+    // The client writes to exactly that name, and the round trip holds.
+    expect(c.staging!.upload(ticket.token, ticket.pathname, siteZip())).toBe("ok");
+    expect((await finalize(c, headers, attemptId, ticket.uploadId)).status).toBe(201);
+    expect(c.staging!.stagedKeys).toEqual([]);
+  });
+
   it("501s where there is no client-direct target (fs store), so the client POSTs instead", async () => {
     const { headers, attemptId } = await ownedAttempt();
     const res = await handleCreateSiteUpload(ctx(null), headers, attemptId);
