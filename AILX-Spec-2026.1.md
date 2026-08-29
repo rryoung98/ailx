@@ -1,7 +1,7 @@
 # AILX — The AI Literacy Examination
 
 **Specification & Technical Design Document**  
-AILX-SPEC-2026.1 · Draft for partner review · 21 August 2026 · Pilot n≈45, Honolulu · Instrument v2026.1, 4 tracks, 400 pts
+AILX-SPEC-2026.1 · Draft for partner review · 21 August 2026 · Instrument v2026.1, 4 tracks, 400 pts
 
 Web version: <https://claude.ai/code/artifact/569a7a59-fcae-4236-a55e-cf68c64a2f37>
 
@@ -17,7 +17,7 @@ There are hundreds of benchmarks for AI systems and effectively none for the peo
 - **Raw points: 400** — 100 per track, reported separately and as a scaled composite
 - **Sitting time: 4h 20m** — Across two sessions, plus an untimed T1 build window
 - **Languages: 3** — English, Japanese, Korean — every item ships in all three
-- **Pilot cohort: 45** — Ages 18–35, US / Japan / Korea, at the 2026 YTL Summit
+- **Scale path: costed to 25,000 sittings** — Infrastructure and scoring priced at 1,000 and 25,000 candidates (§17); founding calibration cohort complete
 - **Re-version: Annual** — New operational form each year; secure anchor block never rotates
 
 ### What is actually being claimed
