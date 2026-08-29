@@ -29,7 +29,13 @@ import {
   type CreatedShare,
 } from "../src/share.js";
 import { appendResponse } from "../src/store.js";
-import { freshDb, openAttempt } from "./helpers.js";
+import {
+  attachSiteSnapshot,
+  freshDb,
+  mirrorScoredRun as mirrorRun,
+  openAttempt,
+  scoredAttempt as scoredRun,
+} from "./helpers.js";
 
 let db: Queryable;
 let ctx: ApiContext;
@@ -38,45 +44,10 @@ beforeAll(async () => {
   ctx = { db, auth: new DevAuthProvider() };
 });
 
-/** Mirror of what apps/web writes: whole session-log entries as responses. */
-async function mirrorScoredRun(
-  attemptId: string,
-  participantId: string,
-  scaled: readonly number[] = [88, 80, 72, 66],
-): Promise<void> {
-  const entries: unknown[] = [
-    {
-      type: "attempt_started",
-      attemptId,
-      seq: 0,
-      ts: 1_767_225_600_000,
-      config: { instrument: "ailx", version: "2026.1", locale: "en", demo: true, budgets: { t1: 1, t2: 1, t3: 1, t4: 1 } },
-    },
-    ...TRACK_IDS.map((t, i) => ({
-      type: "track_scored",
-      trackId: t,
-      seq: i + 1,
-      ts: 1_767_225_600_000 + i + 1,
-      score: { raw: {}, scaled: scaled[i] },
-      rubricVersion: `rv-${t}`,
-      scoringDigest: `sd-${t}`,
-      modelManifest: { screening: "demo-judge@1" },
-    })),
-  ];
-  for (const [i, payload] of entries.entries()) {
-    await appendResponse(db, attemptId, participantId, {
-      seq: i,
-      payload,
-      clientTs: 1_767_225_600_000 + i,
-    });
-  }
-}
-
-async function scoredAttempt(scaled?: readonly number[]) {
-  const { participantId, attempt } = await openAttempt(db);
-  await mirrorScoredRun(attempt.id, participantId, scaled);
-  return { participantId, attemptId: attempt.id };
-}
+/** The mirrored-log fixtures live in ./helpers, shared with every suite. */
+const mirrorScoredRun = (attemptId: string, participantId: string, scaled?: readonly number[]) =>
+  mirrorRun(db, attemptId, participantId, scaled);
+const scoredAttempt = (scaled?: readonly number[]) => scoredRun(db, scaled);
 
 describe("share tokens", () => {
   it("are 43-char base64url and never repeat", () => {
@@ -322,16 +293,8 @@ describe("handlers", () => {
 });
 
 describe("hybrid publication policy", () => {
-  /** Give an attempt a T1 snapshot row so `includeSite` has something to opt into. */
-  async function withSite(attemptId: string, participantId: string, seq = 98) {
-    const digest = `sha256:${"b".repeat(64)}`;
-    await appendResponse(db, attemptId, participantId, {
-      seq,
-      payload: { kind: "t1-site-snapshot", digest, fileCount: 1, totalBytes: 10 },
-      clientTs: 1_767_225_800_000,
-    });
-    return digest;
-  }
+  const withSite = (attemptId: string, participantId: string, seq = 98) =>
+    attachSiteSnapshot(db, attemptId, participantId, seq);
 
   it("decides from the stored payload, not from any request field", () => {
     expect(needsHumanApproval({ site: null })).toBe(false);
