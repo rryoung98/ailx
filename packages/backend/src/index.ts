@@ -60,6 +60,24 @@ export {
   type ShareRecord,
 } from "./share.js";
 export {
+  CREDENTIAL_CODE_BYTES,
+  HOLDER_REVOKED_REASON,
+  REVOKE_REASON_MAX,
+  getCredentialForAttempt,
+  handleGetCredential,
+  handleIssueCredential,
+  handleRevokeCredential,
+  handleVerifyCredential,
+  issueCredential,
+  newCredentialCode,
+  normalizeRevokeReason,
+  ownerCredentialView,
+  resolveCredential,
+  revokeCredential,
+  type CredentialRecord,
+  type OwnerCredential,
+} from "./credential.js";
+export {
   attemptTrend,
   collectWorldAggregates,
   handleWorldAggregates,

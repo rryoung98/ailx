@@ -207,6 +207,49 @@ CREATE TABLE share_views (
 CREATE INDEX share_views_by_share ON share_views (share_id);
 
 -- ---------------------------------------------------------------------------
+-- Credentials (the LinkedIn-shareable claim) — docs/CREDENTIAL.md.
+--
+-- A credential is a PUBLIC, NON-SECRET claim, and that is what makes it a
+-- different object from a share link:
+--   * a share token is a CAPABILITY — a revoked or unknown token 404s, so a
+--     revocation cannot be confirmed from outside;
+--   * a credential CODE is published on a CV, so the honest answer to
+--     "is AILX-2026.1-… still good?" is "no, revoked on <date>, because
+--     <reason>", never a 404. Verification that cannot say "revoked" is not
+--     verification. The code therefore carries 80 bits of entropy only to
+--     make enumeration pointless, not to keep the row secret.
+--
+-- The stored `claim` is the FROZEN allowlist built by @ailx/report
+-- `buildCredentialClaim`: instrument version, completion day, tracks
+-- attempted, player type, artifact path. No score, no band, no percentile —
+-- the judging pipeline does not exist, and a credential that implied one
+-- would be unrecoverable. The SERVED document is derived from this row at
+-- read time (`credentialDocument`), which is what makes revocation immediate
+-- and lets the judged upgrade add a result to already-published credentials
+-- without reissuing a single code.
+--
+-- Revocation is a monotone one-way stamp, exactly like share_links.revoked_at
+-- and attempts.finalized_at: never cleared, never deleted, and always with a
+-- reason, because the reason is shown to whoever is checking.
+CREATE TABLE credentials (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id    uuid NOT NULL REFERENCES attempts(id),
+  code          text NOT NULL UNIQUE,   -- 'AILX-2026.1-XXXX-XXXX-XXXX-XXXX'
+  claim         jsonb NOT NULL,         -- frozen allowlisted credential claim
+  issued_at     timestamptz NOT NULL DEFAULT now(),
+  revoked_at    timestamptz,
+  revoke_reason text,                   -- shown verbatim on /verify
+  -- A revocation is never silent: the stamp and its reason travel together.
+  CONSTRAINT credentials_revocation_recorded
+    CHECK ((revoked_at IS NULL) = (revoke_reason IS NULL))
+);
+
+-- At most one live credential per attempt; revoked rows stay as the trail,
+-- and their codes keep resolving so a published link never dead-ends.
+CREATE UNIQUE INDEX credentials_one_live
+  ON credentials (attempt_id) WHERE revoked_at IS NULL;
+
+-- ---------------------------------------------------------------------------
 -- Practice and streaks (progression loop) — packages/report `practice.ts` /
 -- `progress.ts`, and db/README.md for the migration statements.
 --

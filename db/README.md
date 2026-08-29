@@ -173,3 +173,51 @@ The table is append-only by the same rule as `responses`: no code path issues
 row it replaces, and a retraction inserts an empty one. If a deployment ever
 needs a row gone for a legal reason, that is a deliberate, recorded admin
 action — not something the application can do.
+
+### 2026-09 — credentials
+
+`credentials` is new; nothing existing changes. Apply the table and its
+partial unique index from `schema.sql` verbatim:
+
+```sql
+CREATE TABLE credentials (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  attempt_id    uuid NOT NULL REFERENCES attempts(id),
+  code          text NOT NULL UNIQUE,
+  claim         jsonb NOT NULL,
+  issued_at     timestamptz NOT NULL DEFAULT now(),
+  revoked_at    timestamptz,
+  revoke_reason text,
+  CONSTRAINT credentials_revocation_recorded
+    CHECK ((revoked_at IS NULL) = (revoke_reason IS NULL))
+);
+
+CREATE UNIQUE INDEX credentials_one_live
+  ON credentials (attempt_id) WHERE revoked_at IS NULL;
+```
+
+Rollback is a plain drop. It destroys every issued credential, which means
+every `/verify/<code>` URL a holder has already published — on a CV, on
+LinkedIn — stops resolving. Prefer revoking the rows (which keeps the URL
+answering, honestly) over dropping the table:
+
+```sql
+-- Reversible: the credential keeps verifying, and says it was revoked.
+UPDATE credentials
+   SET revoked_at = now(), revoke_reason = 'withdrawn by AILX'
+ WHERE revoked_at IS NULL;
+
+-- Irreversible.
+DROP TABLE credentials;
+```
+
+Invariants this table carries:
+- The stored `claim` is FROZEN at issue and never updated, like
+  `share_links.payload`. The served document is derived from it at read time,
+  so a revocation is visible immediately and the judged upgrade (spec Phase 4)
+  adds a result to existing credentials without reissuing a code.
+- `revoked_at` is a monotone one-way stamp and never travels without
+  `revoke_reason`: the reason is shown verbatim to whoever is verifying.
+- A revoked code KEEPS RESOLVING, unlike a revoked share token. A credential
+  code is published on a CV, so the honest answer to a stranger is "revoked on
+  <date>, because <reason>", never a 404.
