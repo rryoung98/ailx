@@ -237,20 +237,37 @@ export function PracticeDrill() {
           />
         ))}
       </p>
-      <p className="eyebrow">
-        {FAMILY_META[showing.family].name.toUpperCase()} · {FAMILY_META[showing.family].blurb}
-      </p>
-      <blockquote className={styles.passage}>{showing.passage}</blockquote>
+      {/* The family is deliberately NOT shown before the call. Naming it up
+          front would prime the answer, and the call under test is T2's own:
+          photograph or generated? The family belongs to the teaching, so it
+          appears with the tell. */}
+      <figure className={styles.plate}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- a static
+            export cannot use the Image optimiser, and the corpus assets are
+            already budgeted and content-addressed. */}
+        <img
+          className={styles.image}
+          src={assetUrl(`/${showing.material.src}`)}
+          alt={showing.material.alt}
+          width={800}
+          height={600}
+        />
+        {/* CC-BY / CC-BY-SA require attribution wherever the work is shown. */}
+        <figcaption className={styles.credit}>
+          <a href={showing.credit.source_url} rel="noopener noreferrer" target="_blank">
+            {showing.credit.commons_title.replace(/^File:/, "")}
+          </a>{" "}
+          · {showing.credit.author} · {showing.credit.license} · via Wikimedia Commons
+        </figcaption>
+      </figure>
 
       {phase === "card" ? (
         <>
-          <p className="small faint">
-            Does this passage carry a {FAMILY_META[showing.family].name.toLowerCase()}?
-          </p>
+          <p className="small faint">Is this a photograph, or an AI-generated image?</p>
           <div className={styles.calls}>
             {PRACTICE_OPTIONS.map((label, choice) => (
               <button key={label} type="button" className={styles.call} onClick={() => answer(choice)}>
-                {choice === 0 ? "Artefact — something is wrong" : "Clean — nothing is wrong"}
+                {label}
               </button>
             ))}
           </div>
@@ -263,8 +280,9 @@ export function PracticeDrill() {
             <span className={last!.correct ? styles.rightText : styles.wrongText}>
               {last!.correct ? "Right." : "Missed it."}
             </span>{" "}
-            It was {last!.item.key === 0 ? "an artefact" : "clean"}.
+            It was {PRACTICE_OPTIONS[last!.item.key].toLowerCase()}.
           </p>
+          <p className="eyebrow">{FAMILY_META[last!.item.family].name.toUpperCase()}</p>
           <p className={styles.tell}>{last!.item.tell}</p>
           <p>
             <button type="button" className={styles.restart} onClick={() => void next()}>

@@ -17,7 +17,7 @@ import { isServerMode } from "../../lib/mode";
 export const metadata: Metadata = {
   title: "AILX — practice the tells",
   description:
-    "A short, unscored training round on the durable artefact families, with immediate feedback on every card. Practice never draws on the scored item bank.",
+    "A short, unscored training round on the durable artefact families: real photograph or AI-generated image, with the tell shown on every card. Practice never draws on the scored item bank.",
 };
 
 export default function PracticePage() {
@@ -27,10 +27,10 @@ export default function PracticePage() {
         <p className="eyebrow">PRACTICE · UNSCORED · {PRACTICE_DECK_SIZE} CARDS</p>
         <h1 style={{ maxWidth: "20ch" }}>Practise the tells.</h1>
         <p className="lede">
-          A short round on the three artefact families that survive model generations, with the
-          answer and the reason shown the moment you call it. Published work moved typical
-          participants from 31% to 51% detection in about five minutes of exactly this — being
-          shown the thing you looked straight past is the teaching.
+          Real photographs and real AI-generated images, one at a time, with the answer and the
+          reason the moment you call it. Published work moved typical participants from 31% to
+          51% detection in about five minutes of exactly this — being shown the thing you looked
+          straight past is the teaching.
         </p>
 
         <PracticeDrill />
@@ -50,17 +50,20 @@ export default function PracticePage() {
           <h2 id="honest">What this is, and what it is not</h2>
           <p className="muted" style={{ maxWidth: "62ch" }}>
             Practice is <strong>not the examination</strong> and never touches it. It draws on a
-            separate corpus of {PRACTICE_BANK.length} written passages, kept apart from the scored
-            item bank on purpose: a bank item somebody has practised is a dead item, and there is
-            no way to un-teach an answer. Nothing you do here is scored, reaches a report figure,
-            or changes a result.
+            separate corpus of {PRACTICE_BANK.length} images, kept apart from the scored item bank
+            on purpose: a bank item somebody has practised is a dead item, and there is no way to
+            un-teach an answer. Nothing you do here is scored, reaches a report figure, or changes
+            a result.
           </p>
           <p className="small faint" style={{ maxWidth: "62ch" }}>
-            Honest about the corpus: these {PRACTICE_BANK.length} passages are a hand-written
-            placeholder set. They drill the artefact families in text and they train real
-            attention, but they are not the examination&rsquo;s authentic-versus-synthetic media
-            call — that drill needs a licensed human-written and model-generated media corpus,
-            which is content work, not code.{" "}
+            Honest about the corpus. Every picture here is real and freely licensed — genuine
+            photographs and genuine model-generated images, all from Wikimedia Commons under CC0,
+            CC-BY, CC-BY-SA or public domain, credited under each card. It is a{" "}
+            <strong>small</strong> set, and the three families are not equally deep: the
+            sociocultural side of the generated half is the thinnest, because a generated picture
+            has to be culturally specific before it can be culturally wrong. So a round repeats
+            material sooner than the scored deck would, and the drill is training, not a measure
+            of anything.{" "}
             {isServerMode() ? (
               <>
                 Your rounds are recorded and your streak is worked out on the server.{" "}

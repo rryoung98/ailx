@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { PRACTICE_BANK, PRACTICE_DECK_SIZE } from "@ailx/report";
+import { FAMILY_META, PRACTICE_BANK, PRACTICE_DECK_SIZE } from "@ailx/report";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -84,10 +84,10 @@ async function click(match: RegExp): Promise<void> {
   });
 }
 
-/** Play the whole deck, always calling "Artefact". */
+/** Play the whole deck, always calling "AI-generated". */
 async function playThrough(): Promise<void> {
   for (let i = 0; i < PRACTICE_DECK_SIZE; i++) {
-    await click(/Artefact/);
+    await click(/AI-generated/);
     await click(/Next card|Finish the round/);
   }
 }
@@ -116,25 +116,36 @@ describe("hosted build", () => {
     await mount(true);
     expect(posted[0].url).toMatch(/\/api\/practice$/);
     const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
-    expect(host.textContent).toContain(first.passage);
+    const shown = host.querySelectorAll("img");
+    expect(shown).toHaveLength(1);
+    expect(shown[0].getAttribute("src")).toContain(first.material.src);
+    // Alt text is the screen-reader's copy of the card, so it must be there.
+    expect(shown[0].getAttribute("alt")).toBe(first.material.alt);
+    // Attribution is a licence condition, not a nicety: it ships with the card.
+    expect(host.textContent).toContain(first.credit.license);
+    expect(host.textContent).toContain(first.credit.author);
     // The next card is not on screen yet — exposure is one card at a time.
     const second = PRACTICE_BANK.find((i) => i.id === dealt[1])!;
-    expect(host.textContent).not.toContain(second.passage);
+    expect(shown[0].getAttribute("src")).not.toContain(second.material.src);
+    // And the family is NOT named before the call, or it would prime it.
+    expect(host.textContent).not.toContain(FAMILY_META[first.family].name);
   });
 
   it("gives immediate right/wrong feedback with the teaching", async () => {
     await mount(true);
     const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
-    await click(first.key === 0 ? /Artefact/ : /Clean/);
+    await click(first.key === 0 ? /AI-generated/ : /Real photograph/);
     expect(host.textContent).toContain("Right.");
     expect(host.textContent).toContain(first.tell);
+    // The family arrives WITH the teaching, not before the call.
+    expect(host.textContent).toContain(FAMILY_META[first.family].name.toUpperCase());
     expect(host.querySelector('[role="status"]')).toBeTruthy();
   });
 
   it("names a miss as a miss and still teaches the tell", async () => {
     await mount(true);
     const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
-    await click(first.key === 0 ? /Clean/ : /Artefact/);
+    await click(first.key === 0 ? /Real photograph/ : /AI-generated/);
     expect(host.textContent).toContain("Missed it.");
     expect(host.textContent).toContain(first.tell);
   });
@@ -182,7 +193,7 @@ describe("static export build", () => {
   it("plays with no server at all and calls nothing", async () => {
     await mount(false);
     expect(posted).toEqual([]);
-    expect(host.textContent).toMatch(/Does this passage carry/);
+    expect(host.textContent).toMatch(/Is this a photograph, or an AI-generated image\?/);
   });
 
   it("says plainly that nothing was recorded and shows no streak", async () => {

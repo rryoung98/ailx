@@ -27,6 +27,30 @@
 .pipDone { background: var(--accent); }
 .pipCurrent { background: var(--fg); }
 
+.plate {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--bg-raised);
+}
+
+/* Attribution is a licence obligation, not a caption: small, but always on. */
+.credit {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
 .passage {
   font-family: var(--serif);
   font-size: 1.15rem;
