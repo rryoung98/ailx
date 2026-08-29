@@ -126,7 +126,20 @@ export interface PracticeImage {
   kind: "image";
   src: string;
   alt: string;
+  /**
+   * Set only when the picture is NOT photorealistic. A painterly or rendered
+   * image can be called from its style in a second, so the candidate never
+   * reaches the artefact and learns "painterly = generated" — which fails on
+   * genuine paintings and on photorealistic generations alike. Carrying the
+   * caveat as data lets the page say so (docs/PROGRESSION.md §2.2) instead of
+   * letting the shortcut work silently.
+   */
+  style?: PracticeStyle;
 }
+
+/** Non-photorealistic renditions the corpus admits, and declares. */
+export const PRACTICE_STYLES = ["painterly", "render"] as const;
+export type PracticeStyle = (typeof PRACTICE_STYLES)[number];
 
 export type PracticeMaterial = PracticeImage;
 

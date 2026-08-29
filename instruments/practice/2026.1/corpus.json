@@ -1,5 +1,5 @@
 {
-  "version": "practice-2026.1-media-1",
+  "version": "practice-2026.1-media-2",
   "generated_by": "instruments/practice/2026.1/tools/build-practice-corpus.py",
   "items": [
     {
@@ -7,10 +7,10 @@
       "family": "function",
       "key": "synthetic",
       "difficulty": "easy",
-      "tell": "The carriage has two wheels of clearly different diameters on the same side, and the shafts that ought to run to the horse's collar simply stop in the air behind it. The animal is not attached to anything.",
+      "tell": "Nothing connects the horse to the carriage. There are no shafts, no traces and no swingletree — the harness straps end in mid-air on the animal's flank while the vehicle stands behind it as though being drawn. Look for the load path before you look at the style.",
       "material": {
         "kind": "image",
-        "src": "practice-media/e54061065998.jpg",
+        "src": "practice-media/0eb398f1bf8d.jpg",
         "alt": "A colonnaded street of a grand arcaded building at low sun, with a horse and a covered carriage standing on the cobbles."
       },
       "credit": {
@@ -24,36 +24,16 @@
       }
     },
     {
-      "id": "practice:function:balcony-ironwork",
-      "family": "function",
-      "key": "synthetic",
-      "difficulty": "hard",
-      "tell": "The first-floor balcony over the door has ironwork that never repeats — a cast balustrade is made from one mould, so its pattern must repeat exactly, and this one is a tangle that no foundry could cast.",
-      "material": {
-        "kind": "image",
-        "src": "practice-media/6b339dea6b65.jpg",
-        "alt": "A symmetrical stone country house of two storeys with a slate mansard roof, seen down a gravel path across a stream."
-      },
-      "credit": {
-        "commons_title": "File:Château de Bettancourt02 sepia.png",
-        "author": "chat gpt",
-        "license": "Public domain",
-        "source_url": "https://commons.wikimedia.org/wiki/File:Ch%C3%A2teau_de_Bettancourt02_sepia.png",
-        "retrieved": "2026-08-29",
-        "derivative": "re-encoded JPEG, max edge 800px",
-        "generator_evidence": "AI-generated"
-      }
-    },
-    {
       "id": "practice:function:donkey-cart",
       "family": "function",
       "key": "synthetic",
       "difficulty": "easy",
-      "tell": "Follow the cart. Its shaft disappears into the donkey's flank instead of reaching a harness point, and a third wheel sits behind the pair that carry the axle. Every part is drawn well and then joined in a way that could never roll.",
+      "tell": "The painted finish is not the evidence — paintings are not fakes, and a photograph can be styled to look like one. The wheel is: a third spoked wheel stands under the donkey's belly, ahead of the cart's own wheel and on a different line, joined to no axle, no frame and no hub. Ask what carries the load before you judge the surface.",
       "material": {
         "kind": "image",
-        "src": "practice-media/d3a3b3008057.jpg",
-        "alt": "A donkey drawing a wooden cart along a dirt road, a man standing on the cart behind a person lying under a blanket."
+        "src": "practice-media/868797bb5749.jpg",
+        "alt": "A donkey drawing a wooden cart along a dirt road, a man standing on the cart behind a person lying under a blanket.",
+        "style": "painterly"
       },
       "credit": {
         "commons_title": "File:Burro Ambulancia.jpg",
@@ -70,11 +50,11 @@
       "family": "function",
       "key": "authentic",
       "difficulty": "medium",
-      "tell": "The whole rig looks improvised — rope harness, timber bed, motor-car wheels — and every part of it still closes: shafts to yoke, yoke to animals, one axle carrying both wheels. Trace the linkage before you call it. Working vehicles are often ugly and always connected.",
+      "tell": "The rig is improvised — a timber bed on a steel frame, motor-car wheels, chain traces — and every joint still closes: chain from the animals to the shaft, shaft to the cart, wheel on the hub it turns on. Trace the linkage before you call it. Working vehicles are often ugly and always connected.",
       "material": {
         "kind": "image",
-        "src": "practice-media/e98b26b84da7.jpg",
-        "alt": "Two donkeys drawing a flat wooden cart on rubber-tyred wheels along a dirt road, with two men riding on it."
+        "src": "practice-media/32650e76d7ee.jpg",
+        "alt": "A team of donkeys drawing a flat wooden cart on motor-car wheels along a dirt road, with two men riding on it."
       },
       "credit": {
         "commons_title": "File:Liberty Mugari.jpg",
@@ -90,10 +70,10 @@
       "family": "function",
       "key": "synthetic",
       "difficulty": "medium",
-      "tell": "Several pieces are cuts no mushroom has: a cap showing dark gills on its upper face, a stalk leaving a crown from the wrong side. Food is a good place to look — texture is easy to fake, anatomy is not.",
+      "tell": "Several pieces are cuts no mushroom has — a dark gilled hollow opening in the middle of a smooth dome, and a piece that closes into a hollow ring. Food is a good place to look: texture is easy to fake, anatomy is not.",
       "material": {
         "kind": "image",
-        "src": "practice-media/4ca10b62f0a8.jpg",
+        "src": "practice-media/f6353153e8b4.jpg",
         "alt": "A dark bowl of golden fried mushroom pieces scattered with chopped herbs, on a dark wooden table."
       },
       "credit": {
@@ -102,7 +82,7 @@
         "license": "CC BY-SA 4.0",
         "source_url": "https://commons.wikimedia.org/wiki/File:%D7%A4%D7%98%D7%A8%D7%99%D7%95%D7%AA_%D7%9E%D7%98%D7%95%D7%92%D7%A0%D7%95%D7%AA.png",
         "retrieved": "2026-08-29",
-        "derivative": "re-encoded JPEG, max edge 800px",
+        "derivative": "re-encoded JPEG, max edge 800px, cropped to reframe, so the aspect ratio carries no signal",
         "generator_evidence": "AI-generated"
       }
     },
@@ -111,11 +91,11 @@
       "family": "function",
       "key": "authentic",
       "difficulty": "medium",
-      "tell": "Every piece is a consistent part of one kind of mushroom — cap, ridged underside and stalk in the right relationship, torn rather than cut. Real food varies in size and never in anatomy.",
+      "tell": "Every piece is a consistent part of one mushroom species — cap, gilled underside and stalk in the right relationship — and each cut edge matches the flesh it came from. Real food varies in size; it never varies in anatomy.",
       "material": {
         "kind": "image",
-        "src": "practice-media/c21f4cb872da.jpg",
-        "alt": "Chanterelle mushrooms and sliced onion cooking in a pan with a wooden spoon."
+        "src": "practice-media/92e2816b8438.jpg",
+        "alt": "Orange mushrooms and sliced onion cooking in a pan with a wooden spoon."
       },
       "credit": {
         "commons_title": "File:Frying red pine mushrooms in a pan (54064465568).jpg",
@@ -134,7 +114,7 @@
       "tell": "Rows of near-identical bowls look like a tiled texture, and tiling is a genuine tell — but here each bowl holds a different count heaped to a different height with its own shadow. Repetition with variation is a stall; repetition without it is a texture.",
       "material": {
         "kind": "image",
-        "src": "practice-media/7aabd26700b1.jpg",
+        "src": "practice-media/737061693633.jpg",
         "alt": "Rows of small coloured plastic bowls holding chillies, berries and beans on a market stall."
       },
       "credit": {
@@ -143,7 +123,7 @@
         "license": "CC BY-SA 4.0",
         "source_url": "https://commons.wikimedia.org/wiki/File:Capsicum_baccatum_in_Sa%C3%BAde_flea_market,_S%C3%A3o_Paulo,_Brazil.jpg",
         "retrieved": "2026-08-29",
-        "derivative": "re-encoded JPEG, max edge 800px"
+        "derivative": "re-encoded JPEG, max edge 800px, cropped to reframe, so the aspect ratio carries no signal"
       }
     },
     {
@@ -154,7 +134,7 @@
       "tell": "The monitor is mounted on a slab that is half keyboard and half plinth — not a laptop, not a stand, not any object that could hold a screen up. Generators assemble the PARTS of familiar things without the joint that makes them work.",
       "material": {
         "kind": "image",
-        "src": "practice-media/abd6610c9bea.jpg",
+        "src": "practice-media/66826f61c6cb.jpg",
         "alt": "A flat-panel monitor showing a goldfish, standing in long meadow grass under a bright sun and scattered cloud."
       },
       "credit": {
@@ -175,8 +155,8 @@
       "tell": "An unfamiliar machine is not an impossible one. Follow it through: the operator sits over the drive, the crates rest on the bed that carries them, and the flattened track behind matches its wheels.",
       "material": {
         "kind": "image",
-        "src": "practice-media/2224b86c3f61.jpg",
-        "alt": "A person riding a low motorised trolley loaded with crates of seedlings along a grass track between planted rows."
+        "src": "practice-media/2a37d6c58497.jpg",
+        "alt": "A person driving a small tractor along a grass track, with four baskets of leafy seedlings carried on a rear frame."
       },
       "credit": {
         "commons_title": "File:Harvest (20110505-RD-LSC-0157).jpg",
@@ -192,10 +172,10 @@
       "family": "function",
       "key": "synthetic",
       "difficulty": "medium",
-      "tell": "Look at the tall jar. Its contents repeat as near-identical stamped discs in rows, which is a tiled texture rather than a jar of real produce, and the loose mushrooms around it are species hybrids.",
+      "tell": "Look at the tall jar. Its contents repeat as near-identical stamped discs in rows, which is a tiled texture rather than a jar of real produce, and the loose mushrooms do not settle on one species — one cap is furred, its neighbour smooth, and the same stalk carries both gills and pores.",
       "material": {
         "kind": "image",
-        "src": "practice-media/31fd794e5d88.jpg",
+        "src": "practice-media/53426c92a999.jpg",
         "alt": "A still life of mushrooms, preserving jars, a bowl of red-capped fungi and books on a cloth-covered table."
       },
       "credit": {
@@ -213,10 +193,10 @@
       "family": "function",
       "key": "authentic",
       "difficulty": "easy",
-      "tell": "Styled, overhead, plain background: the look of a generated stock shot. The seeds settle it — their scatter is different on every bun, and no two buns share an outline.",
+      "tell": "An overhead food shot is the format generators imitate, so the reflex is to distrust it. The seeds settle it: the scatter is different on every bun, seeds sit on the crust and on the cloth around the plate, and no two buns share an outline.",
       "material": {
         "kind": "image",
-        "src": "practice-media/74e66b446aab.jpg",
+        "src": "practice-media/dbf60815ed2a.jpg",
         "alt": "Three round sesame-topped buns arranged on a long dark plate, seen from directly above."
       },
       "credit": {
@@ -236,7 +216,7 @@
       "tell": "The horn is woven in believable rows at its mouth, then the weave dissolves into a smooth spiral at the tip that no basket could be made in. Regular manufactured pattern that stops being regular is the tell.",
       "material": {
         "kind": "image",
-        "src": "practice-media/690c0fcdaa6d.jpg",
+        "src": "practice-media/5130b2aba3d0.jpg",
         "alt": "A wicker cornucopia spilling fruit and gourds across a bare wooden table against dark panelling."
       },
       "credit": {
@@ -257,7 +237,7 @@
       "tell": "The colour is doing the lying here, not the picture. Saturation is a processing choice; what matters is that the stone courses run continuously into the curve of the apse and the shadows all agree. Vivid is not evidence.",
       "material": {
         "kind": "image",
-        "src": "practice-media/f9b3a545c589.jpg",
+        "src": "practice-media/f1f934a75fd3.jpg",
         "alt": "A small stone church with a rounded apse standing among yellow autumn trees under a deep blue sky."
       },
       "credit": {
@@ -266,7 +246,7 @@
         "license": "CC BY-SA 4.0",
         "source_url": "https://commons.wikimedia.org/wiki/File:Kaplica_grobowa_rodziny_Potockich_P1680784_Peczera.jpg",
         "retrieved": "2026-08-29",
-        "derivative": "re-encoded JPEG, max edge 800px"
+        "derivative": "re-encoded JPEG, max edge 800px, cropped to reframe, so the aspect ratio carries no signal"
       }
     },
     {
@@ -274,10 +254,10 @@
       "family": "physics",
       "key": "synthetic",
       "difficulty": "medium",
-      "tell": "Low golden-light rakes the chapel from the left, and the building lays no shadow at all across the grass or the stone path beside it. A generator copies the LOOK of late light without running the geometry that light implies.",
+      "tell": "The picture wears late golden light, yet nothing in it has a shadow — not the chapel, not the bush, not the dry-stone wall. Both faces of the building are lit equally, so there is no direction to the sun at all. A generator copies the LOOK of late light without running the geometry that light implies.",
       "material": {
         "kind": "image",
-        "src": "practice-media/8224b5284369.jpg",
+        "src": "practice-media/3f7b8b77c076.jpg",
         "alt": "A small stone chapel with a tiled roof and a roof cross, on a grassy hilltop behind dry-stone walls."
       },
       "credit": {
@@ -298,7 +278,7 @@
       "tell": "It looks impossible because it is a long exposure. A slow shutter is what smears cloud into streaks and turns one small lamp into a steady glow. An unusual camera setting is not an artefact.",
       "material": {
         "kind": "image",
-        "src": "practice-media/03c6ae318c8e.jpg",
+        "src": "practice-media/83a8ef7fa6e3.jpg",
         "alt": "A tiny chapel on a rocky summit at night, one window lit, under a dark streaked sky."
       },
       "credit": {
@@ -318,7 +298,7 @@
       "tell": "The brick banding is so regular that it reads as a tiled texture. Check it the way you would check a generator: the bands run unbroken around every corner and behind every downpipe, and every buttress shadow falls the same way. Regularity that survives inspection is masonry.",
       "material": {
         "kind": "image",
-        "src": "practice-media/8a161f725bab.jpg",
+        "src": "practice-media/2192502efd63.jpg",
         "alt": "A large Victorian chapel in banded red and cream brick with tall traceried windows, on a lawn under a blue sky."
       },
       "credit": {
@@ -327,7 +307,7 @@
         "license": "CC BY-SA 3.0",
         "source_url": "https://commons.wikimedia.org/wiki/File:Keble_College_Chapel_Exterior,_Oxford,_UK_-_Diliff.jpg",
         "retrieved": "2026-08-29",
-        "derivative": "re-encoded JPEG, max edge 800px"
+        "derivative": "re-encoded JPEG, max edge 800px, cropped to reframe, so the aspect ratio carries no signal"
       }
     },
     {
@@ -335,11 +315,11 @@
       "family": "physics",
       "key": "authentic",
       "difficulty": "medium",
-      "tell": "Water is where generated pictures usually come apart, so it is worth trusting when it holds. This reflection inverts the facade, keeps every window in its order, and softens with distance exactly as a real surface does.",
+      "tell": "Wind has broken the moat into chop, so there is no mirror image to check — and that is not suspicious. A rippled surface scatters the sky instead of returning the building; you only get a reflection when the water is still. What holds instead is the waterline: the chop shrinks and its contrast falls smoothly towards the far bank, the swans sit in the water rather than on it, and the balustrade shadows agree with the sun. An absent reflection is a fact about the weather, not about the pipeline.",
       "material": {
         "kind": "image",
-        "src": "practice-media/2f437919fc99.jpg",
-        "alt": "A long baroque brick palace with pale stone dressings, seen across a wide expanse of still water."
+        "src": "practice-media/e35d0d164fea.jpg",
+        "alt": "A long baroque brick palace with pale stone dressings, seen across a wide expanse of wind-rippled water."
       },
       "credit": {
         "commons_title": "File:Nordkirchen, Schloss Nordkirchen -- 2015 -- 7797.jpg",
@@ -355,10 +335,10 @@
       "family": "physics",
       "key": "synthetic",
       "difficulty": "medium",
-      "tell": "Two lamp-posts of the same design stand on the same flat promenade, yet one is markedly taller than the other and neither base meets the paving cleanly. Repeated street furniture is a ruler: a real one keeps its scale across the frame.",
+      "tell": "The sun is hard enough to put crisp shadows under the visitors and their benches, yet the lamp-posts and the parapet lay none at all on the paving. It is the DISAGREEMENT that convicts, not the absence: objects sharing one plaza share one sun, and this scene was lit item by item instead of being solved once.",
       "material": {
         "kind": "image",
-        "src": "practice-media/73a8ceeea69c.jpg",
+        "src": "practice-media/0aea741d8272.jpg",
         "alt": "A lakeside promenade with benches, lamp-posts and many visitors, a city skyline and a large statue across the water."
       },
       "credit": {
@@ -376,11 +356,12 @@
       "family": "physics",
       "key": "synthetic",
       "difficulty": "easy",
-      "tell": "The sun is high and to the right, the air is hazy with it, and not one of these towers drops a shadow onto the parkland below. Tall objects on a sunlit plain always lay long shadows somewhere.",
+      "tell": "Glass is a mirror. These towers are glazed top to bottom in bright hazy sun and not one pane returns anything — no sky, no cloud, no neighbouring tower, no bright edge where a face turns — while the ponds below them mirror the trees perfectly well. Ask what a surface ought to be reflecting, not only where the shadows are.",
       "material": {
         "kind": "image",
-        "src": "practice-media/e9a4ea1ad253.jpg",
-        "alt": "An elevated view over a city of glass towers threaded with waterways, woodland and low roofs with solar panels."
+        "src": "practice-media/143a10347240.jpg",
+        "alt": "An elevated view over a city of glass towers threaded with waterways, woodland and low roofs with solar panels.",
+        "style": "render"
       },
       "credit": {
         "commons_title": "File:Solarpunk, a positive possible near-future.jpg",
@@ -388,7 +369,7 @@
         "license": "CC0",
         "source_url": "https://commons.wikimedia.org/wiki/File:Solarpunk,_a_positive_possible_near-future.jpg",
         "retrieved": "2026-08-29",
-        "derivative": "re-encoded JPEG, max edge 800px",
+        "derivative": "re-encoded JPEG, max edge 800px, cropped to reframe, so the aspect ratio carries no signal",
         "generator_evidence": "generated by"
       }
     },
@@ -400,7 +381,7 @@
       "tell": "The crest and lettering on the uniform dissolve into unreadable marks at a resolution where individual stitches are sharp. An institution's insignia is a claim about which institution — and this one names nothing.",
       "material": {
         "kind": "image",
-        "src": "practice-media/4fdcc17f6120.jpg",
+        "src": "practice-media/cd436a971255.jpg",
         "alt": "A large hall of students in white polo shirts and face masks writing at individual desks."
       },
       "credit": {
@@ -421,7 +402,7 @@
       "tell": "This is what a real crowd encodes: different trades, ages and styles of dress in one frame, some people carrying loads on the head and some not. A generated crowd tends to dress everybody the same way.",
       "material": {
         "kind": "image",
-        "src": "practice-media/830173d82390.jpg",
+        "src": "practice-media/f0e85694fc56.jpg",
         "alt": "A busy open-air market street lined with stalls under canopies, with many shoppers walking between them."
       },
       "credit": {
@@ -438,10 +419,10 @@
       "family": "social",
       "key": "authentic",
       "difficulty": "medium",
-      "tell": "The signage is the check. Every sign is real language in a real script, spelled consistently, with a global brand name sitting among the local ones — which is exactly how such a street reads. Generated signage collapses into letter-shaped marks.",
+      "tell": "The signage is the check, and you do not need to read the script to run it: the same letterforms recur, correctly formed, across two lines of one board and again on its neighbours, with a global brand name spelled correctly among the local ones. Generated signage melts between signs into letter-shaped marks.",
       "material": {
         "kind": "image",
-        "src": "practice-media/c125799ad912.jpg",
+        "src": "practice-media/a96b9aed53a3.jpg",
         "alt": "A narrow city street with parked motorcycles, a handcart and shopfronts with painted signs."
       },
       "credit": {
@@ -458,11 +439,12 @@
       "family": "social",
       "key": "synthetic",
       "difficulty": "hard",
-      "tell": "Everybody wears a variation of the same draped robe — the traders at their stalls, the children, the crowd on the steps. Real societies write rank, trade and age into clothing; a population dressed as one costume is a culture with no structure in it.",
+      "tell": "Look for what people are DOING, not what they wear. The stalls stand laden but nobody buys, nobody carries a load, leads an animal or works; and the tiered seating is full of an audience facing an empty plaza with nothing staged in front of it. The generator drew a population and forgot to give it business.",
       "material": {
         "kind": "image",
-        "src": "practice-media/21d242e00e0a.jpg",
-        "alt": "A wide sunlit plaza before a columned temple, crowded with people in robes, with tiered stone seating to one side."
+        "src": "practice-media/9582563e02be.jpg",
+        "alt": "A wide sunlit plaza before a columned temple, crowded with people in robes, with tiered stone seating to one side.",
+        "style": "render"
       },
       "credit": {
         "commons_title": "File:Sanctuary of Ercole Vincitore Tivoli Render Model Inside Gemini-generated.png",
@@ -470,7 +452,7 @@
         "license": "Public domain",
         "source_url": "https://commons.wikimedia.org/wiki/File:Sanctuary_of_Ercole_Vincitore_Tivoli_Render_Model_Inside_Gemini-generated.png",
         "retrieved": "2026-08-29",
-        "derivative": "re-encoded JPEG, max edge 800px",
+        "derivative": "re-encoded JPEG, max edge 800px, cropped to reframe, so the aspect ratio carries no signal",
         "generator_evidence": "Gemini"
       }
     },
@@ -482,7 +464,7 @@
       "tell": "An unfamiliar building type reads as invented, and this is a real vernacular form. The render, the water staining and the vegetation are all consistent with one neglected structure. Unfamiliar is not the same as wrong.",
       "material": {
         "kind": "image",
-        "src": "practice-media/b2a3a42a896f.jpg",
+        "src": "practice-media/f5e60d898382.jpg",
         "alt": "A small whitewashed wayside shrine with a domed top and an arched opening, standing beside an overgrown bank."
       },
       "credit": {
