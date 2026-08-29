@@ -7,11 +7,32 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { SITE_INDEX, siteUrlPath } from "@ailx/backend";
 import { FsSnapshotStore, snapshotFromZip } from "@ailx/backend/t1";
 import { buildSiteZip } from "../lib/siteUpload";
 import { snapshotDir } from "../lib/server/site";
+
+/**
+ * Serving is reachability-gated: bytes are served only while a `responses`
+ * row records their digest (P1-1 — a rejected upload must publish nothing).
+ * The route takes its DB session from withApiContext; the SQL itself is
+ * covered against real Postgres in @ailx/backend's PGlite suite, so here the
+ * session is a stub over the set of recorded digests.
+ */
+const recorded = vi.hoisted(() => new Set<string>());
+
+vi.mock("../lib/server/api", () => ({
+  withApiContext: async (fn: (ctx: { db: unknown; auth: unknown }) => unknown) =>
+    fn({
+      db: {
+        query: async (_text: string, params?: unknown[]) => ({
+          rows: recorded.has(String(params?.[1])) ? [{ ok: 1 }] : [],
+        }),
+      },
+      auth: {},
+    }),
+}));
 
 const routePath = (rel: string) => new URL(`../app/api/${rel}/route.api.ts`, import.meta.url);
 const routeSource = (rel: string) => readFileSync(routePath(rel), "utf8");
@@ -65,6 +86,7 @@ describe("GET /api/site/[digest]/[[...path]]", () => {
     );
     digest = snapshot.digest;
     await new FsSnapshotStore(dir).put(snapshot);
+    recorded.add(digest);
     ({ GET } = await import("../app/api/site/[digest]/[[...path]]/route.api"));
   });
 
@@ -224,5 +246,22 @@ describe("GET /api/site/[digest]/[[...path]]", () => {
     // A malformed digest never reaches the store.
     const res3 = await GET(request("/api/site/not-a-digest/index.html"), params("not-a-digest", [SITE_INDEX]));
     expect(res3.status).toBe(404);
+  });
+
+  it("404s stored bytes that NO response row records (orphan snapshot)", async () => {
+    // The P1-1 attack residue: bytes on disk, nothing in the DB pointing at
+    // them. The digest is a valid capability and the manifest resolves — the
+    // record is what is missing, and that is enough to serve nothing.
+    const orphan = snapshotFromZip(buildSiteZip([{ path: "index.html", data: bytes("<h1>orphan</h1>") }]));
+    await new FsSnapshotStore(dir).put(orphan);
+    const res = await GET(request(siteUrlPath(orphan.digest)), params(orphan.digest, [SITE_INDEX]));
+    expect(res.status).toBe(404);
+    expect(await res.text()).not.toContain("orphan");
+
+    // Recording it is exactly what makes it servable.
+    recorded.add(orphan.digest);
+    const after = await GET(request(siteUrlPath(orphan.digest)), params(orphan.digest, [SITE_INDEX]));
+    expect(after.status).toBe(200);
+    recorded.delete(orphan.digest);
   });
 });

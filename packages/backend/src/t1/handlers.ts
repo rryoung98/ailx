@@ -16,7 +16,8 @@
 
 import type { ApiContext, ApiResult } from "../handlers.js";
 import { withParticipant } from "../handlers.js";
-import { appendResponse, getAttempt } from "../store.js";
+import { appendResponse, getAttempt, type AppendResult } from "../store.js";
+import type { Queryable } from "../db.js";
 import type { HeaderMap } from "../auth.js";
 import { T1_SITE_RESPONSE_KIND, canonicalSitePath, siteUrlPath } from "../site-url.js";
 import { SnapshotError, type SnapshotErrorCode } from "./errors.js";
@@ -28,6 +29,57 @@ export { T1_SITE_RESPONSE_KIND };
 export interface T1ApiContext extends ApiContext {
   snapshots: SnapshotStore;
 }
+
+/**
+ * What the serve path needs: the snapshot bytes and the DB session that says
+ * whether they are still recorded. Structurally satisfied by T1ApiContext.
+ */
+export interface SiteServeContext {
+  db: Queryable;
+  snapshots: SnapshotStore;
+}
+
+/**
+ * Partial unique index in db/schema.sql — ONE site row per attempt. The
+ * name is matched on the Postgres error, so it lives next to the code that
+ * interprets it.
+ */
+export const T1_SITE_UNIQUE_INDEX = "responses_one_t1_site_per_attempt";
+
+/** The already-recorded site submission for an attempt, if any. */
+async function recordedSubmission(
+  db: Queryable,
+  attemptId: string,
+): Promise<{ id: string; digest: string } | null> {
+  const { rows } = await db.query(
+    `SELECT id, payload->>'digest' AS digest FROM responses
+     WHERE attempt_id = $1 AND payload->>'kind' = $2
+     ORDER BY seq LIMIT 1`,
+    [attemptId, T1_SITE_RESPONSE_KIND],
+  );
+  const row = rows[0];
+  return row === undefined ? null : { id: String(row.id), digest: row.digest as string };
+}
+
+/** Did this write lose the one-submission-per-attempt race in the DB? */
+function isOneSitePerAttemptViolation(err: unknown): boolean {
+  const e = err as { code?: unknown; constraint?: unknown; message?: unknown };
+  if (e?.code !== "23505") return false;
+  return (
+    e.constraint === T1_SITE_UNIQUE_INDEX ||
+    (typeof e.message === "string" && e.message.includes(T1_SITE_UNIQUE_INDEX))
+  );
+}
+
+const ALREADY_SUBMITTED: ApiResult = {
+  status: 409,
+  body: {
+    error: {
+      code: "already_submitted",
+      message: "attempt already has a site submission — submissions are append-only",
+    },
+  },
+};
 
 /** Size violations are 413; every other rejection is a plain 400. */
 const OVERSIZE_CODES: ReadonlySet<SnapshotErrorCode> = new Set([
@@ -78,41 +130,47 @@ export async function handleUploadSite(
       throw err;
     }
 
-    // One submission per attempt. Best-effort pre-check; the append-only
-    // store means a lost race leaves two rows rather than an overwrite, and
-    // scoring reads the FIRST snapshot row deterministically.
-    const { rows } = await ctx.db.query(
-      `SELECT payload->>'digest' AS digest FROM responses
-       WHERE attempt_id = $1 AND payload->>'kind' = $2
-       ORDER BY seq LIMIT 1`,
-      [attemptId, T1_SITE_RESPONSE_KIND],
-    );
-    const existing = rows[0]?.digest as string | undefined;
-    if (existing !== undefined && existing !== snapshot.digest) {
-      return {
-        status: 409,
-        body: {
-          error: {
-            code: "already_submitted",
-            message: "attempt already has a site submission — submissions are append-only",
-          },
+    // One submission per attempt. This SELECT is a courtesy — it turns the
+    // common case into a clean 409 without burning a failed transaction —
+    // but the AUTHORITY is the partial unique index (see the catch below):
+    // a SELECT outside the write's transaction cannot serialize two uploads
+    // at different seqs.
+    const existing = await recordedSubmission(ctx.db, attemptId);
+    if (existing !== null && existing.digest !== snapshot.digest) return ALREADY_SUBMITTED;
+
+    // ORDER IS THE SECURITY PROPERTY: the RECORD comes first, the bytes
+    // second. Storing bytes first published servable content for uploads the
+    // append then REJECTED (finalized attempt, seq conflict, lost race) —
+    // arbitrary content at the exam origin with no row tying it to anyone.
+    // Now a rejected upload stores nothing at all, and the serve path only
+    // serves a digest some response row still points at (handleServeSite),
+    // so bytes are reachable only while they are attributable.
+    //
+    // The residue of this order is the harmless one: a crash between the
+    // commit and the put leaves a recorded digest that 404s until the client
+    // re-uploads the same bytes — which replays (200) and stores them.
+    let result: AppendResult;
+    try {
+      result = await appendResponse(ctx.db, attemptId, participantId, {
+        seq: input.seq,
+        clientTs: input.clientTs,
+        payload: {
+          kind: T1_SITE_RESPONSE_KIND,
+          digest: snapshot.digest,
+          fileCount: snapshot.fileCount,
+          totalBytes: snapshot.totalBytes,
         },
-      };
+      });
+    } catch (err) {
+      if (!isOneSitePerAttemptViolation(err)) throw err;
+      // The DB refused a second site row. Same bytes at a different seq is
+      // still an idempotent replay (the recorded submission IS this one);
+      // different bytes is the 409 the pre-check would have given.
+      const winner = await recordedSubmission(ctx.db, attemptId);
+      if (winner === null || winner.digest !== snapshot.digest) return ALREADY_SUBMITTED;
+      result = { id: winner.id, created: false };
     }
-
-    // Store bytes BEFORE the DB row: a recorded digest must always resolve.
     await ctx.snapshots.put(snapshot);
-
-    const result = await appendResponse(ctx.db, attemptId, participantId, {
-      seq: input.seq,
-      clientTs: input.clientTs,
-      payload: {
-        kind: T1_SITE_RESPONSE_KIND,
-        digest: snapshot.digest,
-        fileCount: snapshot.fileCount,
-        totalBytes: snapshot.totalBytes,
-      },
-    });
     return {
       status: result.created ? 201 : 200,
       body: {
@@ -196,16 +254,28 @@ const NOT_FOUND: ServeSiteResult = {
  * rule (the HTTP route redirects them there instead, so the browser's base URL
  * matches what it asked for); anything not listed in the snapshot manifest
  * (including traversal junk) is a 404 by construction.
+ *
+ * REACHABILITY RULE: the RECORD makes bytes servable, never the bytes alone.
+ * A digest no `responses` row points at is a 404 even when the store still
+ * holds it — so a snapshot orphaned by an older upload path (bytes stored
+ * before the append was rejected), or left behind by any future cleanup,
+ * hosts nothing at our origin. The check is one indexed lookup
+ * (responses_t1_site_digest) and runs before the bytes are read.
  */
 export async function handleServeSite(
-  store: SnapshotStore,
+  ctx: SiteServeContext,
   origin: string,
   digest: string,
   rawPath: string,
 ): Promise<ServeSiteResult> {
   if (!SNAPSHOT_DIGEST_RE.test(digest)) return NOT_FOUND;
+  const { rows } = await ctx.db.query(
+    `SELECT 1 FROM responses WHERE payload->>'kind' = $1 AND payload->>'digest' = $2 LIMIT 1`,
+    [T1_SITE_RESPONSE_KIND, digest],
+  );
+  if (rows.length === 0) return NOT_FOUND;
   const path = canonicalSitePath(rawPath);
-  const file = await store.getFile(digest, path);
+  const file = await ctx.snapshots.getFile(digest, path);
   if (file === null) return NOT_FOUND;
   return { status: 200, headers: sandboxHeaders(origin, file.contentType), data: file.data };
 }

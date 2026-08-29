@@ -11,6 +11,7 @@ import {
   handleServeSite,
   handleUploadSite,
   sandboxHeaders,
+  type SiteServeContext,
   type T1ApiContext,
 } from "../src/t1/handlers.js";
 import { MemorySnapshotStore } from "../src/t1/storage.js";
@@ -28,6 +29,9 @@ beforeAll(async () => {
 function ctx(): T1ApiContext & { snapshots: MemorySnapshotStore } {
   return { db, auth: new DevAuthProvider(), snapshots: new MemorySnapshotStore() };
 }
+
+/** Serve context: the same DB the uploads recorded into, plus a store. */
+const serveCtx = (snapshots: MemorySnapshotStore): SiteServeContext => ({ db, snapshots });
 
 /** Fresh attempt + dev headers that authenticate as its owner. */
 async function ownedAttempt(): Promise<{ headers: Record<string, string>; attemptId: string }> {
@@ -156,6 +160,174 @@ describe("handleUploadSite", () => {
   });
 });
 
+/**
+ * P1-1: an upload the append REJECTS must leave nothing hosted at our origin.
+ * Before the fix the bytes were stored first, so a finalized/conflicting/lost
+ * upload still published arbitrary content under an unauthenticated,
+ * immutable-cached URL with no row tying it to anybody.
+ */
+describe("a rejected upload publishes nothing servable", () => {
+  const ORIGIN = "https://sandbox.example";
+
+  /** Nothing stored, nothing served, no row. */
+  async function expectUnpublished(
+    c: T1ApiContext & { snapshots: MemorySnapshotStore },
+    zip: Uint8Array,
+  ) {
+    const digest = snapshotFromZip(zip).digest;
+    expect(await c.snapshots.has(digest)).toBe(false);
+    expect((await handleServeSite(serveCtx(c.snapshots), ORIGIN, digest, "index.html")).status).toBe(404);
+    const { rows } = await db.query(
+      "SELECT count(*) AS n FROM responses WHERE payload->>'digest' = $1",
+      [digest],
+    );
+    expect(Number(rows[0]!.n)).toBe(0);
+  }
+
+  it("finalized attempt: the phishing-upload path stores no bytes", async () => {
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    const { rows } = await db.query("SELECT participant_id FROM attempts WHERE id = $1", [attemptId]);
+    await finalizeAttempt(db, attemptId, rows[0]!.participant_id as string);
+    const phish = siteZip({}, "<h1>sign in with your bank</h1>");
+    expect((await upload(c, headers, attemptId, phish)).status).toBe(409);
+    await expectUnpublished(c, phish);
+  });
+
+  it("already_submitted: the rejected second submission stores no bytes", async () => {
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    expect((await upload(c, headers, attemptId, siteZip({}, "<h1>real</h1>"))).status).toBe(201);
+    const other = siteZip({}, "<h1>not mine</h1>");
+    expect((await upload(c, headers, attemptId, other, 1)).status).toBe(409);
+    await expectUnpublished(c, other);
+  });
+
+  it("seq_conflict: the rejected upload stores no bytes", async () => {
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    const { rows } = await db.query("SELECT participant_id FROM attempts WHERE id = $1", [attemptId]);
+    const { appendResponse } = await import("../src/store.js");
+    await appendResponse(db, attemptId, rows[0]!.participant_id as string, {
+      seq: 7,
+      payload: { kind: "other" },
+      clientTs: Date.now(),
+    });
+    const zip = siteZip({}, "<h1>seq loser</h1>");
+    expect((await upload(c, headers, attemptId, zip, 7)).status).toBe(409);
+    await expectUnpublished(c, zip);
+  });
+
+  it("bytes with no response row are unreachable (orphan reachability rule)", async () => {
+    const store = new MemorySnapshotStore();
+    const orphan = snapshotFromZip(siteZip({}, "<h1>orphan</h1>"));
+    await store.put(orphan); // e.g. left by the old store-first upload path
+    expect(await store.has(orphan.digest)).toBe(true);
+    const result = await handleServeSite(serveCtx(store), ORIGIN, orphan.digest, "");
+    expect(result.status).toBe(404);
+    expect(result.data).toBeNull();
+  });
+
+  it("a recorded digest whose bytes are missing 404s, and a re-upload repairs it", async () => {
+    // The residue of record-first: a crash between the commit and the put.
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    const zip = siteZip({}, "<h1>repair me</h1>");
+    expect((await upload(c, headers, attemptId, zip)).status).toBe(201);
+    const digest = snapshotFromZip(zip).digest;
+    const lost = new MemorySnapshotStore(); // the put that never landed
+    expect((await handleServeSite(serveCtx(lost), ORIGIN, digest, "")).status).toBe(404);
+
+    const repaired = { ...c, snapshots: lost };
+    const replay = await upload(repaired, headers, attemptId, zip, 3);
+    expect(replay.status).toBe(200);
+    expect(await lost.has(digest)).toBe(true);
+    expect((await handleServeSite(serveCtx(lost), ORIGIN, digest, "")).status).toBe(200);
+  });
+});
+
+/**
+ * P1-5: one site submission per attempt is enforced by the DATABASE. The
+ * handler's pre-check is a courtesy; these tests make the CONSTRAINT do the
+ * work (a different seq, or a pre-check blinded exactly the way a concurrent
+ * upload blinds it).
+ */
+describe("one-submission-per-attempt is a DB constraint", () => {
+  /** Blind the FIRST pre-check SELECT — precisely what a concurrent upload does. */
+  function racingDb(): T1ApiContext["db"] {
+    let blinded = false;
+    return {
+      async query(text: string, params?: unknown[]) {
+        if (!blinded && text.includes("ORDER BY seq LIMIT 1")) {
+          blinded = true;
+          return { rows: [] };
+        }
+        return db.query(text, params);
+      },
+    };
+  }
+
+  const siteRows = async (attemptId: string) => {
+    const { rows } = await db.query(
+      "SELECT payload->>'digest' AS digest FROM responses WHERE attempt_id = $1 AND payload->>'kind' = $2 ORDER BY seq",
+      [attemptId, T1_SITE_RESPONSE_KIND],
+    );
+    return rows.map((r) => r.digest as string);
+  };
+
+  it("refuses a second site row at the SQL level, whatever the seq", async () => {
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    expect((await upload(c, headers, attemptId, siteZip())).status).toBe(201);
+    // No handler, no pre-check: the raw insert a non-browser client would make.
+    await expect(
+      db.query(
+        `INSERT INTO responses (attempt_id, seq, payload, client_ts)
+         VALUES ($1, 99, $2::jsonb, now())`,
+        [attemptId, JSON.stringify({ kind: T1_SITE_RESPONSE_KIND, digest: `sha256:${"c".repeat(64)}` })],
+      ),
+    ).rejects.toThrow(/responses_one_t1_site_per_attempt/);
+    expect(await siteRows(attemptId)).toHaveLength(1);
+  });
+
+  it("same bytes at a DIFFERENT seq replay through the constraint (200, one row)", async () => {
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    const zip = siteZip();
+    expect((await upload(c, headers, attemptId, zip)).status).toBe(201);
+    const replay = await upload(c, headers, attemptId, zip, 42);
+    expect(replay.status).toBe(200);
+    expect((replay.body.submission as Record<string, unknown>).created).toBe(false);
+    expect(await siteRows(attemptId)).toHaveLength(1);
+  });
+
+  it("a concurrent different-bytes upload loses to the constraint, not to luck", async () => {
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    const winner = siteZip({}, "<h1>winner</h1>");
+    expect((await upload(c, headers, attemptId, winner)).status).toBe(201);
+
+    const loserZip = siteZip({}, "<h1>loser</h1>");
+    const raced = await upload({ ...c, db: racingDb() }, headers, attemptId, loserZip, 5);
+    expect(raced.status).toBe(409);
+    expect((raced.body.error as Record<string, unknown>).code).toBe("already_submitted");
+    // The loser is not recorded and — the P1-1 half — not hosted either.
+    expect(await siteRows(attemptId)).toEqual([snapshotFromZip(winner).digest]);
+    expect(await c.snapshots.has(snapshotFromZip(loserZip).digest)).toBe(false);
+  });
+
+  it("a concurrent SAME-bytes upload is still an idempotent replay", async () => {
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    const zip = siteZip({}, "<h1>same</h1>");
+    expect((await upload(c, headers, attemptId, zip)).status).toBe(201);
+    const raced = await upload({ ...c, db: racingDb() }, headers, attemptId, zip, 6);
+    expect(raced.status).toBe(200);
+    expect((raced.body.submission as Record<string, unknown>).created).toBe(false);
+    expect(await siteRows(attemptId)).toHaveLength(1);
+  });
+});
+
 describe("site URL convention", () => {
   const DIGEST = `sha256:${"a".repeat(64)}`;
 
@@ -185,26 +357,32 @@ describe("site URL convention", () => {
 describe("handleServeSite", () => {
   const ORIGIN = "https://sandbox.example";
 
+  /**
+   * A REAL upload: bytes in the store AND the `responses` row that makes them
+   * servable. Serving is now reachability-gated, so a bare store.put() is not
+   * a served snapshot.
+   */
   async function servedSnapshot() {
-    const store = new MemorySnapshotStore();
-    const snap = snapshotFromZip(siteZip({ "assets/app.js": "console.log(1)", "sub/index.html": "<p>sub</p>" }));
-    await store.put(snap);
-    return { store, snap };
+    const c = ctx();
+    const { headers, attemptId } = await ownedAttempt();
+    const zip = siteZip({ "assets/app.js": "console.log(1)", "sub/index.html": "<p>sub</p>" });
+    expect((await upload(c, headers, attemptId, zip)).status).toBe(201);
+    return { store: c.snapshots, snap: snapshotFromZip(zip) };
   }
 
   it("serves index.html for the empty path and for trailing slashes", async () => {
     const { store, snap } = await servedSnapshot();
     for (const path of ["", "sub/"]) {
-      const result = await handleServeSite(store, ORIGIN, snap.digest, path);
+      const result = await handleServeSite(serveCtx(store), ORIGIN, snap.digest, path);
       expect(result.status).toBe(200);
       expect(result.headers["content-type"]).toBe("text/html; charset=utf-8");
     }
-    expect(new TextDecoder().decode((await handleServeSite(store, ORIGIN, snap.digest, "sub/"))!.data!)).toBe("<p>sub</p>");
+    expect(new TextDecoder().decode((await handleServeSite(serveCtx(store), ORIGIN, snap.digest, "sub/"))!.data!)).toBe("<p>sub</p>");
   });
 
   it("serves nested assets with their allowlisted content type", async () => {
     const { store, snap } = await servedSnapshot();
-    const result = await handleServeSite(store, ORIGIN, snap.digest, "assets/app.js");
+    const result = await handleServeSite(serveCtx(store), ORIGIN, snap.digest, "assets/app.js");
     expect(result.status).toBe(200);
     expect(result.headers["content-type"]).toBe("text/javascript; charset=utf-8");
   });
@@ -219,7 +397,7 @@ describe("handleServeSite", () => {
       ["sha256:short", ""],
       ["../../etc", ""],
     ] as const) {
-      const result = await handleServeSite(store, ORIGIN, digest, path);
+      const result = await handleServeSite(serveCtx(store), ORIGIN, digest, path);
       expect(result.status).toBe(404);
       expect(result.data).toBeNull();
     }
@@ -227,7 +405,7 @@ describe("handleServeSite", () => {
 
   it("every 200 carries the full sandbox header set", async () => {
     const { store, snap } = await servedSnapshot();
-    const { headers } = await handleServeSite(store, ORIGIN, snap.digest, "");
+    const { headers } = await handleServeSite(serveCtx(store), ORIGIN, snap.digest, "");
     const csp = headers["content-security-policy"]!;
     // The load-bearing directives from spec §12.
     expect(csp).toContain("sandbox allow-scripts");

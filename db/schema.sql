@@ -53,6 +53,21 @@ CREATE TABLE responses (
   UNIQUE (attempt_id, seq)
 );
 
+-- ONE T1 site submission per attempt, enforced HERE and not by an application
+-- pre-check: idempotency is a DB uniqueness constraint, not a best-effort
+-- SELECT (spec §11, and the rule this file's README states). Two concurrent
+-- uploads at DIFFERENT seqs both pass a pre-check and would otherwise both
+-- insert, leaving scoring to pick one silently — and a later insert with a
+-- LOWER seq would retroactively change which digest is "first".
+CREATE UNIQUE INDEX responses_one_t1_site_per_attempt
+  ON responses (attempt_id) WHERE payload->>'kind' = 't1-site-snapshot';
+
+-- Reachability lookup for the site serve path: stored snapshot bytes are
+-- servable only while a response row still points at their digest (see
+-- packages/backend/src/t1/handlers.ts). Per-asset request, so it is indexed.
+CREATE INDEX responses_t1_site_digest
+  ON responses ((payload->>'digest')) WHERE payload->>'kind' = 't1-site-snapshot';
+
 -- Exposure log: which items each attempt was SHOWN (spec §11 — per-item
 -- stats / IRT need presented-but-unanswered items too). Insert-once per
 -- (attempt, track) at attempt creation; never UPDATEd. The ids are also

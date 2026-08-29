@@ -1,14 +1,18 @@
 import { SITE_INDEX, canonicalSitePath } from "@ailx/backend";
 import { handleServeSite } from "@ailx/backend/t1";
+import { withApiContext } from "../../../../../lib/server/api";
 import { getSnapshotStore } from "../../../../../lib/server/site";
 import { resolvePublicOrigin } from "../../../../../lib/server/origin";
 
 type SiteRouteContext = { params: Promise<{ digest: string; path?: string[] }> };
 
 /**
- * GET /api/site/:digest/*path — serves a stored submission snapshot. No auth
- * or DB: the 256-bit content digest is the capability, and every response
- * carries the §12 sandbox headers (see sandboxHeaders in @ailx/backend).
+ * GET /api/site/:digest/*path — serves a stored submission snapshot. No auth:
+ * the 256-bit content digest is the capability, and every response carries the
+ * §12 sandbox headers (see sandboxHeaders in @ailx/backend). It DOES take a DB
+ * session: bytes are servable only while a `responses` row records the digest
+ * (handleServeSite's reachability rule), so nothing unattributed is ever
+ * hosted here.
  *
  * Directory-ish requests (bare digest, or any trailing slash) 308 ONCE to the
  * canonical `.../index.html` — see site-url.ts for why the trailing-slash form
@@ -32,7 +36,9 @@ export async function GET(req: Request, { params }: SiteRouteContext): Promise<R
     return Response.redirect(`${origin}${url.pathname.replace(/\/+$/, "")}/${SITE_INDEX}`, 308);
   }
   try {
-    const result = await handleServeSite(getSnapshotStore(), origin, digest, requested);
+    const result = await withApiContext((ctx) =>
+      handleServeSite({ db: ctx.db, snapshots: getSnapshotStore() }, origin, digest, requested),
+    );
     // Our snapshot bytes are always ArrayBuffer-backed; the cast bridges the
     // lib.dom BodyInit typing, which rejects Uint8Array<ArrayBufferLike>.
     const body = result.data === null ? "not found" : (result.data as Uint8Array<ArrayBuffer>);
