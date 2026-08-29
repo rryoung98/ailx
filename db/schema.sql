@@ -53,6 +53,21 @@ CREATE TABLE responses (
   UNIQUE (attempt_id, seq)
 );
 
+-- Exposure log: which items each attempt was SHOWN (spec §11 — per-item
+-- stats / IRT need presented-but-unanswered items too). Insert-once per
+-- (attempt, track) at attempt creation; never UPDATEd. The ids are also
+-- recomputable from stored inputs alone (attempt id + content-addressed
+-- bank) — this row is the recorded audit copy of that derivation.
+CREATE TABLE attempt_decks (
+  id          bigserial PRIMARY KEY,
+  attempt_id  uuid NOT NULL REFERENCES attempts(id),
+  track_id    text NOT NULL,
+  bank_sha256 text NOT NULL,             -- content-addressed bank the ids index into
+  item_ids    jsonb NOT NULL,            -- presented order, JSON array of item ids
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (attempt_id, track_id)
+);
+
 -- T3 transcript is the audit artefact; revision_of measures prompt iteration.
 CREATE TABLE transcripts (
   id          bigserial PRIMARY KEY,

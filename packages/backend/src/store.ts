@@ -121,10 +121,51 @@ function attemptFromRow(row: QueryResultRow): Attempt {
   };
 }
 
+/**
+ * Exposure record for one track's presented deck: the item ids an attempt
+ * was SHOWN, in order. Persisted at attempt creation (attempt_decks,
+ * insert-once) so per-item stats/IRT cover presented-but-unanswered items.
+ */
+export interface DeckRecord {
+  trackId: TrackId;
+  /** Content-addressed sha256 of the bank the ids index into. */
+  bankSha256: string;
+  /** Presented order; non-empty, no duplicates. */
+  itemIds: readonly string[];
+}
+
+const SHA256_RE = /^[0-9a-f]{64}$/;
+
+function assertDeckRecord(deck: DeckRecord): void {
+  if (!TRACK_IDS.includes(deck.trackId)) {
+    throw new StoreError("bad_request", `deck has unknown trackId: ${String(deck.trackId)}`);
+  }
+  if (typeof deck.bankSha256 !== "string" || !SHA256_RE.test(deck.bankSha256)) {
+    throw new StoreError("bad_request", `deck bankSha256 must be a sha256 hex digest`);
+  }
+  if (!Array.isArray(deck.itemIds) || deck.itemIds.length === 0) {
+    throw new StoreError("bad_request", "deck itemIds must be a non-empty array");
+  }
+  if (deck.itemIds.some((id) => typeof id !== "string" || id.length === 0)) {
+    throw new StoreError("bad_request", "deck itemIds must all be non-empty strings");
+  }
+  if (new Set(deck.itemIds).size !== deck.itemIds.length) {
+    throw new StoreError("bad_request", "deck itemIds must not contain duplicates");
+  }
+}
+
+/**
+ * `sampleDecks` (optional) derives the per-attempt exposure decks from the
+ * NEW attempt id — it MUST be a pure, deterministic function of that id, so
+ * a caller can re-derive the identical records after the fact. Deck rows
+ * are inserted in the SAME transaction: an attempt either has its recorded
+ * decks or does not exist.
+ */
 export async function createAttempt(
   db: Queryable,
   participantId: string,
   ref: InstrumentRef,
+  sampleDecks?: (attemptId: string) => readonly DeckRecord[],
 ): Promise<Attempt> {
   assertUuid(participantId, "participant");
   return withTransaction(db, async (tx) => {
@@ -144,8 +185,38 @@ export async function createAttempt(
        RETURNING id, participant_id, instrument_id, instrument_ver, started_at, finalized_at`,
       [participantId, ref.instrumentId, ref.instrumentVer],
     );
-    return attemptFromRow(rows[0]!);
+    const attempt = attemptFromRow(rows[0]!);
+    for (const deck of sampleDecks?.(attempt.id) ?? []) {
+      assertDeckRecord(deck);
+      await tx.query(
+        `INSERT INTO attempt_decks (attempt_id, track_id, bank_sha256, item_ids)
+         VALUES ($1, $2, $3, $4::jsonb)`,
+        [attempt.id, deck.trackId, deck.bankSha256, JSON.stringify(deck.itemIds)],
+      );
+    }
+    return attempt;
   });
+}
+
+/** Owned read of the recorded exposure decks (empty for legacy attempts). */
+export async function getDecks(
+  db: Queryable,
+  attemptId: string,
+  participantId: string,
+): Promise<DeckRecord[]> {
+  if (!UUID_RE.test(attemptId) || !UUID_RE.test(participantId)) return [];
+  const { rows } = await db.query(
+    `SELECT d.track_id, d.bank_sha256, d.item_ids
+     FROM attempt_decks d JOIN attempts a ON a.id = d.attempt_id
+     WHERE d.attempt_id = $1 AND a.participant_id = $2
+     ORDER BY d.track_id`,
+    [attemptId, participantId],
+  );
+  return rows.map((r) => ({
+    trackId: r.track_id as TrackId,
+    bankSha256: r.bank_sha256 as string,
+    itemIds: (typeof r.item_ids === "string" ? JSON.parse(r.item_ids) : r.item_ids) as string[],
+  }));
 }
 
 export interface AttemptSummary extends Attempt {

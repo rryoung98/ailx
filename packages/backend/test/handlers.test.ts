@@ -148,3 +148,51 @@ describe("attempt lifecycle over the API surface", () => {
     expect((read.body.attempt as { finalizedAt: string | null }).finalizedAt).not.toBeNull();
   });
 });
+
+describe("per-attempt deck sampling over the API surface", () => {
+  const SHA = "e".repeat(64);
+  const sampler = (attemptId: string, locale: string) => [
+    { trackId: "t2" as const, bankSha256: SHA, itemIds: [`${locale}:${attemptId}:a`, `${locale}:${attemptId}:b`] },
+  ];
+  const deckCtx = () => ({ ...ctx, sampleDecks: sampler });
+
+  it("decks:true records + returns the sampled ids, keyed to the new attempt id", async () => {
+    const user = fresh();
+    const res = await handleCreateAttempt(deckCtx(), user, { decks: true, locale: "ja" });
+    expect(res.status).toBe(201);
+    const id = (res.body.attempt as { id: string }).id;
+    expect(res.body.decks).toEqual(sampler(id, "ja"));
+    // GET returns the recorded decks — the audit copy matches.
+    const read = await handleGetAttempt(ctx, user, id);
+    expect(read.status).toBe(200);
+    expect(read.body.decks).toEqual(sampler(id, "ja"));
+  });
+
+  it("an invalid locale falls back to en", async () => {
+    const res = await handleCreateAttempt(deckCtx(), fresh(), { decks: true, locale: "../evil" });
+    const id = (res.body.attempt as { id: string }).id;
+    expect(res.body.decks).toEqual(sampler(id, "en"));
+  });
+
+  it("without decks:true (lazy mirror create) no exposure rows are recorded", async () => {
+    const user = fresh();
+    const res = await handleCreateAttempt(deckCtx(), user, {});
+    expect(res.status).toBe(201);
+    expect(res.body.decks).toBeUndefined();
+    const read = await handleGetAttempt(ctx, user, (res.body.attempt as { id: string }).id);
+    expect(read.body.decks).toBeUndefined();
+  });
+
+  it("decks:true without a configured sampler records nothing (static-content host)", async () => {
+    const res = await handleCreateAttempt(ctx, fresh(), { decks: true });
+    expect(res.status).toBe(201);
+    expect(res.body.decks).toBeUndefined();
+  });
+
+  it("a sampler emitting an invalid record 400s and creates no attempt", async () => {
+    const user = fresh();
+    const badCtx = { ...ctx, sampleDecks: () => [{ trackId: "t2" as const, bankSha256: "nope", itemIds: ["a"] }] };
+    const res = await handleCreateAttempt(badCtx, user, { decks: true });
+    expect(res.status).toBe(400);
+  });
+});

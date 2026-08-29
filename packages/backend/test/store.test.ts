@@ -8,6 +8,7 @@ import {
   ensureParticipant,
   finalizeAttempt,
   getAttempt,
+  getDecks,
 } from "../src/store.js";
 import type { Queryable } from "../src/db.js";
 import { TEST_INSTRUMENT, count, freshDb, openAttempt } from "./helpers.js";
@@ -331,5 +332,66 @@ describe("finalizeAttempt", () => {
       finalizeAttempt(db, "00000000-0000-4000-8000-000000000001", p.id),
       "not_found",
     );
+  });
+});
+
+describe("attempt decks (exposure log)", () => {
+  const SHA = "f".repeat(64);
+  const deckFor = (attemptId: string) => [
+    { trackId: "t2" as const, bankSha256: SHA, itemIds: [`${attemptId}:i1`, `${attemptId}:i2`] },
+  ];
+
+  it("records sampled decks atomically at creation and reads them back", async () => {
+    const p = await ensureParticipant(db, "dev:deck-owner");
+    const attempt = await createAttempt(db, p.id, TEST_INSTRUMENT, deckFor);
+    const decks = await getDecks(db, attempt.id, p.id);
+    expect(decks).toEqual([
+      { trackId: "t2", bankSha256: SHA, itemIds: [`${attempt.id}:i1`, `${attempt.id}:i2`] },
+    ]);
+  });
+
+  it("no sampler → no deck rows (legacy/mirror creates)", async () => {
+    const { attempt, participantId } = await openAttempt(db);
+    expect(await getDecks(db, attempt.id, participantId)).toEqual([]);
+  });
+
+  it("deck rows are ownership-scoped like every attempt read", async () => {
+    const p = await ensureParticipant(db, "dev:deck-owner-2");
+    const stranger = await ensureParticipant(db, "dev:deck-stranger");
+    const attempt = await createAttempt(db, p.id, TEST_INSTRUMENT, deckFor);
+    expect(await getDecks(db, attempt.id, stranger.id)).toEqual([]);
+    expect(await getDecks(db, "not-a-uuid", p.id)).toEqual([]);
+  });
+
+  it("an invalid deck record rolls back the whole attempt", async () => {
+    const p = await ensureParticipant(db, "dev:deck-rollback");
+    const bad = [
+      [{ trackId: "t9", bankSha256: SHA, itemIds: ["a"] }],          // unknown track
+      [{ trackId: "t2", bankSha256: "beef", itemIds: ["a"] }],       // not a sha256
+      [{ trackId: "t2", bankSha256: SHA, itemIds: [] }],             // empty
+      [{ trackId: "t2", bankSha256: SHA, itemIds: ["a", "a"] }],     // duplicates
+      [{ trackId: "t2", bankSha256: SHA, itemIds: ["a", ""] }],      // empty id
+    ];
+    for (const decks of bad) {
+      await expectStoreError(
+        createAttempt(db, p.id, TEST_INSTRUMENT, () => decks as never),
+        "bad_request",
+      );
+    }
+    const { rows } = await (db as Queryable).query(
+      "SELECT count(*) AS n FROM attempts WHERE participant_id = $1",
+      [p.id],
+    );
+    expect(Number(rows[0]!.n)).toBe(0); // nothing half-created
+  });
+
+  it("two decks for the same track are rejected by the DB uniqueness", async () => {
+    const p = await ensureParticipant(db, "dev:deck-unique");
+    await expect(
+      createAttempt(db, p.id, TEST_INSTRUMENT, () => [
+        { trackId: "t2", bankSha256: SHA, itemIds: ["a"] },
+        { trackId: "t2", bankSha256: SHA, itemIds: ["b"] },
+      ]),
+    ).rejects.toThrow();
   });
 });

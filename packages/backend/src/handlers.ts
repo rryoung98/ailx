@@ -16,6 +16,8 @@ import {
   ensureParticipant,
   finalizeAttempt,
   getAttempt,
+  getDecks,
+  type DeckRecord,
   type InstrumentRef,
   type TranscriptVerb,
 } from "./store.js";
@@ -30,6 +32,12 @@ export interface ApiContext {
   /** Single DB session for the request (transactions run on it). */
   db: Queryable;
   auth: AuthProvider;
+  /**
+   * Content-aware deck sampler (the backend stays content-agnostic — the
+   * host wires in the instrument snapshot). MUST be a pure, deterministic
+   * function of (attemptId, locale) so recorded decks are re-derivable.
+   */
+  sampleDecks?: (attemptId: string, locale: string) => readonly DeckRecord[];
 }
 
 export interface ApiResult {
@@ -69,7 +77,18 @@ function asRecord(body: unknown): Record<string, unknown> {
   return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
 }
 
-/** POST /api/attempts — body: { instrumentId?, instrumentVer? } */
+const LOCALE_RE = /^[a-z]{2}(-[A-Za-z0-9]{2,8})?$/;
+
+/**
+ * POST /api/attempts — body: { instrumentId?, instrumentVer?, locale?, decks? }
+ *
+ * `decks: true` opts in to per-attempt deck sampling: the sampled item ids
+ * are recorded (attempt_decks) and returned, and the CALLER COMMITS to
+ * presenting exactly that deck (i.e. to keying its item selection on the
+ * returned attempt id). Creates without the flag — e.g. the lazy log
+ * mirror, whose deck was already keyed to a client-local id — record no
+ * exposure rows rather than recording a deck that was never shown.
+ */
 export async function handleCreateAttempt(
   ctx: ApiContext,
   headers: HeaderMap,
@@ -80,9 +99,17 @@ export async function handleCreateAttempt(
     instrumentId: typeof b.instrumentId === "string" ? b.instrumentId : DEFAULT_INSTRUMENT.instrumentId,
     instrumentVer: typeof b.instrumentVer === "string" ? b.instrumentVer : DEFAULT_INSTRUMENT.instrumentVer,
   };
+  const locale = typeof b.locale === "string" && LOCALE_RE.test(b.locale) ? b.locale : "en";
+  const sampler =
+    b.decks === true && ctx.sampleDecks
+      ? (attemptId: string) => ctx.sampleDecks!(attemptId, locale)
+      : undefined;
   return withParticipant(ctx, headers, async (participantId) => {
-    const attempt = await createAttempt(ctx.db, participantId, ref);
-    return { status: 201, body: { attempt } };
+    const attempt = await createAttempt(ctx.db, participantId, ref, sampler);
+    // Pure + deterministic by contract, so this re-derivation IS the
+    // just-recorded deck (and doubles as a recomputability exercise).
+    const decks = sampler?.(attempt.id);
+    return { status: 201, body: decks ? { attempt, decks } : { attempt } };
   });
 }
 
@@ -95,7 +122,8 @@ export async function handleGetAttempt(
   return withParticipant(ctx, headers, async (participantId) => {
     const attempt = await getAttempt(ctx.db, attemptId, participantId);
     if (attempt === null) return errorResult("not_found", "attempt not found");
-    return { status: 200, body: { attempt } };
+    const decks = await getDecks(ctx.db, attemptId, participantId);
+    return { status: 200, body: decks.length > 0 ? { attempt, decks } : { attempt } };
   });
 }
 
