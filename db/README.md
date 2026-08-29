@@ -42,6 +42,38 @@ SELECT DISTINCT payload->>'digest' FROM responses WHERE payload->>'kind' = 't1-s
 Any `manifests/<hex>.json` whose digest is not in that list is unreachable and
 safe to delete (with its now-unreferenced blobs).
 
+### 2026-09 — recoverable share tokens and refusal stamps
+
+`share_links.token_sha256` became `token`: the capability token is now stored so
+a candidate can recover their own share URL and a gallery tile can link to its
+share view (rationale and the trigger to reopen it: `docs/SHARING.md` §2).
+
+**Existing rows cannot be migrated.** Only the hash was ever stored, so the
+token is unrecoverable by construction — those links must be dropped, not
+converted. Warn holders before running this on a database whose links matter.
+
+```sql
+BEGIN;
+DELETE FROM share_views;   -- view rows reference links that cannot survive
+DELETE FROM share_links;
+
+ALTER TABLE share_links DROP COLUMN token_sha256;
+ALTER TABLE share_links ADD COLUMN token text NOT NULL UNIQUE;
+
+-- Refusal stamps: never anonymous, never silent, never both decisions.
+ALTER TABLE share_links ADD COLUMN rejected_at   timestamptz;
+ALTER TABLE share_links ADD COLUMN rejected_by   text;
+ALTER TABLE share_links ADD COLUMN reject_reason text;
+ALTER TABLE share_links ADD CONSTRAINT share_links_rejection_recorded
+  CHECK (num_nonnulls(rejected_at, rejected_by, reject_reason) IN (0, 3));
+ALTER TABLE share_links ADD CONSTRAINT share_links_one_decision
+  CHECK (approved_at IS NULL OR rejected_at IS NULL);
+COMMIT;
+```
+
+Rollback is destructive in the same way (the hash cannot be rebuilt from rows
+that no longer exist); recreate the table from `schema.sql` instead.
+
 ### 2026-09 — practice sessions and streaks
 
 Adds the progression loop's two tables. Nothing existing changes, so this is
@@ -102,3 +134,42 @@ Invariants these tables carry:
 - `item_ids` only ever holds practice-corpus ids (`practice:*`). The scored
   item bank is never dealt here — asserted in
   `packages/report/test/practice.test.ts` against the real bank on disk.
+
+### 2026-09 — the moderation trail
+
+`moderation_comments` is new; nothing existing changes. Apply the table, its
+constraints and its two indexes from `schema.sql` verbatim:
+
+```sql
+CREATE TABLE moderation_comments (
+  id            bigserial PRIMARY KEY,
+  share_id      uuid NOT NULL REFERENCES share_links(id),
+  author_ref    text NOT NULL,
+  author_role   text NOT NULL,
+  visibility    text NOT NULL,
+  body          text NOT NULL,
+  supersedes_id bigint REFERENCES moderation_comments(id),
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT moderation_comments_role
+    CHECK (author_role IN ('reviewer', 'candidate')),
+  CONSTRAINT moderation_comments_visibility
+    CHECK (visibility IN ('internal', 'shared')),
+  CONSTRAINT moderation_comments_candidate_is_shared
+    CHECK (author_role = 'reviewer' OR visibility = 'shared'),
+  CONSTRAINT moderation_comments_retraction
+    CHECK (body <> '' OR supersedes_id IS NOT NULL)
+);
+
+CREATE UNIQUE INDEX moderation_comments_one_supersede
+  ON moderation_comments (supersedes_id) WHERE supersedes_id IS NOT NULL;
+
+CREATE INDEX moderation_comments_by_share
+  ON moderation_comments (share_id, id);
+```
+
+The table is append-only by the same rule as `responses`: no code path issues
+`UPDATE` or `DELETE` against it (asserted in
+`packages/backend/test/moderation.test.ts`), an edit inserts a row naming the
+row it replaces, and a retraction inserts an empty one. If a deployment ever
+needs a row gone for a legal reason, that is a deliberate, recorded admin
+action — not something the application can do.
