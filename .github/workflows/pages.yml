@@ -1,38 +1,97 @@
 name: pages
+
+# Deploy on merge to `main` — but only after `ci` has gone green on that same
+# commit. `workflow_run` chains the two; a `push` trigger here would race CI
+# and could publish a build whose tests are still running.
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
+# One deploy at a time, and never cancel one in flight: a cancelled run can
+# leave the site published from a commit that was never tagged.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
+
 jobs:
   build:
+    # Manual runs are deliberate; chained runs must have passed CI.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      sha: ${{ steps.rev.outputs.sha }}
     steps:
+      # `workflow_run` checks out the default branch by default; resolve the
+      # exact commit CI validated once, and reuse it everywhere below.
+      - id: rev
+        run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.rev.outputs.sha }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # `pnpm -r build` already runs `next build` for @ailx/web (static export).
       - run: pnpm -r build
-      - run: pnpm --filter @ailx/web exec next build
-      - run: touch apps/web/out/.nojekyll
+
+      # The deployed version, in the deployed bytes. One JSON file is enough to
+      # answer "which commit is live?" from the browser, and it needs no app
+      # code to carry a build constant.
+      - name: Stamp the build
+        env:
+          AILX_SHA: ${{ steps.rev.outputs.sha }}
+        run: |
+          printf '{"sha":"%s","ref":"%s","runId":"%s","builtAt":"%s"}\n' \
+            "$AILX_SHA" "${{ github.ref_name }}" "${{ github.run_id }}" \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > apps/web/out/version.json
+          touch apps/web/out/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
           path: apps/web/out
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Versioning, deliberately minimal: one immutable tag per deployed commit.
+  # A 1-repo, 1-app project with no consumers publishing no packages gains
+  # nothing from changesets/semantic-release; it needs an answer to "what is
+  # live and which commit is it?", which a tag plus version.json gives.
+  tag:
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.sha }}
+      - name: Tag the deployed commit
+        run: |
+          tag="build-$(date -u +%Y.%m.%d)-$(git rev-parse --short=7 HEAD)"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::notice::$tag already exists — nothing to tag."
+            exit 0
+          fi
+          git tag "$tag"
+          git push origin "$tag"
+          echo "::notice::tagged $tag"

@@ -37,3 +37,16 @@ pnpm install
 pnpm -r test
 pnpm -r build
 ```
+
+## Contributing
+
+Branch → PR → green CI → merge → auto-deploy. `main` is protected; push it through a PR.
+
+1. Branch off `main` and commit small, conventional commits.
+2. Open a PR. The `ci` workflow gates it: install, `pnpm -r build` (which typechecks every
+   package), `pnpm -r test`, and the `AILX_BACKEND=1` server build, then the Playwright `e2e`
+   job against a Postgres service. Both checks must be green to merge.
+3. On merge, `pages` runs only after `ci` succeeds on that commit: it rebuilds the static
+   export, stamps `/version.json` with the deployed commit, deploys to GitHub Pages, and tags
+   the commit `build-<UTC date>-<short sha>`. That tag plus `version.json` is the whole
+   versioning story — no changesets, nothing is published.

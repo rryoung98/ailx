@@ -1,18 +1,131 @@
 name: ci
+
+# The merge gate. Everything that must be true before code reaches `main`
+# runs here; `pages.yml` deploys only after this workflow succeeds.
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
+
+permissions:
+  contents: read
+
+# Supersede in-flight PR runs; never cancel a `main` run, because the Pages
+# deploy is chained to its conclusion.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  test:
+  verify:
+    name: verify
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+          cache: pnpm # caches the pnpm store, keyed on pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm -r build
-      - run: pnpm -r test
+
+      # Typecheck is not a separate step on purpose: every package's `build`
+      # IS `tsc -p tsconfig.json`, and `next build` typechecks `apps/web`.
+      # A standalone `tsc --noEmit` pass would compile the same sources twice
+      # for the same diagnostics.
+      - name: Build (typechecks all packages + static export)
+        run: pnpm -r build
+
+      - name: Test
+        run: pnpm -r test
+
+      # Dual-mode drift is invisible unless both builds run (FRONTEND.md 6.5).
+      # The static export above has no API surface at all; this one compiles
+      # the `route.api.ts` handlers.
+      - name: Build server mode (AILX_BACKEND=1)
+        env:
+          AILX_BACKEND: "1"
+        run: pnpm --filter @ailx/web build
+
+  e2e:
+    name: e2e
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ailx
+          POSTGRES_PASSWORD: ailx
+          POSTGRES_DB: ailx_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ailx -d ailx_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://ailx:ailx@127.0.0.1:5432/ailx_e2e
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Playwright suite lands in a separate change. Until then this job
+      # succeeds without running anything, so it can already be a required
+      # check on `main`.
+      - id: suite
+        name: Detect the E2E suite
+        run: |
+          if [ -f apps/web/playwright.config.ts ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::apps/web/playwright.config.ts not present yet — skipping E2E."
+          fi
+
+      - if: steps.suite.outputs.present == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.suite.outputs.present == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.suite.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Playwright's `webServer` runs `next build` itself, so only the
+      # workspace packages `apps/web` imports need building here.
+      - if: steps.suite.outputs.present == 'true'
+        name: Build workspace packages
+        run: pnpm -r --filter '!@ailx/web' build
+
+      - if: steps.suite.outputs.present == 'true'
+        name: Install Chromium
+        run: pnpm --filter @ailx/web exec playwright install --with-deps chromium
+
+      # Schema plus the one row `POST /api/attempts` requires: the backend
+      # rejects an attempt against an unknown instrument
+      # (`DEFAULT_INSTRUMENT` in packages/backend/src/handlers.ts).
+      - if: steps.suite.outputs.present == 'true'
+        name: Bootstrap the E2E database
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+            "INSERT INTO instruments (id, version, package_digest, effective_from)
+             VALUES ('ailx', '2026.1', 'sha256:ci-e2e', '2026-01-01')
+             ON CONFLICT (id, version) DO NOTHING"
+
+      - if: steps.suite.outputs.present == 'true'
+        name: Run Playwright
+        run: pnpm --filter @ailx/web e2e
+
+      - if: always() && steps.suite.outputs.present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
