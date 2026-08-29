@@ -15,7 +15,8 @@ Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] tod
 
 ## Phase 2 — Platform core (spec §11, §14 schema)
 - [x] Postgres schema (`db/schema.sql`): instruments, track_versions, attempts, responses (append-only), scores, judgments, transcripts
-- [ ] Auth: Clerk behind an `AuthProvider` interface (keys borrowable from ../exchequer for dev)
+- [x] Auth: `AuthProvider` interface with Clerk + dev adapters (`@ailx/backend`, selected via `AILX_AUTH`; dev needs no keys)
+- [x] Hosted persistence phase 1: `@ailx/backend` append-only store + handlers over `db/schema.sql` (PGlite integration tests); Next API route handlers compile only under `AILX_BACKEND=1` (static Pages export unchanged); client persistence seam mirrors the session log server-side
 - [x] Session engine (`@ailx/session`): event-sourced machine, budgets, pause/resume, composite §04
 - [x] Track plugin runtime wired client-side (registry + plugin score over stored demo judgments)
 
