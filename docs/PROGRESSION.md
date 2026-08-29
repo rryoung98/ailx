@@ -52,16 +52,57 @@ un-teach an answer. The separation is therefore structural, not a convention:
 
 ### 2.2 The corpus, honestly
 
-18 hand-written text passages, six per family, three carrying a planted
-artefact and three clean. The call is **"does this passage carry a &lt;family&gt;
-artefact?"** — deliberately *not* T2's authentic-versus-synthetic media call.
+24 real, freely-licensed **images**: 12 genuine photographs and 12 genuine
+model-generated images, all from Wikimedia Commons under CC0, CC-BY, CC-BY-SA
+or public domain. The call is T2's own — **"is this a photograph or an
+AI-generated image?"** — and every card ends with a one-line **tell** naming
+the artefact actually visible in that picture, or, for a photograph, naming
+the suspicious-looking feature and why it is genuine.
 
-This is a **placeholder set** and the page says so. A synthetic-vs-human drill
-needs a licensed human-written and model-generated media corpus; inventing one
-would train the wrong tell, and borrowing scored items would burn the bank. The
-families, the immediate feedback and the five-minute shape are the spec's; the
-corpus is a stand-in. Replacing it is content work, not code: fill
-`PRACTICE_BANK`, bump `PRACTICE_BANK_VERSION`, and the tests above still hold.
+The tell is the deliverable. The 31%→51% effect the spec cites comes from
+being shown the thing you looked straight past, not from the card count, so
+the tells are written per picture and the corpus test refuses a missing,
+duplicated or answer-restating one.
+
+| Where it lives | What it is |
+|---|---|
+| `instruments/practice/2026.1/curation.json` | hand-written curation: title, class, family, difficulty, alt, tell |
+| `instruments/practice/2026.1/corpus.json` | the built manifest — the source of truth |
+| `packages/report/src/practiceCorpus.ts` | GENERATED from it, so the bundle can carry the corpus into the static export |
+| `apps/web/public/practice-media/` | the assets, content-addressed, ≤150 KB each |
+| `instruments/tools/commons_media.py` | the one Commons fetch/licence/encode helper, shared with the scored deck's pipeline |
+
+Rebuild with
+`python3 instruments/practice/2026.1/tools/build-practice-corpus.py`.
+The pipeline **refuses** rather than guesses: a title already in the scored
+bank, an asset whose bytes match a scored asset, a licence outside the allowed
+set, an image curated `synthetic` whose Commons page claims no generator, or
+an image curated `authentic` whose page mentions one. Commons category
+membership is not evidence — those categories contain AI *restorations* of
+real photographs and real photographs of AI-themed events, both of which were
+found and rejected while this corpus was built.
+
+**Assets live in the repo, not in Blob storage.** `/practice` ships in the
+static GitHub Pages export, which has no server to sign a Blob URL from, so a
+Blob-backed corpus would make the drill work only in the hosted build — and
+the demo is the surface that sells the loop. 24 budgeted JPEGs is about 2 MB.
+
+**What is still thin, and it is said on the page.** The corpus is small, and
+the families are not equally deep: physics 3 synthetic / 4 authentic, function
+7 / 5, sociocultural 2 / 3. The sociocultural side of the *generated* half is
+the hardest to fill, because a generated picture has to be culturally specific
+before it can be culturally wrong, and freely-licensed photorealistic
+generations on Commons are mostly landscape, architecture and food. A round
+therefore repeats material sooner than the scored deck would.
+
+**What a human must supply to grow it.** No image-generation capability exists
+in this repository: `services/openrouter-proxy` is text-only, and T4's image
+model is a deterministic SVG simulator, not a generator. Every synthetic item
+here is therefore a *found* generation, published under a free licence by
+somebody else. Widening the corpus means either (a) curating more Commons
+titles into `curation.json`, or (b) generating images with a real model under
+terms that permit redistribution, and recording the model, prompt and date in
+the item credit the way the scored bank's text items already do.
 
 ### 2.3 The round
 
@@ -200,14 +241,20 @@ sharing work, not here.
 
 ## 7. Known gaps
 
-1. **The corpus is a placeholder** (§2.2). It is the one thing standing between
-   this drill and the spec's measured 31%→51% intervention.
-2. **Pre/post is not wired.** Spec §13 wants the training round recorded as a
+1. **The corpus is real but shallow** (§2.2). 24 licensed images now do T2's
+   own authentic-versus-synthetic call, so the drill trains the skill it claims
+   to train — but 24 cards repeat, and the sociocultural family has only two
+   generated items. Depth is content work: more curated Commons titles, or real
+   generations under redistributable terms. Nothing in this repository can
+   generate an image, so the second route needs a human with model access.
+2. **Media is still images only.** Spec §T2 also runs video and audio blocks.
+   Practice drills neither, and the corpus format has no place for them yet.
+3. **Pre/post is not wired.** Spec §13 wants the training round recorded as a
    measured intervention against the scored deck. Practice is deliberately
    decoupled from sittings today; linking them is a psychometrics decision.
-3. **`/progress` needs a proven identity.** Under `AILX_AUTH=clerk` a page
+4. **`/progress` needs a proven identity.** Under `AILX_AUTH=clerk` a page
    render carries the session; under `AILX_AUTH=dev` the browser sends no
    asserted header on a navigation, so the page shows its honest "we do not know
    who you are" state. The drill itself works either way.
-4. **No E2E yet.** FRONTEND.md §6.4 lists the required specs; a practice→streak
+5. **No E2E yet.** FRONTEND.md §6.4 lists the required specs; a practice→streak
    journey belongs on that list once Playwright covers the exam path.

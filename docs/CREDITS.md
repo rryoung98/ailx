@@ -103,3 +103,42 @@ item. Provenance: `apps/web/public/media/backdrops.provenance.json`.
 AILX wordmark (`apps/web/public/media/logo.svg`): original stroked SVG
 drawn for this project (no third-party source); used by the covering
 loader.
+
+
+# Practice corpus credits
+
+The unscored practice drill (`apps/web/public/practice-media/*.jpg`) is a
+SEPARATE corpus from the scored deck above and shares no asset with it — see
+`docs/PROGRESSION.md` §2.2. All 24 images are from
+[Wikimedia Commons](https://commons.wikimedia.org/), re-encoded (JPEG, max
+edge 800px) and in three cases corner-cropped to remove a generator watermark
+that would have answered the card. Retrieved 2026-08-29.
+Licences: CC0 / CC BY / CC BY-SA / Public domain only. Regenerate this list
+with the corpus: `instruments/practice/2026.1/tools/build-practice-corpus.py`.
+
+| File | Kind | Commons title | Author | License | Source |
+|---|---|---|---|---|---|
+| `e98b26b84da7.jpg` | Photograph | Liberty Mugari.jpg | Liberty Mugari | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Liberty_Mugari.jpg) |
+| `c21f4cb872da.jpg` | Photograph | Frying red pine mushrooms in a pan (54064465568).jpg | AS Photography from Poland | CC BY 4.0 | [source](https://commons.wikimedia.org/wiki/File:Frying_red_pine_mushrooms_in_a_pan_(54064465568).jpg) |
+| `7aabd26700b1.jpg` | Photograph | Capsicum baccatum in Saúde flea market, São Paulo, Brazil.jpg | Wilfredor | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Capsicum_baccatum_in_Sa%C3%BAde_flea_market,_S%C3%A3o_Paulo,_Brazil.jpg) |
+| `2224b86c3f61.jpg` | Photograph | Harvest (20110505-RD-LSC-0157).jpg | USDAgov | Public domain | [source](https://commons.wikimedia.org/wiki/File:Harvest_(20110505-RD-LSC-0157).jpg) |
+| `74e66b446aab.jpg` | Photograph | Mixed mushroom buns, pan fried - San Francisco, CA.jpg | Daderot | CC0 | [source](https://commons.wikimedia.org/wiki/File:Mixed_mushroom_buns,_pan_fried_-_San_Francisco,_CA.jpg) |
+| `f9b3a545c589.jpg` | Photograph | Kaplica grobowa rodziny Potockich P1680784 Peczera.jpg | Posterrr | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Kaplica_grobowa_rodziny_Potockich_P1680784_Peczera.jpg) |
+| `03c6ae318c8e.jpg` | Photograph | Світло в капличці.jpg | Serhii Zysko | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:%D0%A1%D0%B2%D1%96%D1%82%D0%BB%D0%BE_%D0%B2_%D0%BA%D0%B0%D0%BF%D0%BB%D0%B8%D1%87%D1%86%D1%96.jpg) |
+| `8a161f725bab.jpg` | Photograph | Keble College Chapel Exterior, Oxford, UK - Diliff.jpg | Diliff | CC BY-SA 3.0 | [source](https://commons.wikimedia.org/wiki/File:Keble_College_Chapel_Exterior,_Oxford,_UK_-_Diliff.jpg) |
+| `2f437919fc99.jpg` | Photograph | Nordkirchen, Schloss Nordkirchen -- 2015 -- 7797.jpg | Dietmar Rabich | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Nordkirchen,_Schloss_Nordkirchen_--_2015_--_7797.jpg) |
+| `830173d82390.jpg` | Photograph | Accra Market, Accra (P1100247).jpg | Matti Blume | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Accra_Market,_Accra_(P1100247).jpg) |
+| `c125799ad912.jpg` | Photograph | People purchasing Mangoes in Powerpowet station road.jpg | iMahesh | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:People_purchasing_Mangoes_in_Powerpowet_station_road.jpg) |
+| `b2a3a42a896f.jpg` | Photograph | 2024 Kapliczka Matki Bożej w Jaszkowej Górnej (1).jpg | Jacek Halicki | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:2024_Kapliczka_Matki_Bo%C5%BCej_w_Jaszkowej_G%C3%B3rnej_(1).jpg) |
+| `e54061065998.jpg` | AI-generated | Hotel De Oriente Philippines late 1800's to early 1900's.jpg | Irishandys | CC0 | [source](https://commons.wikimedia.org/wiki/File:Hotel_De_Oriente_Philippines_late_1800%27s_to_early_1900%27s.jpg) |
+| `6b339dea6b65.jpg` | AI-generated | Château de Bettancourt02 sepia.png | chat gpt | Public domain | [source](https://commons.wikimedia.org/wiki/File:Ch%C3%A2teau_de_Bettancourt02_sepia.png) |
+| `d3a3b3008057.jpg` | AI-generated | Burro Ambulancia.jpg | 161803cesar | Public domain | [source](https://commons.wikimedia.org/wiki/File:Burro_Ambulancia.jpg) |
+| `4ca10b62f0a8.jpg` | AI-generated | פטריות מטוגנות.png | Eladkarmel | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:%D7%A4%D7%98%D7%A8%D7%99%D7%95%D7%AA_%D7%9E%D7%98%D7%95%D7%92%D7%A0%D7%95%D7%AA.png) |
+| `abd6610c9bea.jpg` | AI-generated | Frutiger aero-style wallpaper (cropped).png | Stable Diffusion по запросу Tucvbif | Public domain | [source](https://commons.wikimedia.org/wiki/File:Frutiger_aero-style_wallpaper_(cropped).png) |
+| `31fd794e5d88.jpg` | AI-generated | פטריות במחסן.png | Eladkarmel | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:%D7%A4%D7%98%D7%A8%D7%99%D7%95%D7%AA_%D7%91%D7%9E%D7%97%D7%A1%D7%9F.png) |
+| `690c0fcdaa6d.jpg` | AI-generated | Aux cuisines du chateau, une corne dabondance IA Dall e Bing 18 nov 2023 Lamiot 01.png | Lamiot | CC BY-SA 4.0 | [source](https://commons.wikimedia.org/wiki/File:Aux_cuisines_du_chateau,_une_corne_dabondance_IA_Dall_e_Bing_18_nov_2023_Lamiot_01.png) |
+| `8224b5284369.jpg` | AI-generated | AI generated Image Marienkapelle Zeil am Main 1727.jpg | Start with AI Gemini 3.1 Pro (Thinking), continued with AI Gemini 3.6 Flash (Thinking) | Public domain | [source](https://commons.wikimedia.org/wiki/File:AI_generated_Image_Marienkapelle_Zeil_am_Main_1727.jpg) |
+| `73a8ceeea69c.jpg` | AI-generated | చెరువుకట్ట.png | Author:Gemini Ai | Public domain | [source](https://commons.wikimedia.org/wiki/File:%E0%B0%9A%E0%B1%86%E0%B0%B0%E0%B1%81%E0%B0%B5%E0%B1%81%E0%B0%95%E0%B0%9F%E0%B1%8D%E0%B0%9F.png) |
+| `e9a4ea1ad253.jpg` | AI-generated | Solarpunk, a positive possible near-future.jpg | Prototyperspective | CC0 | [source](https://commons.wikimedia.org/wiki/File:Solarpunk,_a_positive_possible_near-future.jpg) |
+| `4fdcc17f6120.jpg` | AI-generated | HONG KONG SCHOOLS COVID 19.png | midjourney | Public domain | [source](https://commons.wikimedia.org/wiki/File:HONG_KONG_SCHOOLS_COVID_19.png) |
+| `21d242e00e0a.jpg` | AI-generated | Sanctuary of Ercole Vincitore Tivoli Render Model Inside Gemini-generated.png | Google Gemini; generated by Horst-schlaemma | Public domain | [source](https://commons.wikimedia.org/wiki/File:Sanctuary_of_Ercole_Vincitore_Tivoli_Render_Model_Inside_Gemini-generated.png) |
