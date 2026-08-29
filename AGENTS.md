@@ -16,6 +16,18 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 ## Commands
 - `pnpm install` · `pnpm -r test` · `pnpm -r build` (both must pass before any commit)
 
+## Server-mode environment (`apps/web`, API routes only)
+- `AILX_BACKEND=1` — compile the API routes (unset = static Pages export).
+- `AILX_AUTH` — auth adapter: `dev` (no keys) or `clerk`.
+- `DATABASE_URL` — Postgres for the append-only store.
+- `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root (default `<cwd>/.ailx-snapshots`).
+- `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`.
+  Required behind any proxy/CDN: it is baked into the served-site CSP allowlist and the
+  bare-digest 308 redirect. Must be an absolute http(s) origin with no path/query/fragment.
+- `AILX_TRUST_PROXY=1` — fall back to `x-forwarded-proto`/`x-forwarded-host` when
+  `AILX_PUBLIC_ORIGIN` is unset. Only set this when a trusted proxy always overwrites
+  those headers; otherwise they are attacker-controlled (host-header injection, CSP widening).
+
 ## Core invariants (never violate)
 - Any score ever issued is byte-identically recomputable from stored inputs.
 - `score()` is pure — no I/O, clock, or randomness (CI-enforced sandbox).

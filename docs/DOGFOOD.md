@@ -14,6 +14,13 @@ The showcase is validated continuously, not once.
 4. Open `/validate` — every check PASS.
 5. Reload mid-exam — session resumes from localStorage.
 
+## Server mode behind a proxy
+Set `AILX_PUBLIC_ORIGIN` (or `AILX_TRUST_PROXY=1`) whenever the app is reached through a
+tunnel, load balancer or CDN. Without it the served-site CSP allowlist and the bare-digest
+308 redirect carry the internal origin, so a candidate's hosted site loads with every
+subresource blocked — a `curl` of one asset still returns 200, so only a real browser
+(or the tests in `apps/web/test/publicOrigin.test.ts`) catches it.
+
 ## CI gates
 - `pnpm -r build && pnpm -r test` (all packages, golden fixtures, purity harness).
 - Static export build of `@ailx/web`.
