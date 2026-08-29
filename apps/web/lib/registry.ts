@@ -76,6 +76,18 @@ const SCORER_CORES: Partial<Record<TrackId, () => string>> = {
   t2: () => scoreT2.toString(),
 };
 
+/**
+ * KNOWN LIMITATION (reproducibility): this digest hashes
+ * `Function.prototype.toString()` of BUNDLED code, so it identifies the
+ * exact build, not the scoring source — an innocent bundler/minifier bump
+ * changes the digest even when score() source is unchanged. Digests
+ * persisted with old builds therefore cannot be re-derived from source
+ * alone. The committed instrument snapshot carries no per-track
+ * scoring_digest to pin instead; the durable fix is to content-address the
+ * score() source files at build time and emit that hash into the snapshot.
+ * Until then, treat `${plugin.id}@${pkg.version}` as the stable identifier
+ * and the source-hash portion as build-advisory only.
+ */
 export function scoringDigest(trackId: TrackId): string {
   const plugin = PLUGINS[trackId];
   const core = SCORER_CORES[trackId]?.() ?? "";
