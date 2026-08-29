@@ -6,6 +6,7 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 - `apps/web/` — Next.js platform (currently static export on GitHub Pages; hosted backend in progress)
 - `packages/core/` — TrackPlugin interface, scoring purity harness, content addressing
 - `packages/backend/` — hosted-mode persistence: Postgres store (append-only writes over `db/schema.sql`), AuthProvider (Clerk/dev), framework-agnostic API handlers
+- `packages/report/` — pure scoring-adjacent derivation: composite, insights, calibration, export tiers, demo judging, track metadata
 - `packages/tracks/` — t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
 - `packages/session/` — event-sourced session engine
 - `instruments/2026.1/` — content-as-data: manifest, rubrics, judge prompts, item banks
@@ -42,6 +43,7 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 - Any score ever issued is byte-identically recomputable from stored inputs.
 - `score()` is pure — no I/O, clock, or randomness (CI-enforced sandbox).
 - Item banks are content-addressed; edits create new items, never mutations.
+- The audit digest content-addresses `score()` SOURCE at build time (`instruments/2026.1/snapshot.json` `scorers[]`); regenerate with `pnpm --filter @ailx/content-tools run snapshot:2026.1`.
 - `responses` and `transcripts` are append-only; re-scores are inserts linked by `superseded_by`.
 
 ## Code quality and engineering philosophy

@@ -51,13 +51,14 @@ Everything else follows from that.
 | Routes, layout, presentation, browser-only state | `apps/web` | Next-specific and disposable. |
 
 **`apps/web` may not contain a function whose output reaches a score, a report figure, or an
-audit digest.** If you are about to write one, you are in the wrong package. This is the rule the
-repo violates most today (~1,900 lines; §9 P0-3).
+audit digest.** If you are about to write one, you are in the wrong package. The derivation
+layer now lives in `@ailx/report` (§9 step 4); `lib/instrument.ts` and `lib/validateChecks.ts`
+are the remaining holdouts, both coupled to the app's asset/base-path seam.
 
-Corollary: **the audit digest must not be computed in the browser.** `lib/registry.ts`
-`scoringDigest()` hashes `Function.prototype.toString()` of *bundled* code and documents its own
-unsoundness — a minifier bump changes the digest with no source change. Content-address the
-`score()` **source** at build time, in `packages/`, and emit it into the instrument snapshot.
+Corollary: **the audit digest must not be computed in the browser.** `scoringDigest()` now reads
+a build-time content address of the `score()` source closure from the committed snapshot
+(`packages/content-tools/src/scorers.ts`); the browser hashes nothing. Regenerate the snapshot
+with `pnpm --filter @ailx/content-tools run snapshot:2026.1` — CI fails if it is stale.
 
 ### 2.2 Pure vs impure modules
 
@@ -173,7 +174,7 @@ apps/web/
 packages/
   core/          # TrackPlugin, content addressing, purity harness, hash
   session/       # event log, projection, StorageLike
-  report/        # NEW: pure scoring-adjacent + report logic (see §9)
+  report/        # pure scoring-adjacent + report logic
   tracks/*/      # per-track Runner + score(), shipped together
   backend/       # persistence, auth, snapshot store, sandbox headers
   content-tools/
@@ -691,14 +692,16 @@ than assuming, and renumber nothing.
 3. **Scope the global keydown handler.** Guard modifiers/IME/text targets and bind to the deck
    container, not `window`. An arrow key in browse mode currently fires an irreversible scored
    answer. *Gap: §5.*
-4. **Move scoring-adjacent logic into the purity sandbox.** `git mv` `judging`, `composite`,
-   `exportTiers`, `calibration`, `insights`, `playerType`, `personality` → new
-   `packages/report`; `instrument`, `validateChecks` → `packages/core`/`content-tools`. Add
-   `runPure()` tests. *Gap: §2.1.*
-5. **Replace `scoringDigest()`.** Content-hash the `score()` **source** at build time in
-   `packages/core` and emit it into the instrument snapshot; delete the
-   `Function.prototype.toString()` path. Also pin exact dependency versions so the audit digest
-   stops floating. *Gap: §2.1, §4.6.*
+4. **[done] Move scoring-adjacent logic into the purity sandbox.** `judging`, `composite`,
+   `exportTiers`, `calibration`, `insights`, `playerType`, `personality`, the demo judge and the
+   track metadata now live in `packages/report`, with a `runPure()` test over the whole chain and
+   a report-golden digest in `apps/web`. `instrument` and `validateChecks` stay in `apps/web` for
+   now: both read the app's asset/base-path seam, so moving them is a separate step. *Gap: §2.1.*
+5. **[done] Replace `scoringDigest()`.** The `Function.prototype.toString()` path is gone. The
+   build walks each plugin's `score()` import closure on disk, hashes the source bytes and emits
+   the digest into the instrument snapshot; the browser reads it and fails closed if it is
+   missing. Remaining: dependency versions are pinned by declared range only (see
+   `docs/PLAN.md`). *Gap: §2.1, §4.6.*
 
 ### P1 — the standard's structure and the E2E gap
 
