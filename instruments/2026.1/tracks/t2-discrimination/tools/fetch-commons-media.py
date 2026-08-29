@@ -31,87 +31,41 @@ canonical JSON of the item minus `id`); afterwards run:
 Usage: python3 fetch-commons-media.py <titles.txt> <out-dir>
   titles.txt: one Commons file title per line, e.g. 'File:Cute Hedgehog.jpg'
 """
-import hashlib, io, json, re, sys, time
+import json
+import pathlib
+import sys
+import time
 
-import requests
-from PIL import Image
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[4] / "tools"))
 
-API = "https://commons.wikimedia.org/w/api.php"
-UA = {"User-Agent": "AILX-research/0.1"}
-OK_LICENSE = re.compile(r"^(CC0|CC BY(-SA)? \d|Public domain|PD)", re.I)
+import commons_media as cm  # noqa: E402
 
-
-def api(session, **params):
-    params.update(action="query", format="json")
-    for attempt in range(6):
-        r = session.get(API, params=params, timeout=30)
-        if r.status_code == 429:
-            time.sleep(3 + 3 * attempt)
-            continue
-        r.raise_for_status()
-        return r.json()
-    r.raise_for_status()
-
-
-def fetch_bytes(session, url):
-    for attempt in range(8):
-        r = session.get(url, timeout=60)
-        if r.status_code == 429:
-            time.sleep(8 + 5 * attempt)
-            continue
-        r.raise_for_status()
-        return r.content
-    raise RuntimeError(f"persistent 429 for {url}")
-
-
-def strip_tags(s):
-    return re.sub(r"<[^>]+>", "", s or "").strip()
-
-
-def encode(raw, max_edge=800, target=150_000):
-    im = Image.open(io.BytesIO(raw)).convert("RGB")
-    im.thumbnail((max_edge, max_edge))
-    q = 78
-    while True:
-        buf = io.BytesIO()
-        im.save(buf, "JPEG", quality=q, optimize=True, progressive=True)
-        data = buf.getvalue()
-        if len(data) <= target or q <= 50:
-            return data
-        q -= 6
+# The fetch, licence and encode rules live in ONE place, shared with the
+# practice pipeline (instruments/practice/2026.1/tools/build-practice-corpus.py).
+# Two media corpora that must never overlap have to agree on what an
+# acceptable asset is, so neither keeps its own copy of the rules.
 
 
 def main(titles_path, out_dir):
-    session = requests.Session()
-    session.headers.update(UA)
+    session = cm.session()
     titles = [t.strip() for t in open(titles_path) if t.strip()]
-    for i in range(0, len(titles), 50):
-        j = api(session, titles="|".join(titles[i : i + 50]), prop="imageinfo",
-                iiprop="url|extmetadata|size", iiurlwidth=800)
-        for page in j["query"]["pages"].values():
-            if "imageinfo" not in page:
-                continue
-            ii = page["imageinfo"][0]
-            em = ii.get("extmetadata", {})
-            license_ = strip_tags(str(em.get("LicenseShortName", {}).get("value", "")))
-            if not OK_LICENSE.match(license_):
-                print(f"SKIP (license {license_!r}): {page['title']}")
-                continue
-            raw = fetch_bytes(session, ii.get("thumburl") or ii["url"])
-            data = encode(raw)
-            digest = hashlib.sha256(data).hexdigest()[:12]
-            out = f"{out_dir}/{digest}.jpg"
-            with open(out, "wb") as f:
-                f.write(data)
-            print(json.dumps({
-                "commons_title": page["title"],
-                "file": out,
-                "bytes": len(data),
-                "author": strip_tags(str(em.get("Artist", {}).get("value", ""))),
-                "license": license_,
-                "source_url": ii["descriptionurl"],
-            }, ensure_ascii=False))
-            time.sleep(1.5)
+    for title, info in cm.imageinfo(session, titles, width=800).items():
+        if not cm.OK_LICENSE.match(info["license"] or ""):
+            print(f"SKIP (license {info['license']!r}): {title}")
+            continue
+        data = cm.encode(cm.fetch_bytes(session, info["thumburl"]))
+        out = f"{out_dir}/{cm.content_name(data)}.jpg"
+        with open(out, "wb") as fh:
+            fh.write(data)
+        print(json.dumps({
+            "commons_title": title,
+            "file": out,
+            "bytes": len(data),
+            "author": info["author"],
+            "license": info["license"],
+            "source_url": info["source_url"],
+        }, ensure_ascii=False))
+        time.sleep(1.5)
 
 
 if __name__ == "__main__":
