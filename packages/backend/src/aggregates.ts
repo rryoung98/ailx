@@ -20,9 +20,9 @@
  * the page; it is not a judged score, and no judged score exists yet.
  */
 
-import { project, TRACK_IDS, type SequencedEntry, type TrackRawScores } from "@ailx/session";
+import { project, TRACK_IDS, type SequencedEntry, type SessionState, type TrackRawScores } from "@ailx/session";
 import { worldAggregates, type ExposureSummary, type TrendPoint, type WorldAggregates } from "@ailx/report";
-import type { Queryable } from "./db.js";
+import type { Queryable, QueryResultRow } from "./db.js";
 import type { ApiContext, ApiResult } from "./handlers.js";
 
 /** Log entry types a track shape needs; everything else is noise here. */
@@ -43,6 +43,26 @@ export async function trackShapes(db: Queryable): Promise<TrackRawScores[]> {
       ORDER BY attempt_id, seq`,
     [SHAPE_ENTRY_TYPES],
   );
+  const shapes: TrackRawScores[] = [];
+  for (const [, log] of logsByAttempt(rows)) {
+    const shape = shapeOf(project(log));
+    if (shape !== null) shapes.push(shape);
+  }
+  return shapes;
+}
+
+/**
+ * Group mirrored `responses` rows into one event log per attempt, dropping
+ * anything that is not a well-formed log entry. Shared with the personal
+ * progression read (`./practice.ts`) so there is ONE reader of a mirrored
+ * log, not two that can drift.
+ *
+ * Rows must already be ordered by (attempt_id, seq) — `project()` replays a
+ * log in sequence order.
+ */
+export function logsByAttempt(
+  rows: readonly QueryResultRow[],
+): Map<string, SequencedEntry[]> {
   const byAttempt = new Map<string, SequencedEntry[]>();
   for (const row of rows) {
     const p = (typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload) as
@@ -54,22 +74,18 @@ export async function trackShapes(db: Queryable): Promise<TrackRawScores[]> {
     log.push(p as SequencedEntry);
     byAttempt.set(key, log);
   }
-  const shapes: TrackRawScores[] = [];
-  for (const log of byAttempt.values()) {
-    const state = project(log);
-    const shape = {} as TrackRawScores;
-    let complete = true;
-    for (const t of TRACK_IDS) {
-      const score = state.tracks[t].score;
-      if (!score) {
-        complete = false;
-        break;
-      }
-      shape[t] = score.scaled;
-    }
-    if (complete) shapes.push(shape);
+  return byAttempt;
+}
+
+/** The four-number shape of a projected run, or null unless ALL four scored. */
+export function shapeOf(state: SessionState): TrackRawScores | null {
+  const shape = {} as TrackRawScores;
+  for (const t of TRACK_IDS) {
+    const score = state.tracks[t].score;
+    if (!score) return null;
+    shape[t] = score.scaled;
   }
-  return shapes;
+  return shape;
 }
 
 /**

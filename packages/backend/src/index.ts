@@ -62,8 +62,25 @@ export {
   collectWorldAggregates,
   handleWorldAggregates,
   itemExposure,
+  logsByAttempt,
+  shapeOf,
   trackShapes,
 } from "./aggregates.js";
+export {
+  MAX_PRACTICE_ANSWERS,
+  PRACTICE_DRILL,
+  handleProgress,
+  handleStartPractice,
+  handleSubmitPractice,
+  participantProgress,
+  participantSittings,
+  practiceDays,
+  startPractice,
+  submitPractice,
+  type PracticeAnswerInput,
+  type PracticeResult,
+  type PracticeSession,
+} from "./practice.js";
 export {
   FORBIDDEN_RESULT,
   GALLERY_MAX_PAGE_SIZE,

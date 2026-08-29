@@ -205,3 +205,119 @@ CREATE TABLE share_views (
   viewed_on date NOT NULL DEFAULT current_date
 );
 CREATE INDEX share_views_by_share ON share_views (share_id);
+
+-- ---------------------------------------------------------------------------
+-- Practice and streaks (progression loop) — packages/report `practice.ts` /
+-- `progress.ts`, and db/README.md for the migration statements.
+--
+-- Practice is the SHORT, UNSCORED training drill (spec §13 "Mastery"). It is
+-- deliberately a separate pair of tables from `attempts`/`responses`, because
+-- it is a separate thing: it draws from the practice-only corpus, never from
+-- the scored item bank, it reaches no `score()`, and it must never be
+-- mistaken for a sitting of the instrument. Nothing here is referenced by
+-- `scores`, `judgments` or `attempt_decks`.
+--
+-- A STREAK IS DERIVED, NEVER STORED. There is no streak column and no streak
+-- table on purpose: a stored counter is a number the server must trust itself
+-- to have maintained, and every bug in it is unfalsifiable afterwards. The
+-- streak is recomputed from these rows on every read (@ailx/report
+-- `streakSummary`), so it is always exactly what the stored evidence says.
+CREATE TABLE practice_sessions (
+  id             uuid PRIMARY KEY,       -- assigned by the app: it seeds the deck
+  participant_id uuid NOT NULL REFERENCES participants(id),
+  drill          text NOT NULL,          -- 'artefact-families'
+  bank_version   text NOT NULL,          -- practice corpus version at deal time
+  item_ids       jsonb NOT NULL,         -- the dealt deck, in presented order
+  started_at     timestamptz NOT NULL DEFAULT now(),
+  -- Monotone one-way completion stamp, exactly like attempts.finalized_at:
+  -- set once, by the server, and ONLY when the session qualified (whole deck
+  -- answered, and slower than the anti-gaming floor measured between
+  -- started_at and the submit). An abandoned or instant session simply never
+  -- gets one, so it can never buy a streak day.
+  completed_at   timestamptz,
+  answered       int,                    -- answers accepted (server-counted)
+  correct        int,                    -- answers graded correct SERVER-side
+  -- The participant's UTC offset in minutes at completion, clamped to a real
+  -- civil offset by the app. The streak day is derived from completed_at (a
+  -- server clock) plus this offset — a client can move its own day boundary,
+  -- which travelling would do anyway, but cannot manufacture a day.
+  tz_offset_min  int,
+  CONSTRAINT practice_sessions_completion_recorded
+    CHECK (num_nonnulls(completed_at, answered, correct, tz_offset_min) IN (0, 4))
+);
+
+-- Streak reads are always "this participant, completed only, newest first".
+CREATE INDEX practice_sessions_by_participant
+  ON practice_sessions (participant_id, completed_at DESC)
+  WHERE completed_at IS NOT NULL;
+
+-- Append-only, same rule as `responses`: never UPDATEd, never DELETEd, and a
+-- retried submit collides on (session_id, seq) instead of overwriting.
+-- `correct` is the SERVER's verdict from (item_id, choice) — the client's own
+-- opinion of its answer is not stored and is not read (FRONTEND.md §4.7).
+CREATE TABLE practice_answers (
+  id         bigserial PRIMARY KEY,
+  session_id uuid NOT NULL REFERENCES practice_sessions(id),
+  seq        int  NOT NULL,
+  item_id    text NOT NULL,              -- always a practice: id, never a bank id
+  choice     int  NOT NULL,
+  correct    boolean NOT NULL,
+  latency_ms int,
+  client_ts  timestamptz NOT NULL,
+  server_ts  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (session_id, seq)
+);
+
+-- ---------------------------------------------------------------------------
+-- Moderation trail — docs/SHARING.md §7.6.
+--
+-- The queue (share_links.submitted_at/approved_at/rejected_at) records WHAT
+-- was decided. This table records the CONVERSATION around it: an internal
+-- note a moderator leaves for the next moderator, and the messages exchanged
+-- with the candidate whose submission was decided.
+--
+-- Append-only, in the same sense as `responses`: nothing here is ever UPDATEd
+-- or DELETEd. An edit inserts a new row pointing at the row it replaces
+-- (`supersedes_id`), a retraction inserts a new EMPTY row the same way, and
+-- the superseded row stays exactly as it was written. The trail is the
+-- accountability artifact; a trail that can be rewritten is not one.
+--
+-- Two audiences, one table, one column that separates them:
+--   visibility = 'internal' — moderator-only. Never serialized to a
+--                             candidate-reachable payload, filtered in SQL
+--                             (not in the renderer), and a candidate can
+--                             never write one (CHECK below).
+--   visibility = 'shared'   — exchanged WITH the candidate. The candidate
+--                             sees the body and the ROLE, never `author_ref`:
+--                             the same privacy posture as a refusal, whose
+--                             reason is shown and whose reviewer is not.
+CREATE TABLE moderation_comments (
+  id            bigserial PRIMARY KEY,
+  share_id      uuid NOT NULL REFERENCES share_links(id),
+  -- The VERIFIED caller (participants.auth_ref shape), never a body field.
+  author_ref    text NOT NULL,
+  author_role   text NOT NULL,
+  visibility    text NOT NULL,
+  body          text NOT NULL,           -- '' only for a retraction
+  supersedes_id bigint REFERENCES moderation_comments(id),
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT moderation_comments_role
+    CHECK (author_role IN ('reviewer', 'candidate')),
+  CONSTRAINT moderation_comments_visibility
+    CHECK (visibility IN ('internal', 'shared')),
+  -- A candidate cannot write an internal note, at any layer.
+  CONSTRAINT moderation_comments_candidate_is_shared
+    CHECK (author_role = 'reviewer' OR visibility = 'shared'),
+  -- An empty body is exactly a retraction, and a retraction always replaces
+  -- something: no anonymous blank rows, no silent deletions.
+  CONSTRAINT moderation_comments_retraction
+    CHECK (body <> '' OR supersedes_id IS NOT NULL)
+);
+
+-- A row may be replaced at most once: the trail is a chain, never a fork.
+CREATE UNIQUE INDEX moderation_comments_one_supersede
+  ON moderation_comments (supersedes_id) WHERE supersedes_id IS NOT NULL;
+
+-- Every read is "this case, oldest first".
+CREATE INDEX moderation_comments_by_share
+  ON moderation_comments (share_id, id);
