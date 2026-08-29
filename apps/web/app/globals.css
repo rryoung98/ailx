@@ -1044,16 +1044,13 @@ html[data-ailx-loaded="1"] .loader { display: none; }
   background-size: 7px 7px, 11px 11px;
   background-position: 0 0, 3px 5px;
 }
+/* The wordmark is an <img> (public/media/loader-mark.svg) so its 14 kB of
+   traced path data stays out of the layout JS and out of every prerendered
+   HTML page. Its two-tone fill and staggered opacity fade live inside that
+   file — page CSS cannot style an image document. The fade is opacity-only
+   there: a transform would override the groups' scale(1,-1) flip attribute
+   and render the wordmark upside down. */
 .loader-logo { width: min(280px, 56vw); height: auto; }
-.loader-logo .lg-fill {
-  opacity: 0;
-  animation: loaderFade 460ms ease forwards;
-}
-.loader-logo .lg-ail { fill: #f7f4f2; }
-.loader-logo .lg-x { fill: #b7f0cd; animation-delay: 220ms; }
-/* opacity-only: a CSS transform here would override the SVG groups'
-   scale(1,-1) flip attribute and render the wordmark upside down. */
-@keyframes loaderFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes loaderWipe { from { transform: none; } to { transform: translateY(-101%); } }
 
 

@@ -22,6 +22,16 @@ export function footerModeCopy(): string {
     : "AILX 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs. No network calls. Everything runs in your browser.";
 }
 
+/**
+ * Absolute URL for a file served out of `apps/web/public`, prefixed with the
+ * build's basePath. `next.config.mjs` always bakes NEXT_PUBLIC_BASE_PATH
+ * ("/ailx" for the Pages export, "" for the hosted build); the fallback only
+ * matters in unit tests, which render components outside a Next build.
+ */
+export function assetUrl(path: string): string {
+  return `${process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx"}${path}`;
+}
+
 /** Where the event log lives, for the run-intro lede. */
 export function eventLogCopy(): string {
   return isServerMode()

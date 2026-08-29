@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { eventLogCopy, footerModeCopy, isServerMode } from "../lib/mode";
+import { assetUrl, eventLogCopy, footerModeCopy, isServerMode } from "../lib/mode";
 import RootLayout from "../app/layout";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -70,5 +70,21 @@ describe("footer rendering", () => {
     const html = render();
     expect(html).not.toContain("No network calls");
     expect(html).toContain("hosted build");
+  });
+});
+
+describe("assetUrl", () => {
+  it("prefixes the baked basePath in each build mode", () => {
+    vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "/ailx"); // Pages export
+    expect(assetUrl("/media/logo.svg")).toBe("/ailx/media/logo.svg");
+    vi.stubEnv("NEXT_PUBLIC_BASE_PATH", ""); // hosted build, root-mounted
+    expect(assetUrl("/media/logo.svg")).toBe("/media/logo.svg");
+    vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "/x");
+    expect(assetUrl("/media/logo.svg")).toBe("/x/media/logo.svg");
+  });
+
+  it("falls back to the Pages basePath when the var is absent", () => {
+    vi.stubEnv("NEXT_PUBLIC_BASE_PATH", undefined as unknown as string);
+    expect(assetUrl("/media/logo.svg")).toBe("/ailx/media/logo.svg");
   });
 });

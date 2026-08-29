@@ -8,7 +8,7 @@ const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--fon
 import Link from "next/link";
 import { Loader } from "../lib/Loader";
 import { NavLink } from "../lib/NavLink";
-import { footerModeCopy } from "../lib/mode";
+import { assetUrl, footerModeCopy } from "../lib/mode";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="inner">
             <Link href="/" className="wordmark" aria-label="AILX home">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? "/ailx"}/media/logo.svg`} alt="AILX" className="wordmark-img" />
+              <img src={assetUrl("/media/logo.svg")} alt="AILX" className="wordmark-img" />
             </Link>
             <nav className="site-nav" aria-label="Primary">
               <NavLink href="/methodology">Methodology</NavLink>
