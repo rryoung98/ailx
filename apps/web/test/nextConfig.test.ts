@@ -30,7 +30,9 @@ describe("next.config.mjs", () => {
   it("defaults to the static GitHub Pages export", async () => {
     const cfg = await loadConfig({});
     expect(cfg.output).toBe("export");
-    expect(cfg.pageExtensions).toBeUndefined(); // route.api.ts stays inert
+    // route.api.ts AND page.api.tsx both stay inert: no API surface, and no
+    // server-only page, is emitted into the GitHub Pages export.
+    expect(cfg.pageExtensions).toBeUndefined();
     expect(cfg.basePath).toBe("/ailx");
     expect((cfg.env as Record<string, string>).NEXT_PUBLIC_AILX_BACKEND).toBe("");
   });
@@ -39,7 +41,9 @@ describe("next.config.mjs", () => {
     const cfg = await loadConfig({ AILX_BACKEND: "1" });
     expect(cfg.output).toBeUndefined();
     expect(cfg.pageExtensions).toContain("api.ts");
+    expect(cfg.pageExtensions).toContain("api.tsx"); // server-only PAGES
     expect((cfg.pageExtensions as string[])[0]).toBe("api.ts"); // must win over "ts"
+    expect((cfg.pageExtensions as string[])[1]).toBe("api.tsx"); // must win over "tsx"
     expect(cfg.basePath).toBe("");
     expect((cfg.env as Record<string, string>).NEXT_PUBLIC_AILX_BACKEND).toBe("1");
   });

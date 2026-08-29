@@ -74,9 +74,12 @@ with `pnpm --filter @ailx/content-tools run snapshot:2026.1` — CI fails if it 
 
 The repo already has the right convention. It is now a rule.
 
-1. **`app/api/**/route.api.ts`** is the only file pattern that may import server capability.
-   `next.config.mjs` keeps `api.ts` out of `pageExtensions` in the static build, so the export
-   contains no API surface at all. Never rename these to `route.ts`.
+1. **`app/api/**/route.api.ts` and `app/**/page.api.tsx`** are the only file patterns that may
+   import server capability. `next.config.mjs` keeps `api.ts`/`api.tsx` out of `pageExtensions`
+   in the static build, so the export contains no API surface *and* no server-only page. Never
+   rename these to `route.ts` / `page.tsx`. A server-only PAGE needs the same escape hatch a
+   route does — without it, `app/s/[token]/page.tsx` would be compiled into the GitHub Pages
+   export, where it can only fail. `apps/web/test/serverOnlyPages.test.ts` enforces the naming.
 2. **`apps/web/lib/server/**`** is server-only. Nothing under `app/**` outside `route.api.ts`,
    and nothing marked `"use client"`, may import from it. It may import `pg`, read
    `process.env`, and touch the filesystem.
