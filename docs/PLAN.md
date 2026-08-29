@@ -19,6 +19,8 @@ Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] tod
 - [x] Hosted persistence phase 1: `@ailx/backend` append-only store + handlers over `db/schema.sql` (PGlite integration tests); Next API route handlers compile only under `AILX_BACKEND=1` (static Pages export unchanged); client persistence seam mirrors the session log server-side
 - [x] Session engine (`@ailx/session`): event-sourced machine, budgets, pause/resume, composite §04
 - [x] Track plugin runtime wired client-side (registry + plugin score over stored demo judgments)
+- [x] Per-attempt T2 item variation: pure seeded sampler in `@ailx/track-t2` (seed = sha256(attemptId + bank hash)); append-only `attempt_decks` exposure log (bank hash + presented item ids) written at attempt creation; server attempt id adopted by the session so presentation/recompute/records share one id
+- [x] T1 site deployment pipeline (`@ailx/backend/t1`): strict ZIP validation (zip-bomb/zip-slip/symlink/MIME allowlist, §12 caps), content-addressed snapshot digest over a canonical manifest, SnapshotStore (fs + memory; cloud adapter shape), POST `/api/attempts/:id/site` + sandboxed GET `/api/site/:digest/*` (in-header CSP sandbox, digest-as-capability)
 
 ## Phase 3 — Tracks
 - [x] T2 swipe + replay UI, SDT scoring (d′ + Brier + provenance)
