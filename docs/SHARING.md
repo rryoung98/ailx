@@ -108,17 +108,81 @@ That is enough to answer "does the loop work" and structurally incapable of
 tracking a person. Metadata fetches (scrapers) do not count a view; rendering
 the page for a human does.
 
-## 7. Next slice — the public gallery
+## 7. The public gallery
 
-Additive on this foundation, not a rewrite:
+Shipped, additive on the state model above — no rewrite, no new share state.
 
-1. A browse route over `share_links WHERE approved_at IS NOT NULL AND
-   revoked_at IS NULL`, reading the same frozen payloads.
-2. A candidate-facing "add to the gallery" control calling `publishShare`,
-   and a reviewer surface calling `approveShare` (auth-gated to reviewers).
-3. A "how is the world doing" page of honest AGGREGATES: participation
-   counts, player-type distribution, track-shape distributions, completion
-   rates, item exposure counts from `attempt_decks`. No percentiles or
-   composites implying judged scoring while the judging pipeline (spec
-   Phase 4) does not exist, and a minimum cohort size before any breakdown is
-   shown so an aggregate can never re-identify one person.
+### 7.1 What is listed
+
+One predicate, defined once (`packages/backend/src/gallery.ts`):
+
+```sql
+approved_at IS NOT NULL AND revoked_at IS NULL
+```
+
+`unlisted` and `submitted` are not listed. `revoked` is never listed again.
+Approval is still decided by `publishShare`/`approveShare` from the stored
+`site_digest` column, so a card auto-publishes and a site waits for a human —
+`/gallery` only reads the result.
+
+**A gallery card carries no link back to `/s/<token>`.** The database stores
+only `sha256(token)`, so no server can rebuild the capability URL. Each card
+is self-contained: the frozen payload, plus the candidate's own site path when
+they opted in. That is a property of the design, not a missing feature.
+
+### 7.2 Reviewing — the simplest defensible gate
+
+`AILX_REVIEWERS` is a comma/whitespace list of AuthProvider refs
+(`clerk:<sub>` / `dev:<id>`), checked server-side by `withReviewer` on both the
+`/review` page and `/api/gallery/review`. It fails closed (unset = nobody), a
+`*` entry is dropped rather than read as "everyone", an anonymous caller gets
+401 and a signed-in stranger 403 — and the page itself renders a 404, because
+the queue holds sites nobody has vetted yet.
+
+There is deliberately **no staff/roles table**. The product has exactly one
+privileged verb; an RBAC system for one verb is the speculative complexity
+`AGENTS.md` forbids. The seam if that changes is `isReviewer`.
+
+Refusing a submission **revokes** it: the schema has no "rejected" stamp, and
+the only reason to refuse a site-carrying share is the hosted bytes, so the
+honest answer is to stop serving them. The row survives as the audit trail and
+the candidate can create a new share without the site. (Known gap: the schema
+records *who approved*, but not who refused.)
+
+### 7.3 "How is the world doing" — `/world`
+
+Distributions only, and only what is computable today: participation counts,
+completion rate, player-type distribution, per-track decile histograms,
+summarized item exposure and a weekly trend. Deliberately absent: percentiles,
+composites, anything score-shaped. The judging pipeline (spec Phase 4) is not
+built and `scores` is empty in practice, so publishing a judged-looking number
+would be a claim we cannot back. Track values are the run's OWN scorers over
+its mirrored event log, and the page says so.
+
+Two data truths shape the implementation:
+
+- `responses` mirrors the whole client session log, one row per LOG entry, so
+  `item_id` and `latency_ms` are NULL. Track shape is read by projecting the
+  stored payloads through `@ailx/session` `project()`, never from those
+  columns.
+- `attempt_decks` is the authoritative record of what an attempt was SHOWN.
+  Exposure is aggregated **inside SQL**, so item ids never reach application
+  memory — publishing per-item counts would publish the bank's inventory, for
+  exactly the reason §1 keeps item detail out of a share payload.
+
+**Re-identification guard.** `MIN_COHORT_SIZE = 10` (`@ailx/report`): a
+breakdown is published only once ten complete runs are behind it, exposure is
+gated on its own cohort of recorded decks, and the trend on started attempts.
+Ten is the common cell-suppression floor in published education and health
+statistics. Population totals (people, runs, completion rate) are always shown:
+they describe everyone, so they name nobody. No cross-tabulation is offered,
+and the serialized payload is asserted to contain no id, no item, no attempt
+and no participant.
+
+### 7.4 Both builds, again
+
+`/gallery`, `/world` and `/review` are `page.api.tsx`: they read the database,
+so they exist only under `AILX_BACKEND=1`. The static Pages export links the
+T4 community wall at `/wall` instead — never a nav link the build cannot
+serve. `apps/web/test/serverOnlyPages.test.ts` fails the build if any of them
+is renamed, or if a route ever has both a `page.tsx` and a `page.api.tsx`.

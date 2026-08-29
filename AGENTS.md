@@ -36,6 +36,11 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   `T1_LIMITS.maxTotalBytes` (the T1 snapshot cap — one number, not two), JSON at
   1 MB, both rejected with 413 mid-stream. Callers are authenticated first, so
   an anonymous client can never make the server buffer.
+- `AILX_REVIEWERS` — comma/whitespace list of AuthProvider refs (`clerk:<sub>`,
+  `dev:<id>`) allowed to approve or refuse a site-carrying gallery submission
+  (`/review`, `/api/gallery/review`). Fails closed: unset means nobody, and a
+  `*` entry is dropped, never read as "everyone". There is no staff/roles
+  table on purpose — see `docs/SHARING.md` §7.2.
 - `DATABASE_URL` — Postgres for the append-only store.
 - `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root (default `<cwd>/.ailx-snapshots`).
 - `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`.
