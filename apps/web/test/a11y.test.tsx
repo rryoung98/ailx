@@ -3,9 +3,9 @@
  * Site-wide accessibility regression tests (WCAG 2.1 AA pass):
  *  - html lang="en" with a skip-to-content link targeting the #main wrapper;
  *  - primary nav is a labeled landmark;
- *  - locale switcher buttons carry their own lang attributes (ja/ko labels);
- *  - design tokens keep AA contrast: --muted and --faint body text measure
- *    >= 4.5:1 against --bg AND --card (computed, not eyeballed);
+ *  - design tokens keep AA contrast: --fg, --muted and --faint body text
+ *    measure >= 4.5:1 against --bg, --card AND --bg-raised (computed, not
+ *    eyeballed), and --accent link colour >= 4.5:1 on --bg;
  *  - .sr-only / .skip-link utilities exist in the stylesheet.
  */
 import { readFileSync } from "node:fs";
