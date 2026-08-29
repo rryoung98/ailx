@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   PROD_ORIGIN,
   isAllowedOrigin,
@@ -33,6 +33,140 @@ describe("isAllowedOrigin", () => {
     "http://localhost:3000/path",      // origins never have paths
     "null",
   ])("rejects %s", (origin) => expect(isAllowedOrigin(origin)).toBe(false));
+});
+
+describe("isAllowedOrigin with AILX_ALLOWED_ORIGINS", () => {
+  const ENV = "AILX_ALLOWED_ORIGINS";
+  afterEach(() => {
+    delete process.env[ENV];
+  });
+
+  it("keeps the defaults when the env var is unset", () => {
+    expect(isAllowedOrigin(PROD_ORIGIN)).toBe(true);
+    expect(isAllowedOrigin("http://localhost:3000")).toBe(true);
+    expect(isAllowedOrigin("https://staging.example.com")).toBe(false);
+  });
+
+  it("keeps the defaults when the env var is set", () => {
+    process.env[ENV] = "https://staging.example.com";
+    expect(isAllowedOrigin(PROD_ORIGIN)).toBe(true);
+    expect(isAllowedOrigin("http://localhost:3000")).toBe(true);
+  });
+
+  it("allows a configured origin", () => {
+    process.env[ENV] = "https://staging.example.com";
+    expect(isAllowedOrigin("https://staging.example.com")).toBe(true);
+  });
+
+  it("picks up env changes between calls (no load-time caching)", () => {
+    expect(isAllowedOrigin("https://a.ngrok.app")).toBe(false);
+    process.env[ENV] = "https://a.ngrok.app";
+    expect(isAllowedOrigin("https://a.ngrok.app")).toBe(true);
+    process.env[ENV] = "https://b.ngrok.app";
+    expect(isAllowedOrigin("https://a.ngrok.app")).toBe(false);
+    expect(isAllowedOrigin("https://b.ngrok.app")).toBe(true);
+    delete process.env[ENV];
+    expect(isAllowedOrigin("https://b.ngrok.app")).toBe(false);
+  });
+
+  it.each([
+    ["comma separated", "https://a.example.com,https://b.example.com"],
+    ["comma + space", "https://a.example.com, https://b.example.com"],
+    ["whitespace only", "https://a.example.com \n\t https://b.example.com"],
+    ["trailing comma", "https://a.example.com,https://b.example.com,"],
+    ["empty entries", ",,https://a.example.com,,,https://b.example.com,,"],
+    ["duplicates", "https://a.example.com,https://b.example.com,https://a.example.com"],
+    ["surrounding whitespace", "  https://a.example.com , https://b.example.com  "],
+  ])("parses %s", (_label, raw) => {
+    process.env[ENV] = raw;
+    expect(isAllowedOrigin("https://a.example.com")).toBe(true);
+    expect(isAllowedOrigin("https://b.example.com")).toBe(true);
+    expect(isAllowedOrigin("https://c.example.com")).toBe(false);
+  });
+
+  it.each(["", "   ", "\n\t ", ",", " , , "])("treats %j as no extra origins", (raw) => {
+    process.env[ENV] = raw;
+    expect(isAllowedOrigin("https://staging.example.com")).toBe(false);
+    expect(isAllowedOrigin("")).toBe(false);
+    expect(isAllowedOrigin(PROD_ORIGIN)).toBe(true);
+  });
+
+  it.each([
+    "*",
+    "null",
+    "https://staging.example.com/",        // trailing slash
+    "https://staging.example.com/app",     // path
+    "https://staging.example.com?a=1",     // query
+    "https://staging.example.com#frag",    // fragment
+    "staging.example.com",                 // no scheme
+    "ftp://staging.example.com",           // wrong scheme
+    "file://staging.example.com",
+    "javascript:alert(1)",
+    "https://user:pass@staging.example.com", // userinfo
+    "https:/staging.example.com",          // malformed
+    "https://",                            // no host
+    "http://",
+  ])("ignores the malformed entry %j", (bad) => {
+    process.env[ENV] = `${bad},https://good.example.com`;
+    expect(isAllowedOrigin("https://good.example.com")).toBe(true);
+    expect(isAllowedOrigin(bad)).toBe(false);
+    expect(isAllowedOrigin("*")).toBe(false);
+    expect(isAllowedOrigin("null")).toBe(false);
+    expect(isAllowedOrigin("https://staging.example.com")).toBe(false);
+  });
+
+  it("never allows a wildcard or null even when configured alone", () => {
+    process.env[ENV] = "*, null";
+    expect(isAllowedOrigin("*")).toBe(false);
+    expect(isAllowedOrigin("null")).toBe(false);
+    expect(isAllowedOrigin("https://anything.example.com")).toBe(false);
+  });
+
+  it("normalizes scheme and host case, but not the rest of the origin", () => {
+    process.env[ENV] = "HTTPS://Staging.Example.COM";
+    expect(isAllowedOrigin("https://staging.example.com")).toBe(true);
+    expect(isAllowedOrigin("HTTPS://STAGING.EXAMPLE.COM")).toBe(true);
+    expect(isAllowedOrigin("https://other.example.com")).toBe(false);
+  });
+
+  it("treats a default port as the portless origin, and other ports as distinct", () => {
+    process.env[ENV] = "https://staging.example.com:443, http://staging.example.com:80";
+    expect(isAllowedOrigin("https://staging.example.com")).toBe(true);
+    expect(isAllowedOrigin("http://staging.example.com")).toBe(true);
+    expect(isAllowedOrigin("https://staging.example.com:8443")).toBe(false);
+  });
+
+  it("keeps a non-default port significant", () => {
+    process.env[ENV] = "http://staging.example.com:8080";
+    expect(isAllowedOrigin("http://staging.example.com:8080")).toBe(true);
+    expect(isAllowedOrigin("http://staging.example.com")).toBe(false);
+  });
+
+  it("stays anchored: no suffix, prefix, or path bypass", () => {
+    process.env[ENV] = "https://staging.example.com";
+    for (const bad of [
+      "https://staging.example.com.evil.com",
+      "https://evil.com/https://staging.example.com",
+      "https://staging.example.com/../evil",
+      "https://staging.example.com/",
+      "https://staging.example.com@evil.com",
+      "http://staging.example.com",          // scheme must match
+      "http://localhost.evil.com",
+    ]) {
+      expect(isAllowedOrigin(bad)).toBe(false);
+    }
+  });
+
+  it("echoes a configured origin through applyCors and still falls back to prod", () => {
+    process.env[ENV] = "https://staging.example.com";
+    const ok = makeRes();
+    expect(applyCors(makeReq({ method: "POST", origin: "https://staging.example.com" }), ok, ["POST"])).toBe(false);
+    expect(ok.headers["access-control-allow-origin"]).toBe("https://staging.example.com");
+
+    const bad = makeRes();
+    applyCors(makeReq({ method: "POST", origin: "https://evil.example.com" }), bad, ["POST"]);
+    expect(bad.headers["access-control-allow-origin"]).toBe(PROD_ORIGIN);
+  });
 });
 
 describe("applyCors", () => {

@@ -2,6 +2,11 @@
  * Shared request guards for every proxy handler: one CORS policy, one
  * rate-limiter implementation, one numeric clamp. Lives under api/_lib/
  * so Vercel does not deploy it as a function.
+ *
+ * Env: AILX_ALLOWED_ORIGINS — optional comma/whitespace separated list of
+ * extra allowed CORS origins (e.g. a staging or ngrok deployment). Each entry
+ * must be a bare absolute http(s) origin, no path or trailing slash. The prod
+ * and localhost origins stay allowed; "*" and "null" are never allowed.
  */
 
 // ---------------------------------------------------------------- CORS
@@ -10,8 +15,51 @@ export const PROD_ORIGIN = "https://rryoung98.github.io";
 // any port. Anchored so e.g. http://localhost.evil.com is rejected.
 const LOCALHOST_RE = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
 
+// Anchored shape of a bare origin: http(s) scheme, then a host(:port) with no
+// path, query, fragment, userinfo, backslash, or whitespace. Anything else
+// (e.g. "*", "null", "https://a.com/", "https://u:p@a.com") is not an origin.
+const BARE_ORIGIN_RE = /^https?:\/\/[^/?#\s@\\]+$/i;
+
+/**
+ * Normalize one origin string, or null when it is not a bare http(s) origin.
+ * Scheme and host are lowercased and a default port is dropped, which is the
+ * same form browsers put in the Origin header.
+ */
+function normalizeOrigin(value) {
+  if (typeof value !== "string" || !BARE_ORIGIN_RE.test(value)) return null;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  // Opaque origins ("null") and anything URL parsing rewrote are not usable.
+  if (url.origin === "null" || url.origin !== `${url.protocol}//${url.host}`) return null;
+  return url.origin;
+}
+
+// Extra origins from AILX_ALLOWED_ORIGINS, re-parsed only when the raw env
+// string changes. Read at call time so tests (and redeploys) see edits, but
+// cheap enough for the per-request hot path.
+let extrasCache = { raw: null, set: new Set() };
+
+function extraAllowedOrigins() {
+  const raw = process.env.AILX_ALLOWED_ORIGINS ?? "";
+  if (raw !== extrasCache.raw) {
+    const set = new Set();
+    for (const entry of raw.split(/[\s,]+/)) {
+      const normalized = normalizeOrigin(entry);
+      if (normalized) set.add(normalized); // malformed entries are ignored
+    }
+    extrasCache = { raw, set };
+  }
+  return extrasCache.set;
+}
+
 export function isAllowedOrigin(origin) {
-  return origin === PROD_ORIGIN || LOCALHOST_RE.test(origin);
+  if (origin === PROD_ORIGIN || LOCALHOST_RE.test(origin)) return true;
+  const normalized = normalizeOrigin(origin);
+  return normalized !== null && extraAllowedOrigins().has(normalized);
 }
 
 /**
