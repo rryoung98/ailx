@@ -35,5 +35,5 @@ export {
 } from "./sso.js";
 export { buildPreviewSrcdoc, PREVIEW_CSP, SANDBOX_ATTR } from "./sandbox.js";
 export { encodeT1Checkpoint, decodeT1Checkpoint, type T1CheckpointState } from "./checkpoint.js";
-export { sha256Hex } from "./sha256.js";
+export { sha256Hex } from "@ailx/core";
 export * from "./types.js";

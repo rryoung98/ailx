@@ -40,5 +40,5 @@ export {
   chooseDraftAsset,
 } from "./imagegen.js";
 export { recompressDataUri } from "./recompress.js";
-export { sha256Hex } from "./sha256.js";
+export { sha256Hex } from "@ailx/core";
 export * from "./types.js";

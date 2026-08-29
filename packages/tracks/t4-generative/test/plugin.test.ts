@@ -6,7 +6,7 @@ import {
   simulateVideo,
   COLOR_VOCAB,
 } from "../src/imageModel.js";
-import { sha256Hex } from "../src/sha256.js";
+import { sha256Hex } from "@ailx/core";
 import { t4Plugin } from "../src/plugin.js";
 import type { TrackCtx } from "@ailx/core";
 

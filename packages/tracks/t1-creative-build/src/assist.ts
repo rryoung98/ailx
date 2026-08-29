@@ -1,4 +1,4 @@
-import { sha256Bytes, sha256Hex } from "./sha256.js";
+import { sha256Bytes, sha256Hex } from "@ailx/core";
 
 /**
  * DEMO AI assistant — deterministic simulator, clearly labeled.

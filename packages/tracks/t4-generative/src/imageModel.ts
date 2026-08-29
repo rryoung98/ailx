@@ -1,4 +1,4 @@
-import { sha256Bytes } from "./sha256.js";
+import { sha256Bytes } from "@ailx/core";
 
 /**
  * DEMO image model — deterministic simulator, clearly labeled.

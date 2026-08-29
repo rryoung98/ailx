@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { canonicalJson, itemId, rubricVersion } from "../src/content-address.js";
+import { itemId, rubricVersion } from "../src/content-address.js";
+import { canonicalJson } from "../src/hash.js";
 import { runPure } from "../src/purity.js";
 
 describe("canonicalJson", () => {

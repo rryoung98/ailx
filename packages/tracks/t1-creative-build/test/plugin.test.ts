@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildPreviewSrcdoc, PREVIEW_CSP, SANDBOX_ATTR } from "../src/sandbox.js";
 import { demoAssist } from "../src/assist.js";
-import { sha256Hex } from "../src/sha256.js";
+import { sha256Hex } from "@ailx/core";
 import { t1Plugin } from "../src/plugin.js";
 import type { TrackCtx } from "@ailx/core";
 
