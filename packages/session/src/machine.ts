@@ -4,6 +4,12 @@
  * truth; state is a pure projection of the log. No clocks are read here —
  * every timestamp comes in on the event, so projection is deterministic.
  *
+ * A pause carries WHY it happened (`reason`): the candidate pressed Pause,
+ * or the clock is held over a post-submit presentation screen (T2's replay,
+ * T3's reveal, T4's gallery — screens where the score is already fixed).
+ * The reason is in the LOG, so a reload restores the held clock without
+ * guessing, and an auditor can see which intervals were never charged.
+ *
  * Invariants enforced at append time (F13):
  *  - timestamps are nondecreasing across the whole log;
  *  - track_event is rejected once the track budget is exhausted (but is
@@ -42,10 +48,19 @@ export interface JudgmentRecord {
   modelId: string;
 }
 
+/**
+ * Why the track clock is stopped. Recorded ON the `paused` entry so the log
+ * is self-describing: a reload knows, without guessing from the UI, that the
+ * clock is held for a post-submit presentation screen rather than by the
+ * candidate. Absent = the candidate pressed Pause (the historical shape;
+ * stored logs without it stay valid).
+ */
+export type PauseReason = "candidate" | "presentation";
+
 export type SessionLogEntry =
   | { type: "attempt_started"; attemptId: string; config: SessionConfig; ts: number }
   | { type: "track_started"; trackId: TrackId; ts: number }
-  | { type: "paused"; ts: number }
+  | { type: "paused"; ts: number; reason?: PauseReason }
   | { type: "resumed"; ts: number }
   | { type: "track_event"; trackId: TrackId; event: TrackEventPayload; ts: number }
   | { type: "track_completed"; trackId: TrackId; artifact: unknown; timedOut: boolean; ts: number }
@@ -111,6 +126,8 @@ export interface SessionState {
   currentTrack?: TrackId;
   tracks: Record<TrackId, TrackState>;
   lastSeq: number;
+  /** Why the clock is stopped; only set while `phase === "paused"`. */
+  pauseReason?: PauseReason;
   /** Timestamp of the last applied entry — appends must not go backwards. */
   lastTs?: number;
 }
@@ -178,6 +195,10 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
     }
     case "paused":
       if (s.phase !== "in_track") fail("nothing running to pause");
+      // A stored/hand-edited log may not invent a pause reason: the reason
+      // decides whether the interval is charged-looking or clock-held.
+      if (e.reason !== undefined && e.reason !== "candidate" && e.reason !== "presentation")
+        fail(`unknown pause reason ${String(e.reason)}`);
       return;
     case "resumed":
       if (s.phase !== "paused") fail("not paused");
@@ -239,6 +260,7 @@ export function project(log: readonly SequencedEntry[]): SessionState {
         const t = s.tracks[e.trackId];
         t.status = "active";
         t.runningSince = e.ts;
+        s.pauseReason = undefined;
         break;
       }
       case "paused": {
@@ -247,12 +269,14 @@ export function project(log: readonly SequencedEntry[]): SessionState {
         t.activeMs += Math.max(0, e.ts - (t.runningSince ?? e.ts));
         t.runningSince = undefined;
         s.phase = "paused";
+        s.pauseReason = e.reason ?? "candidate";
         break;
       }
       case "resumed": {
         const t = s.tracks[s.currentTrack!];
         t.runningSince = e.ts;
         s.phase = "in_track";
+        s.pauseReason = undefined;
         break;
       }
       case "track_event":
@@ -272,6 +296,7 @@ export function project(log: readonly SequencedEntry[]): SessionState {
         t.timedOut = s.config ? derived : e.timedOut;
         s.currentTrack = undefined;
         s.phase = "between_tracks";
+        s.pauseReason = undefined;
         break;
       }
       case "track_scored": {

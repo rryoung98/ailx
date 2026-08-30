@@ -245,3 +245,84 @@ describe("paused-phase event persistence (audit: no silent drop)", () => {
     ).toThrow(TransitionError);
   });
 });
+
+/**
+ * P0 fairness: a post-submit presentation screen (T2's replay, T3's reveal,
+ * T4's delivery gallery) holds the track clock. The reason lives ON the
+ * paused entry so a reload — and an auditor — can tell a held clock from a
+ * candidate's own pause without guessing.
+ */
+describe("pause reason (presentation clock hold)", () => {
+  it("records why the clock stopped and clears it on resume", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", reason: "presentation", ts: T0 + 10_000 });
+    const held = project(log);
+    expect(held.phase).toBe("paused");
+    expect(held.pauseReason).toBe("presentation");
+    log = append(log, { type: "resumed", ts: T0 + 300_000 });
+    expect(project(log).pauseReason).toBeUndefined();
+  });
+
+  it("defaults an unlabelled pause to the candidate (legacy stored logs)", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", ts: T0 + 1_000 });
+    expect(project(log).pauseReason).toBe("candidate");
+  });
+
+  it("charges no budget for the held interval", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", reason: "presentation", ts: T0 + 60_000 });
+    // Five minutes of reading the replay.
+    const s = project(log);
+    expect(secondsRemaining(s, "t1", T0 + 60_000)).toBe(540);
+    expect(secondsRemaining(s, "t1", T0 + 360_000)).toBe(540);
+    // Resuming charges from the resume instant, never the held interval.
+    log = append(log, { type: "resumed", ts: T0 + 360_000 });
+    expect(secondsRemaining(project(log), "t1", T0 + 370_000)).toBe(530);
+  });
+
+  it("completes a track from a held clock with timedOut derived, not guessed", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", reason: "presentation", ts: T0 + 60_000 });
+    // A candidate who reads for an hour still has 9 minutes of work left,
+    // so the track did NOT time out.
+    log = append(log, {
+      type: "track_completed", trackId: "t1", artifact: { ok: true },
+      timedOut: false, ts: T0 + 3_600_000,
+    });
+    const s = project(log);
+    expect(s.tracks.t1.timedOut).toBe(false);
+    expect(s.tracks.t1.activeMs).toBe(60_000);
+    expect(s.pauseReason).toBeUndefined();
+    expect(s.phase).toBe("between_tracks");
+  });
+
+  it("rejects an invented pause reason instead of folding it", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    expect(() =>
+      append(log, {
+        type: "paused",
+        reason: "free-time" as unknown as "presentation",
+        ts: T0 + 1_000,
+      }),
+    ).toThrow(TransitionError);
+  });
+
+  it("clears the reason when the next track starts", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", reason: "presentation", ts: T0 + 1_000 });
+    log = append(log, {
+      type: "track_completed", trackId: "t1", artifact: {}, timedOut: false, ts: T0 + 2_000,
+    });
+    log = append(log, { type: "track_started", trackId: "t2", ts: T0 + 3_000 });
+    const s = project(log);
+    expect(s.phase).toBe("in_track");
+    expect(s.pauseReason).toBeUndefined();
+  });
+});

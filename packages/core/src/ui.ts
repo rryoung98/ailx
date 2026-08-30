@@ -24,6 +24,17 @@ export interface TrackUIProps {
    */
   checkpoint?: unknown;
   onCheckpoint?(state: unknown): void;
+  /**
+   * Post-submit PRESENTATION screens (T2's replay, T3's reveal, T4's
+   * delivery gallery): the scored work is already captured and nothing the
+   * candidate does on the screen can change the score. The runner calls
+   * this with a short screen id when such a screen opens and with `null`
+   * when it closes; the session engine freezes the track clock for exactly
+   * that interval (append-only `paused`/`resumed`, so the trail stays
+   * recomputable). Working time is unaffected — never call it while the
+   * candidate can still change a scored input.
+   */
+  onPresentation?(screen: string | null): void;
 }
 
 /**
