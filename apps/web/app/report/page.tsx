@@ -9,7 +9,7 @@ import {
 import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
 import { scoreTrack } from "../../lib/registry";
 import {
-  AXES, calibrationBins, candidateComposite, participantExport,
+  AXES, calibrationBins, candidateComposite, DEMO_SCORE_NOTE, formatTrackScore, participantExport,
   playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
 } from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
@@ -405,6 +405,9 @@ export default function ReportPage() {
         {!sample && state.attemptId ? <ShareLink attemptId={state.attemptId} /> : null}
 
         <h2 style={{ marginTop: 0 }}>Track breakdown</h2>
+        {/* Said once, in words, above the numbers it qualifies: the judging
+            pipeline is not built, so these are demo estimates. */}
+        <p className="muted" style={{ marginTop: "-0.4rem" }}>{DEMO_SCORE_NOTE}</p>
         {TRACK_IDS.map((t) => {
           const meta = TRACK_META[t];
           const ts = state.tracks[t];
@@ -413,7 +416,10 @@ export default function ReportPage() {
             <Reveal as="div" className="card" key={t} style={{ marginBottom: "1rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <h3><span className="mono" style={{ color: "var(--accent)" }}>{meta.code}</span> · {meta.name}</h3>
-                <span className="mono">{score.scaled.toFixed(1)} <span className="faint">/ 100</span></span>
+                {/* One formatter, so a number never renders without saying what
+                    produced it: demo-judged tracks carry the qualifier and an
+                    unscored track says so in words (packages/report judging.ts). */}
+                <span className="mono">{formatTrackScore(score, ts.judgments)}</span>
               </div>
               {meta.components.map((c) => {
                 const ALIASES: Record<string, string[]> = {
