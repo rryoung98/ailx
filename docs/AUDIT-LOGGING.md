@@ -186,3 +186,56 @@ from its last checkpoint.
 
 **Tests:** `apps/web/test/examCrash.test.tsx` (crash → recovery panel, log
 intact, clock frozen across 5 s, retry resumes), `apps/web/test/routeError.test.tsx`.
+
+## Presentation screens and the clock (2026-08, P0 fairness fix)
+
+A dogfood sitting was force-finished mid-read: the candidate answered the T2
+deck, reached the post-deck REPLAY — the one screen in T2 that teaches — and
+the exam watchdog ended the track and dropped them on "2 of 4 tracks
+complete" with no "time up" and no way back. The same live clock sat behind
+T3's reveal (a screen that says of itself "this reveal is presentation, not
+scoring") and T4's delivery gallery. The report then advised them to "bank a
+submission earlier", for time they had not spent working.
+
+**Declared timer policy, extended: time after submission is not charged.**
+On a post-submit presentation screen the scored work is already captured and
+nothing the candidate does can change the score, so the track clock is HELD
+for exactly that interval — the same principle as the crash pause above, and
+the same auditable mechanism:
+
+1. `track_event` with `verb: "presentation_opened"` (context carries the
+   screen id: `t2-replay`, `t3-reveal`, `t4-gallery`) — the recorded cause;
+2. `paused` carrying `reason: "presentation"` — the clock stops.
+
+Leaving the screen appends `presentation_closed` + `resumed` when the runner
+returns to work; when it completes the track instead, `track_completed` is
+appended from the held clock and `timedOut` is still DERIVED from budget
+accounting, never guessed. Either entry is skipped when the machine would
+reject it (an exhausted budget legitimately refuses further track events).
+
+The reason lives in the LOG, not in component state: `SessionState.pauseReason`
+is a projection, so a reload mid-replay restores a held clock (and the "clock
+held · this screen is not timed" chrome) instead of a pause veil, and an
+auditor can see which intervals were never charged. `paused` with an unknown
+reason is rejected at append time.
+
+- **The runner side** is one effect per track calling the new optional
+  `TrackUIProps.onPresentation(screen | null)`. It must never be called while
+  a scored input can still change; working-phase measurement (T2 exposure,
+  `decisionLatency`, every artifact field) is untouched.
+- **The watchdog cannot fire over a held clock.** It skips while
+  `pauseReason === "presentation"` and re-reads the log before finishing, so
+  a screen opened in the same commit as the buzzer still cannot eject a
+  reader. A track whose budget was already spent ends when the candidate
+  leaves the screen, correctly flagged `timedOut`.
+- **A genuine timeout is stated.** `/exam` now renders an explicit "Time up"
+  screen (what ran out, that the work was kept and scored from the last save,
+  and that review screens are never charged) instead of teleporting the
+  candidate to the track list. `packages/report` says the same thing rather
+  than blaming the candidate.
+
+**Tests:** `apps/web/test/examPresentation.test.tsx` (clock frozen for each of
+the three screens, auditable hold appended, no veil and no Resume, watchdog
+cannot force-finish, reload restores the hold, explicit time-up state,
+working-phase timing unchanged), `packages/session/test/machine.test.ts`
+("pause reason"), and `packages/tracks/t{2,3,4}-*/test/clockHold.test.tsx`.
