@@ -25,7 +25,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from "react";
-import type { T2Item } from "./types.js";
+import type { T2PresentedItem } from "./types.js";
 import { useSwipeCard } from "./swipe/useSwipeCard.js";
 import { detectWebGL } from "./swipe/webgl.js";
 import type { ParallaxTarget } from "./swipe/CardScene.js";
@@ -214,7 +214,7 @@ class TextureErrorBoundary extends Component<
  * definition, so the material a candidate judged never changes appearance
  * between those three places.
  */
-export function stimulusTextStyle(item: T2Item, overrides: CSSProperties = {}): CSSProperties {
+export function stimulusTextStyle(item: T2PresentedItem, overrides: CSSProperties = {}): CSSProperties {
   return {
     flex: 1,
     minHeight: 0,
@@ -231,7 +231,7 @@ export function stimulusTextStyle(item: T2Item, overrides: CSSProperties = {}): 
   };
 }
 
-function CardBody({ item, hideImage, slotRef, lang }: { item: T2Item; hideImage: boolean; slotRef?: Ref<HTMLImageElement>; lang?: string }) {
+function CardBody({ item, hideImage, slotRef, lang }: { item: T2PresentedItem; hideImage: boolean; slotRef?: Ref<HTMLImageElement>; lang?: string }) {
   const image = isImageMaterial(item.material);
   return (
     <>
@@ -248,9 +248,9 @@ function CardBody({ item, hideImage, slotRef, lang }: { item: T2Item; hideImage:
 }
 
 export interface SwipeDeckProps {
-  item: T2Item;
+  item: T2PresentedItem;
   /** up to two upcoming items, for the visible stack. */
-  nextItems: ReadonlyArray<T2Item>;
+  nextItems: ReadonlyArray<T2PresentedItem>;
   /** false while the confidence sheet is open. */
   enabled: boolean;
   onChoose: (choice: number) => void;

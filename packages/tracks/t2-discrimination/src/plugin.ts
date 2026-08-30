@@ -6,7 +6,14 @@ import type {
   TrackScore,
   Upload,
 } from "@ailx/core";
-import type { T2Artifact, T2Config, T2Item, T2Session } from "./types.js";
+import type {
+  T2Artifact,
+  T2Config,
+  T2Item,
+  T2PresentationConfig,
+  T2PresentedItem,
+  T2Session,
+} from "./types.js";
 import { scoreT2, type T2Raw } from "./scoring.js";
 
 export interface T2Score extends TrackScore {
@@ -23,7 +30,15 @@ function fail(msg: string): never {
   throw new Error(`t2-discrimination config: ${msg}`);
 }
 
-export function validateT2Config(raw: unknown): T2Config {
+/**
+ * ONE validator, two demands. `secrets: true` requires every item's marking
+ * scheme (scoring, replay, the released-practice tier); `secrets: false`
+ * accepts a redacted sitting deck as served by
+ * `GET /api/attempts/:id/items`, and still CHECKS a key or rationale that
+ * happens to be there. Splitting the shapes without splitting the rules is
+ * the whole reason this is one function.
+ */
+function validate(raw: unknown, secrets: boolean): T2PresentationConfig {
   if (typeof raw !== "object" || raw === null) fail("must be an object");
   const cfg = raw as Record<string, unknown>;
   if (!Array.isArray(cfg.items) || cfg.items.length === 0) fail("items must be a non-empty array");
@@ -37,8 +52,10 @@ export function validateT2Config(raw: unknown): T2Config {
     if (typeof it.stem !== "string") fail(`items[${idx}].stem missing`);
     if (typeof it.material !== "string") fail(`items[${idx}].material missing`);
     if (!Array.isArray(it.options) || it.options.length < 2) fail(`items[${idx}].options needs >= 2 entries`);
-    if (typeof it.key !== "number" || it.key < 0 || it.key >= it.options.length) {
-      fail(`items[${idx}].key out of range`);
+    if (secrets || it.key !== undefined) {
+      if (typeof it.key !== "number" || it.key < 0 || it.key >= (it.options?.length ?? 0)) {
+        fail(`items[${idx}].key out of range`);
+      }
     }
     if (it.type !== "provenance" && it.options.length !== 2) {
       fail(`items[${idx}]: binary blocks require exactly 2 options`);
@@ -46,7 +63,13 @@ export function validateT2Config(raw: unknown): T2Config {
     if (typeof it.difficulty !== "number" || it.difficulty < 0 || it.difficulty > 1) {
       fail(`items[${idx}].difficulty must be in [0,1]`);
     }
-    if (typeof it.rationale !== "string") fail(`items[${idx}].rationale missing`);
+    if ((secrets || it.rationale !== undefined) && typeof it.rationale !== "string") {
+      fail(`items[${idx}].rationale missing`);
+    }
+    if (it.signal !== undefined &&
+        (typeof it.signal !== "number" || it.signal < 0 || it.signal >= (it.options?.length ?? 0))) {
+      fail(`items[${idx}].signal out of range`);
+    }
   }
   const w = (cfg.weights ?? { sensitivity: 60, calibration: 25, provenance: 15 }) as Record<string, unknown>;
   for (const k of ["sensitivity", "calibration", "provenance"] as const) {
@@ -57,7 +80,7 @@ export function validateT2Config(raw: unknown): T2Config {
     fail("dPrimeCeiling must be a positive finite number when present");
   }
   return {
-    items: cfg.items as T2Item[],
+    items: cfg.items as T2PresentedItem[],
     weights: {
       sensitivity: w.sensitivity as number,
       calibration: w.calibration as number,
@@ -65,6 +88,24 @@ export function validateT2Config(raw: unknown): T2Config {
     },
     ...(cfg.dPrimeCeiling !== undefined ? { dPrimeCeiling: cfg.dPrimeCeiling as number } : {}),
   };
+}
+
+/**
+ * SCORING config: every item must carry its key and rationale. The cast is
+ * safe precisely because `secrets: true` just proved both are present on
+ * every item.
+ */
+export function validateT2Config(raw: unknown): T2Config {
+  return validate(raw, true) as T2Config;
+}
+
+/**
+ * PRESENTATION config: what the Runner mounts. A hosted sitting deck arrives
+ * from the server with `key` and `rationale` ABSENT, so demanding them here
+ * would refuse the only deck a candidate is allowed to be shown.
+ */
+export function validateT2PresentationConfig(raw: unknown): T2PresentationConfig {
+  return validate(raw, false);
 }
 
 export const plugin: TrackPlugin<T2Config, T2Session, T2Artifact, T2Score> = {

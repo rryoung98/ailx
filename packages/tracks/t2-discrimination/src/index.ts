@@ -1,4 +1,10 @@
-export { plugin, validateT2Config, type T2Score } from "./plugin.js";
+export {
+  plugin,
+  validateT2Config,
+  validateT2PresentationConfig,
+  type T2Score,
+} from "./plugin.js";
+export { isRevealedT2Item } from "./types.js";
 export { Runner } from "./Runner.js";
 export { scoreT2, probit, D_PRIME_CEILING, maxAttainableDPrime, type T2Raw } from "./scoring.js";
 export type * from "./types.js";

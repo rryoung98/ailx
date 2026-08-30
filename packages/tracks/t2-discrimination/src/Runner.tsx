@@ -7,8 +7,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
-import type { T2Config, T2Item, T2Response } from "./types.js";
-import { validateT2Config } from "./plugin.js";
+import type { T2PresentationConfig, T2PresentedItem, T2Response } from "./types.js";
+import { isRevealedT2Item } from "./types.js";
+import { validateT2PresentationConfig } from "./plugin.js";
 import { decodeT2Checkpoint, encodeT2Checkpoint, type T2Phase } from "./checkpoint.js";
 import { SwipeDeck, isImageMaterial, stimulusTextStyle } from "./SwipeDeck.js";
 
@@ -91,7 +92,7 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-function Material({ item, lang }: { item: T2Item; lang?: string }) {
+function Material({ item, lang }: { item: T2PresentedItem; lang?: string }) {
   if (item.material.startsWith("data:image/") || /^(https?:)?\/[^\s]+\.(jpe?g|png|webp|gif)$/i.test(item.material)) {
     return (
       <img
@@ -109,7 +110,10 @@ function Material({ item, lang }: { item: T2Item; lang?: string }) {
 }
 
 export function Runner({ locale, config, onEvent, onComplete, onPresentation, checkpoint, onCheckpoint }: TrackUIProps) {
-  const cfg: T2Config = useMemo(() => validateT2Config(config), [config]);
+  // PRESENTATION config: no key, no rationale. In hosted mode this deck came
+  // from GET /api/attempts/:id/items, which redacts both until the attempt is
+  // finalized, so validating for secrets here would refuse the real deck.
+  const cfg: T2PresentationConfig = useMemo(() => validateT2PresentationConfig(config), [config]);
   // Rehydrate from the persisted checkpoint on (re)mount — F2.
   const restored = useMemo(() => decodeT2Checkpoint(checkpoint), []);
   const [phase, setPhase] = useState<Phase>(restored?.phase ?? "intro");
@@ -606,15 +610,27 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
   if (phase === "replay") {
     const rItem = cfg.items[replayIdx];
     const resp = responses.find((r) => r.itemId === rItem.id);
-    const correct = resp?.choice === rItem.key;
+    /**
+     * The marking scheme is present only when the CONTENT carries it: the
+     * released-practice tier (keys published on purpose), or a review-phase
+     * deck the server has already unsealed. During a hosted sitting it is
+     * absent, so the replay teaches the deck back without a verdict rather
+     * than inventing one from a key the browser must never hold. The
+     * candidate's own calls are still theirs to re-read.
+     */
+    const revealed = isRevealedT2Item(rItem) ? rItem : null;
+    const answered = resp !== undefined && resp.choice >= 0;
+    const correct = revealed !== null && answered && resp.choice === revealed.key;
     return (
       <div style={{ maxWidth: 720, margin: "0 auto", display: "grid", gap: "1rem" }}>
         {/* Announce each reveal outcome politely as the replay advances. */}
         <p style={srOnly} aria-live="polite" data-testid="replay-live-region">
           Replay item {replayIdx + 1} of {cfg.items.length}.{" "}
-          {resp && resp.choice >= 0
-            ? `Your call was ${correct ? "correct" : "incorrect"}.`
-            : "No response was recorded for this item."}
+          {!answered
+            ? "No response was recorded for this item."
+            : revealed
+              ? `Your call was ${correct ? "correct" : "incorrect"}.`
+              : "Your call was recorded. Answers unlock in your report."}
         </p>
         <div style={{ color: "var(--muted)" }}>
           Replay {replayIdx + 1} / {cfg.items.length} — how each call should be reasoned
@@ -622,20 +638,41 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
         <div style={card}>
           <p lang={contentLang} style={{ marginTop: 0, fontWeight: 600 }}>{rItem.stem}</p>
           <Material item={rItem} lang={contentLang} />
-          <p style={{ color: correct ? "var(--good, #15803d)" : "var(--bad, #b91c1c)", marginBottom: "0.3rem" }}>
-            {resp && resp.choice >= 0
-              ? `Your call: ${rItem.options[resp.choice]} (${resp.confidence} sure) — ${correct ? "correct" : "incorrect"}`
-              : "No response (exposure lapsed)"}
+          <p
+            style={{
+              color: !answered || !revealed
+                ? "var(--muted)"
+                : correct
+                  ? "var(--good, #15803d)"
+                  : "var(--bad, #b91c1c)",
+              marginBottom: "0.3rem",
+            }}
+          >
+            {!answered
+              ? "No response (exposure lapsed)"
+              : revealed
+                ? `Your call: ${rItem.options[resp.choice]} (${resp.confidence} sure) — ${correct ? "correct" : "incorrect"}`
+                : `Your call: ${rItem.options[resp.choice]} (${resp.confidence} sure)`}
           </p>
-          <p style={{ marginBottom: "0.3rem" }}>
-            <strong>Answer:</strong> <span lang={contentLang}>{rItem.options[rItem.key]}</span>
-          </p>
-          <p style={{ color: "var(--muted)" }}>
-            <strong style={{ color: "var(--fg)" }}>Why:</strong> <span lang={contentLang}>{rItem.rationale}</span>
-          </p>
-          {rItem.teaching && (
+          {revealed ? (
+            <>
+              <p style={{ marginBottom: "0.3rem" }}>
+                <strong>Answer:</strong> <span lang={contentLang}>{revealed.options[revealed.key]}</span>
+              </p>
+              <p style={{ color: "var(--muted)" }}>
+                <strong style={{ color: "var(--fg)" }}>Why:</strong>{" "}
+                <span lang={contentLang}>{revealed.rationale}</span>
+              </p>
+            </>
+          ) : (
+            <p style={{ color: "var(--muted)" }} data-testid="replay-sealed">
+              Answers and rationales are held by the server until you finish your run — they
+              are in your report.
+            </p>
+          )}
+          {revealed?.teaching && (
             <p style={{ color: "var(--muted)", borderLeft: "3px solid var(--accent)", paddingLeft: "0.7rem" }}>
-              <strong style={{ color: "var(--fg)" }}>Provenance point:</strong> <span lang={contentLang}>{rItem.teaching}</span>
+              <strong style={{ color: "var(--fg)" }}>Provenance point:</strong> <span lang={contentLang}>{revealed.teaching}</span>
             </p>
           )}
           {replayIdx + 1 < cfg.items.length ? (

@@ -12,7 +12,21 @@ export type T2ItemType =
   | "message-page"
   | "provenance";
 
-export interface T2Item {
+/**
+ * The fields a candidate may HOLD while sitting the deck — everything needed
+ * to present an item and nothing that gives its answer away.
+ *
+ * This is split out of {@link T2Item} because a hosted sitting is served by
+ * `GET /api/attempts/:id/items`, which redacts `key` and `rationale` until
+ * the attempt is finalized (docs/ARCHITECTURE.md §4). Presentation must be
+ * constructible from those bytes alone; a validator that demanded a key would
+ * demand exactly the secret the browser is not allowed to have.
+ *
+ * `signal` stays here on purpose: it names which OPTION means "AI /
+ * synthetic / hostile", which is a property of the option list, not of this
+ * item's answer.
+ */
+export interface T2PresentedItem {
   /** Content-addressed: sha256(canonical_json(item-sans-id)) upstream. */
   id: string;
   type: T2ItemType;
@@ -22,8 +36,6 @@ export interface T2Item {
   material: string;
   /** Response options. Binary blocks use exactly two. */
   options: ReadonlyArray<string>;
-  /** Index into options of the correct answer. */
-  key: number;
   /**
    * Index into options that counts as the SIGNAL call (synthetic / hostile)
    * for signal-detection scoring. Ignored for provenance items.
@@ -31,16 +43,36 @@ export interface T2Item {
   signal?: number;
   /** 0 (easy) .. 1 (hard). Drives difficulty weighting. */
   difficulty: number;
-  /** Shown in the replay phase. */
-  rationale: string;
-  /** Provenance teaching point shown in the replay phase. */
-  teaching?: string;
   /** Fixed exposure in seconds (declared measurement decision). */
   exposureSeconds?: number;
 }
 
-export interface T2Config {
-  items: ReadonlyArray<T2Item>;
+/**
+ * A presented item PLUS the marking scheme: what `score()` consumes and what
+ * the replay phase teaches. Server-side during a hosted sitting; published on
+ * purpose in the released-practice tier the static demo runs on.
+ */
+export interface T2Item extends T2PresentedItem {
+  /** Index into options of the correct answer. */
+  key: number;
+  /** Shown in the replay phase. */
+  rationale: string;
+  /** Provenance teaching point shown in the replay phase. */
+  teaching?: string;
+}
+
+/** True when this item carries its own marking scheme (review/demo content). */
+export function isRevealedT2Item(item: T2PresentedItem): item is T2Item {
+  const it = item as Partial<T2Item>;
+  return typeof it.key === "number" && typeof it.rationale === "string";
+}
+
+/**
+ * What the RUNNER needs: a deck to present and the scale facts it renders.
+ * Constructible with no `key` and no `rationale` — that is the point.
+ */
+export interface T2PresentationConfig {
+  items: ReadonlyArray<T2PresentedItem>;
   /** Score allocation, spec §T2 "Score allocation". Defaults 60/25/15. */
   weights: {
     sensitivity: number;
@@ -54,6 +86,14 @@ export interface T2Config {
    * small binary blocks, which would silently truncate the 0-100 scale.
    */
   dPrimeCeiling?: number;
+}
+
+/**
+ * What `score()` consumes: the same config, with every item's marking scheme
+ * present. Server-side (or the released-practice tier) only.
+ */
+export interface T2Config extends T2PresentationConfig {
+  items: ReadonlyArray<T2Item>;
 }
 
 export interface T2Response {
