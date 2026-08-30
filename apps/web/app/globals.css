@@ -295,6 +295,11 @@ textarea.field:focus, input.field:focus { outline: none; border-color: var(--acc
   padding: 1.4rem 1.6rem;
 }
 .dist-strip { display: block; width: 100%; height: 56px; }
+/* The strip is a synthetic cohort; its caption must be legible at a glance,
+   not a footnote (report honesty — see DistStrip in app/report/page.tsx). */
+.dist-figure { margin: 0; }
+.dist-caption { color: var(--muted); line-height: 1.45; margin-top: 0.2rem; }
+.dist-caption strong { color: var(--fg); }
 
 /* ---- hero (landing) -------------------------------------------------- */
 .hero { position: relative; overflow: hidden; }
