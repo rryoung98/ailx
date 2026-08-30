@@ -125,7 +125,7 @@ function ShowcaseRow({
         <h2 className="showcase-title">{title}</h2>
         <Annotation side={flip ? "left" : "right"}>{note}</Annotation>
         <p className="showcase-line muted">{line}</p>
-        <p><Link className="btn" href={href}>{cta}</Link></p>
+        <p data-pill-clear=""><Link className="btn" href={href}>{cta}</Link></p>
       </div>
       <Link href={href} className="showcase-panel" tabIndex={-1} aria-hidden="true">
         <img src={assetUrl("/media/pastoral.jpg")} alt="" width={2000} height={1200} loading="lazy" decoding="async" />
@@ -158,7 +158,7 @@ export default function Home() {
                     Play four short tracks: build, spot fakes, reason, direct.
                     Get one score you can check.
                   </p>
-                  <p className="hero-cta hero-fade">
+                  <p className="hero-cta hero-fade" data-pill-clear="">
                     <Link className="btn primary" href="/exam">Play</Link>
                     <Link className="btn" href="/validate">See it prove itself</Link>
                   </p>
@@ -223,7 +223,9 @@ export default function Home() {
 
       {/* What you get: three steps, one idea each. */}
       <section className="container wyg" aria-label="What you get">
-        <ol className="wyg-steps">
+        {/* The floating pill is fixed to the bottom of the viewport; without
+            this it parks on top of these headings for the whole section. */}
+        <ol className="wyg-steps" data-pill-clear="">
           <Reveal as="li" className="wyg-step">
             <StepVizTracks />
             <h2 className="wyg-title">Play the four tracks.</h2>
@@ -237,7 +239,7 @@ export default function Home() {
           <Reveal as="li" className="wyg-step">
             <StepVizReport />
             <h2 className="wyg-title">Share a report that proves itself.</h2>
-            <p className="wyg-line">Every point can be recomputed from what you did. Nothing leaves your browser.</p>
+            <p className="wyg-line">Every point can be recomputed from what you did — no black box, and nothing you cannot check.</p>
           </Reveal>
         </ol>
       </section>

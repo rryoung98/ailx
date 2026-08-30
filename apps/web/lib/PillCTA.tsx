@@ -4,18 +4,28 @@
  * Sticky bottom-center pill CTA (Zero-style). Fixed, safe-area aware; give
  * pages that use it bottom padding so content is never trapped beneath it.
  *
- * Mobile guard: on <= 640px viewports the pill hides itself while any
- * element marked [data-pill-clear] (teaser actions, connect panel, runner
- * controls) intersects the bottom band of the viewport, so it can never
- * cover a tappable control.
+ * Clearance guard: the pill hides itself while any element marked
+ * [data-pill-clear] (teaser actions, connect panel, runner controls, landing
+ * CTAs) intersects the bottom band of the viewport, so it can never cover a
+ * tappable control — at ANY width. It was mobile-only, which was arbitrary:
+ * a fixed pill sits on a desktop heading exactly as hard as on a phone
+ * button, and on the landing page it did.
+ *
+ * End-of-page guard: the pill also hides once the reader reaches the last
+ * PAGE_END_PX of the document, where the site footer lives. The footer is in
+ * the layout, so no page can mark it, and the pill was rasterizing straight
+ * across its text.
  *
  * `disabled` renders the gated state (still clickable so the page can
  * redirect attention, e.g. pulse the ConnectPanel) — aria-disabled only.
  */
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { prefersReducedMotion } from "./reducedMotion";
 
 const CLEAR_BAND_PX = 140;
+/** Distance from the document bottom at which the footer is in play. */
+const PAGE_END_PX = 180;
 
 export function PillCTA({
   href,
@@ -28,11 +38,11 @@ export function PillCTA({
   disabled?: boolean;
   children: React.ReactNode;
 }) {
-  const [cleared, setCleared] = useState(false);
+  const [overlapping, setOverlapping] = useState(false);
+  const [atPageEnd, setAtPageEnd] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return;
-    const mq = window.matchMedia("(max-width: 640px)");
     const els = Array.from(document.querySelectorAll("[data-pill-clear]"));
     if (els.length === 0) return;
     const intersecting = new Set<Element>();
@@ -48,24 +58,51 @@ export function PillCTA({
             if (e.isIntersecting) intersecting.add(e.target);
             else intersecting.delete(e.target);
           }
-          setCleared(mq.matches && intersecting.size > 0);
+          setOverlapping(intersecting.size > 0);
         },
         { rootMargin: `${CLEAR_BAND_PX - window.innerHeight}px 0px 0px 0px` },
       );
       for (const el of els) io.observe(el);
     };
     attach();
-    const onChange = () => attach();
-    mq.addEventListener?.("change", onChange);
-    window.addEventListener("resize", onChange);
+    window.addEventListener("resize", attach);
     return () => {
       io?.disconnect();
-      mq.removeEventListener?.("change", onChange);
-      window.removeEventListener("resize", onChange);
+      window.removeEventListener("resize", attach);
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const read = () => {
+      const doc = document.documentElement;
+      const remaining = doc.scrollHeight - window.scrollY - window.innerHeight;
+      setAtPageEnd(remaining <= PAGE_END_PX);
+    };
+    read();
+    window.addEventListener("scroll", read, { passive: true });
+    window.addEventListener("resize", read);
+    return () => {
+      window.removeEventListener("scroll", read);
+      window.removeEventListener("resize", read);
+    };
+  }, []);
+
+  const cleared = overlapping || atPageEnd;
   const cls = `pill-cta${cleared ? " pill-cta-cleared" : ""}`;
+  /* The class is styled only below 640px in globals.css; the state is the
+     same at every width, so the hidden state is applied here rather than
+     duplicated as a second breakpoint. Under reduced motion it snaps instead
+     of sliding — the pill still gets out of the way, it just does not move. */
+  const clearedStyle = cleared
+    ? {
+        opacity: 0,
+        pointerEvents: "none" as const,
+        ...(prefersReducedMotion()
+          ? { transition: "none" }
+          : { transform: "translateY(24px)" }),
+      }
+    : undefined;
   const inner = (
     <>
       <span className="dot" aria-hidden />
@@ -74,7 +111,7 @@ export function PillCTA({
   );
   if (href) {
     return (
-      <Link className={cls} href={href}>
+      <Link className={cls} href={href} style={clearedStyle} aria-hidden={cleared || undefined} tabIndex={cleared ? -1 : undefined}>
         {inner}
       </Link>
     );
@@ -83,7 +120,10 @@ export function PillCTA({
     <button
       type="button"
       className={`${cls}${disabled ? " disabled" : ""}`}
+      style={clearedStyle}
       aria-disabled={disabled || undefined}
+      aria-hidden={cleared || undefined}
+      tabIndex={cleared ? -1 : undefined}
       onClick={onClick}
     >
       {inner}

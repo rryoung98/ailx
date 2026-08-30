@@ -13,6 +13,7 @@
 
 import * as React from "react";
 import { useEffect, useRef } from "react";
+import { REDUCED_MOTION_QUERY } from "./reducedMotion";
 
 interface Particle {
   x: number;
@@ -115,7 +116,7 @@ export function HeroCanvas() {
     // prefers-reduced-motion: never animate, honour live changes.
     const mq =
       typeof window.matchMedia === "function"
-        ? window.matchMedia("(prefers-reduced-motion: reduce)")
+        ? window.matchMedia(REDUCED_MOTION_QUERY)
         : null;
     reduced = mq?.matches ?? false;
     const onMq = () => {

@@ -19,6 +19,7 @@ import {
   stampOpacity, swipeDir, swipeRotation, transitionFor,
   useSwipeCard, type SwipeDir,
 } from "./useSwipeCard";
+import { prefersReducedMotion } from "./reducedMotion";
 
 export const AUTO_DEMO_DELAY_MS = 4000;
 export const AUTO_DEMO_REPEAT_MS = 5500;
@@ -34,11 +35,6 @@ const DIR_VERDICT: Record<SwipeDir, "authentic" | "synthetic"> = {
   left: "authentic",
   right: "synthetic",
 };
-
-function prefersReducedMotion(): boolean {
-  return typeof window !== "undefined" &&
-    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
-}
 
 function CardFace({ item }: { item: TeaserItem }) {
   return item.imgSrc ? (

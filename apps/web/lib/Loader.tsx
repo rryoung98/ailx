@@ -19,6 +19,7 @@
  */
 import { useEffect, useState } from "react";
 import { assetUrl } from "./mode";
+import { prefersReducedMotion } from "./reducedMotion";
 
 const KEY = "ailx:loaded";
 /** Two-tone wordmark asset (public/), shares its traced paths with logo.svg. */
@@ -37,7 +38,7 @@ function shouldSkip(): boolean {
   } catch {
     /* storage unavailable -> show once per load, still fine */
   }
-  return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+  return prefersReducedMotion();
 }
 
 export function Loader() {

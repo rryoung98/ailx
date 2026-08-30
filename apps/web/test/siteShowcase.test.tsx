@@ -240,19 +240,25 @@ describe("header play pill", () => {
   });
 });
 
-describe("mobile pill guard + scrub shortening", () => {
-  it("teaser and connect panel are marked [data-pill-clear]", () => {
+describe("pill guard + scrub shortening", () => {
+  it("teaser, connect panel and the landing CTAs are marked [data-pill-clear]", () => {
     const teaser = readFileSync(join(appDir, "..", "lib", "Teaser.tsx"), "utf8");
     const connect = readFileSync(join(appDir, "..", "lib", "ConnectPanel.tsx"), "utf8");
     expect(teaser).toContain("data-pill-clear");
     expect(connect).toContain("data-pill-clear");
+    // The landing page is where the fixed pill actually sat on top of copy.
+    const landing = readFileSync(join(appDir, "page.tsx"), "utf8");
+    expect(landing).toContain('className="hero-cta hero-fade" data-pill-clear=""');
+    expect(landing).toContain('className="wyg-steps" data-pill-clear=""');
     const pill = readFileSync(join(appDir, "..", "lib", "PillCTA.tsx"), "utf8");
     expect(pill).toContain("[data-pill-clear]");
     expect(pill).toContain("pill-cta-cleared");
-    expect(pill).toContain("max-width: 640px");
+    // The guard is deliberately NOT width-gated any more: a fixed pill covers
+    // a desktop heading exactly as hard as a phone button.
+    expect(pill).not.toContain("max-width: 640px");
   });
 
-  it("CSS hides the cleared pill only under 640px and shortens the mobile scrubs", () => {
+  it("CSS still carries the small-screen rule; the component owns the rest", () => {
     const mob = css.slice(css.indexOf("mobile compatibility"));
     expect(mob).toMatch(/@media \(max-width: 640px\) \{\s*\.pill-cta-cleared \{[^}]*pointer-events: none/s);
     const scrub = mob.indexOf("@media (prefers-reduced-motion: no-preference) and (max-width: 640px)");
