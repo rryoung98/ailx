@@ -551,8 +551,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
                   data-testid="confidence-hint"
                   style={{ margin: "0.5rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}
                 >
-                  Set how sure you are before locking in — confidence is scored, so it
-                  is never assumed for you.
+                  Set how sure you are — confidence is scored, never assumed for you.
                 </p>
               )}
               <button

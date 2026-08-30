@@ -381,7 +381,7 @@ describe("the frame is sized to the viewport, so nothing needs scrolling to", ()
     layout(400, PHONE);
     mount();
     startDeck();
-    expect(Number.parseFloat(frame().style.height)).toBe(260);
+    expect(Number.parseFloat(frame().style.height)).toBe(300);
   });
 });
 

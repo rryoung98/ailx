@@ -55,9 +55,15 @@ const useIsoLayoutEffect =
  * at any viewport, so nothing ever has to be scrolled to.
  */
 const DECK_MAX_H = 460;
-/** Below this the card stops being a card; a phone in landscape is
- *  allowed to scroll rather than show a 120px sliver. */
-const DECK_MIN_H = 260;
+/**
+ * The floor is set by the confidence step, not by the card: the step's own
+ * controls (your call, slider, hint, Lock in) need about this much, and a
+ * step the candidate has to scroll INSIDE is the same failure as a page
+ * that scrolls. Measured on a 390px phone with the tallest option list
+ * (provenance), where the space left over is only ~185px. Below the floor
+ * the page is allowed to scroll rather than the step.
+ */
+const DECK_MIN_H = 300;
 /** Breathing room under the answer buttons, so they are not flush against
  *  the bottom edge of the screen. */
 const DECK_GUTTER = 12;
