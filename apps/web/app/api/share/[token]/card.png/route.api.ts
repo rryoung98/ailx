@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { handleViewShare } from "@ailx/backend";
-import { withApiContext, type ShareRouteContext } from "../../../../../lib/server/api";
+import { pageOrigin, withApiContext, type ShareRouteContext } from "../../../../../lib/server/api";
+import { characterDataUrl } from "../../../../../lib/server/portrait";
 import {
   SHARE_CARD_HEIGHT,
   SHARE_CARD_WIDTH,
@@ -15,7 +16,8 @@ import type { SharePayload } from "@ailx/report";
  * capability. Revoked/unknown tokens 404 rather than rendering a placeholder,
  * so a revoked card also disappears from every social cache that re-fetches.
  * Rendered from the FROZEN payload, so the preview shows exactly what the
- * page shows.
+ * page shows — including the player-type character, fetched same-origin and
+ * inlined as bytes because satori cannot read a stylesheet or an SVG.
  */
 export async function GET(_req: Request, { params }: ShareRouteContext): Promise<Response> {
   const { token } = await params;
@@ -25,7 +27,10 @@ export async function GET(_req: Request, { params }: ShareRouteContext): Promise
       return new Response("not found", { status: 404, headers: { "content-type": "text/plain" } });
     }
     const payload = (result.body.share as { payload: SharePayload }).payload;
-    return new ImageResponse(shareCardElement(payload), {
+    // The character is loaded HERE, not inside the card tree, so the tree
+    // stays pure and a failed read degrades to a portrait-less card.
+    const portrait = await characterDataUrl(payload.playerType.code, await pageOrigin());
+    return new ImageResponse(shareCardElement(payload, portrait), {
       width: SHARE_CARD_WIDTH,
       height: SHARE_CARD_HEIGHT,
       headers: {

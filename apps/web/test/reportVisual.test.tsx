@@ -11,56 +11,16 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { append, project, saveAttempt, clearAttempt, type SequencedEntry, type TrackId } from "@ailx/session";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
-import { scoreTrack } from "../lib/registry";
+import { project, saveAttempt, clearAttempt } from "@ailx/session";
 import { calibrationBins, t2ResponsesFromArtifact } from "@ailx/report";
 import { t2Items } from "../lib/instrument";
+import { completedLog, memoryStorage } from "./helpers/completedAttempt";
 import ReportPage from "../app/report/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 let host: HTMLDivElement;
 let root: Root;
-
-/**
- * The sample fixture stops at between_tracks (validate scores it itself);
- * the report needs a SCORED, completed attempt — extend the fixture through
- * the same real scoring path the exam page uses (registry → plugin.score).
- */
-function completedLog(): SequencedEntry[] {
-  let log = buildSampleAttemptLog();
-  const lastTs = log[log.length - 1].ts;
-  const completions = log.filter(
-    (e): e is Extract<SequencedEntry, { type: "track_completed" }> => e.type === "track_completed",
-  );
-  let t = lastTs;
-  for (const c of completions) {
-    t += 1_000;
-    const rec = scoreTrack(c.trackId as TrackId, c.artifact);
-    log = append(log, {
-      type: "track_scored", trackId: c.trackId, score: rec.score,
-      judgments: rec.judgments, rubricVersion: rec.rubricVersion,
-      scoringDigest: rec.scoringDigest, modelManifest: rec.modelManifest, ts: t,
-    });
-  }
-  log = append(log, { type: "attempt_completed", ts: t + 1_000 });
-  return log;
-}
-
-// jsdom in this environment does not always expose window.localStorage;
-// install a spec-shaped in-memory Storage so the page's persistence path runs.
-function memoryStorage(): Storage {
-  const m = new Map<string, string>();
-  return {
-    get length() { return m.size; },
-    clear: () => m.clear(),
-    getItem: (k: string) => (m.has(k) ? m.get(k)! : null),
-    key: (i: number) => Array.from(m.keys())[i] ?? null,
-    removeItem: (k: string) => { m.delete(k); },
-    setItem: (k: string, v: string) => { m.set(k, String(v)); },
-  } as Storage;
-}
 
 beforeEach(() => {
   Object.defineProperty(window, "localStorage", { value: memoryStorage(), configurable: true });

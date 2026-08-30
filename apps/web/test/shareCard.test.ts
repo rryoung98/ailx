@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { isValidElement } from "react";
-import { ALL_SHARE_SECTIONS, sharePayloadFrom } from "@ailx/report";
+import { ALL_SHARE_SECTIONS, playerCharacter, sharePayloadFrom } from "@ailx/report";
 import {
   SHARE_CARD_COLORS,
   SHARE_CARD_HEIGHT,
@@ -27,6 +27,19 @@ function texts(node: unknown, out: string[] = []): string[] {
   if (typeof node === "string" || typeof node === "number") out.push(String(node));
   else if (Array.isArray(node)) node.forEach((n) => texts(n, out));
   else if (isValidElement(node)) texts((node.props as { children?: unknown }).children, out);
+  return out;
+}
+
+/** Every `<img>` in the tree, with the props that matter to satori. */
+function imgs(node: unknown, out: { src: string; width: number }[] = []) {
+  if (Array.isArray(node)) node.forEach((n) => imgs(n, out));
+  else if (isValidElement(node)) {
+    const props = node.props as { src?: string; width?: number; children?: unknown };
+    if (node.type === "img" && typeof props.src === "string") {
+      out.push({ src: props.src, width: props.width ?? 0 });
+    }
+    imgs(props.children, out);
+  }
   return out;
 }
 
@@ -200,4 +213,35 @@ describe("share card art", () => {
     expect([...bytes.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
     expect(bytes.byteLength).toBeGreaterThan(2000);
   }, 30_000);
+
+  it("draws the player-type character when one was loaded, and nothing when not", () => {
+    const face = imgs(shareCardElement(payload, "data:image/jpeg;base64,AAAA"));
+    expect(face).toHaveLength(1);
+    expect(face[0].src).toBe("data:image/jpeg;base64,AAAA");
+    expect(face[0].width).toBe(200);
+    // Without a portrait the card is still a whole card — the code, the name
+    // and the tagline are text on it, so a CDN hiccup costs charm, not sense.
+    expect(imgs(shareCardElement(payload, null))).toEqual([]);
+    expect(texts(shareCardElement(payload, null))).toContain(payload.playerType.name);
+  });
+
+  it("rasterizes a REAL character asset — proof the shipped format is one satori can draw", async () => {
+    const { ImageResponse } = await import("next/og");
+    const character = playerCharacter(payload.playerType.code)!;
+    const bytes = readFileSync(new URL(`../public/${character.src}`, import.meta.url));
+    const res = new ImageResponse(
+      shareCardElement(payload, `data:image/jpeg;base64,${bytes.toString("base64")}`),
+      { width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT },
+    );
+    const out = new Uint8Array(await res.arrayBuffer());
+    expect([...out.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+    // A card WITH a portrait is meaningfully bigger than one without: proof
+    // the picture landed rather than being silently dropped.
+    const plain = new Uint8Array(
+      await new ImageResponse(shareCardElement(payload), {
+        width: SHARE_CARD_WIDTH, height: SHARE_CARD_HEIGHT,
+      }).arrayBuffer(),
+    );
+    expect(out.byteLength).toBeGreaterThan(plain.byteLength + 5000);
+  }, 60_000);
 });

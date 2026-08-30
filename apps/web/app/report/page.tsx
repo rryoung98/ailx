@@ -13,6 +13,7 @@ import {
   playerType, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
 } from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
+import { CharacterPortrait, CharacterVoice } from "../../lib/CharacterPortrait";
 import { CredentialPanel } from "../../lib/CredentialPanel";
 import { Diagnosis } from "../../lib/Diagnosis";
 import { t2AnswerKeys } from "../../lib/instrument";
@@ -127,21 +128,38 @@ function useCountUp(target: number, ms = 1400): number {
   return v;
 }
 
+/**
+ * The dots are a SYNTHETIC calibration cohort shipped with the demo, not
+ * people. The page used to say so in a small pill next to a percentile-shaped
+ * number, which is exactly the part that survives a screenshot; the strip now
+ * carries the qualification itself, in the same words the diagnosis below
+ * uses (@ailx/report `diagnosis.ts`).
+ */
+const COHORT_CAPTION =
+  "Every dot is a synthetic demo run generated for this fixture, not a person. " +
+  "Where you sit among them is not a percentile and not a rank against real " +
+  "players — the judging pipeline is not built yet.";
+
 function DistStrip({ cohort, mine }: { cohort: number[]; mine: number }) {
   return (
-    <svg viewBox="0 0 400 56" className="dist-strip" role="img" aria-label="Cohort distribution">
-      <line x1="10" y1="40" x2="390" y2="40" stroke="var(--border-strong)" strokeWidth="1" />
-      {[0, 25, 50, 75, 100].map((x) => (
-        <text key={x} x={10 + x * 3.8} y="53" fontSize="9" fill="var(--faint)" textAnchor="middle" fontFamily="var(--mono)">{x}</text>
-      ))}
-      {cohort.map((c, i) => (
-        <circle key={i} cx={10 + c * 3.8} cy={40 - 6 - (i % 5) * 4} r="2.6"
-          fill={Math.abs(c - mine) < 0.01 ? "var(--accent)" : "var(--faint)"}
-          opacity={Math.abs(c - mine) < 0.01 ? 1 : 0.45} />
-      ))}
-      <line x1={10 + mine * 3.8} y1="6" x2={10 + mine * 3.8} y2="42" stroke="var(--accent)" strokeWidth="2" />
-      <text x={10 + mine * 3.8} y="4" fontSize="9" fill="var(--accent)" textAnchor="middle" fontFamily="var(--mono)" dominantBaseline="hanging">you</text>
-    </svg>
+    <figure className="dist-figure" data-testid="dist-strip">
+      <svg viewBox="0 0 400 56" className="dist-strip" role="img" aria-label={`Position among ${cohort.length} synthetic demo runs. ${COHORT_CAPTION}`}>
+        <line x1="10" y1="40" x2="390" y2="40" stroke="var(--border-strong)" strokeWidth="1" />
+        {[0, 25, 50, 75, 100].map((x) => (
+          <text key={x} x={10 + x * 3.8} y="53" fontSize="9" fill="var(--faint)" textAnchor="middle" fontFamily="var(--mono)">{x}</text>
+        ))}
+        {cohort.map((c, i) => (
+          <circle key={i} cx={10 + c * 3.8} cy={40 - 6 - (i % 5) * 4} r="2.6"
+            fill={Math.abs(c - mine) < 0.01 ? "var(--accent)" : "var(--faint)"}
+            opacity={Math.abs(c - mine) < 0.01 ? 1 : 0.45} />
+        ))}
+        <line x1={10 + mine * 3.8} y1="6" x2={10 + mine * 3.8} y2="42" stroke="var(--accent)" strokeWidth="2" />
+        <text x={10 + mine * 3.8} y="4" fontSize="9" fill="var(--accent)" textAnchor="middle" fontFamily="var(--mono)" dominantBaseline="hanging">you</text>
+      </svg>
+      <figcaption className="dist-caption small">
+        <strong>Synthetic demo cohort — {cohort.length} generated runs.</strong> {COHORT_CAPTION}
+      </figcaption>
+    </figure>
   );
 }
 
@@ -227,10 +245,14 @@ export default function ReportPage() {
     );
   }
 
-  const pct = Math.round(summary.percentile * 1000) / 10;
+  // The copied line is the part that travels furthest with no page around it,
+  // so it carries no percentile-shaped number at all: "P78.9 of 45" reads as a
+  // real-world rank the moment it is pasted anywhere.
   const shareText =
     `AILX 2026.1 (demo) — composite ${summary.composite.toFixed(1)}/100, ${summary.band}, ` +
-    `P${pct} of ${summary.cohortSize}. Tracks ${TRACK_IDS.map((t) => `${t.toUpperCase()} ${summary.trackRaw[t].toFixed(0)}`).join(" · ")}.`;
+    `standardized on a synthetic demo cohort of ${summary.cohortSize} generated runs ` +
+    `(no percentile, no judged result). ` +
+    `Tracks ${TRACK_IDS.map((t) => `${t.toUpperCase()} ${summary.trackRaw[t].toFixed(0)}`).join(" · ")}.`;
 
   return (
     <main className="page">
@@ -246,7 +268,7 @@ export default function ReportPage() {
         <div className="share-card" style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
             <div>
-              <div className="eyebrow">run {state.attemptId} · n = {summary.cohortSize}</div>
+              <div className="eyebrow">run {state.attemptId} · synthetic demo cohort n = {summary.cohortSize}</div>
               {/* The rAF count-up is decorative for AT: hide the animated
                   number and expose the final value + band once, politely. */}
               <div aria-hidden="true" className="composite-number" style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
@@ -257,7 +279,7 @@ export default function ReportPage() {
                   ? `Composite score ${summary.composite.toFixed(1)} out of 100. Band: ${summary.band}.`
                   : ""}
               </span>
-              <div className="muted small">composite · mean 50 · SD 15 · P{pct}</div>
+              <div className="muted small">composite · standardized on the synthetic demo cohort · mean 50 · SD 15</div>
               <div className="muted small">
                 raw {TRACK_IDS.reduce((a, t) => a + summary.trackRaw[t], 0).toFixed(1)} / 400
               </div>
@@ -286,7 +308,7 @@ export default function ReportPage() {
             ))}
           </div>
           <p className="faint small mono" style={{ margin: "0.4rem 0 0" }}>
-            quota-derived band cutlines (this cohort):{" "}
+            quota-derived band cutlines (this synthetic cohort):{" "}
             {(["Distinction", "Merit", "Pass"] as const)
               .map((b) => `${b} ≥ ${summary.bandCutlines[b]?.toFixed(1) ?? "—"}`)
               .join(" · ")}{" "}
@@ -314,10 +336,13 @@ export default function ReportPage() {
           return (
             <Reveal as="section" className="card ptype-card" aria-label="Player type">
               <div className="ptype-head">
-                <div>
-                  <p className="kicker" style={{ margin: 0 }}>YOUR PLAYER TYPE · JUST FOR FUN</p>
-                  <h2 style={{ margin: "0.2rem 0 0.1rem" }}>{p.name}</h2>
-                  <p className="muted" style={{ margin: 0 }}>{p.tagline}</p>
+                <div className="ptype-intro">
+                  <CharacterPortrait code={p.code} size={104} />
+                  <div>
+                    <p className="kicker" style={{ margin: 0 }}>YOUR PLAYER TYPE · JUST FOR FUN</p>
+                    <h2 style={{ margin: "0.2rem 0 0.1rem" }}>{p.name}</h2>
+                    <p className="muted" style={{ margin: 0 }}>{p.tagline}</p>
+                  </div>
                 </div>
                 <div className="ptype-code" aria-label={`Type code ${p.code}`}>
                   {p.poles.map((pole) => (
@@ -334,6 +359,7 @@ export default function ReportPage() {
                   </span>
                 ))}
               </div>
+              <CharacterVoice code={p.code} />
               <p className="faint small" style={{ margin: "0.6rem 0 0" }}>
                 A playful lens on this one run — split at the demo cohort's per-track median.
                 Not a personality claim, and never part of the score. What it says you are

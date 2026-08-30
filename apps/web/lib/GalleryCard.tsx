@@ -15,6 +15,7 @@ import type { GalleryEntry } from "@ailx/backend";
 import { shareUrlPath } from "@ailx/backend";
 import { shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
+import { CharacterPortrait } from "./CharacterPortrait";
 import { TrackRadar } from "./TrackRadar";
 
 /** Same-origin snapshot paths only — never render an arbitrary stored href. */
@@ -51,8 +52,13 @@ export function GalleryCard({
         </p>
         <span className={`badge band-${p.band}`}>{p.band}</span>
       </div>
-      <h3 className="type-tile-name">{p.playerType.name}</h3>
-      <p className="gallery-note">{p.playerType.tagline}</p>
+      <div className="ptype-intro">
+        <CharacterPortrait code={p.playerType.code} size={64} />
+        <div>
+          <h3 className="type-tile-name">{p.playerType.name}</h3>
+          <p className="gallery-note">{p.playerType.tagline}</p>
+        </div>
+      </div>
       {p.note !== null ? <blockquote className="share-quote">{p.note}</blockquote> : null}
       <TrackRadar
         values={p.tracks}

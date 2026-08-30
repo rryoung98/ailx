@@ -49,6 +49,15 @@ describe("globals.css shared mobile containment layer", () => {
     expect(coarse).toContain("min-height: 44px;");
   });
 
+  /**
+   * At 390px the share page's "How the run was shaped" heading printed
+   * straight through the absolutely positioned "AILX" share-card watermark.
+   * Everything that can reach the card's top-right corner keeps room for it.
+   */
+  it("share-card watermark keeps clearance from the eyebrow AND the heading", () => {
+    expect(css).toMatch(/\.share-card \.eyebrow,\s*\.share-card h2 \{ padding-right: 3\.6rem; \}/);
+  });
+
   it("runner grids still collapse to one column on phones (app-layer override)", () => {
     expect(css).toContain('.runner-frame [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }');
   });

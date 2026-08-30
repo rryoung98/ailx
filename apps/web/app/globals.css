@@ -1370,6 +1370,22 @@ main .card {
 .ptype-axes { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .ptype-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }
 
+/* The player-type CHARACTER (apps/web/lib/CharacterPortrait.tsx). The assets
+   are drawn on the paper background, so the tile is a rounded chip in the
+   same colour: the picture reads as pinned paper rather than as a pasted
+   square, on the white card and on the paper page alike. */
+.character-portrait {
+  display: block; flex: none;
+  border-radius: 14px; border: 1px solid var(--border);
+  background: var(--bg);
+}
+.ptype-intro { display: flex; gap: 1rem; align-items: flex-start; }
+.character-voice {
+  margin: 0.9rem 0 0; max-width: 62ch;
+  border-left: 3px solid var(--accent); padding-left: 0.9rem;
+  color: var(--fg); font-size: 0.95rem; line-height: 1.5;
+}
+
 
 /* ---- /gallery public wall of published player types -------------------- */
 .gallery-filters { display: grid; gap: 0.5rem; margin: 1.2rem 0 0.6rem; }

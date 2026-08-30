@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { handleViewShare, shareCardPath, shareUrlPath } from "@ailx/backend";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
+import { CharacterPortrait, CharacterVoice } from "../../../lib/CharacterPortrait";
 import { pageOrigin, withApiContext } from "../../../lib/server/api";
 import { TrackRadar } from "../../../lib/TrackRadar";
 
@@ -92,9 +93,12 @@ export default async function SharePage({ params }: ShareParams) {
         <section className="card ptype-card" style={{ marginBottom: "1.6rem" }}>
           <p className="eyebrow" style={{ margin: 0 }}>{p.instrument.toUpperCase()} · PLAYER TYPE</p>
           <div className="ptype-head">
-            <div>
-              <h1 style={{ margin: "0.2rem 0 0.1rem" }}>{p.playerType.name}</h1>
-              <p className="muted" style={{ margin: 0 }}>{p.playerType.tagline}</p>
+            <div className="ptype-intro">
+              <CharacterPortrait code={p.playerType.code} size={104} />
+              <div>
+                <h1 style={{ margin: "0.2rem 0 0.1rem" }}>{p.playerType.name}</h1>
+                <p className="muted" style={{ margin: 0 }}>{p.playerType.tagline}</p>
+              </div>
             </div>
             <div className="ptype-code" aria-label={`Type code ${p.playerType.code.split("").join(" ")}`}>
               {p.playerType.poles.map((pole) => (

@@ -38,6 +38,15 @@ export const SHARE_CARD_HEIGHT = 630;
 const TAGLINE_MAX_CHARS = 108;
 const HIGHLIGHT_MAX_CHARS = 150;
 
+/**
+ * The character portrait, and the width the text beside it may now use.
+ * The body row is 1072px wide inside the padding; the portrait and its gap
+ * take 240, so the tagline clamp box shrinks by exactly that much. Getting
+ * this wrong pushes a two-line tagline into the footer.
+ */
+const PORTRAIT_PX = 200;
+const PORTRAIT_TEXT_MAX_WIDTH = 760;
+
 /** Trim to `max` characters on a word boundary, with a real ellipsis. */
 export function clampLine(text: string, max: number): string {
   if (text.length <= max) return text;
@@ -71,7 +80,7 @@ const MONO = "ui-monospace, monospace";
  * foot 175. Every font size, margin and clamp below is part of that sum — if
  * you raise one, take it from another, or the footer clips off the card.
  */
-export function shareCardElement(payload: SharePayload): ReactElement {
+export function shareCardElement(payload: SharePayload, portrait: string | null = null): ReactElement {
   const lines = shareCardLines(payload);
   const box = (style: Record<string, unknown>, children: unknown) =>
     createElement("div", { style: { display: "flex", ...style } }, children as never);
@@ -106,16 +115,36 @@ export function shareCardElement(payload: SharePayload): ReactElement {
           ),
         ],
       ),
-      box({ key: "body", flexDirection: "column" }, [
-        box(
-          { key: "code", fontSize: 120, fontWeight: 800, letterSpacing: 22, color: SHARE_CARD_COLORS.accent, fontFamily: MONO },
-          lines.code,
-        ),
-        box({ key: "name", fontSize: 52, fontWeight: 700, marginTop: 4 }, lines.name),
-        box(
-          { key: "tag", fontSize: 28, color: SHARE_CARD_COLORS.muted, marginTop: 10, maxWidth: 1000, lineClamp: 2 },
-          clampLine(lines.tagline, TAGLINE_MAX_CHARS),
-        ),
+      box({ key: "body", alignItems: "center", gap: 40 }, [
+        box({ key: "text", flexDirection: "column", flexGrow: 1 }, [
+          box(
+            { key: "code", fontSize: 120, fontWeight: 800, letterSpacing: 22, color: SHARE_CARD_COLORS.accent, fontFamily: MONO },
+            lines.code,
+          ),
+          box({ key: "name", fontSize: 52, fontWeight: 700, marginTop: 4 }, lines.name),
+          box(
+            { key: "tag", fontSize: 28, color: SHARE_CARD_COLORS.muted, marginTop: 10, maxWidth: PORTRAIT_TEXT_MAX_WIDTH, lineClamp: 2 },
+            clampLine(lines.tagline, TAGLINE_MAX_CHARS),
+          ),
+        ]),
+        /* The character, when the caller could load it. Decorative HERE and
+           only here: the code, the name and the tagline are on the card as
+           text already, and alt text is not a thing a PNG can carry — so a
+           missing portrait costs the card nothing but charm. */
+        portrait === null
+          ? box({ key: "face" }, "")
+          : createElement("img", {
+              key: "face",
+              src: portrait,
+              width: PORTRAIT_PX,
+              height: PORTRAIT_PX,
+              style: {
+                width: PORTRAIT_PX,
+                height: PORTRAIT_PX,
+                borderRadius: 28,
+                border: `2px solid ${SHARE_CARD_COLORS.border}`,
+              },
+            }),
       ]),
       box({ key: "foot", flexDirection: "column" }, [
         lines.highlight === null
