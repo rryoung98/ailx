@@ -82,16 +82,68 @@ both were found and rejected while this corpus was built. Category membership
 is not ground truth, so the claim is read from the file page and the matching
 phrase is recorded in the item as `generator_evidence`.
 
-## Growing it
+## Two kinds of item
 
-There is no image generation in this repository — `services/openrouter-proxy`
-is text-only and T4's image model is a deterministic SVG simulator. Every
-synthetic item here is a *found* generation published by somebody else under a
-free licence. To go deeper, either curate more Commons titles, or generate
-images with a real model under terms that permit redistribution and record the
-model, prompt and date in the credit.
+`credit.origin` says which:
 
-The thinnest family is **sociocultural on the synthetic side**: a generated
-picture has to be culturally specific before it can be culturally wrong, and
-the free-licensed photorealistic generations available are mostly landscape,
-architecture and food.
+- `commons` — a file somebody else published under a free licence. It carries
+  a Commons title, a source URL and the page phrase that evidences generation.
+- `generated` — ours. It carries the model, the provider, the FULL prompt, the
+  generation date and `rights_basis`, the quoted provider term that lets us
+  republish it. We release these as CC0.
+
+## Growing it by generating
+
+The thinnest family is **sociocultural on the synthetic side**: a picture has
+to be culturally specific before it can be culturally wrong, and free-licensed
+photorealistic generations are mostly landscape, architecture and food. So we
+generate.
+
+```sh
+# needs requests + pillow, and a key of our own:
+export AILX_GEN_OPENROUTER_KEY=sk-or-...
+python3 tools/generate-practice-images.py            # writes .ailx-generated/
+python3 tools/generate-practice-images.py --status
+# LOOK at each file, full size, then:
+python3 tools/generate-practice-images.py --accept SLUG --reason "..."
+python3 tools/generate-practice-images.py --reject SLUG --reason "..."
+python3 tools/build-practice-corpus.py --offline     # generated rows need no network
+```
+
+Without `AILX_GEN_OPENROUTER_KEY` the client falls back to the shared demo
+proxy under a hard per-run call cap. That budget exists so a visitor can sit
+T4 with no key; it is not the corpus budget.
+
+Three rules are enforced rather than remembered:
+
+1. **Multi-model.** A corpus from one generator teaches that generator's
+   fingerprint, not the artefact. Prompts are spread across both provider
+   families and across model generations — including OLDER models, whose
+   cruder failures are the easy end of the difficulty range — and the corpus
+   test fails on fewer than two models, fewer than two providers, or one model
+   holding more than half of what we generated.
+2. **A person looks at every image.** Generation only produces a `pending`
+   attempt; the build refuses anything not accepted. A prompt that asks for an
+   artefact does not reliably produce one — models silently repair impossible
+   physics — so the accept/reject verdict and its reason go in
+   `generated.json` and stay there.
+3. **Rights before pixels.** `instruments/tools/openrouter_images.py` will not
+   generate from a provider that has no quoted redistribution basis, so an
+   unlicensable image cannot reach the repository by accident.
+
+### Writing a prompt that produces a tell
+
+- Name a CONCRETE setting, tradition or object. A generic scene cannot be
+  specifically wrong, and "looks uncanny" is not a tell.
+- Describe the artefact as a plain fact of the photograph, not as an
+  instruction to make a mistake.
+- Ban text: `no text, no lettering, no numbers, no signage`. Garbled signage
+  answers the card for free and is not the artefact under study.
+- Ask for photorealism explicitly. A painterly finish is answerable in a
+  second from style alone (see `material.style`).
+- No political or celebrity subjects: a candidate would answer from prior
+  recognition instead of inspection, and it conflicts with the neutrality
+  positioning (`docs/POSITIONING.md`).
+- On a sociocultural item the error must be one a knowledgeable person would
+  actually catch, never a stereotype, and the tell must teach the real
+  convention. A clumsy sociocultural item is worse than none.
