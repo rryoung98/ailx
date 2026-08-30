@@ -326,5 +326,9 @@ describe("styling stays on the token palette", () => {
     const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
     expect(css).toMatch(/\.image\s*\{[^}]*height: min\(/);
     expect(css).toMatch(/\.image\s*\{[^}]*object-fit: contain/);
+    // ...and a shorter one on a phone, where the wrapped primary nav already
+    // costs ~130px of an 844px viewport.
+    const narrow = css.slice(css.indexOf("@media (max-width: 640px)"));
+    expect(narrow).toMatch(/\.image \{ height: min\(38vh, 20rem\); \}/);
   });
 });

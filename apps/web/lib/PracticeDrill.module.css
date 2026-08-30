@@ -81,6 +81,14 @@
   background: var(--bg-raised);
 }
 
+/* A phone spends ~130px of its 844 on the wrapped primary nav, so the plate
+   has to give some back or the two calls land under the fold and every card
+   costs a scroll. Measured at 390x844: the calls finish at ~835. */
+@media (max-width: 640px) {
+  .image { height: min(38vh, 20rem); }
+  .stage { gap: 0.7rem; }
+}
+
 /* Attribution is a licence obligation, not a caption: small, but always on. */
 .credit {
   font-size: 0.72rem;
