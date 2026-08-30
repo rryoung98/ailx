@@ -61,6 +61,24 @@ const srOnly: CSSProperties = {
   border: 0,
 };
 
+/**
+ * `prefers-reduced-motion: reduce`, live. In an exam an a11y failure is a
+ * validity failure, so the confidence step must be able to appear with no
+ * movement at all. SSR/static export starts at false and corrects on mount.
+ */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(mq.matches);
+    sync();
+    mq.addEventListener?.("change", sync);
+    return () => mq.removeEventListener?.("change", sync);
+  }, []);
+  return reduced;
+}
+
 function Material({ item, lang }: { item: T2Item; lang?: string }) {
   if (item.material.startsWith("data:image/") || /^(https?:)?\/[^\s]+\.(jpe?g|png|webp|gif)$/i.test(item.material)) {
     return (
@@ -115,11 +133,11 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   const sliderRef = useRef<HTMLInputElement>(null);
   const answerRef = useRef<HTMLButtonElement>(null);
   const replayBtnRef = useRef<HTMLButtonElement>(null);
-  const deckTopRef = useRef<HTMLParagraphElement>(null);
   // True while focus was moved INTO the confidence sheet by us: the sheet
   // then owns focus (trap) and hands it back to the deck on close.
   const focusInSheetRef = useRef(false);
   const completed = useRef(false);
+  const reducedMotion = usePrefersReducedMotion();
 
   // Checkpoint every meaningful mutation with explicit next values (state
   // setters have not committed yet inside handlers).
@@ -136,13 +154,6 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     },
     [idx, onCheckpoint, phase, replayIdx, responses],
   );
-
-  // Bring the confidence sheet into view when it slides up.
-  useEffect(() => {
-    if (choice !== null && typeof sheetRef.current?.scrollIntoView === "function") {
-      sheetRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  }, [choice]);
 
   /**
    * Focus management for the confidence sheet (audit P0-2).
@@ -236,11 +247,6 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
       if (idx + 1 < cfg.items.length) {
         setIdx(idx + 1);
         saveCheckpoint({ responses: nextResponses, deckIndex: idx + 1 });
-        // Bring the next item's header/stem back into view — the confidence
-        // sheet usually left the page scrolled to the bottom of the card.
-        if (typeof deckTopRef.current?.scrollIntoView === "function") {
-          deckTopRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
       } else {
         setPhase("replay");
         saveCheckpoint({ responses: nextResponses, phase: "replay" });
@@ -370,7 +376,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           primary path and record the same response. Swiping the card or
           pressing the left and right arrow keys are equivalent alternatives.
         </p>
-        <div ref={deckTopRef as unknown as React.RefObject<HTMLDivElement>} style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", scrollMarginTop: 96 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
           <span>
             Item {idx + 1} / {cfg.items.length} · {item.type}
           </span>
@@ -396,6 +402,13 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
             recorded. The deck resumes in a moment.
           </p>
         )}
+        {/* The confidence step renders INSIDE the deck frame (SwipeDeck's
+            `overlay`), in the same visual region as the card it is about.
+            It used to be a sibling below the deck, which pushed it under the
+            fold and forced a scrollIntoView on open and another one back on
+            the next item — the scroll ping-pong candidates reported, and the
+            single largest source of cross-browser smooth-scroll divergence.
+            In-frame, the page height never changes and nothing is scrolled. */}
         <SwipeDeck
           item={item}
           nextItems={cfg.items.slice(idx + 1, idx + 3)}
@@ -410,107 +423,137 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           }}
           onStimulusReady={handleStimulusReady}
           answerRef={answerRef}
+          overlay={
+            <div
+              ref={sheetRef}
+              data-testid="confidence-sheet"
+              // A modal step of a scored item: while it is open it owns focus,
+              // and while it is closed it is inert so its slider is not a stray
+              // tab stop behind the deck.
+              role="dialog"
+              aria-modal={sheetOpen || undefined}
+              aria-label="Set your confidence"
+              aria-hidden={!sheetOpen}
+              inert={!sheetOpen}
+              onKeyDown={onSheetKeyDown}
+              style={{
+                ...card,
+                // Fill the card frame exactly: same place, same size, no
+                // layout shift on either edge of the step.
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "auto",
+                borderRadius: 16,
+                boxShadow: "0 6px 16px rgba(26,26,26,0.14)",
+                // The frame is `touch-action: pan-y` for the swipe gesture;
+                // the panel is a form, so it keeps normal touch behaviour.
+                touchAction: "auto",
+                // Settles up into the frame while the judged card sails off
+                // above it. Ease-out with NO overshoot: a control the
+                // candidate is reaching for must not still be moving.
+                transform: sheetOpen || reducedMotion ? "none" : "translateY(10%) scale(0.98)",
+                opacity: sheetOpen ? 1 : 0,
+                transition: reducedMotion
+                  ? "none"
+                  : "transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 180ms ease",
+                pointerEvents: sheetOpen ? "auto" : "none",
+              }}
+            >
+              {isImageMaterial(item.material) && (
+                // The judged stimulus stays visible, at card scale, in the
+                // card's own frame: confidence is rated against what was
+                // actually looked at, not from memory. The card itself has
+                // flown off and the upcoming cards are masked.
+                <img
+                  src={item.material}
+                  alt=""
+                  aria-hidden
+                  data-testid="judged-stimulus"
+                  style={{
+                    flex: 1,
+                    minHeight: 0,
+                    width: "100%",
+                    objectFit: "contain",
+                    borderRadius: 8,
+                    marginBottom: "0.6rem",
+                    background: "var(--bg)",
+                  }}
+                />
+              )}
+              <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>
+                Your call: <span lang={contentLang}>{choice !== null ? item.options[choice] : "—"}</span>
+              </p>
+              <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+                How sure? {confidence === null ? "not set" : confidence}
+                <input
+                  ref={sliderRef}
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={confidence ?? DEFAULT_CONFIDENCE}
+                  aria-label={
+                    confidence === null
+                      ? "Confidence: not set — move the slider to choose 0 to 100"
+                      : `Confidence: ${confidence} out of 100`
+                  }
+                  aria-valuetext={confidence === null ? "not set" : `${confidence} out of 100`}
+                  onChange={(e) => setConfidence(Number(e.target.value))}
+                  // A tap/click that lands exactly on the shown default fires no
+                  // change event; treat the press itself as the interaction so
+                  // "I did choose 50" is not an unreachable answer.
+                  onPointerDown={() => setConfidence((c) => c ?? DEFAULT_CONFIDENCE)}
+                  // 16px floor: iOS Safari auto-zooms the page when a focused
+                  // form control's font is smaller, then snaps back out on
+                  // lock-in when the sheet closes — the reported mobile "zoom
+                  // out", most visible on image items (tallest sheet).
+                  style={{ width: "100%", accentColor: "var(--accent)", fontSize: 16 }}
+                />
+              </label>
+              {sheetOpen && confidence === null && (
+                <p
+                  data-testid="confidence-hint"
+                  style={{ margin: "0.5rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}
+                >
+                  Set how sure you are before locking in — confidence is scored, so it
+                  is never assumed for you.
+                </p>
+              )}
+              <button
+                style={{
+                  ...btn,
+                  marginTop: "0.8rem",
+                  alignSelf: "flex-start",
+                  opacity: sheetOpen && confidence !== null ? 1 : 0.5,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.45rem",
+                }}
+                disabled={!sheetOpen || confidence === null}
+                onClick={() => confidence !== null && record(choice ?? -1, confidence)}
+              >
+                {/* Inline padlock glyph — decorative; the label carries meaning. */}
+                <svg
+                  aria-hidden="true"
+                  data-testid="lock-icon"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="4" y="11" width="16" height="10" rx="2" fill="currentColor" stroke="none" />
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+                Lock in
+              </button>
+            </div>
+          }
         />
-        {/* Confidence sheet — slides up under the deck after each swipe. */}
-        <div
-          ref={sheetRef}
-          data-testid="confidence-sheet"
-          // A modal step of a scored item: while it is open it owns focus,
-          // and while it is closed it is inert so its slider is not a stray
-          // tab stop behind the deck.
-          role="dialog"
-          aria-modal={sheetOpen || undefined}
-          aria-label="Set your confidence"
-          aria-hidden={!sheetOpen}
-          inert={!sheetOpen}
-          onKeyDown={onSheetKeyDown}
-          style={{
-            ...card,
-            transform: sheetOpen ? "translateY(0)" : "translateY(115%)",
-            opacity: sheetOpen ? 1 : 0,
-            transition: "transform 260ms cubic-bezier(0.2, 1.2, 0.4, 1), opacity 200ms ease",
-            pointerEvents: sheetOpen ? "auto" : "none",
-          }}
-        >
-          {item.type === "media-image" && (
-            // Keep the judged stimulus in view while rating confidence —
-            // the card itself has flown off and upcoming cards are masked.
-            <img
-              src={item.material}
-              alt=""
-              aria-hidden
-              style={{ width: "100%", maxHeight: 180, objectFit: "contain", borderRadius: 8, marginBottom: "0.6rem", background: "var(--bg)" }}
-            />
-          )}
-          <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>
-            Your call: <span lang={contentLang}>{choice !== null ? item.options[choice] : "—"}</span>
-          </p>
-          <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-            How sure? {confidence === null ? "not set" : confidence}
-            <input
-              ref={sliderRef}
-              type="range"
-              min={0}
-              max={100}
-              value={confidence ?? DEFAULT_CONFIDENCE}
-              aria-label={
-                confidence === null
-                  ? "Confidence: not set — move the slider to choose 0 to 100"
-                  : `Confidence: ${confidence} out of 100`
-              }
-              aria-valuetext={confidence === null ? "not set" : `${confidence} out of 100`}
-              onChange={(e) => setConfidence(Number(e.target.value))}
-              // A tap/click that lands exactly on the shown default fires no
-              // change event; treat the press itself as the interaction so
-              // "I did choose 50" is not an unreachable answer.
-              onPointerDown={() => setConfidence((c) => c ?? DEFAULT_CONFIDENCE)}
-              // 16px floor: iOS Safari auto-zooms the page when a focused
-              // form control's font is smaller, then snaps back out on
-              // lock-in when the sheet closes — the reported mobile "zoom
-              // out", most visible on image items (tallest sheet).
-              style={{ width: "100%", accentColor: "var(--accent)", fontSize: 16 }}
-            />
-          </label>
-          {sheetOpen && confidence === null && (
-            <p
-              data-testid="confidence-hint"
-              style={{ margin: "0.5rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}
-            >
-              Set how sure you are before locking in — confidence is scored, so it
-              is never assumed for you.
-            </p>
-          )}
-          <button
-            style={{
-              ...btn,
-              marginTop: "0.8rem",
-              opacity: sheetOpen && confidence !== null ? 1 : 0.5,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.45rem",
-            }}
-            disabled={!sheetOpen || confidence === null}
-            onClick={() => confidence !== null && record(choice ?? -1, confidence)}
-          >
-            {/* Inline padlock glyph — decorative; the label carries meaning. */}
-            <svg
-              aria-hidden="true"
-              data-testid="lock-icon"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="4" y="11" width="16" height="10" rx="2" fill="currentColor" stroke="none" />
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-            </svg>
-            Lock in
-          </button>
-        </div>
       </div>
     );
   }

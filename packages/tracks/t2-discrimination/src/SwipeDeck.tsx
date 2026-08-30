@@ -243,9 +243,22 @@ export interface SwipeDeckProps {
    * never dropped on <body> between items (audit P0-2).
    */
   answerRef?: Ref<HTMLButtonElement>;
+  /**
+   * The confidence step, rendered INSIDE the card frame (absolutely
+   * positioned over the deck box) rather than below it. The frame is the
+   * deck's own stacking context, so the step occupies the same visual
+   * region as the card it is about, the page height never changes, and
+   * nothing has to be scrolled into view. It sits ABOVE the (masked)
+   * upcoming cards and BELOW the top card, so the judged card visibly
+   * sails off across the panel as the panel rises.
+   *
+   * The node owns its own open/closed state, focus and inertness — the
+   * deck only gives it the frame.
+   */
+  overlay?: ReactNode;
 }
 
-export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, maskUpcoming, answerRef }: SwipeDeckProps) {
+export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, maskUpcoming, answerRef, overlay }: SwipeDeckProps) {
   const swipeable = item.options.length === 2;
   const [webgl, setWebgl] = useState(false);
   useEffect(() => {
@@ -451,6 +464,10 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             visibility: m.exited ? "hidden" : "visible",
             cursor: swipeable ? (m.dragging ? "grabbing" : "grab") : "default",
             touchAction: swipeable ? "none" : "auto",
+            // While the card is flying off, the overlay underneath is already
+            // interactive: the card must not swallow a tap aimed at the
+            // confidence slider during those ~250ms.
+            pointerEvents: enabled ? "auto" : "none",
           }}
         >
           <CardBody item={item} hideImage={Boolean(glImageUrl) && glReadyUrl === glImageUrl} slotRef={imgSlotRef} lang={lang} />
@@ -506,6 +523,15 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             </TextureErrorBoundary>
           </div>
         )}
+
+        {/* In-frame step overlay (the confidence panel). zIndex 3 keeps it
+            above the upcoming-card stack (1–2) and below the top card (4),
+            its badges (6) and the GL layer (5). */}
+        {overlay ? (
+          <div style={{ position: "absolute", inset: 0, zIndex: 3, pointerEvents: "none" }}>
+            {overlay}
+          </div>
+        ) : null}
       </div>
 
       {/* Mapping legend — swipe left = options[0], right = options[1];

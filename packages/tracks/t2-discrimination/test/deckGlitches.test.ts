@@ -28,10 +28,17 @@ describe("t2 deck glitch guards", () => {
     expect(optionsBlock).toContain("zIndex: 7");
   });
   it("confidence sheet shows the judged image stimulus", () => {
-    expect(runner).toMatch(/media-image[\s\S]{0,400}src=\{item\.material\}/);
+    expect(runner).toMatch(/isImageMaterial\(item\.material\)[\s\S]{0,600}src=\{item\.material\}/);
   });
-  it("advancing scrolls the next item header into view", () => {
-    expect(runner).toContain("deckTopRef.current.scrollIntoView");
+  it("never scrolls anything into view — the confidence step happens in place", () => {
+    // The sheet used to sit below the deck, so opening it scrolled down and
+    // the next item scrolled back up. It now fills the card frame, so there
+    // is nothing to scroll to. Behaviour is pinned in confidenceInPlace.test.tsx.
+    expect(runner).not.toMatch(/\.scrollIntoView\(/);
+  });
+  it("renders the confidence step inside the deck frame, not after it", () => {
+    expect(runner).toContain("overlay={");
+    expect(deck).toContain("zIndex: 3");
   });
 
   it("GL frameloop never toggles to 'never' (blank-card race) and context loss falls back to DOM", () => {
