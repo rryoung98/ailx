@@ -1,5 +1,9 @@
 # AILX — The AI Literacy Examination
 
+[![ci](https://github.com/rryoung98/ailx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rryoung98/ailx/actions/workflows/ci.yml)
+[![pages](https://github.com/rryoung98/ailx/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/rryoung98/ailx/actions/workflows/pages.yml)
+[![coverage](https://codecov.io/gh/rryoung98/ailx/branch/main/graph/badge.svg)](https://codecov.io/gh/rryoung98/ailx)
+
 A performance-based benchmark that measures what a person can actually do **with, against, and about** artificial intelligence — scored on four tracks:
 
 | Track | Name | Measures |
@@ -42,14 +46,31 @@ pnpm -r build
 `AILX_TEST_FORKS=8 pnpm test` raises it. `pnpm -r test` runs the same tests one
 package at a time, and `vitest run` inside a package debugs just that package.
 
+`pnpm test:coverage` is the same run with v8 coverage (about +2s), which is
+what CI publishes. There is no coverage threshold and no build fails on one:
+an unmeasured target rewards assertion-free tests (`FRONTEND.md` §7.2). Read
+the number, do not chase it.
+
+A new workspace package is picked up automatically: `pnpm-workspace.yaml` and
+`vitest-workspace.ts` both match by directory glob, and
+`packages/core/test/workspaceWiring.test.ts` fails if a package with a
+`package.json` escapes either list — the hole that once hid
+`services/openrouter-proxy` from the test run.
+
 ## Contributing
 
 Branch → PR → green CI → merge → auto-deploy. `main` is protected; push it through a PR.
 
 1. Branch off `main` and commit small, conventional commits.
-2. Open a PR. The `ci` workflow gates it: install, `pnpm -r build` (which typechecks every
-   package), `pnpm test`, and the `AILX_BACKEND=1` server build, then the Playwright `e2e`
-   job against a Postgres service. Both checks must be green to merge.
+2. Open a PR. The `ci` workflow gates it with two jobs, and their names are the branch
+   protection contract: **`verify`** (install, `pnpm -r build` — which typechecks every
+   package — `pnpm test:coverage`, the coverage report on the PR, and the `AILX_BACKEND=1`
+   server build) and **`e2e`** (Playwright against a Postgres service). Both must be green
+   to merge. A further gate is added as a new job with `needs: verify`, alongside `e2e`,
+   never chained behind it.
+   Two more workflows run outside the merge gate: `codeql` (static analysis, on merge to
+   `main` and weekly) and Dependabot (`.github/dependabot.yml`), which opens one grouped
+   minor/patch PR per ecosystem per week and keeps every major on its own so it gets read.
 3. On merge, `pages` runs only after `ci` succeeds on that commit: it rebuilds the static
    export, stamps `/version.json` with the deployed commit, deploys to GitHub Pages, and tags
    the commit `build-<UTC date>-<short sha>`. That tag plus `version.json` is the whole
