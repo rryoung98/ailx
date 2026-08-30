@@ -137,6 +137,22 @@ export default function ExamPage() {
 
   const state = useMemo(() => (log ? project(log) : null), [log]);
 
+  /**
+   * Pause is a full-workspace modal. Keyboard and screen-reader users have
+   * to land INSIDE it (its Resume button) when it opens, and back on the
+   * header Pause control when it closes — otherwise focus sits on a control
+   * hidden behind the veil, or falls to <body> on resume.
+   */
+  const resumeRef = useRef<HTMLButtonElement>(null);
+  const pauseBtnRef = useRef<HTMLButtonElement>(null);
+  const wasPausedRef = useRef(false);
+  useEffect(() => {
+    const isPaused = state?.phase === "paused" && !crashed;
+    if (isPaused) resumeRef.current?.focus();
+    else if (wasPausedRef.current) pauseBtnRef.current?.focus();
+    wasPausedRef.current = isPaused;
+  }, [state?.phase, crashed]);
+
   /** Monotonic event timestamp: the machine rejects backwards clocks. */
   const stamp = useCallback((): number => {
     const cur = logRef.current;
@@ -534,7 +550,7 @@ export default function ExamPage() {
             {paused ? (
               <button className="btn" onClick={() => commit([{ type: "resumed", ts: stamp() }])}>Resume</button>
             ) : (
-              <button className="btn" onClick={() => commit([{ type: "paused", ts: stamp() }])}>Pause</button>
+              <button className="btn" ref={pauseBtnRef} onClick={() => commit([{ type: "paused", ts: stamp() }])}>Pause</button>
             )}
           </div>
         </div>
@@ -560,15 +576,26 @@ export default function ExamPage() {
           )}
           {paused && !crashed && (
             <div
-              role="dialog" aria-label="Paused"
+              role="dialog" aria-modal="true" aria-label="Paused"
               style={{
                 position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center",
-                background: "var(--bg, #0b0d10)", zIndex: 5, textAlign: "center", padding: "3rem 1rem",
+                alignItems: "center", justifyContent: "center", gap: "0.4rem",
+                background: "var(--bg)", zIndex: 5, textAlign: "center", padding: "3rem 1rem",
               }}
             >
-              <h3>Paused</h3>
+              <h2 style={{ margin: 0 }}>Paused</h2>
               <p className="muted">The track clock is stopped. Content is hidden while paused; your work is kept.</p>
+              {/* The dialog used to hold no control at all: the only way out
+                  was a Resume button OUTSIDE it, in the page header. A
+                  modal that covers the whole workspace must carry its own
+                  way out. */}
+              <button
+                className="btn primary"
+                ref={resumeRef}
+                onClick={() => commit([{ type: "resumed", ts: stamp() }])}
+              >
+                Resume track
+              </button>
             </div>
           )}
         </div>
