@@ -40,6 +40,12 @@ describe("T1 checkpoint codec (F2)", () => {
       }),
     );
     expect(html).toContain("Resumed Site");
-    expect(html).toContain("resumed self report");
+    // The rationale now lives behind the finish step, so it is NOT in the
+    // first paint — only its entry point is. That the restored text is
+    // still there when the step opens is asserted in the DOM test
+    // "reopening the finish step after a resume shows the restored text"
+    // (submitConfirm.test.tsx), which is the guarantee that matters.
+    expect(html).not.toContain("resumed self report");
+    expect(html).toContain("Design rationale");
   });
 });

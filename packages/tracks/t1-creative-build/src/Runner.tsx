@@ -193,10 +193,20 @@ export function Runner(props: TrackUIProps) {
   // assist) instead of a dead end.
   const [failedPrompt, setFailedPrompt] = useState<string | null>(null);
   const [selfReport, setSelfReport] = useState(restored?.selfReport ?? "");
-  const [rationaleOpen, setRationaleOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  /** Submit is a two-step act — see the confirm block in the render. */
-  const [confirmingSubmit, setConfirmingSubmit] = useState(false);
+  /**
+   * The finish step. Reflection ("why did you build it this way") used to
+   * sit in the same column as the prompt box, so the candidate was asked to
+   * DO the work and REFLECT on it in one visual space during a timed task.
+   * It now lives in a step that REPLACES the working controls, entered
+   * either to write the rationale early ("notes") or to end the track
+   * ("submit"). Both entries show the same panel; only the submit entry
+   * raises the alert, because arming a destructive action is the only one
+   * of the two that warrants interrupting a screen reader. Leaving the
+   * step keeps every character (state + checkpoint are untouched), so this
+   * is never a one-way door.
+   */
+  const [finishStep, setFinishStep] = useState<null | "notes" | "submit">(null);
   const promptLog = useRef<PromptLogEntry[]>(restored?.promptLog ?? []);
   const dirtySinceRun = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -490,6 +500,7 @@ export function Runner(props: TrackUIProps) {
   const submit = () => {
     if (submitted) return;
     setSubmitted(true);
+    setFinishStep(null);
     const artifact = {
       html,
       promptLog: promptLog.current,
@@ -606,6 +617,11 @@ export function Runner(props: TrackUIProps) {
           </div>
         )}
 
+        {/* Working controls. They are hidden while the finish step is open
+            so reflection is a STEP, not a second input competing with the
+            prompt box for the same attention. */}
+        {finishStep !== null && !submitted ? null : (
+        <>
         {/* Model row (kept compact above the input). Phone layout: the CSS
             900px block stacks these controls to full-width lines. */}
         <div className="t1-row-model" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -678,20 +694,48 @@ export function Runner(props: TrackUIProps) {
           </button>
         </div>
 
-        {/* Design rationale — compact accordion under the input. */}
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-          <button
-            type="button"
-            className="t1-btn ghost"
-            style={{ fontSize: 12, padding: "4px 10px" }}
-            aria-expanded={rationaleOpen}
-            onClick={() => setRationaleOpen((v) => !v)}
+        </>
+        )}
+
+        {/* Finish step. Entered deliberately, and it still takes a SECOND
+            deliberate press inside the step to end the track. */}
+        {finishStep === null || submitted ? (
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="t1-btn"
+              onClick={() => setFinishStep("submit")}
+              disabled={submitted}
+            >
+              {submitted ? "Submitted" : "Submit final artifact"}
+            </button>
+            {!submitted && (
+              <button
+                type="button"
+                className="t1-btn ghost"
+                onClick={() => setFinishStep("notes")}
+              >
+                Design rationale
+              </button>
+            )}
+          </div>
+        ) : (
+          <section
+            aria-label="Finish T1"
+            style={{ borderTop: "1px solid var(--border)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 8 }}
           >
-            {rationaleOpen ? "Hide design rationale" : "Design rationale (~200 words)"}
-          </button>
-          <div style={{ display: rationaleOpen ? "flex" : "none", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            <h2 style={h2}>Design rationale</h2>
+            {/* Honest, checkable numbers only: T1_WEIGHTS.rationale is 10 of
+                the track's 100 points, and the judge scores a blank
+                rationale at zero. Skipping is allowed and quiet — it is
+                just never presented as free. */}
+            <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+              Worth 10 of T1&rsquo;s 100 points, judged on how well it explains the
+              artifact you built. You can leave it blank and submit anyway —
+              that component then scores zero. About 200 words.
+            </p>
             <textarea
-              aria-label="Self report"
+              aria-label="Design rationale"
               style={{ ...mono, minHeight: 90 }}
               maxLength={cfg.selfReportMaxChars}
               value={selfReport}
@@ -701,43 +745,27 @@ export function Runner(props: TrackUIProps) {
               }}
               placeholder="State your intent: audience, message, and the choices that serve them."
             />
-          </div>
-          {/* Submitting ENDS the track and forfeits the rest of the clock,
-              and this button sits a few pixels under "Send" — one stray
-              click used to throw away the whole remaining budget with no
-              warning. It is armed first, then confirmed. */}
-          {submitted || !confirmingSubmit ? (
-            <button
-              type="button"
-              className="t1-btn"
-              style={{ marginTop: 8, marginLeft: rationaleOpen ? 0 : 8 }}
-              onClick={() => setConfirmingSubmit(true)}
-              disabled={submitted}
+            <p
+              style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}
+              {...(finishStep === "submit" ? { role: "alert" as const } : {})}
             >
-              {submitted ? "Submitted" : "Submit final artifact"}
-            </button>
-          ) : (
-            <div
-              role="alert"
-              style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
-            >
-              <span style={{ fontSize: 12, color: "var(--muted)", flexBasis: "100%" }}>
-                Submitting ends T1 now and forfeits the {fmtTime(props.secondsRemaining)} left
-                on the clock. You cannot come back to it.
-              </span>
+              Submitting ends T1 now and forfeits the {fmtTime(props.secondsRemaining)} left
+              on the clock. You cannot come back to it.
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" className="t1-btn" onClick={submit}>
                 Yes, submit final artifact
               </button>
               <button
                 type="button"
                 className="t1-btn ghost"
-                onClick={() => setConfirmingSubmit(false)}
+                onClick={() => setFinishStep(null)}
               >
                 Keep working
               </button>
             </div>
-          )}
-        </div>
+          </section>
+        )}
       </section>
 
       {/* RIGHT — the live page (preview default; code behind a tab). */}
