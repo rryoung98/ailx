@@ -4,7 +4,11 @@
  * default `pnpm -r test` needs no external services.
  */
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { TRACK_IDS } from "@ailx/session";
 import type { Queryable } from "../src/db.js";
 import {
@@ -20,9 +24,10 @@ const SCHEMA = readFileSync(new URL("../../../db/schema.sql", import.meta.url), 
 export const TEST_INSTRUMENT = { instrumentId: "ailx", instrumentVer: "2026.1" } as const;
 
 /**
- * One PGlite per worker process, reused. Booting an in-process Postgres costs
- * ~600ms and ~250MB of wasm heap that is never returned to the OS, so a suite
- * that boots one per test spent minutes and gigabytes on DDL it already had.
+ * One PGlite per test file, reused across its tests. Booting an in-process
+ * Postgres costs ~1s and ~250MB of wasm heap that is never returned to the OS,
+ * so a suite that boots one per TEST spent minutes and gigabytes on a cluster
+ * it already had.
  * Reuse gives the same guarantee for far less: every call hands back a database
  * with the real `db/schema.sql` DDL and NO rows, because TRUNCATE ... RESTART
  * IDENTITY CASCADE erases every table and sequence. Vitest isolates test FILES
@@ -32,10 +37,63 @@ let shared: (PGlite & Queryable) | undefined;
 /** Derived from the live catalog, never a hand-kept list that drifts from the schema. */
 let truncateAll: string | undefined;
 
+/**
+ * Identifies the installed PGlite build. Its `package.json` is not exported, so
+ * the key is the resolved entry path (which carries the version under pnpm)
+ * plus that file's byte size — enough that no version bump can be handed a
+ * cluster initialised by a different engine. Over-invalidating is free: it
+ * costs one 1s rebuild.
+ */
+function pgliteBuildId(): string {
+  const entry = createRequire(import.meta.url).resolve("@electric-sql/pglite");
+  return `${entry}:${statSync(entry).size}`;
+}
+
+/** Exported so `dbImage.test.ts` can exercise both the cold and cached paths. */
+export const IMAGE_PATH = new URL(
+  `../node_modules/.cache/ailx-pglite/${createHash("sha256")
+    .update(SCHEMA)
+    .update(pgliteBuildId())
+    .digest("hex")
+    .slice(0, 16)}.tar`,
+  import.meta.url,
+).pathname;
+
+/**
+ * A cold `new PGlite()` is not paying for our DDL — it is paying for `initdb`,
+ * which builds an empty Postgres cluster from scratch: measured 1051ms, against
+ * 30ms to then run the whole of `db/schema.sql`. Booting from a data directory
+ * that already contains the cluster AND the schema costs 157ms, so every test
+ * file after the first saves ~0.9s of pure CPU.
+ *
+ * The image is built once, by whichever worker gets there first, and cached on
+ * disk under a key that content-addresses `db/schema.sql` and the PGlite
+ * version — so a schema edit or a dependency bump can never be served a stale
+ * cluster. The write is temp-file-then-rename because several forks race here,
+ * and rename is atomic: a reader sees the whole image or no image at all.
+ *
+ * This does not weaken isolation. It strengthens it: a file used to inherit
+ * whatever the previous file left behind, minus a TRUNCATE; now it starts from
+ * a byte-identical freshly-initialised cluster.
+ */
+async function bootFromImage(): Promise<PGlite & Queryable> {
+  const cached = await readFile(IMAGE_PATH).catch(() => undefined);
+  if (cached) {
+    return new PGlite({ loadDataDir: new Blob([cached]) }) as PGlite & Queryable;
+  }
+  const db = new PGlite() as PGlite & Queryable;
+  await db.exec(SCHEMA);
+  const dump = Buffer.from(await (await db.dumpDataDir("none")).arrayBuffer());
+  const tmp = `${IMAGE_PATH}.${process.pid}.tmp`;
+  mkdirSync(dirname(IMAGE_PATH), { recursive: true });
+  writeFileSync(tmp, dump);
+  renameSync(tmp, IMAGE_PATH);
+  return db;
+}
+
 export async function freshDb(): Promise<PGlite & Queryable> {
   if (!shared) {
-    shared = new PGlite();
-    await shared.exec(SCHEMA);
+    shared = await bootFromImage();
     const { rows } = await shared.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
     const tables = rows.map((r) => `"${String((r as { tablename: string }).tablename)}"`);
     truncateAll = `TRUNCATE ${tables.join(", ")} RESTART IDENTITY CASCADE`;
