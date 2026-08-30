@@ -19,6 +19,7 @@ import {
   type SittingPoint,
 } from "@ailx/report";
 import { TRACK_IDS, type TrackRawScores } from "@ailx/session";
+import { DevAuthProvider } from "@ailx/backend";
 
 const shape = (n: number): TrackRawScores =>
   Object.fromEntries(TRACK_IDS.map((t, i) => [t, n + i])) as TrackRawScores;
@@ -49,12 +50,22 @@ const busyDays: PracticeDayCounts[] = [4, 3, 2, 1, 0].map((n) => ({
 let status = 200;
 let payload: ProgressReport;
 const seenHeaders: Record<string, string>[] = [];
+/** What the deployment's AuthProvider is — the anonymous copy depends on it. */
+let authMode = "dev";
+/** What the browser actually sent. A navigation carries cookies, not headers. */
+let requestHeaders: Record<string, string> = { "x-ailx-dev-user": "player-1" };
 
-vi.mock("../lib/server/api", () => ({
-  withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) => fn({ db: {}, auth: {} }),
-}));
+vi.mock("../lib/server/api", async () => {
+  const { DevAuthProvider } = await vi.importActual<typeof import("@ailx/backend")>("@ailx/backend");
+  return {
+    withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) =>
+      fn({ db: {}, auth: new DevAuthProvider() }),
+    requestHeaderMap: async () => ({ ...requestHeaders }),
+    authProviderName: async () => authMode,
+  };
+});
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ "x-ailx-dev-user": "player-1" }),
+  headers: async () => new Headers(requestHeaders),
 }));
 vi.mock("@ailx/backend", async () => {
   const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");
@@ -76,6 +87,8 @@ const markup = async (): Promise<string> => renderToStaticMarkup(await ProgressP
 beforeEach(() => {
   seenHeaders.length = 0;
   status = 200;
+  authMode = "dev";
+  requestHeaders = { "x-ailx-dev-user": "player-1" };
   payload = report({
     days: busyDays,
     sittings: [
@@ -91,15 +104,51 @@ describe("who it is for", () => {
     expect(seenHeaders[0]["x-ailx-dev-user"]).toBe("player-1");
   });
 
+  it("forwards the COOKIE too — a navigation carries no header at all", async () => {
+    requestHeaders = { cookie: "other=1; ailx_dev_user=web-abc" };
+    await markup();
+    expect(seenHeaders[0]["cookie"]).toBe("other=1; ailx_dev_user=web-abc");
+    // ...and that map is enough for the real provider to name the caller,
+    // which is the whole reason /progress was unreachable in a browser.
+    expect(await new DevAuthProvider().verify(seenHeaders[0])).toEqual({ authRef: "dev:web-abc" });
+  });
+
+  it("lets an explicit header win over the cookie the browser is carrying", async () => {
+    requestHeaders = { "x-ailx-dev-user": "player-1", cookie: "ailx_dev_user=web-abc" };
+    await markup();
+    expect(await new DevAuthProvider().verify(seenHeaders[0])).toEqual({ authRef: "dev:player-1" });
+  });
+
   it("renders nothing personal when the server did not recognise the caller", async () => {
     status = 401;
     const html = await markup();
-    expect(html).toContain("We do not know who you are");
     expect(html).not.toContain("day streak");
     expect(html).not.toContain("2026-01-05");
     expect(html).not.toContain("<svg");
     // ...and still offers the drill, which works without an identity.
     expect(html).toContain("/practice");
+  });
+
+  it("does not tell a dev-auth deployment to sign in — there is nowhere to do it", async () => {
+    status = 401;
+    const html = await markup();
+    expect(html).not.toMatch(/[Ss]ign in/);
+    expect(html).toContain("Nothing has been played in this browser");
+    expect(html).toContain("no accounts");
+  });
+
+  it("does offer sign-in when the deployment actually has accounts", async () => {
+    status = 401;
+    authMode = "clerk";
+    const html = await markup();
+    expect(html).toContain("We do not know who you are");
+    expect(html).toContain("Sign in and come back");
+  });
+
+  it("offers to forget the browser only where identity IS the browser", async () => {
+    expect(await markup()).toContain("Forget this browser");
+    authMode = "clerk";
+    expect(await markup()).not.toContain("Forget this browser");
   });
 
   it("is never indexed — it is one person's history", () => {

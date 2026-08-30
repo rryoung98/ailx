@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
 import { handleProgress } from "@ailx/backend";
 import {
   MIN_TREND_DAYS,
@@ -12,7 +11,8 @@ import {
   type SittingPoint,
 } from "@ailx/report";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
-import { withApiContext } from "../../lib/server/api";
+import { authProviderName, requestHeaderMap, withApiContext } from "../../lib/server/api";
+import { ForgetBrowser } from "../../lib/ForgetBrowser";
 import styles from "./progress.module.css";
 
 /**
@@ -31,6 +31,10 @@ import styles from "./progress.module.css";
  *    judging pipeline is not built and `scores` is empty, so there is no
  *    percentile, no composite and no cohort comparison anywhere here.
  *  - A figure with too little behind it says so instead of drawing a zero.
+ *  - Identity comes from the REQUEST, and a navigation carries cookies, not
+ *    headers — hence `ailx_dev_user` (docs/DEPLOY.md §4.1). A caller the
+ *    server did not recognise is told something true for THIS deployment:
+ *    under dev auth there is no sign-in to send them to.
  *
  * Charts are hand-rolled SVG (FRONTEND.md §7: no chart library).
  */
@@ -205,24 +209,38 @@ function Streak({ streak }: { streak: ProgressReport["streak"] }) {
 }
 
 export default async function ProgressPage() {
-  const h = await headers();
-  const headerMap: Record<string, string> = {};
-  h.forEach((value, key) => {
-    headerMap[key.toLowerCase()] = value;
-  });
-
+  const headerMap = await requestHeaderMap();
   const result = await withApiContext((ctx) => handleProgress(ctx, headerMap));
+  // Say something TRUE for the deployment that is actually running. Under dev
+  // auth there are no accounts and no sign-in to send anyone to, and identity
+  // is just this browser: telling a visitor to "sign in" was advice they
+  // could not follow, on the one page the practice loop points at.
+  const accounts = (await authProviderName()) === "clerk";
   if (result.status !== 200) {
     return (
       <main className="page">
         <div className="container">
           <p className="eyebrow">YOUR PROGRESS</p>
-          <h1 style={{ maxWidth: "20ch" }}>We do not know who you are.</h1>
+          <h1 style={{ maxWidth: "20ch" }}>
+            {accounts ? "We do not know who you are." : "Nothing has been played in this browser."}
+          </h1>
           <p className="lede">
             This page is one person&rsquo;s own history, so it is shown only to the person whose
-            history it is. Sign in and come back, or{" "}
-            <Link href="/practice">play a round of practice</Link> — the drill itself works
-            either way.
+            history it is.{" "}
+            {accounts ? (
+              <>
+                Sign in and come back, or{" "}
+                <Link href="/practice">play a round of practice</Link> — the drill itself works
+                either way.
+              </>
+            ) : (
+              <>
+                This deployment has no accounts: your history belongs to the browser you played
+                in, and the first finished round of practice is what creates it.{" "}
+                <Link href="/practice">Play a round</Link> and this page fills in. Another
+                browser, or a private window, starts again from empty.
+              </>
+            )}
           </p>
         </div>
       </main>
@@ -344,6 +362,7 @@ export default async function ProgressPage() {
         <p className="small faint" style={{ maxWidth: "62ch" }}>
           {progress.basis} <Link href="/methodology">How the instrument scores →</Link>
         </p>
+        {accounts ? null : <ForgetBrowser />}
       </div>
     </main>
   );

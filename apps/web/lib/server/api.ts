@@ -203,6 +203,15 @@ export async function apiRoute(
 }
 
 /**
+ * Which AuthProvider this deployment selected (`dev` / `clerk`). Pages use it
+ * to say something TRUE to a caller they did not recognise: a deployment
+ * running dev auth has no sign-in to send anybody to.
+ */
+export async function authProviderName(): Promise<string> {
+  return (await authProvider()).name;
+}
+
+/**
  * The current request's headers, lower-cased, for a server COMPONENT — a page
  * has no `Request` to read, and every server-gated page needs exactly this.
  * Defined once so two pages cannot build the map differently.
