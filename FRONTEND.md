@@ -207,7 +207,7 @@ speed, and flake budgets differ (§6).
 
 | Today | Goes to | Because |
 |---|---|---|
-| `composite.ts` `insights.ts` `playerType.ts` `personality.ts` `calibration.ts` `exportTiers.ts` `judging.ts` | `packages/report` | Feeds scores/report figures → rule 1. Gains the purity sandbox; backend can reuse. |
+| `composite.ts` `insights.ts` `playerType.ts` `calibration.ts` `exportTiers.ts` `judging.ts` | `packages/report` | Feeds scores/report figures → rule 1. Gains the purity sandbox; backend can reuse. |
 | `instrument.ts` `validateChecks.ts` | `packages/core` (or `content-tools`) | Instrument/content validation is content-addressing territory, not app territory. |
 | `demoItems.ts` `sampleAttempt.ts` `demo.ts` `fixtures/` | `packages/report/fixtures` or `test/fixtures` | Fixtures are data; they must be reachable from package tests. |
 | `registry.ts` | split: plugin wiring stays in `lib/`; `scoringDigest()` moves to `packages/core` as a build-time source hash | The digest is the audit artifact (§2.1). |
@@ -696,7 +696,7 @@ than assuming, and renumber nothing.
    container, not `window`. An arrow key in browse mode currently fires an irreversible scored
    answer. *Gap: §5.*
 4. **[done] Move scoring-adjacent logic into the purity sandbox.** `judging`, `composite`,
-   `exportTiers`, `calibration`, `insights`, `playerType`, `personality`, the demo judge and the
+   `exportTiers`, `calibration`, `insights`, `playerType`, the demo judge and the
    track metadata now live in `packages/report`, with a `runPure()` test over the whole chain and
    a report-golden digest in `apps/web`. `instrument` and `validateChecks` stay in `apps/web` for
    now: both read the app's asset/base-path seam, so moving them is a separate step. *Gap: §2.1.*

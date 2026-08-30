@@ -9,8 +9,8 @@ import {
 import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
 import { scoreTrack } from "../../lib/registry";
 import {
-  calibrationBins, candidateComposite, participantExport, playerProfile,
-  playerType, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
+  AXES, calibrationBins, candidateComposite, participantExport,
+  playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
 } from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
 import { CharacterPortrait, CharacterVoice } from "../../lib/CharacterPortrait";
@@ -207,7 +207,6 @@ export default function ReportPage() {
   const state = useMemo(() => (log ? project(log) : null), [log]);
   const summary = useMemo(() => (state ? candidateComposite(state) : null), [state]);
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
-  const profile = useMemo(() => (state ? playerProfile(state, insights) : null), [state, insights]);
   /** The shareable process subset — the SAME narrowing a share link uses. */
   const sharedProcess = useMemo(() => shareProcessFrom(insights), [insights]);
   const calBins = useMemo(() => {
@@ -324,15 +323,18 @@ export default function ReportPage() {
           </div>
         </div>
 
-        {/* IDENTITY FIRST, then its evidence, then the coaching.
-            The player type is the thing people share, so it leads. Its
-            strengths/watch-outs used to be listed here AND again, verbatim,
-            in <Diagnosis> below — both read the same AXES table in
-            @ailx/report — so the reader met the same four sentences twice in
-            two adjacent cards. They now live once, in the diagnosis, where
-            each one carries the track name and the score behind it. */}
+        {/* ONE identity: the type, then the evidence each axis was decided
+            from, then the coaching. There used to be a SECOND four-letter
+            identity on this page (a KCVI-style "profile" card) whose letters
+            collided with these ones; its behavioural derivation and its
+            per-axis evidence line moved into the player type itself, so the
+            reader meets one code, one name and four measured axes.
+
+            The strengths/watch-outs sentences stay OUT of this card: they
+            live once, in <Diagnosis> below, where each carries the track
+            name and the score behind it. */}
         {(() => {
-          const p = playerType(summary.trackRaw);
+          const p = playerTypeFor(state, summary.trackRaw, insights);
           return (
             <Reveal as="section" className="card ptype-card" aria-label="Player type">
               <div className="ptype-head">
@@ -360,49 +362,41 @@ export default function ReportPage() {
                 ))}
               </div>
               <CharacterVoice code={p.code} />
+              <div className="eyebrow" style={{ marginTop: "1.2rem" }}>the four axes behind it · measured, never scored</div>
+              <div data-testid="player-axes" style={{ display: "grid", gap: "0.9rem", marginTop: "0.4rem" }}>
+                {p.poles.map((pole, i) => {
+                  const axis = AXES[i]!;
+                  /** Position toward the HIGH (left) pole, 0-1. */
+                  const toward = pole.high ? pole.strength / 100 : 1 - pole.strength / 100;
+                  return (
+                    <div key={pole.track}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.8rem" }}>
+                        <span className="small" style={{ color: pole.high ? "var(--fg)" : "var(--faint)" }}>
+                          <span className="mono" style={{ color: "var(--accent)" }}>{axis.hi.letter}</span> {axis.hi.label}
+                        </span>
+                        <span className="small mono" style={{ color: "var(--accent)" }}>{pole.strength}% {pole.label}</span>
+                        <span className="small" style={{ color: pole.high ? "var(--faint)" : "var(--fg)", textAlign: "right" }}>
+                          {axis.lo.label} <span className="mono" style={{ color: "var(--accent)" }}>{axis.lo.letter}</span>
+                        </span>
+                      </div>
+                      <div aria-hidden="true" style={{ position: "relative", height: 6, borderRadius: 3, background: "var(--border)", margin: "0.35rem 0 0.2rem" }}>
+                        <div style={{ position: "absolute", top: -3, left: `calc(${(1 - toward) * 100}% - 6px)`, width: 12, height: 12, borderRadius: "50%", background: "var(--accent)" }} />
+                      </div>
+                      <div className="faint small">{pole.evidence}</div>
+                    </div>
+                  );
+                })}
+              </div>
               <p className="faint small" style={{ margin: "0.6rem 0 0" }}>
-                A playful lens on this one run — split at the demo cohort's per-track median.
-                Not a personality claim, and never part of the score. What it says you are
-                good at, and what to work on, is in <a href="#diagnosis-heading">the diagnosis</a> below.
+                A playful lens on this one run, read from your own stored artifacts and event log —
+                and, where the log recorded nothing, from the track&rsquo;s score against the demo
+                cohort&rsquo;s median. Not a personality claim, and the letters move no points. What
+                it says you are good at, and what to work on, is in <a href="#diagnosis-heading">the
+                diagnosis</a> below.
               </p>
             </Reveal>
           );
         })()}
-
-        {profile ? (
-          <Reveal as="section" className="card" data-testid="player-profile" style={{ marginBottom: "2rem" }}>
-            <div className="eyebrow">the four axes behind it · measured, never scored</div>
-            <div style={{ display: "flex", gap: "1.4rem", alignItems: "baseline", flexWrap: "wrap" }}>
-              <span className="mono" aria-label={`Profile code ${profile.code.split("").join(" ")}`} style={{ fontSize: "2.6rem", fontWeight: 800, letterSpacing: "0.22em", color: "var(--accent)" }}>
-                {profile.code}
-              </span>
-              <h3 style={{ margin: 0 }}>{profile.archetype}</h3>
-            </div>
-            <p className="muted small" style={{ maxWidth: "62ch" }}>{profile.blurb}</p>
-            <div style={{ display: "grid", gap: "0.9rem", marginTop: "0.4rem" }}>
-              {profile.axes.map((a) => (
-                <div key={a.key}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.8rem" }}>
-                    <span className="small" style={{ color: a.letter === a.letters[0] ? "var(--fg)" : "var(--faint)" }}>
-                      <span className="mono" style={{ color: "var(--accent)" }}>{a.letters[0]}</span> {a.poles[0]}
-                    </span>
-                    <span className="small mono" style={{ color: "var(--accent)" }}>{a.strength}% {a.pole}</span>
-                    <span className="small" style={{ color: a.letter === a.letters[1] ? "var(--fg)" : "var(--faint)", textAlign: "right" }}>
-                      {a.poles[1]} <span className="mono" style={{ color: "var(--accent)" }}>{a.letters[1]}</span>
-                    </span>
-                  </div>
-                  <div aria-hidden="true" style={{ position: "relative", height: 6, borderRadius: 3, background: "var(--border)", margin: "0.35rem 0 0.2rem" }}>
-                    <div style={{ position: "absolute", top: -3, left: `calc(${(1 - a.value) * 100}% - 6px)`, width: 12, height: 12, borderRadius: "50%", background: "var(--accent)" }} />
-                  </div>
-                  <div className="faint small">{a.basis}</div>
-                </div>
-              ))}
-            </div>
-            <p className="faint small" style={{ marginBottom: 0 }}>
-              Derived from the same stored artifacts and event log as the scores above; the letters move no points.
-            </p>
-          </Reveal>
-        ) : null}
 
         <Diagnosis trackRaw={summary.trackRaw} process={sharedProcess} />
 

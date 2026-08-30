@@ -15,7 +15,7 @@ at creation.
 
 | Field | Why it is safe |
 |---|---|
-| `playerType` (code, name, tagline, four poles) | A playful lens over four aggregate numbers. Never part of the score. |
+| `playerType` (code, name, tagline, four poles) | A playful lens: ONE bit per track. Two of the four bits read the candidate's own process (was the T1 build revised, were T3 claims checked) rather than a score, so the card says a little about HOW the run went — never an exact figure, never an item, never a score. The precise process numbers stay behind the opt-in `process` section. |
 | `tracks` — four 0-100 values | Track SHAPE, not item detail. |
 | `band` | A quota band over the demo cohort, not a judged result. |
 

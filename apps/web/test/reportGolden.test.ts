@@ -11,8 +11,8 @@
 import { describe, expect, it } from "vitest";
 import { append, canonicalJson, project, sha256Hex, TRACK_IDS, type SequencedEntry } from "@ailx/session";
 import {
-  calibrationBins, candidateComposite, narratives, participantExport, playerProfile,
-  playerType, researchExport, t2ResponsesFromArtifact, trackInsights,
+  calibrationBins, candidateComposite, identitySignals, narratives, participantExport,
+  playerType, playerTypeFor, researchExport, t2ResponsesFromArtifact, trackInsights,
 } from "@ailx/report";
 import { t2AnswerKeys } from "../lib/instrument";
 import { scoreTrack } from "../lib/registry";
@@ -48,8 +48,12 @@ function derivedReport() {
     composite,
     insights,
     narratives: narratives(insights),
-    playerType: playerType(composite.trackRaw),
-    profile: playerProfile(state, insights),
+    // BOTH derivations of the one identity: the behavioural read an
+    // individual card shows, and the cohort-median read the world page must
+    // use because a population query has no event log.
+    playerType: playerTypeFor(state, composite.trackRaw, insights),
+    playerTypeFromScoresOnly: playerType(composite.trackRaw),
+    identitySignals: identitySignals(state, insights),
     calibration: calibrationBins(t2, t2AnswerKeys("en")),
     participant: participantExport(state, composite),
     research: researchExport(state, log, composite),
@@ -57,8 +61,25 @@ function derivedReport() {
 }
 
 describe("report golden", () => {
+  /**
+   * The digest MOVED once, deliberately, when the report's two competing
+   * four-letter identities became one: the second system (`playerProfile`,
+   * KCVI-shaped) is gone, and each player-type pole now carries the
+   * behavioural measurement it was decided from (`strength`, `evidence`).
+   * No SCORE moved with it — the sample attempt still reads MSVD under both
+   * the behavioural and the scores-only derivation, which is why the two are
+   * pinned side by side above.
+   *
+   * It MOVED a second time, also deliberately, when verification became a
+   * per-claim act (F5): an unattributed `verified` event — the old
+   * "Verify against source" button, and the T1/T2/T4 events the sample
+   * fixture invented — is no longer counted as a check of anything, so
+   * `insights.verificationEvents` reads claims rather than clicks. No
+   * SCORE component moved for this sample: T3 still records one verified
+   * claim and one challenged claim.
+   */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("9a287a9ce8b1a08e595b8d269b648cc3bef9ce34b752787a8864ed02494f23f1");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("4a11cde467f4107a38eea6e241c6c63d60b4d96e52ae8db11973a08965c168dc");
   });
 
   it("is stable across repeated derivation", () => {

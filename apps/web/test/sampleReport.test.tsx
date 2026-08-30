@@ -56,10 +56,12 @@ describe("sample report", () => {
     const t2Card = [...host.querySelectorAll("h3")].find((h) => h.textContent?.includes("Authenticity"))?.closest("div.card");
     expect(t2Card, "T2 card").toBeTruthy();
     expect(t2Card!.textContent).not.toContain("0.0 / 100");
-    // The MBTI-style player profile renders from the same scored sample.
-    const profile = host.querySelector('[data-testid="player-profile"]');
-    expect(profile, "player profile").toBeTruthy();
-    expect(profile!.textContent).toMatch(/[KT][CB][VA][IO]/);
+    // ONE identity: the player-type card, with its four measured axes inside
+    // it. The old second code space (KCVI-shaped) is gone.
+    const axes = host.querySelector('[data-testid="player-axes"]');
+    expect(axes, "player axes").toBeTruthy();
+    expect(host.querySelector(".ptype-card")!.textContent).toMatch(/[MP][ST][VA][DE]/);
+    expect(host.querySelector('[data-testid="player-profile"]'), "second identity").toBeNull();
     clickByText("Exit sample");
     expect(host.textContent).toContain("No run in this browser yet.");
   });
@@ -91,11 +93,13 @@ describe("sample report", () => {
     act(() => root!.render(createElement(ReportPage)));
     clickByText("Peek at a sample report");
     const type = host.querySelector(".ptype-card");
-    const profile = host.querySelector('[data-testid="player-profile"]');
+    const profile = host.querySelector('[data-testid="player-axes"]');
     const diagnosis = host.querySelector('[aria-labelledby="diagnosis-heading"]');
     for (const [name, el] of [["type", type], ["profile", profile], ["diagnosis", diagnosis]] as const) {
       expect(el, name).toBeTruthy();
     }
+    // The evidence lives INSIDE the identity card — one card, not two.
+    expect(type!.contains(profile!)).toBe(true);
     // Node.DOCUMENT_POSITION_FOLLOWING === 4.
     expect(type!.compareDocumentPosition(profile!) & 4).toBe(4);
     expect(profile!.compareDocumentPosition(diagnosis!) & 4).toBe(4);

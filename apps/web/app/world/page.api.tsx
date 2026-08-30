@@ -135,8 +135,10 @@ export default async function WorldPage() {
         <section aria-labelledby="types">
           <h2 id="types">Player types</h2>
           <p className="muted" style={{ maxWidth: "58ch" }}>
-            The MBTI-style lens: one axis per track, split at the demo cohort&rsquo;s median. It
-            is a playful read on four aggregate numbers, and the scored composite never reads it.
+            The MBTI-style lens: one axis per track, split at the demo cohort&rsquo;s median. This
+            page only holds four aggregate numbers per run, so every type here is that median
+            read; a candidate&rsquo;s own card also reads their event log and can land a letter
+            away. It is playful either way, and the scored composite never reads it.
           </p>
           {a.playerTypes === null ? (
             <Suppressed have={a.cohortSize} min={a.minCohortSize} />
