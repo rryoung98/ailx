@@ -17,6 +17,28 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # The cheapest gate, so it is the one that fails first: Biome checks 419
+  # files in ~0.2s. Separate job, no `needs:` — a lint error should be visible
+  # without waiting for a 20-minute build+test matrix, and a build failure
+  # should not hide a lint failure.
+  #
+  # `pnpm lint` fails on ERRORS only. Biome's `warn` rules are the debt list in
+  # biome.jsonc; they print here and never block. Do not add
+  # `--error-on-warnings` until that list is empty.
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
   # Job names are contract: they are what branch protection requires and what
   # `pages.yml` waits on. `verify` and `e2e` must keep their names. A new gate
   # (the visual-correctness browser suite) slots in as a THIRD job here with

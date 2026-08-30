@@ -8,9 +8,11 @@
     "test": "vitest run --workspace vitest-workspace.ts",
     "test:coverage": "vitest run --workspace vitest-workspace.ts --coverage",
     "test:reap": "pgrep -P 1 -f vitest | xargs kill 2>/dev/null; true",
-    "lint": "pnpm -r lint"
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write ."
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.11",
     "@vitest/coverage-v8": "^2.1.0",
     "jsdom": "^25.0.1",
     "vitest": "^2.1.0"
