@@ -89,7 +89,7 @@ export const SNAPSHOT_DIGEST_RE = /^sha256:[0-9a-f]{64}$/;
 
 const sha256Hex = (data: Uint8Array): string => createHash("sha256").update(data).digest("hex");
 
-// eslint-disable-next-line no-control-regex
+// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting control characters is the point — a ZIP entry name carrying one is rejected
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 const DRIVE_LETTER = /^[A-Za-z]:/;
 

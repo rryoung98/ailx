@@ -168,7 +168,7 @@ export async function getCredentialForAttempt(
 /** Trim a reason to one storable line; an empty one falls back, never null. */
 export function normalizeRevokeReason(raw: unknown, fallback: string): string {
   if (typeof raw !== "string") return fallback;
-  // eslint-disable-next-line no-control-regex
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point — a revoke reason is stored and re-rendered
   const flat = raw.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
   return flat === "" ? fallback : flat.slice(0, REVOKE_REASON_MAX).trim();
 }

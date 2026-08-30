@@ -15,6 +15,8 @@ export function rubricVersion(parts: ReadonlyArray<string>): string {
   // Equivalent to node:crypto's streaming update: hash the concatenation of
   // each part's raw digest (locked byte-for-byte by test/content-address vectors).
   const acc = new Uint8Array(parts.length * 32);
-  parts.forEach((p, i) => acc.set(sha256Bytes(p), i * 32));
+  parts.forEach((p, i) => {
+    acc.set(sha256Bytes(p), i * 32);
+  });
   return sha256Hex(acc);
 }

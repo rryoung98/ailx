@@ -25,14 +25,14 @@ const payload = sharePayloadFrom(
 /** Flatten the element tree to the strings it will draw. */
 function texts(node: unknown, out: string[] = []): string[] {
   if (typeof node === "string" || typeof node === "number") out.push(String(node));
-  else if (Array.isArray(node)) node.forEach((n) => texts(n, out));
+  else if (Array.isArray(node)) for (const n of node) texts(n, out);
   else if (isValidElement(node)) texts((node.props as { children?: unknown }).children, out);
   return out;
 }
 
 /** Every `<img>` in the tree, with the props that matter to satori. */
 function imgs(node: unknown, out: { src: string; width: number }[] = []) {
-  if (Array.isArray(node)) node.forEach((n) => imgs(n, out));
+  if (Array.isArray(node)) for (const n of node) imgs(n, out);
   else if (isValidElement(node)) {
     const props = node.props as { src?: string; width?: number; children?: unknown };
     if (node.type === "img" && typeof props.src === "string") {
@@ -45,7 +45,7 @@ function imgs(node: unknown, out: { src: string; width: number }[] = []) {
 
 /** Every `lineClamp` set anywhere in the tree, in draw order. */
 function lineClamps(node: unknown, out: number[] = []): number[] {
-  if (Array.isArray(node)) node.forEach((n) => lineClamps(n, out));
+  if (Array.isArray(node)) for (const n of node) lineClamps(n, out);
   else if (isValidElement(node)) {
     const props = node.props as { style?: { lineClamp?: number }; children?: unknown };
     if (typeof props.style?.lineClamp === "number") out.push(props.style.lineClamp);
@@ -56,7 +56,7 @@ function lineClamps(node: unknown, out: number[] = []): number[] {
 
 /** The width of every accent-filled meter in the tree, in draw order. */
 function barFillWidths(node: unknown, out: string[] = []): string[] {
-  if (Array.isArray(node)) node.forEach((n) => barFillWidths(n, out));
+  if (Array.isArray(node)) for (const n of node) barFillWidths(n, out);
   else if (isValidElement(node)) {
     const props = node.props as {
       style?: { width?: unknown; height?: unknown; background?: unknown };

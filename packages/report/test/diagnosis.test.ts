@@ -206,7 +206,10 @@ describe("diagnosis leaks nothing about the instrument", () => {
   it("has exactly the allowlisted keys — nothing rides along", () => {
     const keys = new Set<string>();
     const walk = (v: unknown): void => {
-      if (Array.isArray(v)) return v.forEach(walk);
+      if (Array.isArray(v)) {
+        v.forEach(walk);
+        return;
+      }
       if (typeof v !== "object" || v === null) return;
       for (const [k, child] of Object.entries(v)) {
         keys.add(k);

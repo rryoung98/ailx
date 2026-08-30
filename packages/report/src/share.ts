@@ -99,7 +99,7 @@ export function parseShareSections(raw: unknown): ShareSections {
  */
 export function parseShareNote(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  // eslint-disable-next-line no-control-regex
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point — a share note is stored and re-rendered
   const flat = raw.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
   return flat === "" ? null : flat.slice(0, SHARE_NOTE_MAX).trim();
 }

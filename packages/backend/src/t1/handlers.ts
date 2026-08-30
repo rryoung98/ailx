@@ -123,7 +123,7 @@ export async function recordSiteSubmission(
     return { status: 400, body: { error: { code: "bad_request", message: "request body must be the site ZIP bytes" } } };
   }
 
-  let snapshot;
+  let snapshot: ReturnType<typeof snapshotFromZip>;
   try {
     snapshot = snapshotFromZip(input.zip);
   } catch (err) {

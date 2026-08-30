@@ -91,7 +91,7 @@ describe("share view metadata", () => {
     expect(meta.title).toContain(payload.playerType.name);
     expect(meta.openGraph?.title).toContain(payload.playerType.code);
     expect(meta.openGraph?.url).toBe(`https://ailx.example/s/${TOKEN}`);
-    const image = (meta.openGraph?.images as { url: string; width: number }[])[0];
+    const image = (meta.openGraph!.images as { url: string; width: number }[])[0]!;
     expect(image.url).toBe(`https://ailx.example/api/share/${TOKEN}/card.png`);
     expect(image.width).toBe(1200);
     expect(meta.twitter?.card).toBe("summary_large_image");

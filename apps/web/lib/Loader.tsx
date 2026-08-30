@@ -61,6 +61,7 @@ export function Loader() {
   if (gone) return null;
   return (
     <>
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: PREHYDRATE is a module constant with no interpolated input; it must run before hydration, so it cannot be a component. */}
       <script dangerouslySetInnerHTML={{ __html: PREHYDRATE }} />
       <div
         className="loader"

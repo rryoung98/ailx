@@ -78,7 +78,10 @@ const backends: Backend[] = [
   },
   {
     name: "BlobSnapshotStore",
-    make: () => new BlobSnapshotStore((fake = new FakeBlobClient())),
+    make: () => {
+      fake = new FakeBlobClient();
+      return new BlobSnapshotStore(fake);
+    },
     keys: async () => [...fake.objects.keys()],
     dropManifest: async (digest) => {
       fake.objects.delete(`manifests/${digestHex(digest)}.json`);

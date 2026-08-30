@@ -58,7 +58,7 @@ describe("eventLogCopy", () => {
 
 describe("footer rendering", () => {
   const render = () =>
-    renderToStaticMarkup(createElement(RootLayout, { children: null }));
+    renderToStaticMarkup(createElement(RootLayout, null, null));
 
   it("renders the static claim in static mode", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
