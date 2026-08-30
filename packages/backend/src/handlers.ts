@@ -189,6 +189,52 @@ export async function handleGetItems(
   });
 }
 
+/**
+ * POST /api/attempts/:id/score — body: { trackId: "t2", artifact }
+ *
+ * WHY THE SERVER ISSUES THE SCORE: `score()` consumes a config that embeds
+ * every answer key, so a browser that could compute its own T2 score would
+ * have to hold the keys (docs/ARCHITECTURE.md §4). The client sends the
+ * artifact it already appended to the log; the server answers with numbers
+ * and the two audit facts — no key, no rationale, no item text.
+ *
+ * The deck is the one the DATABASE recorded for this attempt. A client-named
+ * deck would let a candidate pick an easier config than the one they sat.
+ */
+export async function handleScoreTrack(
+  ctx: ApiContext,
+  headers: HeaderMap,
+  attemptId: string,
+  body: unknown,
+): Promise<ApiResult> {
+  const b = asRecord(body);
+  return withParticipant(ctx, headers, async (participantId) => {
+    const instrument = ctx.instrument;
+    if (!instrument) return errorResult("not_found", "no instrument is mounted");
+    const attempt = await getAttempt(ctx.db, attemptId, participantId);
+    if (attempt === null) return errorResult("not_found", "attempt not found");
+
+    const trackId = b.trackId as TrackId;
+    const deck = (await getDecks(ctx.db, attemptId, participantId)).find(
+      (d) => d.trackId === trackId,
+    );
+    // An attempt created without `decks: true` was never dealt one, so there
+    // is no deck this score could be OF. Scoring it against a default deck
+    // would issue a number about items the candidate never saw.
+    if (deck === undefined) {
+      return errorResult("bad_request", `attempt was dealt no ${String(b.trackId)} deck`);
+    }
+    try {
+      const scored = instrument.scoreTrack(trackId, deck, b.artifact, "en");
+      return { status: 200, body: { ...scored, released: instrument.released } };
+    } catch (err) {
+      // An unsupported track or an artifact the plugin refuses: the caller's
+      // input is wrong, not the server's state.
+      return errorResult("bad_request", err instanceof Error ? err.message : "cannot score");
+    }
+  });
+}
+
 /** POST /api/attempts/:id/responses — body: { seq, payload, clientTs, itemId?, latencyMs? } */
 export async function handleAppendResponse(
   ctx: ApiContext,

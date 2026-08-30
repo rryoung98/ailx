@@ -74,6 +74,18 @@ export interface DeckRecord {
   itemIds: readonly string[];
 }
 
+/**
+ * A server-issued score for one track. Deliberately the WHOLE return value of
+ * {@link Instrument.scoreTrack}: it carries the audit facts a browser may hold
+ * (docs/ARCHITECTURE.md §4) and no item text, key or rationale, so a caller
+ * cannot leak key material by forwarding it verbatim.
+ */
+export interface TrackScoreResult {
+  score: { raw: Record<string, number>; scaled: number };
+  rubricVersion: string;
+  scoringDigest: string;
+}
+
 /** Server-computed grade for one response. Keys never leave this package. */
 export interface Verdict {
   itemId: string;
@@ -119,6 +131,21 @@ export interface Instrument {
 
   /** The config `score()` consumes — carries keys, so it stays server-side. */
   scoringConfig(trackId: TrackId, deck: DeckRecord | undefined, locale: Locale): unknown;
+
+  /**
+   * Issue a score for this track over the attempt's own deck.
+   *
+   * WHY IT LIVES HERE: `score()` needs the keyed config, and the keyed config
+   * must not reach a browser, so the only place that can run the pure plugin
+   * over a real deck is the module that holds the keys. The result is the
+   * score plus the two audit facts — never the config it was computed from.
+   */
+  scoreTrack(
+    trackId: TrackId,
+    deck: DeckRecord | undefined,
+    artifact: unknown,
+    locale: Locale,
+  ): TrackScoreResult;
 
   rubricVersion(trackId: TrackId): string;
   scoringDigest(trackId: TrackId): string;

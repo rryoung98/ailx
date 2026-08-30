@@ -25,6 +25,7 @@ import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { TrackId } from "@ailx/session";
+import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
 import {
   gradeResponse,
   itemView,
@@ -38,7 +39,15 @@ import {
   type ShortTrackId,
   type Snapshot,
 } from "./bank.js";
-import type { DeckRecord, Instrument, Locale, Phase, RedactedItem, Verdict } from "./types.js";
+import type {
+  DeckRecord,
+  Instrument,
+  Locale,
+  Phase,
+  RedactedItem,
+  TrackScoreResult,
+  Verdict,
+} from "./types.js";
 
 export type {
   DeckRecord,
@@ -47,6 +56,7 @@ export type {
   Phase,
   PresentedItem,
   RedactedItem,
+  TrackScoreResult,
   Verdict,
 } from "./types.js";
 export type { Snapshot } from "./bank.js";
@@ -137,6 +147,31 @@ export function fromSnapshot(snap: Snapshot, options: OpenOptions = {}): Instrum
   const manifest = snap.instrument.manifest as Record<string, unknown>;
   const short = (t: TrackId): ShortTrackId => t as ShortTrackId;
 
+  // Shared by `scoringConfig` and `scoreTrack`: one definition of "the keyed
+  // config for this deck", so a server-issued score can never be computed
+  // over a different config than the one the audit trail names.
+  const t2Config = (deck: DeckRecord | undefined, locale: Locale): unknown =>
+    t2ScoringConfig(snap, assetUrl, deck?.itemIds ?? t2DeckItemIds(snap, locale, assetUrl));
+
+  const rubricVersionOf = (trackId: TrackId): string =>
+    snapshotTrack(snap, short(trackId)).rubricVersion;
+
+  /**
+   * Fails CLOSED: an attempt must never persist a score with a digest the
+   * platform cannot derive from source. Regenerate with
+   * `pnpm --filter @ailx/content-tools run snapshot:2026.1`.
+   */
+  const scoringDigestOf = (trackId: TrackId): string => {
+    const s = snap.scorers?.find((x) => x.trackId === short(trackId));
+    if (!s) {
+      throw new Error(
+        `snapshot carries no scoring digest for ${trackId} — rebuild it with ` +
+          `'pnpm --filter @ailx/content-tools run snapshot:2026.1'`,
+      );
+    }
+    return s.digest;
+  };
+
   return {
     instrumentId: typeof manifest.id === "string" ? manifest.id : "ailx",
     instrumentVer: typeof manifest.version === "string" ? manifest.version : "2026.1",
@@ -173,28 +208,46 @@ export function fromSnapshot(snap: Snapshot, options: OpenOptions = {}): Instrum
 
     scoringConfig(trackId: TrackId, deck: DeckRecord | undefined, locale: Locale): unknown {
       if (trackId !== "t2") return undefined;   // plugin defaults carry T1/T4; T3 is code-side
-      const ids = deck?.itemIds ?? t2DeckItemIds(snap, locale, assetUrl);
-      return t2ScoringConfig(snap, assetUrl, ids);
+      return t2Config(deck, locale);
+    },
+
+    scoreTrack(
+      trackId: TrackId,
+      deck: DeckRecord | undefined,
+      artifact: unknown,
+      locale: Locale,
+    ): TrackScoreResult {
+      // Only T2 is keyed content this module owns. T1/T3/T4 are judged, and a
+      // silent "0" for them would look like a real score of record.
+      if (trackId !== "t2") {
+        throw new Error(`scoreTrack: ${trackId} is not scored from the instrument bank`);
+      }
+      // The plugin's own gate on the artifact, so a hand-written client gets
+      // the plugin's refusal rather than a TypeError deep inside scoreT2.
+      if (
+        typeof artifact !== "object" ||
+        artifact === null ||
+        !Array.isArray((artifact as { responses?: unknown }).responses)
+      ) {
+        throw new Error("scoreTrack: t2 artifact must be { responses: [...] }");
+      }
+      const rubricVersion = rubricVersionOf(trackId);
+      const cfg = validateT2Config(t2Config(deck, locale));
+      const s = t2Plugin.score({ artifact: artifact as never, judgments: [], rubricVersion }, cfg);
+      // Only the numbers escape: `cfg` (which embeds every key) stays here.
+      return {
+        score: { raw: s.raw, scaled: s.scaled },
+        rubricVersion,
+        scoringDigest: scoringDigestOf(trackId),
+      };
     },
 
     rubricVersion(trackId: TrackId): string {
-      return snapshotTrack(snap, short(trackId)).rubricVersion;
+      return rubricVersionOf(trackId);
     },
 
-    /**
-     * Fails CLOSED: an attempt must never persist a score with a digest the
-     * platform cannot derive from source. Regenerate with
-     * `pnpm --filter @ailx/content-tools run snapshot:2026.1`.
-     */
     scoringDigest(trackId: TrackId): string {
-      const s = snap.scorers?.find((x) => x.trackId === short(trackId));
-      if (!s) {
-        throw new Error(
-          `snapshot carries no scoring digest for ${trackId} — rebuild it with ` +
-            `'pnpm --filter @ailx/content-tools run snapshot:2026.1'`,
-        );
-      }
-      return s.digest;
+      return scoringDigestOf(trackId);
     },
   };
 }

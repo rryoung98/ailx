@@ -191,6 +191,7 @@ export {
   handleFinalizeAttempt,
   handleGetAttempt,
   handleGetItems,
+  handleScoreTrack,
   type ApiContext,
   type ApiResult,
 } from "./handlers.js";
