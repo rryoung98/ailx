@@ -64,8 +64,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <p>{footerModeCopy()}</p>
             <p>AILX plays like a game and is built like an instrument.</p>
             <p>
-              Instrument spec: <span className="mono">AILX-Spec-2026.1</span> · pilot cohort
-              n = 45 · US / Japan / Korea · YTL Summit 2026.
+              Instrument spec: <span className="mono">AILX-Spec-2026.1</span> · four tracks,
+              400 raw points, re-versioned annually · scoring and item banks are public.
             </p>
           </div>
         </footer>

@@ -27,7 +27,7 @@ export default function Methodology() {
           </div>
         </div>
         <p className="lede">
-          The key elements of the instrument specification are the construct, the psychometric approach with a sample size of 45, judge governance, and the modularity rules that ensure scores are reproducible indefinitely.
+          The key elements of the instrument specification are the construct, the psychometric approach and the limits its calibration sample imposes, judge governance, and the modularity rules that ensure scores are reproducible indefinitely.
         </p>
 
         <section className="reveal">
@@ -53,17 +53,17 @@ export default function Methodology() {
         </section>
 
         <section className="reveal">
-        <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§09</span><span className="paper-chip-note">n = 45</span></span>
-        <h2 id="psychometrics">Psychometric honesty at n = 45 (§09)</h2>
+        <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§09</span><span className="paper-chip-note">what the sample allows</span></span>
+        <h2 id="psychometrics">Psychometric honesty, and what the calibration sample allows (§09)</h2>
         <blockquote>
-          <strong>The Year-1 posture, stated plainly.</strong> The 2026 cohort helps calibrate and develop test items. Rasch analysis ranks item difficulty and removes misfitting items at ±1 logit. This method is based on n = 45 participants. Person abilities are then calculated in logits — <em>not</em> with 2PL or 3PL models, which this sample cannot support: 2PL needed n = 355 for GLAT, and 3PL needed n = 514 for AICOS. Absolute cut scores and certification claims will be postponed until the combined sample size exceeds 250. In Year 1, reports will include percentiles and bands instead of competence certifications.
+          <strong>Where the numbers come from, stated plainly.</strong> The 2026 calibration cohort was small: <strong>n = 45</strong>. Its job was to develop and calibrate items, not to certify anyone. Rasch analysis ranked item difficulty on that cohort and removed misfitting items at ±1 logit; person abilities are in logits — <em>not</em> from 2PL or 3PL models, which a sample that size cannot support (2PL needed n = 355 for GLAT, 3PL needed n = 514 for AICOS). Those limits still bind: absolute cut scores and certification claims stay postponed until the combined sample exceeds <strong>250</strong>, and until then a report carries percentiles and bands, never a competence certification.
         </blockquote>
         <ul>
           <li>
             <strong>The anchor-block move.</strong> An embedded block of 18 published items from the AICOS-SV, normed on 514 adults, takes about eight minutes to complete. This allows for a comparison with a real external norm group and establishes the necessary cross-form linkage to ensure Year 2 is comparable to Year 1.
           </li>
           <li>
-            <strong>The composite forces a normal distribution</strong> (rank → percentile → inverse-normal → mean 50, SD 15) instead of hoping for one. With n = 45, an empirically normal raw distribution is unlikely. This is clearly stated in every export, and the raw-distribution shape is preserved separately in the data.
+            <strong>The composite forces a normal distribution</strong> (rank → percentile → inverse-normal → mean 50, SD 15) instead of hoping for one. At the calibration cohort's size an empirically normal raw distribution was never likely. This is clearly stated in every export, and the raw-distribution shape is preserved separately in the data.
           </li>
           <li>
             <strong>Reliability is reported with the right statistics:</strong>{" "}
@@ -74,7 +74,7 @@ export default function Methodology() {
           </li>
           <li>
             <strong>Standard setting is Modified Angoff</strong> — 8–10 subject-matter
-            experts, two rounds — the only method defensible <em>without examinee data</em>. The bookmark method is out because it needs IRT parameters that n = 45 cannot supply. Additionally, the contrasting groups method is unreliable at this sample size due to bias toward the smaller group.
+            experts, two rounds — the only method defensible <em>without examinee data</em>. The bookmark method is out because it needs IRT parameters a 45-person cohort cannot supply, and contrasting groups is unreliable at that size because it biases toward the smaller group.
           </li>
           <li>
             <strong>Cross-year comparability uses the AP model with ARC-AGI’s calibration discipline.</strong> In Year 1, a quota-based norm reference is used, and a secure anchor block is established from the start. This enables Year 2 and subsequent years to be equated. The standard, set by Angoff, stays fixed, while the raw cut score adjusts annually. The performance gap between public and secure assessments is tracked each year to serve as contamination telemetry.
