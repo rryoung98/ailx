@@ -43,6 +43,25 @@ export function isImageMaterial(material: string): boolean {
 const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 
+/**
+ * The deck frame is sized to the space the viewport actually has.
+ *
+ * The frame is also the confidence step's frame, so "does the deck fit"
+ * decides whether that step is reachable without scrolling. A fixed
+ * 460px frame fits a laptop and overflows a phone, and an overflowing
+ * frame is what made the browser scroll the page when focus moved into
+ * the slider. Sizing to `innerHeight − (chrome above) − (buttons below)`
+ * keeps the whole deck — card, panel and answer buttons — on one screen
+ * at any viewport, so nothing ever has to be scrolled to.
+ */
+const DECK_MAX_H = 460;
+/** Below this the card stops being a card; a phone in landscape is
+ *  allowed to scroll rather than show a 120px sliver. */
+const DECK_MIN_H = 260;
+/** Breathing room under the answer buttons, so they are not flush against
+ *  the bottom edge of the screen. */
+const DECK_GUTTER = 12;
+
 const cardFace: CSSProperties = {
   position: "absolute",
   inset: 0,
@@ -183,6 +202,29 @@ class TextureErrorBoundary extends Component<
   }
 }
 
+/**
+ * The look of a TEXT stimulus, wherever it is shown: on the card, in the
+ * confidence panel that replaces the card, and in the replay. One
+ * definition, so the material a candidate judged never changes appearance
+ * between those three places.
+ */
+export function stimulusTextStyle(item: T2Item, overrides: CSSProperties = {}): CSSProperties {
+  return {
+    flex: 1,
+    minHeight: 0,
+    overflow: "auto",
+    whiteSpace: "pre-wrap",
+    fontFamily: item.type.startsWith("message") ? "ui-monospace, monospace" : "inherit",
+    fontSize: "0.9rem",
+    lineHeight: 1.5,
+    background: "var(--bg)",
+    border: "1px solid var(--border)",
+    borderRadius: 8,
+    padding: "0.75rem",
+    ...overrides,
+  };
+}
+
 function CardBody({ item, hideImage, slotRef, lang }: { item: T2Item; hideImage: boolean; slotRef?: Ref<HTMLImageElement>; lang?: string }) {
   const image = isImageMaterial(item.material);
   return (
@@ -191,22 +233,7 @@ function CardBody({ item, hideImage, slotRef, lang }: { item: T2Item; hideImage:
       {image ? (
         <StimulusImg src={item.material} hide={hideImage} slotRef={slotRef} />
       ) : (
-        <div
-          lang={lang}
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflow: "auto",
-            whiteSpace: "pre-wrap",
-            fontFamily: item.type.startsWith("message") ? "ui-monospace, monospace" : "inherit",
-            fontSize: "0.9rem",
-            lineHeight: 1.5,
-            background: "var(--bg)",
-            border: "1px solid var(--border)",
-            borderRadius: 8,
-            padding: "0.75rem",
-          }}
-        >
+        <div lang={lang} style={stimulusTextStyle(item)}>
           {item.material}
         </div>
       )}
@@ -266,6 +293,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
   }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [cardSize, setCardSize] = useState({ w: 360, h: 430 });
   useIsoLayoutEffect(() => {
     const el = containerRef.current;
@@ -280,6 +308,42 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
       ro.observe(el);
       return () => ro.disconnect();
     }
+  }, []);
+
+  /**
+   * Fit the frame to the viewport (see DECK_MAX_H). Measured from the
+   * frame's PAGE offset and the height of everything the deck renders
+   * below it — both independent of the frame's own height, so setting the
+   * height can never feed back into the measurement.
+   */
+  const [fitHeight, setFitHeight] = useState<number | null>(null);
+  useIsoLayoutEffect(() => {
+    const box = containerRef.current;
+    const root = rootRef.current;
+    if (!box || !root || typeof window === "undefined") return;
+    const fit = () => {
+      const b = box.getBoundingClientRect();
+      const r = root.getBoundingClientRect();
+      // jsdom / a not-yet-laid-out tree: keep the CSS default.
+      if (r.height <= 0) return;
+      const pageTop = b.top + window.scrollY;
+      const below = r.bottom - b.bottom;
+      const available = window.innerHeight - pageTop - below - DECK_GUTTER;
+      setFitHeight(Math.round(Math.max(DECK_MIN_H, Math.min(DECK_MAX_H, available))));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    let ro: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(fit);
+      // The chrome above the deck reflows (a lapse notice, a wrapped stem):
+      // observing the page body catches it without a polling loop.
+      ro.observe(document.body);
+    }
+    return () => {
+      window.removeEventListener("resize", fit);
+      ro?.disconnect();
+    };
   }, []);
 
   const itemUrlRef = useRef<string | null>(null);
@@ -313,7 +377,6 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
    * the event only arrives when focus is already inside the deck (i.e. on an
    * answer button), and preventDefault only runs when we actually answer.
    */
-  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = rootRef.current;
     if (!root || !enabled || !swipeable) return;
@@ -424,8 +487,10 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
         style={{
           position: "relative",
           width: "100%",
-          height: "min(56vh, 460px)",
-          minHeight: 320,
+          // Measured fit (see DECK_MAX_H); the CSS value is the pre-measure
+          // and no-JS fallback, never taller than the measured ceiling.
+          height: fitHeight === null ? `min(56vh, ${DECK_MAX_H}px)` : `${fitHeight}px`,
+          minHeight: DECK_MIN_H,
           touchAction: "pan-y",
         }}
       >

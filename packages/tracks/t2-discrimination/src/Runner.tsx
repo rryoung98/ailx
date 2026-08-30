@@ -10,7 +10,7 @@ import type { TrackUIProps } from "@ailx/core";
 import type { T2Config, T2Item, T2Response } from "./types.js";
 import { validateT2Config } from "./plugin.js";
 import { decodeT2Checkpoint, encodeT2Checkpoint, type T2Phase } from "./checkpoint.js";
-import { SwipeDeck, isImageMaterial } from "./SwipeDeck.js";
+import { SwipeDeck, isImageMaterial, stimulusTextStyle } from "./SwipeDeck.js";
 
 type Phase = T2Phase;
 
@@ -21,6 +21,18 @@ const LAPSE_NOTICE_MS = 1600;
 /** Slider position shown before the candidate has chosen a confidence.
  *  It is a POSITION only — nothing is recorded until the slider is used. */
 const DEFAULT_CONFIDENCE = 50;
+
+/**
+ * Every focus() this track performs is a SCROLL-FREE focus.
+ *
+ * Moving focus is the last thing that still scrolled the page: a browser
+ * scrolls a newly focused control into view by default, and on a viewport
+ * shorter than the deck that scroll jumped ~470px on a phone and even
+ * overshot the panel off the top of the screen. The panel is sized to the
+ * viewport (SwipeDeck), so it is already fully visible — the browser's
+ * guess is never needed and never wanted.
+ */
+const NO_SCROLL: FocusOptions = { preventScroll: true };
 
 const card: CSSProperties = {
   background: "var(--card)",
@@ -90,19 +102,7 @@ function Material({ item, lang }: { item: T2Item; lang?: string }) {
     );
   }
   return (
-    <div
-      lang={lang}
-      style={{
-        whiteSpace: "pre-wrap",
-        fontFamily: item.type.startsWith("message") ? "ui-monospace, monospace" : "inherit",
-        fontSize: "0.95rem",
-        lineHeight: 1.5,
-        background: "var(--bg)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        padding: "0.9rem",
-      }}
-    >
+    <div lang={lang} style={stimulusTextStyle(item, { fontSize: "0.95rem", padding: "0.9rem" })}>
       {item.material}
     </div>
   );
@@ -176,12 +176,12 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
         focusInSheetRef.current = false;
         // Deck first; on the LAST item the deck is gone and the replay's own
         // button is the sensible landing spot. Focus never falls to <body>.
-        (answerRef.current ?? replayBtnRef.current)?.focus();
+        (answerRef.current ?? replayBtnRef.current)?.focus(NO_SCROLL);
       }
       return;
     }
     focusInSheetRef.current = true;
-    sliderRef.current?.focus();
+    sliderRef.current?.focus(NO_SCROLL);
   }, [choice]);
 
   /** Focusable controls inside the sheet, in DOM order. */
@@ -254,6 +254,15 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
     },
     [cfg.items.length, idx, item, onEvent, responses, saveCheckpoint],
   );
+
+  /**
+   * Lock in the confidence the candidate set. Both paths — the button and
+   * Enter on the slider — go through here so they can never diverge.
+   */
+  const lockInConfidence = useCallback(() => {
+    if (choice === null || confidence === null) return;
+    record(choice, confidence);
+  }, [choice, confidence, record]);
 
   // Stimulus-ready gating (audit fix): for image items the WebGL texture may
   // still be decoding when React selects the item — latency and exposure must
@@ -446,6 +455,10 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
                 flexDirection: "column",
                 overflow: "auto",
                 borderRadius: 16,
+                // The card's own padding, not the page card's roomier one:
+                // the panel stands in for the card, and on a 390px phone
+                // every millimetre goes to the evidence and the slider.
+                padding: "1rem",
                 boxShadow: "0 6px 16px rgba(26,26,26,0.14)",
                 // The frame is `touch-action: pan-y` for the swipe gesture;
                 // the panel is a form, so it keeps normal touch behaviour.
@@ -461,11 +474,13 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
                 pointerEvents: sheetOpen ? "auto" : "none",
               }}
             >
-              {isImageMaterial(item.material) && (
-                // The judged stimulus stays visible, at card scale, in the
-                // card's own frame: confidence is rated against what was
-                // actually looked at, not from memory. The card itself has
-                // flown off and the upcoming cards are masked.
+              {/* The judged stimulus stays visible, at card scale, in the
+                  card's own frame: confidence is rated against what was
+                  actually looked at, not from memory. The card itself has
+                  flown off and the upcoming cards are masked. It also FILLS
+                  the frame, so a text item is not a half-empty white card
+                  with a slider stranded at the top of it. */}
+              {isImageMaterial(item.material) ? (
                 <img
                   src={item.material}
                   alt=""
@@ -481,6 +496,14 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
                     background: "var(--bg)",
                   }}
                 />
+              ) : (
+                <div
+                  lang={contentLang}
+                  data-testid="judged-stimulus"
+                  style={stimulusTextStyle(item, { marginBottom: "0.6rem" })}
+                >
+                  {item.material}
+                </div>
               )}
               <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>
                 Your call: <span lang={contentLang}>{choice !== null ? item.options[choice] : "—"}</span>
@@ -500,6 +523,18 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
                   }
                   aria-valuetext={confidence === null ? "not set" : `${confidence} out of 100`}
                   onChange={(e) => setConfidence(Number(e.target.value))}
+                  // A range input does not submit, so Enter used to do
+                  // nothing — and Enter is a keyboard user's first instinct
+                  // after arrowing to a value. It locks in exactly what the
+                  // button locks in, and stays inert until a value is set.
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.nativeEvent.isComposing) return;
+                    // preventDefault only when we really lock in: an Enter
+                    // we ignore stays the browser's to handle.
+                    if (choice === null || confidence === null) return;
+                    e.preventDefault();
+                    lockInConfidence();
+                  }}
                   // A tap/click that lands exactly on the shown default fires no
                   // change event; treat the press itself as the interaction so
                   // "I did choose 50" is not an unreachable answer.
@@ -531,7 +566,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
                   gap: "0.45rem",
                 }}
                 disabled={!sheetOpen || confidence === null}
-                onClick={() => confidence !== null && record(choice ?? -1, confidence)}
+                onClick={lockInConfidence}
               >
                 {/* Inline padlock glyph — decorative; the label carries meaning. */}
                 <svg

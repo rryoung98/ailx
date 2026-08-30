@@ -217,6 +217,43 @@ describe("T2 keyboard answering never strands focus", () => {
     expect(active()).toBe(lockIn());
   });
 
+  it("locks in on Enter from the slider, not only from the button", () => {
+    mount();
+    startDeck();
+    press(answerButtons()[0], "ArrowLeft");
+    setConfidence(70);
+    // Enter is the first thing a keyboard user tries after arrowing to a
+    // value; a range input does not submit, so it used to do nothing.
+    const ev = press(slider(), "Enter");
+    expect(ev.defaultPrevented).toBe(true);
+    const responses = events.filter((e) => e.verb === "responded");
+    expect(responses).toHaveLength(1);
+    expect((responses[0].result as { confidence: number }).confidence).toBe(70);
+    expect(container.textContent).toContain("Item 2 / 2");
+  });
+
+  it("ignores Enter until a confidence has actually been set", () => {
+    mount();
+    startDeck();
+    press(answerButtons()[0], "ArrowLeft");
+    const ev = press(slider(), "Enter");
+    expect(ev.defaultPrevented).toBe(false);
+    expect(events.filter((e) => e.verb === "responded")).toHaveLength(0);
+    expect(container.textContent).toContain("Item 1 / 2");
+  });
+
+  it("leaves modified Enter to the browser", () => {
+    mount();
+    startDeck();
+    press(answerButtons()[0], "ArrowLeft");
+    setConfidence(70);
+    for (const mod of [{ altKey: true }, { metaKey: true }, { ctrlKey: true }, { shiftKey: true }]) {
+      const ev = press(slider(), "Enter", mod);
+      expect(ev.defaultPrevented).toBe(false);
+    }
+    expect(events.filter((e) => e.verb === "responded")).toHaveLength(0);
+  });
+
   it("makes the closed sheet inert so its slider is not a stray tab stop", () => {
     mount();
     startDeck();

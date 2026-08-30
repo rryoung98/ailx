@@ -161,6 +161,18 @@ describe("the confidence step occupies the card's own frame", () => {
     expect(shown!.getAttribute("aria-hidden")).toBe("true");
   });
 
+  it("shows the judged TEXT material too, so the frame is never half empty", () => {
+    mount(textConfig);
+    startDeck();
+    answer();
+    const shown = sheet().querySelector<HTMLElement>('[data-testid="judged-stimulus"]');
+    expect(shown).not.toBeNull();
+    expect(shown!.textContent).toBe(textConfig.items[0].material);
+    // It takes the leftover height instead of leaving white space below
+    // the Lock in button (the ~300px empty card reported on mobile).
+    expect(shown!.style.flex).toContain("1");
+  });
+
   it("keeps the upcoming stimulus masked behind the step", () => {
     mount();
     startDeck();
@@ -192,6 +204,146 @@ describe("nothing is scrolled into view any more", () => {
     act(() => lockIn().click());
     expect(scrollTo).not.toHaveBeenCalled();
     expect({ x: window.scrollX, y: window.scrollY }).toEqual(before);
+  });
+});
+
+describe("no viewport is scrolled when the step opens (mobile regression)", () => {
+  /**
+   * The 2026-08-30 re-check: on 1440x900 the page did not move a pixel, but
+   * on a 390x844 phone it jumped ~464px in ONE frame, every single item,
+   * and OVERSHOT — the panel landed above the fold, so the candidate saw an
+   * empty card and had to scroll UP to find the slider.
+   *
+   * It was never scrollIntoView (already gone) and never a layout shift: it
+   * was the browser scrolling a newly focused control into view. jsdom does
+   * not implement that, so the harness below implements it — focus() without
+   * `preventScroll` moves the page, exactly as a real engine does. Drop the
+   * `preventScroll` and these tests fail.
+   */
+  const SHORT_VIEWPORT = 700;
+  let scrolled: number;
+  let focusOptions: Array<FocusOptions | undefined>;
+  let realFocus: typeof HTMLElement.prototype.focus;
+
+  beforeEach(() => {
+    scrolled = 0;
+    focusOptions = [];
+    window.innerHeight = SHORT_VIEWPORT;
+    vi.spyOn(window, "scrollY", "get").mockImplementation(() => scrolled);
+    realFocus = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function patched(this: HTMLElement, options?: FocusOptions) {
+      focusOptions.push(options);
+      // What a real browser does: scroll the focused control into view
+      // unless it is explicitly told not to.
+      if (!options?.preventScroll) scrolled = 464;
+      realFocus.call(this, options);
+    };
+  });
+
+  afterEach(() => {
+    HTMLElement.prototype.focus = realFocus;
+    window.innerHeight = 768;
+  });
+
+  it("leaves the page where it was when the step takes focus on a short viewport", () => {
+    mount();
+    startDeck();
+    answer();
+    expect(window.scrollY).toBe(0);
+    expect(focusOptions).not.toHaveLength(0);
+    for (const o of focusOptions) expect(o?.preventScroll).toBe(true);
+  });
+
+  it("leaves it there through lock-in, when focus goes back to the deck", () => {
+    mount();
+    startDeck();
+    answer();
+    setConfidence(75);
+    act(() => lockIn().click());
+    expect(container.textContent).toContain("Item 2 / 2");
+    expect(window.scrollY).toBe(0);
+    for (const o of focusOptions) expect(o?.preventScroll).toBe(true);
+  });
+
+  it("still focuses the slider — preventScroll must not cost focus", () => {
+    mount();
+    startDeck();
+    answer();
+    expect(document.activeElement).toBe(
+      container.querySelector('input[type="range"]'),
+    );
+  });
+});
+
+describe("the frame is sized to the viewport, so nothing needs scrolling to", () => {
+  /**
+   * The panel IS the deck frame, so "does the deck fit" decides whether the
+   * candidate can reach the slider without scrolling. jsdom lays nothing
+   * out, so the geometry measured on the real staging page at 390x844 is
+   * fed in: 346px of chrome above the deck, 114px of answer buttons below.
+   */
+  /** Measured on staging: phone 390x844, short desktop 1440x700. */
+  const PHONE = { above: 346, below: 114 };
+  const DESKTOP = { above: 272, below: 110 };
+  let rects: ReturnType<typeof vi.spyOn>;
+
+  function layout(viewportHeight: number, chrome = PHONE, frameHeight = 460) {
+    window.innerHeight = viewportHeight;
+    rects = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      const isRoot = (this as HTMLElement).dataset?.testid === "swipe-deck";
+      const top = chrome.above;
+      const height = isRoot ? frameHeight + chrome.below : frameHeight;
+      return { top, height, bottom: top + height, left: 0, right: 390, width: 390, x: 0, y: top, toJSON: () => ({}) } as DOMRect;
+    });
+  }
+
+  afterEach(() => {
+    rects?.mockRestore();
+    window.innerHeight = 768;
+  });
+
+  function frame(): HTMLElement {
+    const el = sheet().parentElement?.parentElement;
+    if (!el) throw new Error("deck frame not found");
+    return el;
+  }
+
+  it("shrinks the frame so the deck AND its answer buttons fit a phone", () => {
+    layout(844, PHONE);
+    mount();
+    startDeck();
+    const h = Number.parseFloat(frame().style.height);
+    expect(h).toBeGreaterThan(0);
+    // Fully on screen: the panel's top is never above the fold (the
+    // overshoot bug) and its bottom is never below it.
+    expect(PHONE.above).toBeGreaterThanOrEqual(0);
+    expect(PHONE.above + h + PHONE.below).toBeLessThanOrEqual(844);
+  });
+
+  it("does the same on a short desktop window", () => {
+    layout(700, DESKTOP);
+    mount();
+    startDeck();
+    const h = Number.parseFloat(frame().style.height);
+    expect(DESKTOP.above + h + DESKTOP.below).toBeLessThanOrEqual(700);
+  });
+
+  it("never grows past the designed card height on a tall window", () => {
+    layout(1200, DESKTOP);
+    mount();
+    startDeck();
+    expect(Number.parseFloat(frame().style.height)).toBe(460);
+  });
+
+  it("stops shrinking at a card-shaped floor rather than becoming a sliver", () => {
+    // A landscape phone cannot fit a card at all; a 120px sliver would be
+    // useless, so the deck keeps a card shape and the page may scroll.
+    layout(400, PHONE);
+    mount();
+    startDeck();
+    expect(Number.parseFloat(frame().style.height)).toBe(260);
   });
 });
 
