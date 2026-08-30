@@ -424,7 +424,7 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
           deckHasImages={deckHasImages}
           lang={contentLang}
           enabled={!sheetOpen && !lapse}
-          maskUpcoming={sheetOpen}
+          stepOpen={sheetOpen}
           onChoose={(i) => {
             if (choice !== null || lapse) return;
             decisionLatency.current = Math.max(0, Math.round(performance.now() - shownAt.current));

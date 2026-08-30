@@ -37,6 +37,12 @@ const textConfig = {
   weights: { sensitivity: 60, calibration: 25, provenance: 15 },
 };
 
+/** Provenance items are answered by BUTTON: the card never flies off. */
+const provenanceConfig = {
+  items: items.filter((i) => i.type === "provenance").slice(0, 2),
+  weights: { sensitivity: 60, calibration: 25, provenance: 15 },
+};
+
 let container: HTMLElement;
 let root: Root;
 let events: TrackEvent[];
@@ -204,6 +210,38 @@ describe("nothing is scrolled into view any more", () => {
     act(() => lockIn().click());
     expect(scrollTo).not.toHaveBeenCalled();
     expect({ x: window.scrollX, y: window.scrollY }).toEqual(before);
+  });
+});
+
+describe("the step is never hidden behind the card it is about", () => {
+  /**
+   * The step sits BELOW the top card on purpose, so a swiped card sails
+   * across it. A provenance item is answered with a button and never
+   * flies off, so the card stayed put and covered the step completely —
+   * the candidate was moving a slider they could not see.
+   */
+  function topCard(): HTMLElement {
+    const el = container.querySelector<HTMLElement>('[data-testid="top-card"]');
+    if (!el) throw new Error("top card not rendered");
+    return el;
+  }
+
+  it("fades a non-swipeable card out while the step is open", () => {
+    mount(provenanceConfig);
+    startDeck();
+    expect(topCard().style.opacity).toBe("1");
+    const option = buttons().find((b) => b.className.includes("t2-option-btn"))!;
+    act(() => option.click());
+    expect(sheet().getAttribute("aria-hidden")).toBe("false");
+    expect(topCard().style.opacity).toBe("0");
+    expect(topCard().style.transition).toContain("opacity");
+  });
+
+  it("leaves a swipeable card alone — it flies off across the step", () => {
+    mount();
+    startDeck();
+    answer();
+    expect(topCard().style.opacity).toBe("1");
   });
 });
 

@@ -16,11 +16,11 @@ const deck = readFileSync(join(here, "../src/SwipeDeck.tsx"), "utf8");
 const runner = readFileSync(join(here, "../src/Runner.tsx"), "utf8");
 
 describe("t2 deck glitch guards", () => {
-  it("masks upcoming card content when maskUpcoming is set", () => {
-    expect(deck).toContain("maskUpcoming ? null : <CardBody item={n}");
+  it("masks upcoming card content while the confidence step is open", () => {
+    expect(deck).toContain("stepOpen ? null : <CardBody item={n}");
   });
   it("runner masks upcoming while the sheet is open", () => {
-    expect(runner).toContain("maskUpcoming={sheetOpen}");
+    expect(runner).toContain("stepOpen={sheetOpen}");
   });
   it("scenario options clear the stack overhang and sit above overlays", () => {
     const optionsBlock = deck.slice(deck.lastIndexOf("t2-option-btn") - 800, deck.lastIndexOf("t2-option-btn"));

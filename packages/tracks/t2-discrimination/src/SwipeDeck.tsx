@@ -259,11 +259,14 @@ export interface SwipeDeckProps {
   /** BCP-47 language of localized ITEM content (stem/material/options). */
   lang?: string;
   /**
-   * Hide upcoming stimuli (blank card backs) — set while the confidence
-   * sheet is up so the NEXT item never shows through after the judged card
-   * flies off.
+   * True while the confidence step (`overlay`) is open. It decides two
+   * things, which is why it is one flag and not two: the upcoming stimuli
+   * are masked (blank card backs) so the NEXT item never shows through
+   * after the judged card flies off, and a NON-SWIPEABLE card — which has
+   * no fling to carry it away — fades out instead of sitting on top of the
+   * step it is meant to be about.
    */
-  maskUpcoming?: boolean;
+  stepOpen?: boolean;
   /**
    * Ref to the FIRST answer/option button. The Runner uses it to hand focus
    * back to the deck when the confidence sheet closes, so a keyboard user is
@@ -285,7 +288,7 @@ export interface SwipeDeckProps {
   overlay?: ReactNode;
 }
 
-export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, maskUpcoming, answerRef, overlay }: SwipeDeckProps) {
+export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, stepOpen, answerRef, overlay }: SwipeDeckProps) {
   const swipeable = item.options.length === 2;
   const [webgl, setWebgl] = useState(false);
   useEffect(() => {
@@ -512,7 +515,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
                 pointerEvents: "none",
               }}
             >
-              {maskUpcoming ? null : <CardBody item={n} hideImage={false} />}
+              {stepOpen ? null : <CardBody item={n} hideImage={false} />}
             </div>
           );
         })}
@@ -525,8 +528,15 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             ...cardFace,
             zIndex: 4,
             transform: topTransform,
-            transition: m.dragging || m.exiting ? "none" : "transform 40ms linear",
+            transition:
+              m.dragging || m.exiting ? "none" : "transform 40ms linear, opacity 180ms ease",
             visibility: m.exited ? "hidden" : "visible",
+            // A provenance card is answered by button, so it never flies
+            // off: without this it would sit ON TOP of the confidence step
+            // (the step is deliberately below the top card, so a swiped
+            // card sails across it) and the candidate would be moving an
+            // invisible slider.
+            opacity: stepOpen && !swipeable ? 0 : 1,
             cursor: swipeable ? (m.dragging ? "grabbing" : "grab") : "default",
             touchAction: swipeable ? "none" : "auto",
             // While the card is flying off, the overlay underneath is already
