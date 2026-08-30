@@ -111,7 +111,7 @@ function StanceButton({
   );
 }
 
-export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoint, onCheckpoint }: TrackUIProps) {
+export function Runner({ config, onEvent, onComplete, onPresentation, secondsRemaining, checkpoint, onCheckpoint }: TrackUIProps) {
   const cfg: T3Config = useMemo(() => validateT3Config(config), [config]);
   // Rehydrate from the persisted checkpoint on (re)mount — F2.
   const restored = useMemo(() => decodeT3Checkpoint(checkpoint), []);
@@ -147,6 +147,15 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   useEffect(() => {
     if (phase === "reveal") revealHeadingRef.current?.focus();
   }, [phase]);
+
+  /**
+   * P0 fairness: the reveal says of itself that it is "presentation, not
+   * scoring" — the transcript and stances behind it are already stored. The
+   * session engine holds the track clock (and its watchdog) while it is up.
+   */
+  useEffect(() => {
+    onPresentation?.(phase === "reveal" ? "t3-reveal" : null);
+  }, [onPresentation, phase]);
 
   // Latest values for checkpointing from inside handlers (state setters
   // have not committed yet when handlers run).

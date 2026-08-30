@@ -108,7 +108,7 @@ function Material({ item, lang }: { item: T2Item; lang?: string }) {
   );
 }
 
-export function Runner({ locale, config, onEvent, onComplete, checkpoint, onCheckpoint }: TrackUIProps) {
+export function Runner({ locale, config, onEvent, onComplete, onPresentation, checkpoint, onCheckpoint }: TrackUIProps) {
   const cfg: T2Config = useMemo(() => validateT2Config(config), [config]);
   // Rehydrate from the persisted checkpoint on (re)mount — F2.
   const restored = useMemo(() => decodeT2Checkpoint(checkpoint), []);
@@ -138,6 +138,17 @@ export function Runner({ locale, config, onEvent, onComplete, checkpoint, onChec
   const focusInSheetRef = useRef(false);
   const completed = useRef(false);
   const reducedMotion = usePrefersReducedMotion();
+
+  /**
+   * P0 fairness: the replay is post-deck PRESENTATION — every answer and
+   * every latency is already recorded, and nothing here can change the
+   * score. It is also the only screen in T2 that teaches, so it must not be
+   * read against a running exam clock. The session engine holds the clock
+   * (and its watchdog) for exactly this interval.
+   */
+  useEffect(() => {
+    onPresentation?.(phase === "replay" ? "t2-replay" : null);
+  }, [onPresentation, phase]);
 
   // Checkpoint every meaningful mutation with explicit next values (state
   // setters have not committed yet inside handlers).

@@ -164,8 +164,9 @@ describe("the dark-theme copies are gone", () => {
     for (const hex of ["#3a1f1f", "#7a3b3b", "#ffd9d9"]) {
       expect(src, `${hex} is a dark-theme leftover`).not.toContain(hex);
     }
-    // One component, six call sites: five phase branches + the start gate's
-    // stale-build block (same banner, different label).
-    expect(src.split("<PersistWarning ").length - 1).toBe(6);
+    // One component, seven call sites: five phase branches, the start gate's
+    // stale-build block (same banner, different label), and the explicit
+    // time-up screen a timed-out track now shows.
+    expect(src.split("<PersistWarning ").length - 1).toBe(7);
   });
 });

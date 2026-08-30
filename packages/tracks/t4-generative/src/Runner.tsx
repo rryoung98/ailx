@@ -187,6 +187,17 @@ export function Runner(props: TrackUIProps) {
     if (submitted) galleryHeadingRef.current?.focus();
   }, [submitted]);
 
+  /**
+   * P0 fairness: the delivery gallery is presentation over an artifact that
+   * is already fixed — the set is delivered, the note and disclosure are
+   * recorded, and no control here changes a scored input. The session
+   * engine holds the track clock (and its watchdog) while it is up.
+   */
+  const onPresentation = props.onPresentation;
+  useEffect(() => {
+    onPresentation?.(submitted ? "t4-gallery" : null);
+  }, [onPresentation, submitted]);
+
   // Load the shared BYOK key/base on mount (browser only — SSR safe).
   useEffect(() => {
     try {
