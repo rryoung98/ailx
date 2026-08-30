@@ -11,12 +11,57 @@
  */
 import { sha256Hex, type Judgment } from "@ailx/core";
 
+/**
+ * Evidence stamped on every row this module emits. It is the ONLY marker that
+ * separates a stand-in number from a judged one, so it must reach every
+ * surface a candidate or a stranger can read (`isDemoScored`).
+ */
+export const DEMO_JUDGE_EVIDENCE = "[DEMO] seeded judge";
+
+/** Case-insensitive marker shared with `DeterministicDemoJudge` ("[demo] …"). */
+const DEMO_EVIDENCE_PREFIX = "[demo]";
+
+/** Short qualifier printed next to any score derived from demo judgments. */
+export const DEMO_SCORE_QUALIFIER = "demo estimate";
+
+/** One sentence, for wherever there is room for one. */
+export const DEMO_SCORE_NOTE =
+  "Demo estimate: a deterministic stand-in scored the stored artifact. The judging pipeline is not built yet, so this is not a judged result.";
+
+/** True when this row came from a stand-in rather than a judge. */
+export function isDemoJudgment(j: { evidence?: string }): boolean {
+  return (j.evidence ?? "").trim().toLowerCase().startsWith(DEMO_EVIDENCE_PREFIX);
+}
+
+/**
+ * True when a track score took ANY of its points from stand-in judgments.
+ * Model-free tracks (T2) store no judgments and are honestly measured, so an
+ * empty list is NOT demo-scored.
+ */
+export function isDemoScored(judgments: ReadonlyArray<{ evidence?: string }> | undefined): boolean {
+  return (judgments ?? []).some(isDemoJudgment);
+}
+
+/**
+ * The one formatter for a user-visible track score. A number never renders
+ * without saying what produced it, and an unscored track says so in words
+ * instead of printing a placeholder number.
+ */
+export function formatTrackScore(
+  score: { scaled: number } | undefined,
+  judgments?: ReadonlyArray<{ evidence?: string }>,
+): string {
+  if (!score || !Number.isFinite(score.scaled)) return "recorded, not scored";
+  const n = `${score.scaled.toFixed(1)} / 100`;
+  return isDemoScored(judgments) ? `${n} · ${DEMO_SCORE_QUALIFIER}` : n;
+}
+
 function seeded01(seed: string): number {
   return parseInt(sha256Hex(seed).slice(0, 8), 16) / 0xffffffff;
 }
 
 function mk(dimension: string, sample: number, value: number): Judgment {
-  return { dimension, sample, value, evidence: "[DEMO] seeded judge", modelId: `demo-judge-${(sample % 3) + 1}@1` };
+  return { dimension, sample, value, evidence: DEMO_JUDGE_EVIDENCE, modelId: `demo-judge-${(sample % 3) + 1}@1` };
 }
 
 /** 3 samples per dimension; value blends artifact-effort signal with seeded jitter. */
@@ -30,6 +75,26 @@ function tri(dimension: string, base: number, seedRoot: string): Judgment[] {
 /** Three explicit-zero samples: empty work judges to zero, deterministically. */
 function zeroTri(dimension: string): Judgment[] {
   return [0, 1, 2].map((s) => mk(dimension, s, 0));
+}
+
+/**
+ * An OPTIONAL written component (T1 design rationale, T4 direction note).
+ * Both runners tell the candidate "you can skip it; that component then
+ * scores zero", so blank MUST judge to a literal zero on every sample — not
+ * to a floor, and not to a floor plus jitter (F9: T4 paid 0.2 for nothing
+ * while T1's identical sentence was true). The floor is credit for having
+ * written something and is unreachable when nothing was written.
+ */
+function writtenTri(
+  dimension: string,
+  text: string,
+  floor: number,
+  gain: number,
+  fullLength: number,
+  seed: string,
+): Judgment[] {
+  if (text.trim().length === 0) return zeroTri(dimension);
+  return tri(dimension, clamp01(floor + gain * clamp01(text.length / fullLength)), seed);
 }
 
 function clamp01(x: number): number { return x < 0 ? 0 : x > 1 ? 1 : x; }
@@ -51,9 +116,7 @@ export function judgeT1(artifact: { html: string; promptLog: unknown[]; selfRepo
     ...tri("functional", clamp01(base + 0.1), seed),
     ...tri("comparative", base, seed),
     ...tri("ambition", clamp01(0.2 + 0.4 * size + hasScript + hasStyle), seed),
-    ...tri("rationale", artifact.selfReport.trim().length === 0
-      ? 0
-      : clamp01(0.2 + 0.6 * clamp01(artifact.selfReport.length / 400)), seed),
+    ...writtenTri("rationale", artifact.selfReport, 0.2, 0.6, 400, seed),
   ];
 }
 
@@ -112,7 +175,7 @@ export function judgeT4(artifact: {
   out.push(
     ...tri("brief-fit", clamp01(0.3 + 0.55 * chosenRich), seed),
     ...tri("comparative", clamp01(0.25 + 0.55 * chosenRich), seed),
-    ...tri("direction-note", clamp01(0.2 + 0.65 * clamp01(artifact.note.length / 300)), seed),
+    ...writtenTri("direction-note", artifact.note, 0.2, 0.65, 300, seed),
     // Disclosure hygiene comes from the STORED disclosure flag.
     ...tri("provenance", artifact.disclosed ? 0.85 : 0.15, seed),
   );

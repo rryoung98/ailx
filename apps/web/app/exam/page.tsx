@@ -19,7 +19,7 @@ import {
 import { trackConfig } from "../../lib/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
 // stays in the frozen data contract (always "en" at attempt start).
-import { TRACK_LIST, TRACK_META } from "@ailx/report";
+import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META } from "@ailx/report";
 import { Annotation } from "../../lib/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
 import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
@@ -454,7 +454,7 @@ export default function ExamPage() {
                   <span style={{ flex: 1 }}>{t.name}</span>
                   {ts.status === "completed" ? (
                     <span className="small mono" style={{ color: "var(--good)" }}>
-                      ✓ {ts.score ? `${ts.score.scaled.toFixed(1)} / 100` : "scored"}
+                      ✓ {formatTrackScore(ts.score, ts.judgments)}
                     </span>
                   ) : t.id === next ? (
                     <span className="small mono" style={{ color: "var(--warn)" }}>next</span>
@@ -465,6 +465,9 @@ export default function ExamPage() {
               );
             })}
           </ul>
+          {done.some((t) => isDemoScored(state.tracks[t].judgments)) ? (
+            <p className="faint small" style={{ margin: "-0.8rem 0 1.5rem" }}>{DEMO_SCORE_NOTE}</p>
+          ) : null}
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
           {next ? (
             <>
