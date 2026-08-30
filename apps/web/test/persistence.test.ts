@@ -6,10 +6,10 @@ import {
   createApiPersistence,
   createLocalPersistence,
   createServerAttempt,
+  fetchPresentedDeck,
   startServerAttempt,
   type AttemptPersistence,
 } from "../lib/persistence";
-import { t2DeckRecords } from "../lib/instrument";
 
 // ---------------------------------------------------------------------------
 // Doubles
@@ -299,86 +299,144 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
 });
 
 /**
- * P1-4: the client used to DISCARD the decks the server recorded and re-derive
- * its own from its OWN bundled snapshot. After a bank change, a stale tab
- * presented a deck attempt_decks says was never shown — a silent corruption of
- * the exposure log per-item stats and IRT depend on.
+ * P1-4, restated for a server-authoritative deck.
+ *
+ * The client used to re-derive the deck from its OWN bundled snapshot and
+ * compare that to what the server recorded. It no longer has a bank to derive
+ * from: the operational one is server-only. So the check moved to the thing
+ * that actually matters — the deck the candidate is SHOWN
+ * (GET /attempts/:id/items) must be the deck the exposure log recorded at
+ * create (POST /attempts). A divergence still stops the run.
  */
-describe("createServerAttempt deck verification", () => {
+describe("presented deck vs recorded deck", () => {
   const SERVER_ID = "00000000-0000-4000-8000-0000000000bb";
+  const BANK = "b".repeat(64);
+  const RECORDED = [{ trackId: "t2", bankSha256: BANK, itemIds: ["itm-1", "itm-2", "itm-3"] }];
 
-  /** POST /attempts double that answers with the given exposure decks. */
-  function serverWithDecks(decks: unknown) {
-    const calls: unknown[] = [];
+  /** One sitting item, exactly as `RedactedItem` serializes it. */
+  const sittingItem = (id: string) => ({
+    id,
+    type: "message-page",
+    stem: "Hostile attempt or legitimate interface?",
+    material: "[login page] …",
+    options: ["Legitimate", "Hostile"],
+    signal: 1,
+    difficulty: 0.4,
+    exposureSeconds: 25,
+    phase: "sitting",
+  });
+
+  /** POST /attempts + GET /attempts/:id/items doubles. */
+  function server(decks: unknown, items: unknown, extra: Record<string, unknown> = {}) {
     const fetchFn = (async (url: unknown) => {
-      calls.push(String(url));
-      return {
-        ok: true,
-        status: 201,
-        json: async () => ({ attempt: { id: SERVER_ID }, ...(decks === undefined ? {} : { decks }) }),
-      } as Response;
+      const path = String(url);
+      const body = path.endsWith("/items")
+        ? { phase: "sitting", deckDigest: BANK, released: false, items, ...extra }
+        : { attempt: { id: SERVER_ID }, ...(decks === undefined ? {} : { decks }) };
+      return { ok: true, status: 200, json: async () => body } as Response;
     }) as typeof fetch;
-    return { fetchFn, calls };
+    return { baseUrl: "/api", fetchFn };
   }
 
-  const create = (decks: unknown, locale = "en") => {
+  /** Create the attempt (storing the recorded deck), then fetch what it deals. */
+  async function present(decks: unknown, items: unknown, extra?: Record<string, unknown>) {
     const storage = fakeStorage();
-    const server = serverWithDecks(decks);
-    return { storage, promise: createServerAttempt(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, locale) };
-  };
+    const opts = server(decks, items, extra);
+    const id = await createServerAttempt(storage, opts, "en");
+    return { storage, deck: fetchPresentedDeck(storage, opts, id) };
+  }
 
-  /** Exactly what the server's sampler (the same pure function) records. */
-  const recordedDecks = (locale = "en") => t2DeckRecords(SERVER_ID, locale);
+  const dealt = RECORDED[0].itemIds.map(sittingItem);
+
+  it("stores the decks the server recorded, and adopts nothing else", async () => {
+    const storage = fakeStorage();
+    await expect(
+      createServerAttempt(storage, server(RECORDED, dealt), "en"),
+    ).resolves.toBe(SERVER_ID);
+    const state = JSON.parse(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)!);
+    expect(state.serverAttemptId).toBe(SERVER_ID);
+    expect(state.deck).toEqual(RECORDED);
+  });
 
   it("accepts the deck the server actually recorded", async () => {
-    const { storage, promise } = create(recordedDecks());
-    await expect(promise).resolves.toBe(SERVER_ID);
-    expect(JSON.parse(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)!).serverAttemptId).toBe(SERVER_ID);
+    const { deck } = await present(RECORDED, dealt);
+    await expect(deck).resolves.toMatchObject({ phase: "sitting", deckDigest: BANK });
   });
 
-  it("refuses a deck sampled from a DIFFERENT bank (the stale-tab deploy)", async () => {
-    const stale = recordedDecks().map((d) => ({ ...d, bankSha256: "f".repeat(64) }));
-    const { storage, promise } = create(stale);
-    await expect(promise).rejects.toBeInstanceOf(DeckMismatchError);
-    // Nothing adopted: no sync state, so no half-started attempt is mirrored.
-    expect(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)).toBeNull();
+  it("serves a sitting item with NO key and NO rationale", async () => {
+    const { deck } = await present(RECORDED, dealt);
+    // The whole object: a smuggled field has to change this assertion.
+    expect((await deck).items[0]).toEqual(sittingItem("itm-1"));
   });
 
-  it("refuses a deck with different item ids", async () => {
-    const swapped = recordedDecks().map((d) => ({ ...d, itemIds: [...d.itemIds.slice(1), "t2-ghost-item"] }));
-    await expect(create(swapped).promise).rejects.toBeInstanceOf(DeckMismatchError);
+  it("refuses a deck dealt from a DIFFERENT bank (the stale-deploy case)", async () => {
+    const { deck } = await present(
+      RECORDED.map((d) => ({ ...d, bankSha256: "f".repeat(64) })),
+      dealt,
+    );
+    await expect(deck).rejects.toBeInstanceOf(DeckMismatchError);
   });
 
-  it("refuses the same items in a different PRESENTED order", async () => {
-    const reordered = recordedDecks().map((d) => ({ ...d, itemIds: [...d.itemIds].reverse() }));
-    await expect(create(reordered).promise).rejects.toBeInstanceOf(DeckMismatchError);
+  it("refuses different item ids, a different order, and a short deck", async () => {
+    await expect(
+      (await present(RECORDED, [sittingItem("itm-ghost"), ...dealt.slice(1)])).deck,
+    ).rejects.toBeInstanceOf(DeckMismatchError);
+    await expect(
+      (await present(RECORDED, [...dealt].reverse())).deck,
+    ).rejects.toBeInstanceOf(DeckMismatchError);
+    await expect((await present(RECORDED, dealt.slice(1))).deck).rejects.toBeInstanceOf(
+      DeckMismatchError,
+    );
+    await expect((await present(RECORDED, [])).deck).rejects.toBeInstanceOf(DeckMismatchError);
   });
 
-  it("refuses a deck for a track this build does not present, or a missing one", async () => {
-    const extra = [...recordedDecks(), { trackId: "t3", bankSha256: "a".repeat(64), itemIds: ["x"] }];
-    await expect(create(extra).promise).rejects.toBeInstanceOf(DeckMismatchError);
-    await expect(create([]).promise).rejects.toBeInstanceOf(DeckMismatchError);
+  it("refuses a deck recorded for a track that is not the one dealt", async () => {
+    const t3Only = [{ trackId: "t3", bankSha256: BANK, itemIds: ["itm-1"] }];
+    await expect((await present(t3Only, dealt)).deck).rejects.toBeInstanceOf(DeckMismatchError);
   });
 
-  it("refuses a deck recorded for another LOCALE", async () => {
-    // The server samples with the locale it was sent; a client that presents
-    // a different locale's items is the same divergence.
-    const jaDecks = t2DeckRecords(SERVER_ID, "ja");
-    const en = recordedDecks();
-    if (JSON.stringify(jaDecks) !== JSON.stringify(en)) {
-      await expect(create(jaDecks, "en").promise).rejects.toBeInstanceOf(DeckMismatchError);
-    }
-    // The matching locale is accepted.
-    await expect(create(jaDecks, "ja").promise).resolves.toBe(SERVER_ID);
+  it("names both decks in the error message", async () => {
+    const { deck } = await present(
+      RECORDED.map((d) => ({ ...d, bankSha256: "f".repeat(64) })),
+      dealt,
+    );
+    await expect(deck).rejects.toThrow(/ffffffffffff/);
+    await expect(deck).rejects.toThrow(/bbbbbbbbbbbb/);
   });
 
-  it("accepts a response with no decks at all (host wired no sampler)", async () => {
-    await expect(create(undefined).promise).resolves.toBe(SERVER_ID);
+  it("accepts a create response with no decks at all (host wired no sampler)", async () => {
+    // Nothing was recorded, so there is nothing for the dealt deck to
+    // contradict — and no exposure row that could claim otherwise.
+    const { deck } = await present(undefined, dealt);
+    await expect(deck).resolves.toMatchObject({ phase: "sitting" });
   });
 
-  it("carries the recorded and expected banks in the error message", async () => {
-    const stale = recordedDecks().map((d) => ({ ...d, bankSha256: "f".repeat(64) }));
-    await expect(create(stale).promise).rejects.toThrow(/ffffffffffff/);
+  it("ignores a recorded deck localStorage cannot be trusted to hold", async () => {
+    const storage = fakeStorage();
+    const opts = server(RECORDED, dealt);
+    const id = await createServerAttempt(storage, opts, "en");
+    storage.setItem(
+      `ailx:sync:v1:${id}`,
+      JSON.stringify({ serverAttemptId: id, syncedThrough: 0, finalized: false, deck: "junk" }),
+    );
+    await expect(fetchPresentedDeck(storage, opts, id)).resolves.toMatchObject({
+      phase: "sitting",
+    });
+  });
+
+  it("reports the review phase the server derived, keys and all", async () => {
+    const reviewItems = RECORDED[0].itemIds.map((id) => ({
+      ...sittingItem(id),
+      phase: "review",
+      key: 1,
+      rationale: "The registrable domain is account-verify.net.",
+      yourChoice: 1,
+      correct: true,
+    }));
+    const { deck } = await present(RECORDED, reviewItems, { phase: "review" });
+    const resolved = await deck;
+    expect(resolved.phase).toBe("review");
+    expect(resolved.items[0]).toMatchObject({ key: 1, correct: true, yourChoice: 1 });
   });
 });
 

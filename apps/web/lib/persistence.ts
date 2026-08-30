@@ -21,7 +21,6 @@ import {
   type ValidatedLog,
 } from "@ailx/session";
 import { DEV_USER_COOKIE, DEV_USER_HEADER } from "@ailx/backend";
-import { t2DeckRecords } from "./instrument";
 import { assetUrl, isServerMode } from "./mode";
 
 export interface AttemptPersistence {
@@ -57,6 +56,13 @@ interface SyncState {
   /** Count of log entries already mirrored (log seq is contiguous from 0). */
   syncedThrough: number;
   finalized: boolean;
+  /**
+   * The decks the server RECORDED for this attempt (`attempt_decks`), exactly
+   * as POST /attempts returned them. Kept so the deck the candidate is later
+   * SHOWN — fetched from GET /attempts/:id/items — can be checked against the
+   * deck the exposure log claims was dealt, across a reload.
+   */
+  deck?: DeckRecord[];
 }
 
 export interface ApiPersistenceOptions {
@@ -64,6 +70,20 @@ export interface ApiPersistenceOptions {
   fetchFn: typeof fetch;
   /** Called when a sync pass fails; the pass is retried on the next save. */
   onSyncError?: (err: unknown) => void;
+}
+
+/** Shape check for decks read back out of localStorage (never trusted). */
+function validDecks(value: unknown): value is DeckRecord[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (d) =>
+        typeof (d as DeckRecord)?.trackId === "string" &&
+        typeof (d as DeckRecord)?.bankSha256 === "string" &&
+        Array.isArray((d as DeckRecord)?.itemIds) &&
+        (d as DeckRecord).itemIds.every((id) => typeof id === "string"),
+    )
+  );
 }
 
 function readSyncState(storage: StorageLike, clientAttemptId: string): SyncState {
@@ -76,6 +96,9 @@ function readSyncState(storage: StorageLike, clientAttemptId: string): SyncState
           serverAttemptId: typeof parsed.serverAttemptId === "string" ? parsed.serverAttemptId : undefined,
           syncedThrough: Math.floor(parsed.syncedThrough),
           finalized: parsed.finalized === true,
+          // Re-validated rather than trusted: this came back through
+          // localStorage, which any tab (or extension) can rewrite.
+          ...(validDecks(parsed.deck) ? { deck: parsed.deck } : {}),
         };
       }
     }
@@ -91,6 +114,21 @@ function writeSyncState(storage: StorageLike, clientAttemptId: string, state: Sy
   } catch {
     // Quota/private mode: next pass re-sends from the last persisted point.
   }
+}
+
+/** Single GET path: same auth header, same error rule as {@link postJson}. */
+async function getJson(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  path: string,
+): Promise<Record<string, unknown>> {
+  const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
+    headers: { [DEV_USER_HEADER]: devUser(storage) },
+  });
+  if (!res.ok) {
+    throw new Error(`GET ${path} failed: ${res.status}`);
+  }
+  return (await res.json()) as Record<string, unknown>;
 }
 
 /** Single POST path shared by the mirror and attempt pre-creation. */
@@ -270,24 +308,38 @@ interface DeckRecord {
 }
 
 /**
- * The server recorded a deck this build cannot present — the exposure log
- * (attempt_decks) would claim items were shown that never were. Thrown
- * instead of starting the run: a divergent deck is a measurement-validity
- * defect, and a silent one is worse than a blocked start.
+ * The deck the candidate is about to be SHOWN is not the deck the exposure
+ * log (attempt_decks) says was dealt. Thrown instead of presenting: a
+ * divergent deck is a measurement-validity defect, and a silent one is worse
+ * than a blocked start.
+ *
+ * The check moved when the server became the authority on item selection.
+ * It used to compare the recorded deck against a deck this BUILD re-derived
+ * from its own bundled bank — the only check available while the browser
+ * held the bank. The browser no longer holds one: the operational bank is
+ * server-only (docs/ARCHITECTURE.md §3), so the presented deck now comes
+ * from GET /attempts/:id/items and is compared against the ids POST
+ * /attempts recorded for the same attempt. That is a stronger check on the
+ * thing that actually matters — presented === recorded — and it no longer
+ * fires merely because two banks differ.
  */
 export class DeckMismatchError extends Error {
   constructor(
     readonly recorded: readonly DeckRecord[],
-    readonly expected: readonly DeckRecord[],
+    readonly presented: readonly DeckRecord[],
   ) {
     super(
-      "server-recorded deck does not match the deck this build would present " +
-        `(recorded banks: ${recorded.map((d) => `${d.trackId}=${d.bankSha256.slice(0, 12)}`).join(",") || "none"}; ` +
-        `this build: ${expected.map((d) => `${d.trackId}=${d.bankSha256.slice(0, 12)}`).join(",") || "none"})`,
+      "the deck about to be presented is not the deck the server recorded " +
+        `(recorded: ${describeDecks(recorded)}; presented: ${describeDecks(presented)})`,
     );
     this.name = "DeckMismatchError";
   }
 }
+
+const describeDecks = (decks: readonly DeckRecord[]): string =>
+  decks
+    .map((d) => `${d.trackId}=${d.bankSha256.slice(0, 12)}x${d.itemIds.length}`)
+    .join(",") || "none";
 
 /** Field-by-field (not JSON-shape) equality: same track, same bank, same order. */
 function sameDeck(a: DeckRecord, b: DeckRecord): boolean {
@@ -306,18 +358,15 @@ function readDecks(created: Record<string, unknown>): DeckRecord[] | undefined {
 
 /**
  * Create the server attempt UP FRONT (before `attempt_started` is
- * committed) so the T2 deck can be keyed to — and its item ids recorded
- * against — the SERVER attempt id. `decks: true` commits this client to
- * presenting exactly the deck derived from the returned id.
+ * committed) so the deck is sampled, recorded and dealt against the SERVER
+ * attempt id. `decks: true` asks for that exposure row.
  *
- * The returned `decks` are the ROW the server just wrote, so they are
- * verified here against what this build would actually present — the two
- * are derived by the same pure function, but from each side's OWN bundled
- * snapshot. A tab whose chunks predate a bank change would otherwise sample
- * from the old bank and present a deck the exposure log says was never
- * shown, with nothing anywhere to notice. On divergence we throw rather
- * than present: the item ids the server recorded may not even exist in this
- * build's bank, so "adopt the server deck" is not available — refusing is.
+ * The returned `decks` are the ROW the server just wrote. They are STORED,
+ * not re-derived: this build has no operational bank to re-derive from, and
+ * the deck it will present is the one `GET /attempts/:id/items` serves out
+ * of that same row. {@link fetchPresentedDeck} checks the two against each
+ * other, so a deck that arrives with different ids than the exposure log
+ * holds stops the run instead of quietly becoming the sitting.
  *
  * The sync state is pre-written under the returned id, so when the session
  * adopts it as its attemptId the mirror reuses this attempt instead of
@@ -331,29 +380,144 @@ export async function createServerAttempt(
   const created = await postJson(storage, opts, "/attempts", { locale, decks: true });
   const id = (created.attempt as { id: string }).id;
   const recorded = readDecks(created);
+  writeSyncState(storage, id, {
+    serverAttemptId: id,
+    syncedThrough: 0,
+    finalized: false,
+    // No decks in the response = the host wired no sampler, so there is no
+    // exposure row, and nothing to hold the presented deck to.
+    ...(validDecks(recorded) ? { deck: recorded } : {}),
+  });
+  return id;
+}
+
+/** One item as `GET /attempts/:id/items` serves it (redacted during a sitting). */
+export interface PresentedDeck {
+  phase: "sitting" | "review";
+  /** Content address of the bank the ids index into; null when no deck was dealt. */
+  deckDigest: string | null;
+  /** True when the mounted instrument is the PUBLIC released-practice tier. */
+  released: boolean;
+  items: ReadonlyArray<Record<string, unknown>>;
+}
+
+/**
+ * The deck the server says this attempt was dealt, verified against the deck
+ * the server RECORDED when the attempt was created.
+ *
+ * Both sides are the server's, which is the point: item selection is no
+ * longer a thing two banks agree about by luck. What is checked here is that
+ * the bytes about to be presented are the bytes the exposure log claims —
+ * across two requests, a reload, and whatever a stale tab or a swapped
+ * `attemptId` might have done in between.
+ */
+export async function fetchPresentedDeck(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  attemptId: string,
+): Promise<PresentedDeck> {
+  const body = await getJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/items`);
+  const items = Array.isArray(body.items) ? (body.items as Record<string, unknown>[]) : [];
+  const deck: PresentedDeck = {
+    phase: body.phase === "review" ? "review" : "sitting",
+    deckDigest: typeof body.deckDigest === "string" ? body.deckDigest : null,
+    released: body.released === true,
+    items,
+  };
+  const recorded = readSyncState(storage, attemptId).deck;
   if (recorded !== undefined) {
-    // No decks in the response = the host wired no sampler, so no exposure
-    // row exists to diverge from; anything else must match exactly.
-    const expected = t2DeckRecords(id, locale);
-    if (recorded.length !== expected.length || !expected.every((d, i) => sameDeck(recorded[i], d))) {
-      throw new DeckMismatchError(recorded, expected);
+    const presented: DeckRecord[] = [
+      {
+        trackId: "t2",
+        bankSha256: deck.deckDigest ?? "",
+        itemIds: items.map((i) => (typeof i.id === "string" ? i.id : "")),
+      },
+    ];
+    const expect = recorded.filter((d) => d.trackId === "t2");
+    if (expect.length !== 1 || !sameDeck(expect[0], presented[0])) {
+      throw new DeckMismatchError(expect, presented);
     }
   }
-  writeSyncState(storage, id, { serverAttemptId: id, syncedThrough: 0, finalized: false });
-  return id;
+  return deck;
+}
+
+/**
+ * Ask the server to score a completed track. The browser holds no answer
+ * key in hosted mode, so it cannot grade its own sitting: the marking scheme
+ * stays inside `@ailx/instrument` and only the resulting score comes back
+ * (ATP/ITC §3.6 — scoring at the server level, docs/ARCHITECTURE.md §4).
+ */
+export async function postTrackScore(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  attemptId: string,
+  trackId: string,
+  artifact: unknown,
+): Promise<{ score: { raw: Record<string, number>; scaled: number }; rubricVersion: string; scoringDigest: string }> {
+  const body = await postJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/score`, {
+    trackId,
+    artifact,
+  });
+  const score = body.score as { raw?: Record<string, number>; scaled?: unknown } | undefined;
+  if (!score || typeof score.scaled !== "number") {
+    throw new Error(`POST /attempts/${attemptId}/score returned no score`);
+  }
+  return {
+    score: { raw: score.raw ?? {}, scaled: score.scaled },
+    rubricVersion: String(body.rubricVersion ?? ""),
+    scoringDigest: String(body.scoringDigest ?? ""),
+  };
+}
+
+/**
+ * True when THIS attempt is one the server knows about. A server-mode run
+ * whose create failed (offline, backend down) keeps a client-local attempt
+ * id and stays on the bundled released-practice deck — the same content the
+ * static build runs on, and the only content this bundle has.
+ */
+function isServerAttempt(attemptId: string): boolean {
+  return (
+    isServerMode() &&
+    typeof window !== "undefined" &&
+    getServerAttemptId(window.localStorage, attemptId) !== undefined
+  );
+}
+
+/**
+ * Browser entry point for the SITTING DECK. Returns null when the deck is
+ * this build's own (static mode, or a run the server never created), which
+ * is the caller's signal to use the bundled released-practice tier.
+ *
+ * A DeckMismatchError is not caught here: presenting a deck the exposure log
+ * contradicts is a measurement-validity defect, so the caller must show it
+ * and leave the track unstarted.
+ */
+export async function fetchServerDeck(attemptId: string): Promise<PresentedDeck | null> {
+  if (!isServerAttempt(attemptId)) return null;
+  return fetchPresentedDeck(window.localStorage, browserApiOptions(), attemptId);
+}
+
+/**
+ * Browser entry point for a SERVER-ISSUED score. Returns null when the
+ * attempt is not the server's — the bundled deck's keys are published on
+ * purpose, so the caller may score that one locally.
+ */
+export async function scoreTrackOnServer(
+  attemptId: string,
+  trackId: string,
+  artifact: unknown,
+): Promise<Awaited<ReturnType<typeof postTrackScore>> | null> {
+  if (!isServerAttempt(attemptId)) return null;
+  return postTrackScore(window.localStorage, browserApiOptions(), attemptId, trackId, artifact);
 }
 
 /**
  * Browser entry point for run start. Server mode: returns the pre-created
  * server attempt id to adopt as the session attemptId. Static mode — or a
  * server-mode create that fails (offline, backend down) — returns null and
- * the caller falls back to a client-local attempt id: the deck derivation
- * is identical, it is just keyed to the local id and not recorded
+ * the caller falls back to a client-local attempt id: the run then presents
+ * this build's bundled practice deck, keyed to the local id and not recorded
  * server-side (the mirror will still lazily create an attempt for the log).
- *
- * A DeckMismatchError is NOT that kind of failure and is rethrown: falling
- * back would present a deck while the server holds an exposure row claiming
- * a different one. The caller must show it and let the run stay unstarted.
  */
 export async function startServerAttempt(locale: string): Promise<string | null> {
   if (!isServerMode() || typeof window === "undefined") {
@@ -362,7 +526,6 @@ export async function startServerAttempt(locale: string): Promise<string | null>
   try {
     return await createServerAttempt(window.localStorage, browserApiOptions(), locale);
   } catch (err) {
-    if (err instanceof DeckMismatchError) throw err;
     console.warn("[ailx sync] server attempt creation failed; using a local attempt id", err);
     return null;
   }

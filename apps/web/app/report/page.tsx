@@ -17,6 +17,7 @@ import { CharacterPortrait, CharacterVoice } from "../../lib/CharacterPortrait";
 import { CredentialPanel } from "../../lib/CredentialPanel";
 import { Diagnosis } from "../../lib/Diagnosis";
 import { t2AnswerKeys } from "../../lib/instrument";
+import { fetchServerAnswerKeys } from "../../lib/hostedDeck";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
@@ -209,15 +210,41 @@ export default function ReportPage() {
   const insights = useMemo(() => (state ? trackInsights(state) : []), [state]);
   /** The shareable process subset — the SAME narrowing a share link uses. */
   const sharedProcess = useMemo(() => shareProcessFrom(insights), [insights]);
+  /**
+   * REVIEW-PHASE KEYS. A hosted sitting was dealt from the operational bank,
+   * which this bundle does not have — so the answer key for those items comes
+   * back from the server, and only once the attempt is finalized (the review
+   * phase; docs/ARCHITECTURE.md §4). Null in the static demo, whose bundled
+   * released-practice keys are published on purpose.
+   */
+  const [serverKeys, setServerKeys] = useState<Record<string, number> | null>(null);
+  const reportAttemptId = state?.attemptId;
+  useEffect(() => {
+    if (!reportAttemptId) return;
+    let cancelled = false;
+    fetchServerAnswerKeys(reportAttemptId)
+      .then((keys) => {
+        if (!cancelled && keys) setServerKeys(keys);
+      })
+      // A report that cannot reach the server still renders everything that
+      // does not need a key; it must not blank the page.
+      .catch((err: unknown) => console.warn("[ailx report] review keys unavailable", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [reportAttemptId]);
+
   const calBins = useMemo(() => {
     if (!state) return [];
     // Full-bank key map for the attempt's locale: the demo deck rotates per
-    // attempt, so resolve any item id the stored artifact may reference.
+    // attempt, so resolve any item id the stored artifact may reference. The
+    // server's review keys win where they exist — they are the keys for the
+    // deck actually sat.
     return calibrationBins(
       t2ResponsesFromArtifact(state.tracks.t2.artifact),
-      t2AnswerKeys(state.config?.locale ?? "en"),
+      { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(serverKeys ?? {}) },
     );
-  }, [state]);
+  }, [state, serverKeys]);
   const counted = useCountUp(summary?.composite ?? 0);
 
   if (!hydrated) {

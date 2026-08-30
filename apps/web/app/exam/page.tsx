@@ -8,13 +8,16 @@ import {
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
-import { DeckMismatchError, getAttemptPersistence, startServerAttempt } from "../../lib/persistence";
+import {
+  DeckMismatchError, getAttemptPersistence, scoreTrackOnServer, startServerAttempt,
+} from "../../lib/persistence";
+import { fetchHostedT2Config } from "../../lib/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
 } from "../../lib/checkpoints";
 import {
-  checkpointToArtifact, loadTrackModule, scoreTrack, type TrackModule,
+  checkpointToArtifact, loadTrackModule, scoreTrack, trackModelManifest, type TrackModule,
 } from "../../lib/registry";
 import { trackConfig } from "../../lib/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
@@ -84,6 +87,25 @@ export default function ExamPage() {
   const [connectAttention, setConnectAttention] = useState(0);
   /** Start blocked because the server's recorded deck is not this build's. */
   const [staleBuild, setStaleBuild] = useState<string | null>(null);
+  /**
+   * HOSTED T2 DECK. In hosted mode the deck is the SERVER's — fetched from
+   * GET /attempts/:id/items, which is also the row the exposure log records.
+   * `undefined` means "not resolved yet" and the track must not mount:
+   * presenting this build's bundled practice deck while the server holds a
+   * different one is exactly the divergence the deck check exists to stop.
+   * `config: null` means this run's deck really is this build's own (static
+   * demo, or a run the backend never created).
+   */
+  const [hostedT2, setHostedT2] = useState<
+    { attemptId: string; config: unknown | null } | undefined
+  >(undefined);
+  const [deckError, setDeckError] = useState<string | null>(null);
+  const [deckEpoch, setDeckEpoch] = useState(0);
+  const hostedT2Ref = useRef<{ attemptId: string; config: unknown | null } | undefined>(undefined);
+  hostedT2Ref.current = hostedT2;
+  /** A server-issued T2 score that has not landed yet (see finishTrack). */
+  const [scoreError, setScoreError] = useState<string | null>(null);
+  const scoreRetryRef = useRef<{ attemptId: string; artifact: unknown } | null>(null);
   // T1 live-site upload (server mode). The last submission is kept for the
   // retry affordance; static mode never leaves "idle".
   const [siteStatus, setSiteStatus] = useState<SiteStatus>({ state: "idle" });
@@ -201,6 +223,38 @@ export default function ExamPage() {
 
   // Rehydration source for the active track: last stored checkpoint (F2).
   const attemptId = state?.attemptId;
+
+  /**
+   * Fetch the server's deck before T2 mounts. Runs once per (attempt, retry):
+   * the deck is a recorded fact about this attempt, not something to re-ask
+   * for on every render. A failure is SHOWN, never papered over with a local
+   * deck — see DeckMismatchError in lib/persistence.ts.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deckEpoch is the RETRY trigger, not a value this effect reads
+  useEffect(() => {
+    if (activeTrack !== "t2" || !attemptId) return;
+    if (hostedT2Ref.current?.attemptId === attemptId) return;   // already resolved
+    let cancelled = false;
+    setDeckError(null);
+    fetchHostedT2Config(attemptId)
+      .then((config) => {
+        if (!cancelled) setHostedT2({ attemptId, config });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setDeckError(
+          err instanceof DeckMismatchError
+            ? "the deck the server dealt you is not the deck it recorded — this run cannot continue on this tab; reload the page"
+            : `your deck could not be loaded from the server: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+    // A failed fetch leaves hostedT2 unset, so the retry button (deckEpoch)
+    // is what re-runs this — never a render loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTrack, attemptId, deckEpoch]);
   const initialCheckpoint = useMemo(() => {
     if (!attemptId || !activeTrack || typeof window === "undefined") return undefined;
     return loadCheckpoint(window.localStorage, attemptId, activeTrack);
@@ -235,6 +289,43 @@ export default function ExamPage() {
   }, [uploadT1Site]);
 
   /**
+   * Ask the SERVER for a hosted T2 score and record it.
+   *
+   * `track_scored` is allowed to arrive after `track_completed` — the
+   * session machine requires only that the track be completed first — so a
+   * slow or failed round-trip never costs the candidate their work or their
+   * place in the run. Until it lands the track reads "recorded, not scored",
+   * which is the truth, and the retry re-issues the same request.
+   */
+  const requestServerScore = useCallback((attemptId: string, artifact: unknown) => {
+    scoreRetryRef.current = { attemptId, artifact };
+    setScoreError(null);
+    void scoreTrackOnServer(attemptId, "t2", artifact)
+      .then((remote) => {
+        if (remote === null) throw new Error("this run has no server attempt to score against");
+        const cur = logRef.current ? project(logRef.current) : null;
+        // A retry that races a landed score must not append a second one:
+        // the machine refuses a silent re-score, and it is right to.
+        if (cur?.tracks.t2.score !== undefined) return;
+        commit([
+          {
+            type: "track_scored", trackId: "t2", score: remote.score, judgments: [],
+            rubricVersion: remote.rubricVersion,
+            scoringDigest: remote.scoringDigest,
+            modelManifest: trackModelManifest("t2"),
+            ts: stamp(),
+          },
+        ]);
+        scoreRetryRef.current = null;
+      })
+      .catch((err: unknown) => {
+        setScoreError(
+          `the server has not issued your T2 score yet: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+  }, [commit, stamp]);
+
+  /**
    * Complete + score a track through the REAL plugins. timedOut is DERIVED
    * from budget accounting (the machine rejects a disagreeing flag). On
    * timeout the artifact is rebuilt from the last checkpoint — a partial
@@ -246,6 +337,22 @@ export default function ExamPage() {
     if (!cur || cur.currentTrack !== t || cur.tracks[t].status === "completed") return;
     const ts = stamp();
     const timedOut = secondsRemaining(cur, t, ts) <= 0;
+    /**
+     * A HOSTED T2 sitting is scored by the SERVER. The browser holds no
+     * answer key for that deck — that is the point of serving it redacted —
+     * so it cannot mark its own paper (docs/ARCHITECTURE.md §4). The
+     * completion is committed first and on its own: the artifact is the
+     * candidate's work and must survive a scoring round-trip that fails.
+     * Every other case is unchanged, and safe because the bundled
+     * released-practice tier publishes its keys on purpose.
+     */
+    const hostedT2Deck = t === "t2" && hostedT2Ref.current?.config != null;
+    if (hostedT2Deck && cur.attemptId) {
+      commit([{ type: "track_completed", trackId: t, artifact, timedOut, ts }]);
+      requestServerScore(cur.attemptId, artifact);
+      if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
+      return;
+    }
     const rec = scoreTrack(t, artifact, cur.config?.locale ?? "en", cur.attemptId ?? undefined);
     commit([
       { type: "track_completed", trackId: t, artifact, timedOut, ts },
@@ -261,7 +368,7 @@ export default function ExamPage() {
     if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
     // T1's artifact is a servable site: publish it (server mode; no-op otherwise).
     if (t === "t1" && cur.attemptId) uploadT1Site(cur.attemptId, artifact);
-  }, [commit, stamp, uploadT1Site]);
+  }, [commit, requestServerScore, stamp, uploadT1Site]);
 
   // Timeout watchdog: budget exhausted → score the last checkpoint (F1/F2).
   useEffect(() => {
@@ -480,6 +587,20 @@ export default function ExamPage() {
           <h1>Run complete</h1>
           <p className="lede">All four tracks are scored. The diagnostic report is the real reward.</p>
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
+          {scoreError && (
+            <p className="small" role="alert" data-testid="score-error" style={{ margin: "0 0 1rem" }}>
+              {scoreError}{" "}
+              <button
+                className="btn"
+                onClick={() => {
+                  const last = scoreRetryRef.current;
+                  if (last) requestServerScore(last.attemptId, last.artifact);
+                }}
+              >
+                Retry scoring
+              </button>
+            </p>
+          )}
           <p style={{ display: "flex", gap: "0.8rem" }}>
             <Link href="/report" className="btn primary">Open the diagnostic report →</Link>
             <ResetButton onReset={resetAttempt} />
@@ -540,6 +661,20 @@ export default function ExamPage() {
             <p className="faint small" style={{ margin: "-0.8rem 0 1.5rem" }}>{DEMO_SCORE_NOTE}</p>
           ) : null}
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
+          {scoreError && (
+            <p className="small" role="alert" data-testid="score-error" style={{ margin: "0 0 1rem" }}>
+              {scoreError}{" "}
+              <button
+                className="btn"
+                onClick={() => {
+                  const last = scoreRetryRef.current;
+                  if (last) requestServerScore(last.attemptId, last.artifact);
+                }}
+              >
+                Retry scoring
+              </button>
+            </p>
+          )}
           {next ? (
             <>
               <p className="muted" style={{ margin: "0 0 0.8rem" }}>{TRACK_META[next].hype}</p>
@@ -573,10 +708,22 @@ export default function ExamPage() {
   // veiling either would hide the very thing the pause exists for.
   const veiled = paused && !crashed && !presenting;
 
+  /**
+   * T2's deck is the SERVER's whenever the server dealt one; every other
+   * track (and the static demo) keeps this build's bundled config. `pending`
+   * holds the track unmounted until that question is answered — mounting the
+   * local deck first and swapping it would present items the exposure log
+   * never recorded.
+   */
+  const hostedT2Config = hostedT2 && hostedT2.attemptId === state.attemptId ? hostedT2.config : undefined;
+  const deckPending = t === "t2" && hostedT2Config === undefined && deckError === null;
   const uiProps = {
     attemptId: state.attemptId!,
     locale: state.config!.locale,
-    config: trackConfig(t, state.config!.locale, state.attemptId ?? undefined),
+    config:
+      t === "t2" && hostedT2Config != null
+        ? hostedT2Config
+        : trackConfig(t, state.config!.locale, state.attemptId ?? undefined),
     onEvent: (event: TrackEvent) => {
       const cur = logRef.current ? project(logRef.current) : null;
       // Accept while in_track AND paused: runners stay mounted under the
@@ -643,7 +790,16 @@ export default function ExamPage() {
         <div className="runner-frame" style={{ marginTop: "1.2rem", position: "relative" }}>
           {/* F2: the Runner stays MOUNTED while paused — a veil covers it so
               content is hidden but in-progress state survives. */}
-          {mod ? (
+          {deckError ? (
+            <div role="alert" style={{ display: "grid", gap: "0.8rem", padding: "1rem" }}>
+              <p className="muted" style={{ margin: 0 }} data-testid="deck-error">{deckError}</p>
+              <div>
+                <button className="btn" onClick={() => setDeckEpoch((n) => n + 1)}>
+                  Retry loading your deck
+                </button>
+              </div>
+            </div>
+          ) : mod && !deckPending ? (
             <div aria-hidden={veiled} style={veiled ? { visibility: "hidden" } : undefined}>
               {/* P0-1: a runner throw must never white-screen a timed run.
                   The boundary is keyed by runnerEpoch so "retry" remounts a
@@ -658,7 +814,7 @@ export default function ExamPage() {
               </RunnerErrorBoundary>
             </div>
           ) : (
-            <p className="muted">Loading track runner…</p>
+            <p className="muted">{deckPending ? "Loading your deck…" : "Loading track runner…"}</p>
           )}
           {veiled && (
             <div
