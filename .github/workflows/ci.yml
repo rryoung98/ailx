@@ -17,10 +17,18 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Job names are contract: they are what branch protection requires and what
+  # `pages.yml` waits on. `verify` and `e2e` must keep their names. A new gate
+  # (the visual-correctness browser suite) slots in as a THIRD job here with
+  # `needs: verify`, beside `e2e` rather than after it — the two are
+  # independent and should fail independently.
   verify:
     name: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write # the coverage summary comment, below
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,10 +48,37 @@ jobs:
       # ONE vitest for every package (vitest-workspace.ts). The hosted runner
       # has more cores than the 4-fork laptop default, and no other work to do
       # with them.
-      - name: Test
+      #
+      # `test:coverage` is the same run with v8 instrumentation: measured at
+      # +1.6s on a ~26s suite, so CI pays for it and the local `pnpm test` loop
+      # stays untouched. No coverage threshold gates this — see
+      # vitest.config.ts and FRONTEND.md 7.2.
+      - name: Test (with coverage)
         env:
           AILX_TEST_FORKS: "8"
-        run: pnpm test
+        run: pnpm test:coverage
+
+      # The report a reviewer actually reads, rendered from coverage/ by the
+      # workflow token alone: no third-party account, no secret, works the day
+      # this merges. Skipped on fork PRs, whose token cannot comment.
+      - name: Comment coverage on the PR
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: coverage/coverage-summary.json
+          json-final-path: coverage/coverage-final.json
+
+      # Codecov adds the README badge and the trend line the comment cannot.
+      # Never fatal: a rate-limited tokenless upload must not fail a green
+      # build. Add CODECOV_TOKEN in repo secrets to make uploads reliable.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
       # Dual-mode drift is invisible unless both builds run (FRONTEND.md 6.5).
       # The static export above has no API surface at all; this one compiles

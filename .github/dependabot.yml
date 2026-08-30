@@ -1,0 +1,46 @@
+version: 2
+
+# Weekly, grouped, and quiet. Two rules do most of the work here:
+#
+#   1. minor+patch land as ONE pull request per ecosystem. Fifteen separate
+#      "bump @types/node" PRs is noise nobody reads, and unread PRs are how a
+#      lockfile rots.
+#   2. majors are never grouped. React 19, Next 15 and TypeScript 5.9 are
+#      pinned deliberately; a major has to arrive alone, with its changelog,
+#      and be read by a person before CI is even asked.
+#
+# There is no separate entry per package on purpose: this is a pnpm workspace
+# with ONE lockfile at the root, so Dependabot reads every workspace manifest
+# (apps/*, packages/*, packages/tracks/*, services/*) from the root entry. A
+# new package is covered the day it is added, with no config change.
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    groups:
+      npm-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]

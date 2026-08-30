@@ -1,0 +1,40 @@
+name: codeql
+
+# Static analysis for the one thing tests cannot see: an injection or
+# path-traversal shape in code that already passes. This repo serves
+# participant-uploaded HTML and holds an append-only score store, so the
+# taint-tracking queries are earning their runtime.
+#
+# NOT on pull_request on purpose: a 3-5 minute scan on every push would add a
+# slow required check for a class of finding that is rare and never urgent.
+# Weekly plus post-merge catches it without taxing the loop.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1" # Mondays, after Dependabot
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write # publishes findings to the Security tab
+    steps:
+      - uses: actions/checkout@v4
+      # No build step: `javascript-typescript` analyses source directly, so
+      # this never needs pnpm, a lockfile install, or a Next build.
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
