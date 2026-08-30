@@ -43,6 +43,7 @@ ROOT = HERE.parents[3]
 sys.path.insert(0, str(ROOT / "instruments" / "tools"))
 
 import commons_media as cm  # noqa: E402
+import generation_ledger as gl  # noqa: E402
 import openrouter_images as oi  # noqa: E402
 
 #: Why an asset was cropped, and the phrase that records it in the credit.
@@ -153,14 +154,6 @@ def shell(row, iid, name):
     }
 
 
-def accepted(ledger, slug):
-    """The last attempt for this slug that a person looked at and accepted."""
-    for attempt in reversed(ledger.get("attempts", [])):
-        if attempt["slug"] == slug and attempt["status"] == "accepted":
-            return attempt
-    return None
-
-
 def generated_item(row, iid, ledger, previous, banned_hashes):
     """One item we made ourselves, refusing anything unvetted or unproven.
 
@@ -170,7 +163,7 @@ def generated_item(row, iid, ledger, previous, banned_hashes):
     or its asset is missing: it may reuse work, never invent it.
     """
     slug = row["slug"]
-    attempt = accepted(ledger, slug)
+    attempt = gl.accepted(ledger, slug)
     if attempt is None:
         sys.exit(f"REFUSED: {slug} has no ACCEPTED attempt in {LEDGER.name} — "
                  f"generate it, look at it, then accept or reject it")
@@ -244,7 +237,7 @@ def main():
     if CORPUS.is_file():
         previous = {i["id"]: i for i in json.loads(CORPUS.read_text(encoding="utf8"))["items"]}
 
-    ledger = json.loads(LEDGER.read_text(encoding="utf8")) if LEDGER.is_file() else {"attempts": []}
+    ledger = gl.load(LEDGER)
 
     commons_rows = [r for r in rows if r.get("source", COMMONS) == COMMONS]
     if args.offline:

@@ -38,76 +38,42 @@ import hashlib
 import json
 import pathlib
 import sys
-import time
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
 sys.path.insert(0, str(ROOT / "instruments" / "tools"))
 
+import generation_ledger as gl  # noqa: E402
 import openrouter_images as oi  # noqa: E402
 
 CURATION = HERE.parent / "curation.json"
 LEDGER = HERE.parent / "generated.json"
 STAGING = ROOT / ".ailx-generated"
 
-#: Vetting states. `pending` is the only state generation may produce.
-PENDING, ACCEPTED, REJECTED = "pending", "accepted", "rejected"
-
-
-def load_ledger():
-    if LEDGER.is_file():
-        return json.loads(LEDGER.read_text(encoding="utf8"))
-    return {"note": "Every generation attempt, vetted by a human before use.",
-            "attempts": []}
-
-
-def save_ledger(ledger):
-    LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + "\n",
-                      encoding="utf8")
-
 
 def generated_rows(curation):
     return [r for r in curation["items"] if r.get("source") == "generated"]
 
 
-def latest(ledger, slug, status=None):
-    """The most recent attempt for a slug, optionally in one state."""
-    for attempt in reversed(ledger["attempts"]):
-        if attempt["slug"] == slug and (status is None or attempt["status"] == status):
-            return attempt
-    return None
-
-
-def accepted_attempt(ledger, slug):
-    """The attempt a build may use: the last one a person accepted."""
-    return latest(ledger, slug, ACCEPTED)
-
-
 def vet(ledger, slug, status, reason=None):
-    attempt = latest(ledger, slug, PENDING)
-    if attempt is None:
+    if gl.vet(LEDGER, ledger, slug, status, reason) is None:
         sys.exit(f"no pending attempt for {slug}")
-    attempt["status"] = status
-    attempt["vetted"] = time.strftime("%Y-%m-%d")
-    if reason:
-        attempt["reason"] = reason
-    save_ledger(ledger)
     print(f"{slug}: {status}" + (f" - {reason}" if reason else ""))
 
 
 def status_report(curation, ledger):
     for row in generated_rows(curation):
-        attempt = latest(ledger, row["slug"])
+        attempt = gl.latest(ledger, row["slug"])
         state = attempt["status"] if attempt else "not generated"
         model = attempt["model"] if attempt else row["model"]
         print(f"  {row['slug']:<28} {state:<9} {model}")
-    kept = [a for a in ledger["attempts"] if a["status"] == ACCEPTED]
+    kept = [a for a in ledger["attempts"] if a["status"] == gl.ACCEPTED]
     per_model = {}
     for a in kept:
         per_model[a["model"]] = per_model.get(a["model"], 0) + 1
     print(f"\naccepted: {len(kept)}  models: {per_model}")
-    spend = sum(a.get("cost_usd") or 0 for a in ledger["attempts"])
-    print(f"attempts: {len(ledger['attempts'])}  measured spend: ${spend:.4f}")
+    print(f"attempts: {len(ledger['attempts'])}  "
+          f"measured spend: ${gl.spend(ledger):.4f}")
 
 
 def main():
@@ -124,17 +90,17 @@ def main():
     args = ap.parse_args()
 
     curation = json.loads(CURATION.read_text(encoding="utf8"))
-    ledger = load_ledger()
+    ledger = gl.load(LEDGER)
 
     if args.status:
         return status_report(curation, ledger)
     if args.accept:
-        return vet(ledger, args.accept, ACCEPTED, args.reason)
+        return vet(ledger, args.accept, gl.ACCEPTED, args.reason)
     if args.reject:
         if not args.reason:
             sys.exit("--reject needs --reason: a rejection nobody explained "
                      "teaches the next run nothing")
-        return vet(ledger, args.reject, REJECTED, args.reason)
+        return vet(ledger, args.reject, gl.REJECTED, args.reason)
 
     rows = generated_rows(curation)
     if args.only:
@@ -154,7 +120,7 @@ def main():
 
     for row in rows:
         slug, model = row["slug"], row["model"]
-        if not args.force and latest(ledger, slug) is not None:
+        if not args.force and gl.latest(ledger, slug) is not None:
             print(f"  {slug}: attempt exists (--force to redo)")
             continue
         print(f"  {slug}: {model} ...", flush=True)
@@ -163,22 +129,8 @@ def main():
         suffix = {"image/png": ".png"}.get(result["mime"], ".jpg")
         name = f"{slug}-{digest[:8]}{suffix}"
         (STAGING / name).write_bytes(result["bytes"])
-        ledger["attempts"].append({
-            "slug": slug,
-            "status": PENDING,
-            "model": model,
-            "provider": result["provider"],
-            "prompt": row["prompt"],
-            "generated": time.strftime("%Y-%m-%d"),
-            "route": result["route"],
-            "generation_id": result["generation_id"],
-            "cost_usd": result["cost_usd"],
-            "rights_basis": result["rights_basis"],
-            "raw_sha256": digest,
-            "raw_bytes": len(result["bytes"]),
-            "staged": name,
-        })
-        save_ledger(ledger)
+        gl.record(ledger, slug, row["prompt"], result, digest, name)
+        gl.save(LEDGER, ledger)
         print(f"     -> {name} ({len(result['bytes']) // 1024} KB, "
               f"${result['cost_usd'] or 0:.4f})")
 
