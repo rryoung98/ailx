@@ -26,5 +26,36 @@ export default defineConfig({
     // A worker that ignores teardown is what becomes an orphan holding its
     // heap when a run is interrupted; fail loudly instead of leaking quietly.
     teardownTimeout: 10_000,
+
+    /**
+     * Coverage is OFF unless asked for (`pnpm test:coverage`, and CI). v8
+     * instrumentation costs real seconds on this suite, and the default
+     * developer loop was deliberately tuned for speed.
+     *
+     * There is NO `thresholds` block on purpose: a number nobody measured is
+     * busywork that rewards assertion-free tests (FRONTEND.md 7.2). The
+     * report is for reading, not for failing.
+     */
+    coverage: {
+      provider: "v8",
+      reporter: ["text-summary", "json-summary", "lcov"],
+      reportsDirectory: "coverage",
+      // Source we ship, not the build outputs, fixtures or configs. `all`
+      // stays on so an untested module counts as 0% instead of vanishing.
+      all: true,
+      include: [
+        "packages/*/src/**",
+        "packages/tracks/*/src/**",
+        "apps/web/{app,lib,components,features}/**",
+        "services/*/api/**",
+      ],
+      exclude: [
+        "**/*.d.ts",
+        "**/dist/**",
+        "**/test/**",
+        "**/e2e/**",
+        "**/*.config.*",
+      ],
+    },
   },
 });
