@@ -124,9 +124,18 @@ describe("T4 quota-spend announcement", () => {
   });
 });
 
+/** The disclosure checkbox lives in the finish step, beside the note it
+ *  belongs to. Open the step before reaching for it. */
+function openFinishStep() {
+  const entry = [...host.querySelectorAll("button")].find((b) => b.textContent === "Direction note");
+  expect(entry, "Direction note entry").toBeTruthy();
+  act(() => entry!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+}
+
 describe("T4 disclosure checkbox", () => {
   it("cannot be squashed by its flex label", () => {
     mount();
+    openFinishStep();
     const box = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
     expect(box).toBeTruthy();
     expect(box.style.flexShrink).toBe("0");
@@ -135,7 +144,9 @@ describe("T4 disclosure checkbox", () => {
   });
 
   it("stays inside a label, so the text is part of the target", () => {
-    const box = (mount(), host.querySelector('input[type="checkbox"]') as HTMLInputElement);
+    mount();
+    openFinishStep();
+    const box = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
     expect(box.closest("label")).toBeTruthy();
   });
 });

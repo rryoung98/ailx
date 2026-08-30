@@ -52,7 +52,12 @@ describe("T4 checkpoint codec (F2)", () => {
     expect(html).not.toContain("No drafts yet");
     expect(html).toContain("FINAL IMG #1");
     expect(html).toContain("FINAL VIDEO");
-    expect(html).toContain("resumed direction note");
+    // The note now lives behind the finish step, so only its entry point
+    // is in the first paint; the restored VALUE is asserted in the DOM
+    // test "reopening the finish step after a resume shows the restored
+    // note" (noteStep.test.tsx).
+    expect(html).not.toContain("resumed direction note");
+    expect(html).toContain("Direction note");
     // Quota counters reflect the restored finals: 2 image slots, 0 video left.
     expect(html).toContain("2 of 3 image renders left");
     expect(html).toContain("0 of 1 video renders left");

@@ -22,7 +22,10 @@ describe("T4 Runner (SSR smoke)", () => {
     expect(html).toContain("aria-label=\"Image prompt\"");
     expect(html).toContain("demo simulator");
     expect(html).toContain("No drafts yet");
-    expect(html).toContain("disclosure statement");
+    // The disclosure checkbox moved into the finish step with the note it
+    // belongs to; the resting workspace shows the step's entry points.
+    expect(html).not.toContain("disclosure statement");
+    expect(html).toContain("Direction note");
     expect(html).toContain("60:00");
   });
 });

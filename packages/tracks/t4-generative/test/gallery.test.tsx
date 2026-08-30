@@ -73,6 +73,7 @@ describe("T4 finals gallery flow", () => {
     const events: TrackEvent[] = [];
     const c = mount(checkpoint, onComplete, (e) => events.push(e));
 
+    act(() => buttons(c)["Direction note"].click());
     act(() => buttons(c)["Submit final set + note"].click());
 
     // Gallery is visible; artifact NOT yet delivered.
@@ -104,6 +105,7 @@ describe("T4 finals gallery flow", () => {
 
   it("shows the no-disclosure badge when disclosure is off", () => {
     const c = mount({ ...checkpoint, disclosed: false }, vi.fn());
+    act(() => buttons(c)["Direction note"].click());
     act(() => buttons(c)["Submit final set + note"].click());
     expect(c.textContent).toContain("NO DISCLOSURE ATTACHED");
     expect(c.textContent).not.toContain("AI-GENERATED · DISCLOSED");
@@ -122,6 +124,7 @@ describe("T4 finals gallery flow", () => {
   it("empty chosenSet falls back to every final image in the gallery and artifact", () => {
     const onComplete = vi.fn();
     const c = mount({ ...checkpoint, chosenSet: [] }, onComplete);
+    act(() => buttons(c)["Direction note"].click());
     act(() => buttons(c)["Submit final set + note"].click());
     expect(c.textContent).toContain("CHOSEN FINAL #1");
     expect(c.textContent).toContain("CHOSEN FINAL #2");
@@ -143,6 +146,7 @@ describe("T4 checkpoint submitted flag", () => {
 describe("T4 gallery a11y", () => {
   it("moves focus to the gallery heading on submit (focus management)", () => {
     const c = mount(checkpoint, vi.fn());
+    act(() => buttons(c)["Direction note"].click());
     act(() => buttons(c)["Submit final set + note"].click());
     const heading = [...c.querySelectorAll("h2")].find((h) =>
       (h.textContent ?? "").includes("Final set"),

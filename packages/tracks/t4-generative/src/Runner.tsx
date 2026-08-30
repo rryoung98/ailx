@@ -145,6 +145,19 @@ export function Runner(props: TrackUIProps) {
   const [submitted, setSubmitted] = useState(restored?.submitted ?? false);
   /** Presentation-only announcement of the last quota spend (see promote). */
   const [promotionNotice, setPromotionNotice] = useState<string | null>(null);
+  /**
+   * The finish step. The direction note used to sit permanently beside the
+   * prompt box, asking the candidate to DO the work and REFLECT on it in
+   * one visual space during a timed task. It now lives in a step that
+   * replaces the generation controls, entered either to write the note
+   * early ("notes") or to deliver ("submit"). Leaving the step keeps every
+   * character (state + checkpoint are untouched), so it is not a one-way
+   * door. Unlike T1's rationale this note is worth naming a price for: see
+   * the skip guard below.
+   */
+  const [finishStep, setFinishStep] = useState<null | "notes" | "submit">(null);
+  /** Armed only when Submit is pressed with an EMPTY scored note. */
+  const [confirmSkipNote, setConfirmSkipNote] = useState(false);
   // BYOK OpenRouter image generation — SAME key slot as T1's assist panel;
   // the key lives only in the candidate's browser.
   const [orKey, setOrKey] = useState("");
@@ -643,6 +656,11 @@ export function Runner(props: TrackUIProps) {
             </p>
           )}
 
+          {/* Working controls, hidden while the finish step is open so
+              reflection is a STEP, not a second input competing with the
+              prompt box for the same attention. */}
+          {finishStep !== null ? null : (
+          <>
           {hasKey ? (
             <div className="t4-row-model" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <select
@@ -711,47 +729,128 @@ export function Runner(props: TrackUIProps) {
               Regenerate last
             </button>
           </div>
+          </>
+          )}
         </section>
 
-        <section style={panel} aria-label="Direction note">
-          <h2 style={h2}>Direction note</h2>
-          <textarea
-            aria-label="Direction note"
-            style={{ ...mono, minHeight: 60 }}
-            maxLength={cfg.noteMaxChars}
-            value={note}
-            onChange={(e) => {
-              setNote(e.target.value);
-              saveCheckpoint({ note: e.target.value });
-            }}
-            placeholder="What should the viewer understand? Which revisions were diagnostic, and why is the chosen set the right one?"
-          />
-          <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
-            {/* flexShrink:0 — the flex label squashed the box to 9x13px
-                on a 390px viewport, which is both illegible and an
-                unhittable target for the one control that decides whether
-                the delivered set carries an AI disclosure. */}
-            <input
-              type="checkbox"
-              style={{ flexShrink: 0, width: 18, height: 18, margin: 0 }}
-              checked={disclosed}
+        {/* `submitted` returns the gallery above, so this tree is only ever
+            the pre-delivery workspace. */}
+        {finishStep === null ? (
+          <section style={panel} aria-label="Finish">
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="t4-btn"
+                onClick={() => setFinishStep("submit")}
+                disabled={finals.images.length === 0}
+              >
+                Submit final set + note
+              </button>
+              <button
+                type="button"
+                className="t4-btn ghost"
+                onClick={() => setFinishStep("notes")}
+              >
+                Direction note
+              </button>
+            </div>
+            {finals.images.length === 0 && (
+              <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+                Promote at least one draft to a final image before you can deliver.
+              </p>
+            )}
+          </section>
+        ) : (
+          <section style={panel} aria-label="Finish T4">
+            <h2 style={h2}>Direction note</h2>
+            {/* Honest, checkable numbers only: score.ts weights the
+                'direction-note' judgment at 30% of the 20-point craft
+                component — 6 of the track's 100 points. Skipping stays the
+                candidate's call; it is just never presented as free. */}
+            <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+              This one is scored: the direction note is 30% of the 20-point
+              direction &amp; craft component — 6 of T4&rsquo;s 100 points. You can
+              deliver without it; that component then scores zero.
+            </p>
+            <textarea
+              aria-label="Direction note"
+              style={{ ...mono, minHeight: 90 }}
+              maxLength={cfg.noteMaxChars}
+              value={note}
               onChange={(e) => {
-                setDisclosed(e.target.checked);
-                saveCheckpoint({ disclosed: e.target.checked });
+                setNote(e.target.value);
+                setConfirmSkipNote(false);
+                saveCheckpoint({ note: e.target.value });
               }}
-              disabled={submitted}
+              placeholder="What should the viewer understand? Which revisions were diagnostic, and why is the chosen set the right one?"
             />
-            Attach AI-generation disclosure statement to the delivered set
-          </label>
-          <button
-            type="button"
-            className="t4-btn"
-            onClick={submit}
-            disabled={submitted || finals.images.length === 0}
-          >
-            {submitted ? "Submitted" : "Submit final set + note"}
-          </button>
-        </section>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+              {/* flexShrink:0 — the flex label squashed the box to 9x13px
+                  on a 390px viewport, which is both illegible and an
+                  unhittable target for the one control that decides whether
+                  the delivered set carries an AI disclosure. */}
+              <input
+                type="checkbox"
+                style={{ flexShrink: 0, width: 18, height: 18, margin: 0 }}
+                checked={disclosed}
+                onChange={(e) => {
+                  setDisclosed(e.target.checked);
+                  saveCheckpoint({ disclosed: e.target.checked });
+                }}
+                disabled={submitted}
+              />
+              Attach AI-generation disclosure statement to the delivered set
+            </label>
+            {confirmSkipNote ? (
+              <div role="alert" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                  The direction note is empty. Delivering now forfeits the
+                  direction-note judgment — 6 of T4&rsquo;s 100 points. Your images
+                  and video are unaffected.
+                </span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" className="t4-btn" onClick={submit}>
+                    Deliver without the note
+                  </button>
+                  <button
+                    type="button"
+                    className="t4-btn ghost"
+                    onClick={() => setConfirmSkipNote(false)}
+                  >
+                    Write the note
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="t4-btn"
+                  onClick={() => {
+                    if (note.trim().length === 0) {
+                      setConfirmSkipNote(true);
+                      return;
+                    }
+                    submit();
+                  }}
+                  disabled={finals.images.length === 0}
+                >
+                  Submit final set + note
+                </button>
+                <button
+                  type="button"
+                  className="t4-btn ghost"
+                  onClick={() => {
+                    setConfirmSkipNote(false);
+                    setFinishStep(null);
+                  }}
+                >
+                  Keep working
+                </button>
+              </div>
+            )}
+          </section>
+        )}
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
