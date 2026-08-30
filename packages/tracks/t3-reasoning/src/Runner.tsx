@@ -123,6 +123,9 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   // track — it renders VISIBLY (open by default), collapsible for small
   // screens. "Verify against source" stays the instrumented act.
   const [sourceOpen, setSourceOpen] = useState(true);
+  /** Presentation-only tally so "Verify against source" has a visible,
+   *  announced effect; the scored record stays the emitted event. */
+  const [verifyCount, setVerifyCount] = useState(0);
   const sourceRef = useRef<HTMLElement>(null);
   const [stances, setStances] = useState<Record<string, "challenged" | "accepted">>(restored?.stances ?? {});
   const transcript = useRef<T3Turn[]>(restored?.transcript ?? []);
@@ -262,9 +265,17 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
     saveCheckpoint({ savedDraft: draft });
   }, [draft, emit, savedDraft, saveCheckpoint]);
 
+  /**
+   * Verification is a scored, instrumented act — and it used to be an
+   * INVISIBLE one: with the source panel already on screen,
+   * `block: "nearest"` scrolls nothing, so pressing the button produced no
+   * change at all and read as a broken control. The count below is
+   * presentation over the same emitted event; nothing scored moves.
+   */
   const checkSource = useCallback(() => {
     emit({ verb: "verified", object: "source" });
     setSourceOpen(true);
+    setVerifyCount((n) => n + 1);
     sourceRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
   }, [emit]);
 
@@ -539,6 +550,11 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
               Submit final
             </button>
           </div>
+          <p role="status" style={{ margin: "0.4rem 0 0", color: "var(--muted)", fontSize: "0.8rem" }}>
+            {verifyCount === 0
+              ? "Checking a claim against the source is recorded — press Verify against source when you look."
+              : `Verification recorded ${verifyCount} time${verifyCount === 1 ? "" : "s"}.`}
+          </p>
         </div>
       </div>
       </div>
