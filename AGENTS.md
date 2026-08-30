@@ -10,6 +10,7 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 - `packages/tracks/` — t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
 - `packages/session/` — event-sourced session engine
 - `instruments/2026.1/` — content-as-data: manifest, rubrics, judge prompts, item banks
+- `instruments/characters/2026.1/` — the sixteen player-type characters (art direction, prompts, vetting ledger); assets ship in `apps/web/public/characters/`
 - `db/schema.sql` — Postgres schema (append-only responses; scores superseded, never updated)
 - `services/` — openrouter-proxy
 - `infra/` — GCP infrastructure
@@ -44,6 +45,11 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   never proven, so a forgotten variable would let anyone impersonate any
   participant. Use `clerk` (with `CLERK_SECRET_KEY`) anywhere real participants
   can reach.
+  Under `dev`, identity also travels as the `ailx_dev_user` COOKIE (written by
+  the browser next to `localStorage["ailx:dev-user"]`), because a header cannot
+  survive a navigation and server-rendered pages like `/progress` would
+  otherwise see every visitor as anonymous. The header still wins. It is a
+  convenience, not a session — see `docs/DEPLOY.md` §4.1.
 - `AILX_ALLOW_INSECURE_DEV_AUTH=1` — the ONLY way to run `AILX_AUTH=dev` under
   `NODE_ENV=production` (the Playwright suite boots a production build against a
   disposable database). Never set it on a deployment that holds real data.

@@ -1,0 +1,120 @@
+{
+  "version": "characters-2026.1-1",
+  "note": "The 16 player-type characters. Names and taglines live in packages/report/src/playerType.ts and are NOT repeated here.",
+  "model": "google/gemini-3.1-flash-image",
+  "style_preamble": "Editorial spot illustration for a calm, paper-white examination product. A single small character, centred, whole body, facing the viewer, on a flat plain warm off-white background (#f7f4f2) with no scenery, no cast shadow and no frame. Hand-drawn ink outline of one even medium weight, slightly imperfect, with flat matte fills in a restricted palette: warm off-white, soft warm grey, muted sand, one deep pine green (#0b6b47) as the only saturated accent, and a little soft terracotta. No gradients, no gloss, no 3D render, no cel shading, no airbrush, no neon. Muji-like restraint and Swiss editorial calm; dry and friendly rather than cute-maximal. The character is an ANIMATE HANDMADE INSTRUMENT with two small round dot eyes, at most a single short line for a mouth, and simple thin stick limbs - an original design that must not resemble any existing cartoon character, mascot, game creature or franchise. Square composition with generous margins; the character fills about 70% of the frame height so it still reads at 48 pixels. No text, no lettering, no numbers, no logos, no watermark.",
+  "characters": [
+    {
+      "code": "MSVD",
+      "slug": "sextant",
+      "subject": "The character is a small brass SEXTANT, drawn simply: one wide graduated arc as its base, a single upright index arm, one short sighting telescope pointing to the side, and two clear dot eyes on the plain uncluttered frame above the arc. It stands on two thin legs with one small hand raised, calm and unhurried. Keep the instrument SIMPLE and open so the silhouette stays readable.",
+      "alt": "A small brass sextant with a graduated arc for a base, an upright index arm, a short sighting telescope, dot eyes on its frame and thin legs, one hand raised.",
+      "voice": "You built it, doubted it, checked it and directed it. I have nothing to warn you about — which is rarer than it sounds."
+    },
+    {
+      "code": "MSVE",
+      "slug": "loupe-with-toolbelt",
+      "subject": "The character is a wooden-handled MAGNIFYING LOUPE wearing a small canvas tool roll around its handle. The round lens is its single big eye with two dot eyes drawn on the rim; it leans forward, inspecting something just out of frame.",
+      "alt": "A wooden-handled magnifying loupe wearing a small canvas tool roll, leaning forward on thin legs as if inspecting something out of frame.",
+      "voice": "You made a real thing and caught a fake one. Your camera still points wherever the model wandered."
+    },
+    {
+      "code": "MSAD",
+      "slug": "viewfinder",
+      "subject": "The character is a hand-held FILM DIRECTOR'S VIEWFINDER: a boxy metal body with a tapered eyepiece, a small crank on its side and stubby legs. It holds the eyepiece up and frames the scene decisively.",
+      "alt": "A boxy hand-held film viewfinder with a tapered eyepiece and a side crank, standing on stubby legs and holding its eyepiece up to frame a shot.",
+      "voice": "Good hands, good eye, good frame. You believed the assistant on a number you could have checked in ten seconds."
+    },
+    {
+      "code": "MSAE",
+      "slug": "folding-rule",
+      "subject": "The character is a wooden FOLDING CARPENTER'S RULE, unfolded into a striding zig-zag figure with brass hinges for joints and dot eyes on its top segment. It walks briskly, one segment swinging like an arm.",
+      "alt": "A wooden folding carpenter's rule unfolded into a striding zig-zag figure with brass hinges for joints and dot eyes on its top segment.",
+      "voice": "You ship, and you smell a fake. Sources and storyboards got left for later, and later never arrived."
+    },
+    {
+      "code": "MTVD",
+      "slug": "bellows-camera",
+      "subject": "The character is a wooden VIEW CAMERA with a concertina bellows body, a round lens for a face and a dark focusing cloth over its shoulders like a cape. It stands on three thin tripod legs, composed and content.",
+      "alt": "A wooden bellows view camera with a round lens face and a focusing cloth over its shoulders, standing on three thin tripod legs.",
+      "voice": "You built it and you framed it, with real control. Every picture you were handed, you took at face value."
+    },
+    {
+      "code": "MTVE",
+      "slug": "spirit-level",
+      "subject": "The character is a SPIRIT LEVEL standing on end: a long wooden body with a brass-rimmed vial near the top whose green bubble is its one eye, plus two small dot eyes below. Arms folded, patient, exactly upright.",
+      "alt": "An upright wooden spirit level with a brass-rimmed vial near the top, a green bubble inside it, dot eyes and folded arms.",
+      "voice": "Solid work, claims checked. Your renders are still describing the idea instead of showing it."
+    },
+    {
+      "code": "MTAD",
+      "slug": "pinwheel",
+      "subject": "The character is a paper PINWHEEL on a wooden stick: four folded vanes as its head, caught mid-spin with a light motion arc, dot eyes on the hub, thin legs mid-stride. Eager and quick.",
+      "alt": "A paper pinwheel on a wooden stick with four folded vanes caught mid-spin, dot eyes on the hub and thin legs mid-stride.",
+      "voice": "Fast hands, fast frame, fast trust. Two of those three are assets."
+    },
+    {
+      "code": "MTAE",
+      "slug": "glue-pot",
+      "subject": "The character is a squat ceramic GLUE POT with a brush standing in it like a tuft of hair, a drip on its lip, dot eyes and short arms. Relaxed, mid-project, entirely unworried.",
+      "alt": "A squat ceramic glue pot with a brush standing in it like a tuft of hair, a drip on its lip, dot eyes and short arms.",
+      "voice": "You enjoyed the making. Nothing has lied to you yet, so nothing got checked."
+    },
+    {
+      "code": "PSVD",
+      "slug": "theodolite",
+      "subject": "The character is a surveyor's THEODOLITE: a small optical head with a horizontal graduated circle for a collar, standing on three slim tripod legs. It sights carefully along its own barrel, precise and unhurried.",
+      "alt": "A surveyor's theodolite with a small optical head and a graduated collar, standing on three slim tripod legs and sighting along its barrel.",
+      "voice": "You saw the fake, read the record and framed the shot — and left the building to somebody else."
+    },
+    {
+      "code": "PSVE",
+      "slug": "proof-pencil",
+      "subject": "The character is a stubby RED-AND-GREEN PROOFREADER'S PENCIL with a sharpened point for a nose, dot eyes on its barrel and thin arms, one holding a tiny correction mark. Watchful, slightly severe.",
+      "alt": "A stubby proofreader's pencil with a sharpened point, dot eyes on its barrel and thin arms, one holding a small correction mark.",
+      "voice": "A reviewer's run: sharp on what's false. The part where you make something is still blank."
+    },
+    {
+      "code": "PSAD",
+      "slug": "weathervane",
+      "subject": "The character is a rooftop WEATHERVANE with NO direction letters and no lettering of any kind: a slim arrow with a fletched tail balanced on a plain spindle, two short bare crossbars as its arms, two clear dot eyes near the arrowhead, standing on two thin legs. It points confidently at something it has not verified.",
+      "alt": "A slim weathervane arrow with a fletched tail balanced on a spindle, short direction crossbars for arms and dot eyes near the arrowhead, standing on thin legs.",
+      "voice": "Good eye, good frame, quick trust. One fact-check away from confidently wrong."
+    },
+    {
+      "code": "PSAE",
+      "slug": "tuning-fork",
+      "subject": "The character is a steel TUNING FORK standing on its stem, two prongs as ears with faint vibration lines between them, dot eyes on the stem and short arms. Alert, listening, working entirely on feel.",
+      "alt": "A steel tuning fork standing on its stem with two prongs like ears, faint vibration lines between them, dot eyes and short arms.",
+      "voice": "Instinct carried the fakes. It carried nothing else, and instinct does not read footnotes."
+    },
+    {
+      "code": "PTVD",
+      "slug": "metronome",
+      "subject": "The character is a wooden pyramid METRONOME with its front panel open, a swinging pendulum arm and sliding weight, dot eyes on the case and small feet. Deliberate, keeping time for everybody else.",
+      "alt": "A wooden pyramid metronome with its front panel open, a swinging pendulum arm and sliding weight, dot eyes on the case and small feet.",
+      "voice": "You verified and you directed, on purpose. Making and detecting want more reps than you gave them."
+    },
+    {
+      "code": "PTVE",
+      "slug": "ledger",
+      "subject": "The character is a small hardbound LEDGER BOOK standing on two thin legs, a ribbon marker down its spine, a pair of round reading spectacles resting on its top edge above two dot eyes, holding a narrow paper slip.",
+      "alt": "A small hardbound ledger book standing on thin legs with a ribbon marker, round reading spectacles on its top edge and a narrow paper slip in one hand.",
+      "voice": "You read the receipts and skipped the pictures. Claims get checked here; images get believed."
+    },
+    {
+      "code": "PTAD",
+      "slug": "empty-frame",
+      "subject": "The character is an EMPTY PICTURE FRAME, gilt-thin and rectangular, striding forward on two long thin legs with its hollow middle showing the plain background straight through. Bold, well-composed, carrying nothing.",
+      "alt": "An empty rectangular picture frame striding forward on two long thin legs, its hollow middle showing the plain background straight through.",
+      "voice": "The set looks great. I could not find the moment anyone stopped to check something."
+    },
+    {
+      "code": "PTAE",
+      "slug": "paper-boat",
+      "subject": "The character is a folded PAPER BOAT with one small triangular sail, seen straight from the front so the hull reads as one clean simple shape, two clear dot eyes on the hull, two short thin legs below and two small arms at its sides. New, unmarked and uncluttered, ready to set off.",
+      "alt": "A folded paper boat with a raised prow, sitting on two short legs, with dot eyes on the hull and small arms at its sides.",
+      "voice": "First run, all four tracks, no verdict yet. Every axis is still in play — come back and move one."
+    }
+  ]
+}

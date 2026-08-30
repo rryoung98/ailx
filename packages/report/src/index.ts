@@ -8,6 +8,7 @@
  */
 export * from "./aggregates.js";
 export * from "./calibration.js";
+export * from "./character.js";
 export * from "./composite.js";
 export * from "./credential.js";
 export * from "./demo.js";

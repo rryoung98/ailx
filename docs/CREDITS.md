@@ -180,3 +180,48 @@ a person looked at them — are in
 | `bafb7239587b.jpg` | AI-generated | google/gemini-2.5-flash-image | AILX practice corpus (prompted generation) | CC0 | 2026-08-29 |
 | `e5a4b8afadfb.jpg` | AI-generated | openai/gpt-5-image | AILX practice corpus (prompted generation) | CC0 | 2026-08-29 |
 | `186089557433.jpg` | AI-generated | openai/gpt-5.4-image-2 | AILX practice corpus (prompted generation) | CC0 | 2026-08-29 |
+
+
+# Player-type character credits
+
+The sixteen player-type characters (`apps/web/public/characters/*.jpg`) were
+generated for AILX, one per type code, and are released as CC0. They are the
+face of the share card (`docs/UX-DIRECTION.md`: "the player-type card is our
+owl"); the name, the tagline and the four-letter code beside them are written
+by hand and live in `packages/report/src/playerType.ts`.
+
+Unlike the practice corpus, the whole cast is drawn by ONE model from ONE
+shared style paragraph. That is deliberate: the practice corpus spreads across
+generators so a candidate cannot learn one fingerprint, whereas sixteen
+characters that do not share a line weight and a palette are not a cast.
+
+We may republish them on the same basis as the practice generations: Google
+does not claim ownership of output ("Google won't claim ownership over that
+content", Gemini API Terms, *Use of Generated Content*) and OpenRouter passes
+the model terms through (ToS §6.1). Checked 2026-08-30. Output carries
+invisible SynthID provenance, and the AI origin is stated here rather than
+denied.
+
+Every attempt — including the three REJECTED after a person looked at them —
+carries its full prompt, model, date, generation id, cost and vetting reason
+in `instruments/characters/2026.1/generated.json`. The shipped manifest is
+`instruments/characters/2026.1/characters.json`.
+
+| File | Type | Character | Model | Released as | Generated |
+|---|---|---|---|---|---|
+| `9b44accf3c97.jpg` | MSVD | sextant | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `200c0d5dcb89.jpg` | MSVE | loupe-with-toolbelt | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `0f1049718c44.jpg` | MSAD | viewfinder | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `67c285edfade.jpg` | MSAE | folding-rule | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `0983d34269de.jpg` | MTVD | bellows-camera | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `3d19b1d5e031.jpg` | MTVE | spirit-level | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `48dd2ab27918.jpg` | MTAD | pinwheel | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `bcc92b35433a.jpg` | MTAE | glue-pot | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `859cd23b3ed1.jpg` | PSVD | theodolite | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `58ac60a732c6.jpg` | PSVE | proof-pencil | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `52e76b4fade2.jpg` | PSAD | weathervane | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `890acab7e49e.jpg` | PSAE | tuning-fork | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `3a573cf3460c.jpg` | PTVD | metronome | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `a8d8f7a5dd98.jpg` | PTVE | ledger | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `b7866c5c151b.jpg` | PTAD | empty-frame | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
+| `53c81472d561.jpg` | PTAE | paper-boat | google/gemini-3.1-flash-image | CC0 | 2026-08-30 |
