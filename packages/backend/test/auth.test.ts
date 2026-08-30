@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   DEV_AUTH_OVERRIDE,
+  DEV_USER_COOKIE,
   DEV_USER_HEADER,
   DevAuthProvider,
   authProviderFromEnv,
+  readCookie,
   verifiedAuthProvider,
 } from "../src/auth.js";
 import { ClerkAuthProvider } from "../src/clerk.js";
@@ -37,6 +39,79 @@ describe("DevAuthProvider", () => {
 
   it("ignores non-dev bearer tokens", async () => {
     expect(await dev.verify({ authorization: "Bearer eyJhbGciOi" })).toBeNull();
+  });
+
+  // A header only rides on a fetch the app makes. A server-rendered PAGE is
+  // reached by a document navigation, which carries cookies and nothing else.
+  it("resolves the dev cookie, so a plain navigation has an identity", async () => {
+    expect(await dev.verify({ cookie: `${DEV_USER_COOKIE}=alice` })).toEqual({ authRef: "dev:alice" });
+  });
+
+  it("finds the cookie among others, in any position", async () => {
+    expect(await dev.verify({ cookie: `a=1; ${DEV_USER_COOKIE}=alice; z=2` })).toEqual({
+      authRef: "dev:alice",
+    });
+    expect(await dev.verify({ cookie: `${DEV_USER_COOKIE}=alice; z=2` })).toEqual({
+      authRef: "dev:alice",
+    });
+  });
+
+  it("prefers the explicit header over the cookie the browser is carrying", async () => {
+    expect(
+      await dev.verify({ [DEV_USER_HEADER]: "alice", cookie: `${DEV_USER_COOKIE}=mallory` }),
+    ).toEqual({ authRef: "dev:alice" });
+  });
+
+  it("prefers the bearer token over the cookie", async () => {
+    expect(
+      await dev.verify({ authorization: "Bearer dev:bob", cookie: `${DEV_USER_COOKIE}=mallory` }),
+    ).toEqual({ authRef: "dev:bob" });
+  });
+
+  // A caller who asserted a BAD id is refused outright rather than quietly
+  // demoted to whatever cookie the browser had — no silent identity swap.
+  it("does not fall back to the cookie when an explicit header is illegal", async () => {
+    expect(await dev.verify({ [DEV_USER_HEADER]: "a b", cookie: `${DEV_USER_COOKIE}=alice` })).toBeNull();
+  });
+
+  it("rejects an illegal cookie id exactly as it rejects a header one", async () => {
+    expect(await dev.verify({ cookie: `${DEV_USER_COOKIE}=clerk:sub` })).toBeNull();
+    expect(await dev.verify({ cookie: `${DEV_USER_COOKIE}=${"x".repeat(65)}` })).toBeNull();
+    expect(await dev.verify({ cookie: `${DEV_USER_COOKIE}=` })).toBeNull();
+  });
+
+  it("ignores unrelated cookies", async () => {
+    expect(await dev.verify({ cookie: "session=abc; theme=dark" })).toBeNull();
+    expect(await dev.verify({ cookie: "" })).toBeNull();
+    // A prefix match must not count.
+    expect(await dev.verify({ cookie: `x_${DEV_USER_COOKIE}=alice` })).toBeNull();
+  });
+});
+
+describe("readCookie", () => {
+  it("reads a named value, trimming the spacing browsers actually send", () => {
+    expect(readCookie("a=1; b=2", "b")).toBe("2");
+    expect(readCookie("a=1;b=2", "b")).toBe("2");
+  });
+
+  it("percent-decodes, so a written value round-trips", () => {
+    expect(readCookie(`x=${encodeURIComponent("a@b.c")}`, "x")).toBe("a@b.c");
+  });
+
+  it("returns undefined for absent, empty and valueless entries", () => {
+    expect(readCookie(undefined, "x")).toBeUndefined();
+    expect(readCookie("", "x")).toBeUndefined();
+    expect(readCookie("y=1", "x")).toBeUndefined();
+    expect(readCookie("x=", "x")).toBeUndefined();
+    expect(readCookie("x", "x")).toBeUndefined();
+  });
+
+  it("takes the first of a duplicated name rather than throwing", () => {
+    expect(readCookie("x=1; x=2", "x")).toBe("1");
+  });
+
+  it("survives a malformed %-escape instead of throwing at the auth seam", () => {
+    expect(readCookie("x=%zz", "x")).toBe("%zz");
   });
 });
 

@@ -103,6 +103,31 @@ data, that you will delete, and whose URL you accept as public. Then set both
 `AILX_AUTH=dev` and `AILX_ALLOW_INSECURE_DEV_AUTH=1`, knowing the site has no
 authentication at all. Never set that flag on a deployment holding real data.
 
+### 4.1 The `ailx_dev_user` cookie
+
+`DevAuthProvider` also accepts the identity as a cookie, `ailx_dev_user`,
+which the browser writes itself alongside `localStorage["ailx:dev-user"]`
+(one writer: `devUser()` in `apps/web/lib/persistence.ts`). Order of
+precedence: `x-ailx-dev-user` header, then `Authorization: Bearer dev:<id>`,
+then the cookie — so every scripted caller and the Playwright suite are
+unaffected.
+
+It exists because a header can only ride on a `fetch()` the app makes. A
+server-rendered page (`page.api.tsx` — `/progress`, `/review`) is reached by
+an ordinary document navigation, which carries cookies and nothing else, so
+without it `/progress` told every browser "we do not know who you are" while
+the same URL fetched with the header rendered the real streak.
+
+What it is **not**: a session. The value is still asserted, never proven; it
+is `SameSite=Lax`, `Path=/`, six months, `Secure` over https, and NOT
+`HttpOnly` — it cannot be, because the browser mints it. Nothing is protected
+by hiding it from script anyway, since anyone may already assert any id under
+dev auth. It changes no threat model: `AILX_AUTH=clerk` is still the only
+answer for a deployment real participants can reach. localStorage stays the
+source of truth — the cookie is only ever written from it, never read back
+into it, so a cleared browser cannot be silently re-identified as its
+previous occupant. "Forget this browser" on `/progress` clears both.
+
 ## 5. Vercel platform limits that bite AILX
 
 - **Request/response body cap (4.5 MB).** `T1_LIMITS.maxTotalBytes` is 25 MB,

@@ -21,12 +21,45 @@ export interface AuthProvider {
 }
 
 export const DEV_USER_HEADER = "x-ailx-dev-user";
-const DEV_USER_RE = /^[A-Za-z0-9_.@-]{1,64}$/;
 
 /**
- * Dev/test adapter: identity is asserted, never proven. Accepts either the
- * `x-ailx-dev-user: <id>` header or `Authorization: Bearer dev:<id>`.
- * Never enable outside local development.
+ * Cookie twin of `DEV_USER_HEADER`, carrying the SAME asserted id. A header
+ * can only ride on a `fetch()` the app itself makes; a server-rendered PAGE
+ * is reached by an ordinary document navigation, which carries cookies and
+ * nothing else. Without this, `/progress` could never know who the browser
+ * is and told every visitor "we do not know who you are".
+ *
+ * This is a dev-auth convenience, not a session: it is still asserted, never
+ * proven, and it is only ever read by `DevAuthProvider`. Clerk remains the
+ * real answer anywhere real participants can reach (see docs/DEPLOY.md).
+ */
+export const DEV_USER_COOKIE = "ailx_dev_user";
+const DEV_USER_RE = /^[A-Za-z0-9_.@-]{1,64}$/;
+
+/** One value out of a raw `Cookie:` header. Unknown/duplicate names ignored. */
+export function readCookie(cookieHeader: string | undefined, name: string): string | undefined {
+  if (!cookieHeader) return undefined;
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    if (part.slice(0, eq).trim() !== name) continue;
+    const value = part.slice(eq + 1).trim();
+    if (value === "") return undefined;
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value; // Malformed %-escape: hand back the raw text, never throw.
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Dev/test adapter: identity is asserted, never proven. Accepts the
+ * `x-ailx-dev-user: <id>` header, `Authorization: Bearer dev:<id>`, or the
+ * `ailx_dev_user` cookie — in that order, so an explicit header always wins
+ * over whatever a browser happens to be carrying (the e2e suite and every
+ * scripted caller send the header). Never enable outside local development.
  */
 export class DevAuthProvider implements AuthProvider {
   readonly name = "dev";
@@ -37,6 +70,7 @@ export class DevAuthProvider implements AuthProvider {
       const auth = headers["authorization"];
       if (auth?.startsWith("Bearer dev:")) user = auth.slice("Bearer dev:".length);
     }
+    if (!user) user = readCookie(headers["cookie"], DEV_USER_COOKIE);
     if (!user || !DEV_USER_RE.test(user)) return null;
     return { authRef: `dev:${user}` };
   }

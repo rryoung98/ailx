@@ -20,7 +20,7 @@ import {
   type StorageLike,
   type ValidatedLog,
 } from "@ailx/session";
-import { DEV_USER_HEADER } from "@ailx/backend";
+import { DEV_USER_COOKIE, DEV_USER_HEADER } from "@ailx/backend";
 import { t2DeckRecords } from "./instrument";
 import { assetUrl, isServerMode } from "./mode";
 
@@ -114,14 +114,51 @@ async function postJson(
   return (await res.json()) as Record<string, unknown>;
 }
 
+const DEV_USER_RE = /^[A-Za-z0-9_.@-]{1,64}$/;
+/** Six months: long enough that a streak survives, short enough to expire. */
+const DEV_USER_COOKIE_MAX_AGE = 180 * 24 * 60 * 60;
+
+/**
+ * Mirror the identity into a cookie so SERVER-RENDERED pages can see it.
+ * `x-ailx-dev-user` only exists on fetches this app makes; a navigation to
+ * /progress carries cookies and nothing else, so without this the server had
+ * to treat every browser as anonymous.
+ *
+ * Not HttpOnly, and it cannot be: the value is minted here, in the browser,
+ * from localStorage — the only writer is this function. Nothing is protected
+ * by hiding it from script either, because dev auth is asserted, never
+ * proven; anyone can send any id already. Lax keeps it off cross-site
+ * requests while still riding a top-level navigation, which is the whole
+ * point. localStorage stays the single source of truth: the cookie is only
+ * ever overwritten from it, never read back into it, so a cleared browser
+ * cannot be silently re-identified as its previous occupant.
+ */
+function mirrorDevUserCookie(user: string): void {
+  if (typeof document === "undefined") return;
+  const secure = typeof location !== "undefined" && location.protocol === "https:" ? "; Secure" : "";
+  document.cookie =
+    `${DEV_USER_COOKIE}=${encodeURIComponent(user)}; Path=/; Max-Age=${DEV_USER_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+}
+
 /** Stable per-browser dev identity (dev AuthProvider asserts, never proves). */
 export function devUser(storage: StorageLike): string {
   let user = storage.getItem(DEV_USER_KEY);
-  if (!user || !/^[A-Za-z0-9_.@-]{1,64}$/.test(user)) {
+  if (!user || !DEV_USER_RE.test(user)) {
     user = `web-${Math.random().toString(36).slice(2, 12)}`;
     storage.setItem(DEV_USER_KEY, user);
   }
+  mirrorDevUserCookie(user);
   return user;
+}
+
+/**
+ * Forget this browser's dev identity — BOTH stores, or the next page load
+ * would hand the server an id the tab no longer thinks it has.
+ */
+export function clearDevUser(storage: StorageLike): void {
+  storage.removeItem(DEV_USER_KEY);
+  if (typeof document === "undefined") return;
+  document.cookie = `${DEV_USER_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
 /**
