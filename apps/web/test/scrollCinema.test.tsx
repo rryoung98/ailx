@@ -156,11 +156,14 @@ describe("site-wide show-on-scroll coverage", () => {
     expect(s).toContain('<Reveal as="section">');
   });
 
-  it("report: track cards, insight cards, and the export section reveal", () => {
+  it("report: identity, track cards and the export section reveal", () => {
     const s = src(join("report", "page.tsx"));
     expect(s).toContain('<Reveal as="div" className="card" key={t}');
-    expect(s).toContain('<Reveal as="div" className="card" key={n.headline}');
+    expect(s).toContain('<Reveal as="section" className="card ptype-card"');
     expect(s).toContain('<Reveal as="section">');
+    // The "What the log says about you" cards are gone on purpose: they
+    // restated <Diagnosis>'s "How you worked" notes, which are a superset.
+    expect(s).not.toContain("narratives(");
   });
 
   it("validate: check rows and the explainer section reveal", () => {

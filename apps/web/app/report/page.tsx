@@ -9,7 +9,7 @@ import {
 import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
 import { scoreTrack } from "../../lib/registry";
 import {
-  calibrationBins, candidateComposite, narratives, participantExport, playerProfile,
+  calibrationBins, candidateComposite, participantExport, playerProfile,
   playerType, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
 } from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
@@ -302,9 +302,50 @@ export default function ReportPage() {
           </div>
         </div>
 
+        {/* IDENTITY FIRST, then its evidence, then the coaching.
+            The player type is the thing people share, so it leads. Its
+            strengths/watch-outs used to be listed here AND again, verbatim,
+            in <Diagnosis> below — both read the same AXES table in
+            @ailx/report — so the reader met the same four sentences twice in
+            two adjacent cards. They now live once, in the diagnosis, where
+            each one carries the track name and the score behind it. */}
+        {(() => {
+          const p = playerType(summary.trackRaw);
+          return (
+            <Reveal as="section" className="card ptype-card" aria-label="Player type">
+              <div className="ptype-head">
+                <div>
+                  <p className="kicker" style={{ margin: 0 }}>YOUR PLAYER TYPE · JUST FOR FUN</p>
+                  <h2 style={{ margin: "0.2rem 0 0.1rem" }}>{p.name}</h2>
+                  <p className="muted" style={{ margin: 0 }}>{p.tagline}</p>
+                </div>
+                <div className="ptype-code" aria-label={`Type code ${p.code}`}>
+                  {p.poles.map((pole) => (
+                    <span key={pole.track} className={`ptype-letter${pole.high ? " hi" : ""}`} title={`${pole.track.toUpperCase()}: ${pole.label}`}>
+                      {pole.letter}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="ptype-axes">
+                {p.poles.map((pole) => (
+                  <span key={pole.track} className="small muted">
+                    <span className="mono" style={{ color: "var(--accent)" }}>{pole.track.toUpperCase()}</span> {pole.label}
+                  </span>
+                ))}
+              </div>
+              <p className="faint small" style={{ margin: "0.6rem 0 0" }}>
+                A playful lens on this one run — split at the demo cohort's per-track median.
+                Not a personality claim, and never part of the score. What it says you are
+                good at, and what to work on, is in <a href="#diagnosis-heading">the diagnosis</a> below.
+              </p>
+            </Reveal>
+          );
+        })()}
+
         {profile ? (
           <Reveal as="section" className="card" data-testid="player-profile" style={{ marginBottom: "2rem" }}>
-            <div className="eyebrow">player profile · a playful read, never scored</div>
+            <div className="eyebrow">the four axes behind it · measured, never scored</div>
             <div style={{ display: "flex", gap: "1.4rem", alignItems: "baseline", flexWrap: "wrap" }}>
               <span className="mono" aria-label={`Profile code ${profile.code.split("").join(" ")}`} style={{ fontSize: "2.6rem", fontWeight: 800, letterSpacing: "0.22em", color: "var(--accent)" }}>
                 {profile.code}
@@ -336,53 +377,6 @@ export default function ReportPage() {
             </p>
           </Reveal>
         ) : null}
-
-        {(() => {
-          const p = playerType(summary.trackRaw);
-          return (
-            <Reveal as="section" className="card ptype-card" aria-label="Player type">
-              <div className="ptype-head">
-                <div>
-                  <p className="kicker" style={{ margin: 0 }}>YOUR PLAYER TYPE · JUST FOR FUN</p>
-                  <h2 style={{ margin: "0.2rem 0 0.1rem" }}>{p.name}</h2>
-                  <p className="muted" style={{ margin: 0 }}>{p.tagline}</p>
-                </div>
-                <div className="ptype-code" aria-label={`Type code ${p.code}`}>
-                  {p.poles.map((pole) => (
-                    <span key={pole.track} className={`ptype-letter${pole.high ? " hi" : ""}`} title={`${pole.track.toUpperCase()}: ${pole.label}`}>
-                      {pole.letter}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="ptype-axes">
-                {p.poles.map((pole) => (
-                  <span key={pole.track} className="small muted">
-                    <span className="mono" style={{ color: "var(--accent)" }}>{pole.track.toUpperCase()}</span> {pole.label}
-                  </span>
-                ))}
-              </div>
-              <div className="grid2" style={{ marginTop: "0.6rem" }}>
-                {p.strengths.length > 0 && (
-                  <div>
-                    <h4 className="small" style={{ margin: "0 0 0.3rem" }}>Where you played strong</h4>
-                    <ul className="small muted ptype-list">{p.strengths.map((s) => <li key={s}>{s}</li>)}</ul>
-                  </div>
-                )}
-                {p.watchouts.length > 0 && (
-                  <div>
-                    <h4 className="small" style={{ margin: "0 0 0.3rem" }}>Watch for next run</h4>
-                    <ul className="small muted ptype-list">{p.watchouts.map((s) => <li key={s}>{s}</li>)}</ul>
-                  </div>
-                )}
-              </div>
-              <p className="faint small" style={{ margin: "0.6rem 0 0" }}>
-                A playful lens on this one run — split at the demo cohort's per-track median.
-                Not a personality claim, and never part of the score.
-              </p>
-            </Reveal>
-          );
-        })()}
 
         <Diagnosis trackRaw={summary.trackRaw} process={sharedProcess} />
 
@@ -463,16 +457,6 @@ export default function ReportPage() {
             </Reveal>
           );
         })}
-
-        <h2>What the log says about you</h2>
-        <div className="grid2">
-          {narratives(insights).map((n) => (
-            <Reveal as="div" className="card" key={n.headline}>
-              <h3>{n.headline}</h3>
-              <p className="muted small" style={{ marginBottom: 0 }}>{n.detail}</p>
-            </Reveal>
-          ))}
-        </div>
 
         <h2>Event log</h2>
         <p className="faint small" style={{ marginTop: "-0.4rem" }}>

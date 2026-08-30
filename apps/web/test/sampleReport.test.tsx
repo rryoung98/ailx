@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { AXES } from "@ailx/report";
 import ReportPage from "../app/report/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -61,5 +62,49 @@ describe("sample report", () => {
     expect(profile!.textContent).toMatch(/[KT][CB][VA][IO]/);
     clickByText("Exit sample");
     expect(host.textContent).toContain("No run in this browser yet.");
+  });
+
+  /**
+   * The report used to print the SAME four AXES sentences twice on one page:
+   * once as the player type's "Where you played strong", and again as the
+   * diagnosis findings. Both read `AXES` in @ailx/report, so they could never
+   * disagree — they could only waste the reader's attention.
+   */
+  it("says each strength/watch-out in one place, the diagnosis", () => {
+    act(() => root!.render(createElement(ReportPage)));
+    clickByText("Peek at a sample report");
+    const typeCard = host.querySelector(".ptype-card")!.textContent!;
+    const diagnosis = host.querySelector('[aria-labelledby="diagnosis-heading"]')!.textContent!;
+    for (const axis of AXES) {
+      for (const sentence of [axis.strength, axis.watchout]) {
+        expect(typeCard, sentence).not.toContain(sentence);
+      }
+    }
+    // One of the two per track, so all four tracks still speak — just once.
+    const shown = AXES.filter(
+      (a) => diagnosis.includes(a.strength) || diagnosis.includes(a.watchout),
+    );
+    expect(shown).toHaveLength(AXES.length);
+  });
+
+  it("identity leads, and its evidence follows it", () => {
+    act(() => root!.render(createElement(ReportPage)));
+    clickByText("Peek at a sample report");
+    const type = host.querySelector(".ptype-card");
+    const profile = host.querySelector('[data-testid="player-profile"]');
+    const diagnosis = host.querySelector('[aria-labelledby="diagnosis-heading"]');
+    for (const [name, el] of [["type", type], ["profile", profile], ["diagnosis", diagnosis]] as const) {
+      expect(el, name).toBeTruthy();
+    }
+    // Node.DOCUMENT_POSITION_FOLLOWING === 4.
+    expect(type!.compareDocumentPosition(profile!) & 4).toBe(4);
+    expect(profile!.compareDocumentPosition(diagnosis!) & 4).toBe(4);
+  });
+
+  it("does not restate the process notes a second time", () => {
+    act(() => root!.render(createElement(ReportPage)));
+    clickByText("Peek at a sample report");
+    expect(host.textContent).toContain("How you worked");
+    expect(host.textContent).not.toContain("What the log says about you");
   });
 });
