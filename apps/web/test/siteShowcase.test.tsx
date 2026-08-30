@@ -218,11 +218,12 @@ describe("header play pill", () => {
         if (props?.children !== undefined) walk(props.children);
       };
       walk((nav.props as { children?: ReactNode }).children);
+      // Practice ships in BOTH builds, so the hosted nav carries it ALONGSIDE
+      // /progress — hiding it left the daily loop reachable only by URL.
       expect(hrefs).toEqual([
-        "/methodology", "/report", "/gallery", "/world", "/progress", "/validate", "/exam",
+        "/methodology", "/report", "/gallery", "/world", "/practice", "/progress", "/validate", "/exam",
       ]);
       expect(hrefs).not.toContain("/wall");
-      expect(hrefs).not.toContain("/practice");
     } finally {
       vi.unstubAllEnvs();
     }
@@ -297,7 +298,7 @@ describe("parent dogfood follow-ups", () => {
     // 3 always-on links + Play, plus the two mode-gated hosted links
     // (/gallery, /world), the static-export /wall that replaces them, and the
     // one slot that is /progress in the hosted build and /practice in the export.
-    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(8);
+    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(9);
     const navSrc = readFileSync(join(appDir, "..", "lib", "NavLink.tsx"), "utf8");
     expect(navSrc).toContain("usePathname");
     expect(navSrc).toContain('aria-current={current ? "page" : undefined}');

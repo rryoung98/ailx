@@ -42,12 +42,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ) : (
                 <NavLink href="/wall">Wall</NavLink>
               )}
-              {/* Practice plays in both builds (its corpus is bundled);
-                  /progress reads the store, so it exists only in the hosted
-                  build — one nav slot, never a link that cannot work. */}
-              <NavLink href={isServerMode() ? "/progress" : "/practice"}>
-                {isServerMode() ? "Progress" : "Practice"}
-              </NavLink>
+              {/* Practice plays in BOTH builds (its corpus is bundled), so it
+                  always gets a slot — it is the daily loop that brings people
+                  back, and hiding it in the hosted build made it reachable
+                  only by typing the URL. /progress reads the store, so it is
+                  hosted-only and appears alongside rather than instead. */}
+              <NavLink href="/practice">Practice</NavLink>
+              {isServerMode() && <NavLink href="/progress">Progress</NavLink>}
               <NavLink href="/validate">Validate</NavLink>
               {/* Compact pill twin of the bottom .pill-cta, aligned right. */}
               <NavLink href="/exam" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>
