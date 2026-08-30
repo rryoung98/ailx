@@ -18,7 +18,8 @@
  * and this component renders nothing — no dead buttons (FRONTEND.md §2.3.4).
  */
 import { useCallback, useEffect, useState } from "react";
-import { DEV_USER_HEADER, shareUrlPath, type ShareStatus } from "@ailx/backend";
+import Link from "next/link";
+import { DEV_USER_HEADER, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/backend";
 import {
   DEFAULT_SHARE_SECTIONS,
   SHARE_NOTE_MAX,
@@ -75,6 +76,69 @@ function includedSections(payload: SharePayload): ShareSection[] {
   });
 }
 
+/**
+ * The one control that moves a share into the public gallery, and the one
+ * place its four possible answers are worded.
+ *
+ * The split between "listed now" and "a human looks first" is NOT decided
+ * here: `needsHumanApproval` is the same pure predicate the server applies to
+ * the stored payload (docs/SHARING.md §3), imported rather than restated, so
+ * this copy cannot promise something the server will not do. Rendering it
+ * from the payload also means the button can say up front which of the two
+ * the candidate is about to get.
+ */
+function PublishControl({
+  status,
+  needsHuman,
+  busy,
+  failed,
+  onPublish,
+}: {
+  status: ShareStatus;
+  needsHuman: boolean;
+  busy: boolean;
+  failed: boolean;
+  onPublish: () => void;
+}) {
+  if (status === "revoked" || status === "rejected") return null;
+  if (status === "published") {
+    return (
+      <p className="small muted" style={{ margin: 0 }} data-testid="publish-state">
+        Listed in the <Link href="/gallery">public gallery</Link>. Revoking the link removes it from
+        there too, immediately.
+      </p>
+    );
+  }
+  if (status === "submitted") {
+    return (
+      <p className="small muted" style={{ margin: 0 }} data-testid="publish-state">
+        Waiting for a human. You submitted this to the public gallery; because it carries your own
+        work — the site you built, or your own words — a person reads it before it is listed.
+        Your link works in the meantime, and revoking it withdraws the submission.
+      </p>
+    );
+  }
+  return (
+    <div style={{ display: "grid", gap: "0.4rem" }} data-testid="publish-state">
+      <div>
+        <button type="button" className="btn small-btn" onClick={onPublish} disabled={busy}>
+          {busy ? "Submitting…" : "Publish to the gallery"}
+        </button>
+      </div>
+      <p className="faint small" style={{ margin: 0 }}>
+        {needsHuman
+          ? "Your card carries your own work, so a person reads it before it is listed. It is not public until they say yes."
+          : "Your player-type card carries no words of your own, so it is listed as soon as you press this. Revoke the link and it leaves the gallery."}
+      </p>
+      {failed ? (
+        <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
+          That did not reach the gallery. Your link is untouched — try again in a moment.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ShareLink({ attemptId }: { attemptId: string }) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [share, setShare] = useState<ShareState | null>(null);
@@ -82,6 +146,8 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   const [note, setNote] = useState("");
   const [hasSite, setHasSite] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishFailed, setPublishFailed] = useState(false);
 
   const serverId = useCallback(
     () => getServerAttemptId(window.localStorage, attemptId) ?? attemptId,
@@ -89,9 +155,9 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   );
 
   const request = useCallback(
-    async (method: "GET" | "POST" | "DELETE", body?: unknown): Promise<Response> => {
+    async (method: "GET" | "POST" | "DELETE", body?: unknown, suffix = ""): Promise<Response> => {
       const opts = browserApiOptions();
-      return opts.fetchFn(`${opts.baseUrl}/attempts/${serverId()}/share`, {
+      return opts.fetchFn(`${opts.baseUrl}/attempts/${serverId()}/share${suffix}`, {
         method,
         headers: {
           "content-type": "application/json",
@@ -145,6 +211,27 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
       setPhase("live");
     } catch {
       setPhase("error");
+    }
+  };
+
+  /**
+   * Ask for the public gallery. The BODY IS EMPTY on purpose: whether this
+   * lists immediately or waits for a human is decided server-side from the
+   * stored payload (docs/SHARING.md §3), so there is nothing here a client
+   * could lie about. The new status comes back from the row.
+   */
+  const publish = async () => {
+    setPublishing(true);
+    setPublishFailed(false);
+    try {
+      const res = await request("POST", undefined, "/publish");
+      if (!res.ok) throw new Error(String(res.status));
+      const body = (await res.json()) as { share?: ShareState };
+      if (body.share) setShare(body.share);
+    } catch {
+      setPublishFailed(true);
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -269,6 +356,13 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
             . A link&rsquo;s contents are frozen when it is made — to change them, revoke it and
             create a new one.
           </p>
+          <PublishControl
+            status={share.status}
+            needsHuman={needsHumanApproval(share.payload)}
+            busy={publishing}
+            failed={publishFailed}
+            onPublish={publish}
+          />
           {share.status === "rejected" ? (
             <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
               A moderator refused this submission for the public gallery, so it is no longer

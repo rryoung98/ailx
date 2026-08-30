@@ -45,6 +45,7 @@ export {
   getShareForAttempt,
   handleCreateShare,
   handleGetShare,
+  handlePublishShare,
   handleRevokeShare,
   handleViewShare,
   needsHumanApproval,
@@ -168,9 +169,11 @@ export {
 } from "./gallery.js";
 export {
   DEV_AUTH_OVERRIDE,
+  DEV_USER_COOKIE,
   DEV_USER_HEADER,
   DevAuthProvider,
   authProviderFromEnv,
+  readCookie,
   verifiedAuthProvider,
   type AuthContext,
   type AuthMode,

@@ -452,6 +452,35 @@ export async function handleGetShare(
   });
 }
 
+/**
+ * POST /api/attempts/:id/share/publish — the candidate asks for the public
+ * gallery.
+ *
+ * There is deliberately NO body. Whether this share auto-publishes or waits
+ * for a human is read from the STORED payload by `publishShare`
+ * (docs/SHARING.md §3), so a hostile request has nothing to lie about: it
+ * cannot send `status`, `approved`, a site digest or an approver. The
+ * response returns the owner's view of the row, so the caller learns the
+ * decision from the row itself rather than from what it asked for.
+ */
+export async function handlePublishShare(
+  ctx: ApiContext,
+  headers: HeaderMap,
+  attemptId: string,
+): Promise<ApiResult> {
+  return withParticipant(ctx, headers, async (participantId) => {
+    const result = await publishShare(ctx.db, attemptId, participantId);
+    const share = await getShareForAttempt(ctx.db, attemptId, participantId);
+    return {
+      status: 200,
+      body: {
+        ...result,
+        ...(share === null ? {} : { share: ownerShareView(share) }),
+      },
+    };
+  });
+}
+
 /** DELETE /api/attempts/:id/share */
 export async function handleRevokeShare(
   ctx: ApiContext,

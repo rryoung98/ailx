@@ -91,6 +91,101 @@ describe("ShareLink in the static export", () => {
   });
 });
 
+describe("publishing to the gallery", () => {
+  const liveShare = (overrides: Record<string, unknown> = {}) =>
+    fetchMock.mockImplementation(async (_url: string, init: { method: string }) =>
+      init.method === "GET"
+        ? new Response(JSON.stringify({ share: serverShare(overrides) }), { status: 200 })
+        : new Response("{}", { status: 500 }),
+    );
+
+  it("offers the publish control on a live link, and says a card lists immediately", async () => {
+    liveShare();
+    await render();
+    expect(byName("button", /Publish to the gallery/)).toBeTruthy();
+    expect(container.querySelector('[data-testid="publish-state"]')!.textContent).toContain(
+      "listed as soon as you press this",
+    );
+  });
+
+  it("POSTs to the publish route with NO body — the server decides, not the client", async () => {
+    const calls: { url: string; init: { method: string; body?: string } }[] = [];
+    fetchMock.mockImplementation(async (url: string, init: { method: string; body?: string }) => {
+      calls.push({ url: String(url), init });
+      if (init.method === "GET") {
+        return new Response(JSON.stringify({ share: serverShare() }), { status: 200 });
+      }
+      return new Response(
+        JSON.stringify({
+          status: "published",
+          awaitingApproval: false,
+          share: serverShare({ status: "published" }),
+        }),
+        { status: 200 },
+      );
+    });
+    await render();
+    await act(async () => {
+      byName("button", /Publish to the gallery/)!.click();
+    });
+    const post = calls.find((c) => c.init.method === "POST")!;
+    expect(post.url).toBe(`/api/attempts/${ATTEMPT}/share/publish`);
+    expect(post.init.body).toBeUndefined();
+    // The new state is read off the row that came back.
+    const state = container.querySelector('[data-testid="publish-state"]')!.textContent ?? "";
+    expect(state).toContain("Listed in the");
+    expect(byName("button", /Publish to the gallery/)).toBeUndefined();
+  });
+
+  it("warns that an authored card waits for a human BEFORE it is submitted", async () => {
+    liveShare({
+      payload: sharePayloadFrom({ t1: 1, t2: 1, t3: 1, t4: 1 }, "Pass", {
+        instrument: "ailx 2026.1",
+        sections: { ...DEFAULT_SHARE_SECTIONS, site: true },
+        site: "/api/site/x/index.html",
+      }),
+    });
+    await render();
+    expect(container.querySelector('[data-testid="publish-state"]')!.textContent).toContain(
+      "a person reads it before it is listed",
+    );
+    expect(byName("button", /Publish to the gallery/)).toBeTruthy();
+  });
+
+  it("shows a submitted share as waiting for a human, with no button to press again", async () => {
+    liveShare({ status: "submitted" });
+    await render();
+    const state = container.querySelector('[data-testid="publish-state"]')!.textContent ?? "";
+    expect(state).toContain("Waiting for a human");
+    expect(byName("button", /Publish to the gallery/)).toBeUndefined();
+  });
+
+  it("offers no publish control on a refused share — a refusal is terminal", async () => {
+    liveShare({ status: "rejected", rejectReason: "no" });
+    await render();
+    expect(container.querySelector('[data-testid="publish-state"]')).toBeNull();
+  });
+
+  it("survives a failed publish without touching the link", async () => {
+    fetchMock.mockImplementation(async (_url: string, init: { method: string }) => {
+      if (init.method === "GET") {
+        return new Response(JSON.stringify({ share: serverShare() }), { status: 200 });
+      }
+      throw new Error("Failed to fetch");
+    });
+    await render();
+    await act(async () => {
+      byName("button", /Publish to the gallery/)!.click();
+    });
+    const alert = container.querySelector('[role="alert"]')!;
+    expect(alert.textContent).toContain("Your link is untouched");
+    expect(alert.textContent).not.toContain("Failed to fetch");
+    // The link itself is still there, and still publishable.
+    expect(container.querySelector<HTMLInputElement>("#share-url")!.value).toContain(TOKEN);
+    expect(byName("button", /Publish to the gallery/)).toBeTruthy();
+  });
+});
+
 describe("ShareLink in server mode", () => {
   it("offers creation and shares nothing until asked", async () => {
     await render();

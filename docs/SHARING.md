@@ -151,6 +151,19 @@ request field:
   named human. Tested, including the "hostile client sends
   `status: published`" case.
 
+**How the candidate reaches it.** `POST /api/attempts/:id/share/publish` —
+owner-authenticated, and it takes NO BODY at all. That is the point: there is
+nothing in the request for a hostile client to lie about, because the
+auto/human split is read from the stored payload by `publishShare`. The
+response returns the owner's view of the row, so the UI learns the DECISION
+from the row rather than from what it asked for. `ShareLink`'s
+`PublishControl` renders that decision, and imports the same
+`needsHumanApproval` predicate to say in advance which of the two the
+candidate is about to get — so the copy cannot promise what the server will
+not do. A refused row is terminal (400), a revoked one has nothing to publish
+(404), and revoking a published card removes it from the gallery in the same
+`PUBLICLY_SERVED` predicate.
+
 ## 4. Social preview
 
 The share view renders the card plus a "What they chose to show" section that

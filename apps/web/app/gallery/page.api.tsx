@@ -151,8 +151,9 @@ export default async function GalleryPage({ searchParams }: GalleryParams) {
           listed === 0 ? (
             <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">
               Nobody has published a card yet, so this wall is genuinely empty rather than
-              broken. Finish a run and publish yours from the report — it appears here the
-              moment you do, and you can revoke it just as fast.
+              broken. Finish a run and publish yours from the report — a player-type card
+              appears here the moment you do, one carrying the site you built waits for a
+              moderator first, and you can revoke either just as fast.
             </p>
           ) : (
             <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">

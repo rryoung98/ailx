@@ -19,6 +19,7 @@ import {
   getShareForAttempt,
   handleCreateShare,
   handleGetShare,
+  handlePublishShare,
   handleRevokeShare,
   handleViewShare,
   needsHumanApproval,
@@ -29,7 +30,7 @@ import {
   shareStatus,
   type ShareRecord,
 } from "../src/share.js";
-import { rejectSubmission } from "../src/gallery.js";
+import { listGallery, listSubmissions, rejectSubmission } from "../src/gallery.js";
 import { appendResponse } from "../src/store.js";
 import {
   attachSiteSnapshot,
@@ -414,6 +415,126 @@ describe("hybrid publication policy", () => {
   });
 });
 
+
+/**
+ * The route the candidate actually reaches. `publishShare` is exercised
+ * directly above; what is asserted here is the HTTP-shaped behaviour that
+ * makes the gallery loop exist at all — a real request, the auto/human split
+ * end to end into the gallery listing, and a hostile body that changes
+ * nothing.
+ */
+describe("publish handler (the candidate's route into the gallery)", () => {
+  const as = (user: string) => ({ [DEV_USER_HEADER]: user });
+
+  it("requires authentication", async () => {
+    const { attemptId } = await scoredAttempt();
+    expect((await handlePublishShare(ctx, {}, attemptId)).status).toBe(401);
+  });
+
+  it("404s for a stranger's attempt — no existence oracle", async () => {
+    const owner = as("publish-owner");
+    const attemptId = await handleCreateAttemptWithRun(owner);
+    await handleCreateShare(ctx, owner, attemptId, {});
+    expect((await handlePublishShare(ctx, as("publish-stranger"), attemptId)).status).toBe(404);
+    expect((await handleGetShare(ctx, owner, attemptId)).status).toBe(200);
+  });
+
+  it("404s when there is no live link to publish", async () => {
+    const user = as("publish-nolink");
+    const attemptId = await handleCreateAttemptWithRun(user);
+    expect((await handlePublishShare(ctx, user, attemptId)).status).toBe(404);
+  });
+
+  it("a card goes straight into the gallery listing", async () => {
+    const user = as("publish-card");
+    const attemptId = await handleCreateAttemptWithRun(user);
+    const created = (await handleCreateShare(ctx, user, attemptId, {})).body.share as ShareRecord;
+    expect((await listGallery(db)).entries.some((e) => e.token === created.token)).toBe(false);
+
+    const res = await handlePublishShare(ctx, user, attemptId);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("published");
+    expect(res.body.awaitingApproval).toBe(false);
+    // The owner's view comes back so the UI reads the DECISION off the row.
+    const share = res.body.share as ShareRecord;
+    expect(share.status).toBe("published");
+    expect(Object.keys(share)).not.toContain("approvedBy");
+    expect((await listGallery(db)).entries.some((e) => e.token === created.token)).toBe(true);
+  });
+
+  it("a site-carrying share stops at `submitted`, reaches the review queue, and lists only after a human", async () => {
+    const user = as("publish-site");
+    const attemptId = await handleCreateAttemptWithRun(user);
+    await attachSiteSnapshot(db, attemptId, await ownerOf(attemptId), 96);
+    const created = (
+      await handleCreateShare(ctx, user, attemptId, {
+        sections: { ...DEFAULT_SHARE_SECTIONS, site: true },
+      })
+    ).body.share as ShareRecord;
+
+    const res = await handlePublishShare(ctx, user, attemptId);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "submitted", awaitingApproval: true });
+    expect((res.body.share as ShareRecord).status).toBe("submitted");
+    expect((await listGallery(db)).entries.some((e) => e.token === created.token)).toBe(false);
+    expect((await listSubmissions(db)).some((s) => s.id === created.id)).toBe(true);
+
+    // Pressing it again cannot promote it: only a named human can.
+    await handlePublishShare(ctx, user, attemptId);
+    expect((await listGallery(db)).entries.some((e) => e.token === created.token)).toBe(false);
+    await approveShare(db, created.id, "human:reviewer-9");
+    expect((await listGallery(db)).entries.some((e) => e.token === created.token)).toBe(true);
+  });
+
+  it("ignores a hostile request body: the gate is the stored payload", async () => {
+    const user = as("publish-hostile");
+    const attemptId = await handleCreateAttemptWithRun(user);
+    await attachSiteSnapshot(db, attemptId, await ownerOf(attemptId), 95);
+    const created = (
+      await handleCreateShare(ctx, user, attemptId, {
+        sections: { ...DEFAULT_SHARE_SECTIONS, site: true },
+      })
+    ).body.share as ShareRecord;
+
+    // The route takes NO body at all, so nothing here can be read. Asserted
+    // through the handler signature: whatever a client sends, the answer is
+    // the one the stored site_digest dictates.
+    const res = await handlePublishShare(ctx, user, attemptId);
+    expect(res.body).toMatchObject({ status: "submitted", awaitingApproval: true });
+    const row = (await getShareForAttempt(db, attemptId, await ownerOf(attemptId)))!;
+    expect(row.approvedBy).toBeNull();
+    expect(row.status).toBe("submitted");
+    expect(created.needsHumanApproval).toBe(true);
+  });
+
+  it("refuses to re-submit a refused share, and says why", async () => {
+    const user = as("publish-refused");
+    const attemptId = await handleCreateAttemptWithRun(user);
+    await attachSiteSnapshot(db, attemptId, await ownerOf(attemptId), 94);
+    const created = (
+      await handleCreateShare(ctx, user, attemptId, {
+        sections: { ...DEFAULT_SHARE_SECTIONS, site: true },
+      })
+    ).body.share as ShareRecord;
+    await handlePublishShare(ctx, user, attemptId);
+    await rejectSubmission(db, created.id, "human:reviewer-9", "not suitable");
+
+    const res = await handlePublishShare(ctx, user, attemptId);
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body)).toMatch(/refused/);
+  });
+
+  it("a revoked share leaves the gallery it was published into", async () => {
+    const user = as("publish-then-revoke");
+    const attemptId = await handleCreateAttemptWithRun(user);
+    const created = (await handleCreateShare(ctx, user, attemptId, {})).body.share as ShareRecord;
+    await handlePublishShare(ctx, user, attemptId);
+    expect((await listGallery(db)).entries.some((e) => e.token === created.token)).toBe(true);
+    await handleRevokeShare(ctx, user, attemptId);
+    expect((await listGallery(db)).entries.some((e) => e.token === created.token)).toBe(false);
+    expect((await handlePublishShare(ctx, user, attemptId)).status).toBe(404);
+  });
+});
 
 describe("what the candidate chose to share (server-side enforcement)", () => {
   const sectionsOf = (share: ShareRecord) => ({
