@@ -32,6 +32,18 @@ function iso(ms: number): string {
   return new Date(ms).toISOString();
 }
 
+/**
+ * T3 stance and verification events name the CLAIM they act on, exactly as
+ * the runner emits them. Both the scorer and the report count claims, never
+ * clicks (F5), so a fixture with anonymous objects would describe behaviour
+ * the product no longer records.
+ */
+const T3_CLAIM_VERBS = new Set(["challenged", "accepted", "verified"]);
+
+function eventObject(trackId: TrackId, verb: string): string {
+  return trackId === "t3" && T3_CLAIM_VERBS.has(verb) ? "claim:ca-cluster" : `${trackId}:${verb}`;
+}
+
 /** REAL per-track artifact shapes, deterministic content. */
 function fixtureArtifact(trackId: TrackId): unknown {
   switch (trackId) {
@@ -69,7 +81,7 @@ function fixtureArtifact(trackId: TrackId): unknown {
           { seq: 0, verb: "prompted", object: "prompt:1", text: "Summarise the memorandum position.", clientTs: iso(T0) },
           { seq: 1, verb: "assisted", object: "assist:1", claimIds: ["pe-figure", "ca-cluster"], clientTs: iso(T0 + 1000) },
           { seq: 2, verb: "challenged", object: "claim:pe-figure", clientTs: iso(T0 + 2000) },
-          { seq: 3, verb: "verified", object: "source", clientTs: iso(T0 + 3000) },
+          { seq: 3, verb: "verified", object: "claim:ca-cluster", claimIds: ["ca-cluster"], clientTs: iso(T0 + 3000) },
           { seq: 4, verb: "prompted", object: "prompt:2", text: "What about small employers?", clientTs: iso(T0 + 4000) },
           { seq: 5, verb: "accepted", object: "claim:ca-cluster", clientTs: iso(T0 + 5000) },
         ],
@@ -109,7 +121,7 @@ export function buildSampleAttemptLog(): SequencedEntry[] {
       t += 30_000;
       log = append(log, {
         type: "track_event", trackId,
-        event: { verb, object: `${trackId}:${verb}`, context: { demo: true }, clientTs: new Date(t).toISOString() },
+        event: { verb, object: eventObject(trackId, verb), context: { demo: true }, clientTs: new Date(t).toISOString() },
         ts: t,
       });
     }

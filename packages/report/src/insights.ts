@@ -18,9 +18,13 @@ export interface TrackProcessInsight {
   /** revised+regenerated per prompted — where iteration was diagnostic vs random. */
   iterationRatio: number | null;
   /**
-   * Verified events plus UNIQUE challenged claims (the T3 scorer dedupes
-   * stance toggles per claim; counting raw clicks would let a stance-flipper
-   * look like a thorough verifier). Every consumer reads this one field.
+   * UNIQUE claims the candidate checked against the source, plus UNIQUE
+   * claims challenged. Both are deduped per claim, exactly as the T3 scorer
+   * dedupes them: counting raw clicks let a stance-flipper — or anyone
+   * pressing one button twice — look like a thorough verifier (F5/F17), and
+   * made the report's "(unique claims)" wording false. An unattributed
+   * `verified` event (opening the source) is not a check of anything and is
+   * not counted. Every consumer reads this one field.
    */
   verificationEvents: number;
 }
@@ -33,9 +37,14 @@ export function trackInsights(state: SessionState): TrackProcessInsight[] {
     for (const e of t.events) verbCounts[e.verb] = (verbCounts[e.verb] ?? 0) + 1;
     const prompted = verbCounts["prompted"] ?? 0;
     const iterations = (verbCounts["revised"] ?? 0) + (verbCounts["regenerated"] ?? 0);
-    const challengedClaims = new Set(
-      t.events.filter((e) => e.verb === "challenged").map((e) => e.object),
-    );
+    const claimActions = (verb: string) =>
+      new Set(
+        t.events
+          .filter((e) => e.verb === verb && e.object.startsWith("claim:"))
+          .map((e) => e.object),
+      );
+    const challengedClaims = claimActions("challenged");
+    const verifiedClaims = claimActions("verified");
     const activeSeconds = Math.round(t.activeMs / 1000);
     return {
       trackId,
@@ -46,7 +55,7 @@ export function trackInsights(state: SessionState): TrackProcessInsight[] {
       timeUsedFrac: budget > 0 ? Math.min(1, activeSeconds / budget) : 0,
       timedOut: t.timedOut === true,
       iterationRatio: prompted > 0 ? Math.round((iterations / prompted) * 100) / 100 : null,
-      verificationEvents: (verbCounts["verified"] ?? 0) + challengedClaims.size,
+      verificationEvents: verifiedClaims.size + challengedClaims.size,
     };
   });
 }
@@ -62,7 +71,7 @@ export function narratives(insights: TrackProcessInsight[]): AttemptNarrative[] 
   const totalVerify = insights.reduce((a, i) => a + i.verificationEvents, 0);
   out.push(
     totalVerify > 0
-      ? { headline: "You went back to the primary source", detail: `${totalVerify} verification event(s) recorded. Verification behaviour is a scored component of T3 process quality.` }
+      ? { headline: "You went back to the primary source", detail: `${totalVerify} claim(s) checked or challenged. Verification behaviour is a scored component of T3 process quality.` }
       : { headline: "No verification behaviour recorded", detail: "Going back to the primary source is a scored component of T3 process quality — its absence is the most common process finding." },
   );
   const iter = insights.filter((i) => i.iterationRatio !== null);

@@ -82,7 +82,9 @@ const FIXTURES = {
         { seq: 0, verb: "prompted", object: "prompt:1", text: "What is the figure?", clientTs: "2026-01-01T00:00:00.000Z" },
         { seq: 1, verb: "assisted", object: "assist:1", claimIds: ["pe-g", "ca-g"], clientTs: "2026-01-01T00:00:01.000Z" },
         { seq: 2, verb: "challenged", object: "claim:pe-g", clientTs: "2026-01-01T00:00:02.000Z" },
-        { seq: 3, verb: "verified", object: "source", clientTs: "2026-01-01T00:00:03.000Z" },
+        // Verification names the claim it checked (F5): an unattributed
+        // `verified` event buys no process points and no RAIR credit.
+        { seq: 3, verb: "verified", object: "claim:ca-g", claimIds: ["ca-g"], clientTs: "2026-01-01T00:00:03.000Z" },
         { seq: 4, verb: "accepted", object: "claim:ca-g", clientTs: "2026-01-01T00:00:04.000Z" },
       ],
       finalAnswer: "The figure is 38 per Section 1, so the reform is justified; the assistant's 61 was rejected after checking the source directly and carefully.",

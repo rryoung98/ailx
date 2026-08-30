@@ -130,7 +130,7 @@ describe("diagnose — process habits", () => {
   it("credits verification and deliberate iteration", () => {
     const notes = diagnose({ trackRaw: T2_WEAK, process: process() }).process;
     expect(notes[0].headline).toBe("You check things");
-    expect(notes[0].detail).toContain("8 verification action(s)");
+    expect(notes[0].detail).toContain("8 assistant claim(s) checked against the source");
     expect(notes[1].headline).toBe("Your iteration is deliberate");
   });
 

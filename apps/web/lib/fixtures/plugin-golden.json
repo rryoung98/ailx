@@ -241,7 +241,10 @@
         {
           "seq": 3,
           "verb": "verified",
-          "object": "source",
+          "object": "claim:ca-g",
+          "claimIds": [
+            "ca-g"
+          ],
           "clientTs": "2026-01-01T00:00:03.000Z"
         },
         {

@@ -15,6 +15,7 @@ import { assistantReply, DEMO_ASSISTANT_ID } from "./assistant.js";
 import { validateT3Config } from "./plugin.js";
 import { decodeT3Checkpoint, encodeT3Checkpoint, type T3ChatMsg } from "./checkpoint.js";
 import { revealSummary } from "./reveal.js";
+import { verifiedClaimIds } from "./scoring.js";
 import type { T3Config, T3Turn } from "./types.js";
 
 type Phase = "brief" | "work" | "reveal";
@@ -123,9 +124,14 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
   // track — it renders VISIBLY (open by default), collapsible for small
   // screens. "Verify against source" stays the instrumented act.
   const [sourceOpen, setSourceOpen] = useState(true);
-  /** Presentation-only tally so "Verify against source" has a visible,
-   *  announced effect; the scored record stays the emitted event. */
-  const [verifyCount, setVerifyCount] = useState(0);
+  /**
+   * Claims checked against the source, DERIVED from the persisted transcript
+   * so the tally survives a reload and can never disagree with what scoring
+   * counts (`verifiedClaimIds`). Presentation over the emitted events.
+   */
+  const [verifiedClaims, setVerifiedClaims] = useState<string[]>(
+    () => [...verifiedClaimIds(restored?.transcript ?? [])],
+  );
   const sourceRef = useRef<HTMLElement>(null);
   const [stances, setStances] = useState<Record<string, "challenged" | "accepted">>(restored?.stances ?? {});
   const transcript = useRef<T3Turn[]>(restored?.transcript ?? []);
@@ -265,19 +271,27 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
     saveCheckpoint({ savedDraft: draft });
   }, [draft, emit, savedDraft, saveCheckpoint]);
 
-  /**
-   * Verification is a scored, instrumented act — and it used to be an
-   * INVISIBLE one: with the source panel already on screen,
-   * `block: "nearest"` scrolls nothing, so pressing the button produced no
-   * change at all and read as a broken control. The count below is
-   * presentation over the same emitted event; nothing scored moves.
-   */
-  const checkSource = useCallback(() => {
-    emit({ verb: "verified", object: "source" });
+  /** Open/scroll to the source. Reading is not a scored act on its own. */
+  const openSource = useCallback(() => {
     setSourceOpen(true);
-    setVerifyCount((n) => n + 1);
     sourceRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
-  }, [emit]);
+  }, []);
+
+  /**
+   * Verification is a scored, instrumented act, and it is now attributed to
+   * the CLAIM it checked (F5). The old track-wide button emitted
+   * `verified/source`, so two presses bought a quarter of the Process
+   * component with no claim involved; scoring counts distinct verified
+   * claims, and repeat presses on one claim are recorded but add nothing.
+   */
+  const verifyClaim = useCallback(
+    (id: string) => {
+      emit({ verb: "verified", object: `claim:${id}`, claimIds: [id] });
+      setVerifiedClaims((prev) => (prev.includes(id) ? prev : [...prev, id]));
+      openSource();
+    },
+    [emit, openSource],
+  );
 
   const setStance = useCallback(
     (id: string, verb: "challenged" | "accepted") => {
@@ -487,11 +501,20 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
         {surfaced.length > 0 && (
           <div style={card}>
             <div style={{ color: "var(--muted)", fontSize: "0.85rem", marginBottom: "0.5rem" }}>
-              Assistant claims — challenge what you doubt, accept what you verify
+              Assistant claims — check one against the source, challenge what you doubt,
+              accept what you verify
             </div>
             {surfaced.map((id) => (
               <div key={id} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.45rem" }}>
                 <span id={`claim-${id}`} style={{ flex: 1, fontSize: "0.85rem" }}>{claimText.get(id)}</span>
+                <button
+                  style={ghost}
+                  onClick={() => verifyClaim(id)}
+                  aria-describedby={`claim-${id}`}
+                  aria-pressed={verifiedClaims.includes(id)}
+                >
+                  {verifiedClaims.includes(id) ? "Checked ✓" : "Check source"}
+                </button>
                 <StanceButton
                   claimId={id}
                   stance="challenged"
@@ -543,17 +566,17 @@ export function Runner({ config, onEvent, onComplete, secondsRemaining, checkpoi
             <button style={ghost} onClick={saveDraft} disabled={draft === savedDraft}>
               Save revision
             </button>
-            <button style={ghost} onClick={checkSource}>
-              Verify against source
+            <button style={ghost} onClick={openSource}>
+              Open the source
             </button>
             <button style={btn} onClick={submit} disabled={words === 0}>
               Submit final
             </button>
           </div>
           <p role="status" style={{ margin: "0.4rem 0 0", color: "var(--muted)", fontSize: "0.8rem" }}>
-            {verifyCount === 0
-              ? "Checking a claim against the source is recorded — press Verify against source when you look."
-              : `Verification recorded ${verifyCount} time${verifyCount === 1 ? "" : "s"}.`}
+            {verifiedClaims.length === 0
+              ? "Verification is scored per claim: press Check source next to an assistant claim when you check it. Opening the source is not scored on its own."
+              : `Checked against the source: ${verifiedClaims.length} claim${verifiedClaims.length === 1 ? "" : "s"}. Re-checking the same claim adds nothing.`}
           </p>
         </div>
       </div>

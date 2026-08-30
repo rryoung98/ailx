@@ -8,8 +8,8 @@
  * No I/O, no clock, no randomness.
  *
  * RAIR (F5): appropriate reliance is a SEQUENCE, not a final stance. A claim
- * must first be deliberated — challenged, or the source explicitly verified
- * after the claim surfaced — before its acceptance earns full credit. A blind
+ * must first be deliberated — challenged, or THAT claim checked against the
+ * source after it surfaced — before its acceptance earns full credit. A blind
  * instant accept of correct advice earns half credit: the candidate happened
  * to be right, but exhibited the same behaviour that swallows planted errors.
  *
@@ -43,6 +43,7 @@ export interface T3Raw {
   adviceDeliberated: number;
   promptCount: number;
   revisionChainLength: number;
+  /** DISTINCT surfaced claims checked against the source (`verifiedClaimIds`). */
   verificationCount: number;
   deliberationRate: number;
   meanJuryBand: number;
@@ -61,6 +62,30 @@ function finalStances(transcript: ReadonlyArray<T3Turn>): Map<string, "challenge
     }
   }
   return stance;
+}
+
+/**
+ * Distinct claims the candidate checked against the primary source.
+ *
+ * A `verified` turn only counts when it names the claim it checked
+ * (`object: 'claim:<id>'`) and that claim was actually surfaced by the
+ * assistant first. Repeat presses on the same claim count once (F5: the old
+ * rule paid a quarter of the Process component for two presses of one
+ * button, with no claim involved and no source read). An unattributed
+ * `verified` turn — the old `object: 'source'` shape — earns nothing: it is
+ * evidence that a panel was opened, not that anything was checked.
+ */
+export function verifiedClaimIds(transcript: ReadonlyArray<T3Turn>): Set<string> {
+  const surfaced = new Set<string>();
+  const out = new Set<string>();
+  for (const t of transcript) {
+    if (t.verb === "assisted" && t.claimIds) for (const id of t.claimIds) surfaced.add(id);
+    if (t.verb === "verified" && t.object.startsWith("claim:")) {
+      const id = t.object.slice("claim:".length);
+      if (surfaced.has(id)) out.add(id);
+    }
+  }
+  return out;
 }
 
 /** Longest revision chain following revisionOf links among 'revised' turns. */
@@ -101,7 +126,7 @@ export function rairCreditForClaim(
   const verifiedAt: number[] = [];
   transcript.forEach((t, i) => {
     if (t.verb === "assisted" && t.claimIds?.includes(claimId) && surfacedAt < 0) surfacedAt = i;
-    if (t.verb === "verified") verifiedAt.push(i);
+    if (t.verb === "verified" && t.object === obj) verifiedAt.push(i);
     if ((t.verb === "challenged" || t.verb === "accepted") && t.object === obj) {
       finalStance = t.verb;
       finalStanceAt = i;
@@ -168,14 +193,14 @@ export function scoreT3(
   // --- Process (20): decomposition, iteration, verification, deliberation --
   const promptCount = transcript.filter((t) => t.verb === "prompted").length;
   const chain = revisionChainLength(transcript);
-  const verificationCount = transcript.filter((t) => t.verb === "verified").length;
+  const verificationCount = verifiedClaimIds(transcript).size;
   const actedOn = [...surfacedIds].filter((id) => stance.has(id)).length;
   const deliberationRate = surfacedIds.size > 0 ? actedOn / surfacedIds.size : 0;
   const q = cfg.weights.process / 4;
   const process =
     q * clamp01(promptCount / 3) +      // decomposition into multiple prompts
     q * clamp01(chain / 2) +            // iterative revision chain (revision_of)
-    q * clamp01(verificationCount / 2) + // went back to the primary source
+    q * clamp01(verificationCount / 2) + // checked 2 distinct claims at source
     q * deliberationRate;               // deliberate stance on surfaced claims
 
   // --- Analysis (45): stored jury judgments only — F6 ----------------------

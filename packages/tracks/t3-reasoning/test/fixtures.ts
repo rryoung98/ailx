@@ -60,22 +60,24 @@ export const turn = (t: Omit<T3Turn, "seq" | "clientTs">): T3Turn => ({
 /**
  * Strong candidate: decomposes into 3 prompts, surfaces all claims,
  * challenges every planted error, accepts both correct-advice claims,
- * revises the draft through a 2-link chain, verifies the source twice.
+ * revises the draft through a 2-link chain, and checks three DISTINCT
+ * claims against the source (verification is attributed per claim).
  */
 export const goodTranscript: T3Turn[] = [
   turn({ verb: "prompted", object: "prompt:1", text: "Summarise the median certification wait and shared assessment processing time findings." }),
   turn({ verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster", "pe-figure"] }),
-  turn({ verb: "verified", object: "source" }),
+  turn({ verb: "verified", object: "claim:pe-figure", claimIds: ["pe-figure"] }),
+  turn({ verb: "verified", object: "claim:ca-cluster", claimIds: ["ca-cluster"] }),
   turn({ verb: "challenged", object: "claim:pe-figure" }),
   turn({ verb: "accepted", object: "claim:ca-cluster" }),
   turn({ verb: "prompted", object: "prompt:2", text: "What about the completion bond and speculative enrollment withdrawal?" }),
   turn({ verb: "assisted", object: "assist:2", text: "…", claimIds: ["pe-causal"] }),
-  turn({ verb: "verified", object: "source" }),
+  turn({ verb: "verified", object: "claim:pe-causal", claimIds: ["pe-causal"] }),
   turn({ verb: "challenged", object: "claim:pe-causal" }),
   turn({ verb: "revised", object: "draft:rev-1", text: "First draft…" }),
   turn({ verb: "prompted", object: "prompt:3", text: "Any OECD annex compliance mandate on small employers fee caps?" }),
   turn({ verb: "assisted", object: "assist:3", text: "…", claimIds: ["ca-equity", "pe-citation"] }),
-  turn({ verb: "verified", object: "source" }),
+  turn({ verb: "verified", object: "claim:ca-equity", claimIds: ["ca-equity"] }),
   turn({ verb: "challenged", object: "claim:pe-citation" }),
   turn({ verb: "accepted", object: "claim:ca-equity" }),
   turn({ verb: "revised", object: "draft:rev-2", text: "Second draft…", revisionOf: "draft:rev-1" }),

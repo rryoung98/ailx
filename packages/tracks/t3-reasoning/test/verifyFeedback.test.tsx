@@ -1,23 +1,45 @@
 // @vitest-environment jsdom
 /**
- * "Verify against source" is a scored, instrumented act that used to be an
- * invisible one: with the source panel already on screen, its
- * scrollIntoView({ block: "nearest" }) moved nothing, so the button looked
- * broken. The tally below is presentation over the SAME emitted event.
+ * Verification feedback, after F5: "Verify against source" was a track-wide
+ * button that emitted `verified/source`, so two presses bought a quarter of
+ * the 20-point Process component with no claim involved and no source read,
+ * and the counter advertised it. Verification is now attributed to the CLAIM
+ * it checked, the tally counts DISTINCT claims, and it says so.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { TrackEvent } from "@ailx/core";
 import { Runner } from "../src/Runner.js";
-import { config as t3Fixture } from "./fixtures.js";
+import type { T3CheckpointState } from "../src/checkpoint.js";
+import { config } from "./fixtures.js";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
+const CLAIM = config.plantedErrors[0].id;
+const OTHER = config.correctAdvice[0].id;
+
+const workCheckpoint = (transcript: T3CheckpointState["transcript"] = []): T3CheckpointState => ({
+  phase: "work",
+  transcript,
+  messages: [
+    { role: "user", text: "what does the source say?", claimIds: [], object: "prompt:1" },
+    { role: "assistant", text: "here is my answer", claimIds: [CLAIM, OTHER], object: "assist:1" },
+  ],
+  draft: "",
+  savedDraft: "",
+  stances: {},
+  seq: 0,
+  promptSeq: 1,
+  draftRev: 0,
+});
+
 let root: Root | null = null;
 let host: HTMLElement;
-let events: Array<{ verb: string; object: string }>;
+let events: TrackEvent[] = [];
 
-function mount() {
+function mount(checkpoint: T3CheckpointState = workCheckpoint()) {
+  events = [];
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -26,38 +48,38 @@ function mount() {
       createElement(Runner, {
         attemptId: "a-1",
         locale: "en" as const,
-        config: t3Fixture,
-        onEvent: (e: { verb: string; object: string }) => void events.push(e),
+        config,
+        onEvent: (e: TrackEvent) => void events.push(e),
         onComplete: () => {},
         secondsRemaining: 600,
+        checkpoint,
+        onCheckpoint: () => {},
       }),
     ),
   );
-  click("Begin");
 }
 
-function button(label: string): HTMLButtonElement | undefined {
-  return [...host.querySelectorAll("button")].find((b) => b.textContent === label) as
-    | HTMLButtonElement
-    | undefined;
+/** The per-claim verification control, found by the claim it describes. */
+function checkBtn(claimId: string): HTMLButtonElement {
+  const b = [...host.querySelectorAll("button")].find(
+    (n) => n.getAttribute("aria-describedby") === `claim-${claimId}` && /Check|Checked/.test(n.textContent ?? ""),
+  );
+  expect(b, `check-source button for ${claimId}`).toBeTruthy();
+  return b as HTMLButtonElement;
 }
 
-function click(label: string) {
-  const btn = button(label);
-  expect(btn, `button ${label}`).toBeTruthy();
-  act(() => btn!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+function click(b: HTMLButtonElement) {
+  act(() => b.dispatchEvent(new MouseEvent("click", { bubbles: true })));
 }
 
 /** The one live region that reports verification. */
 function statusText(): string {
   const el = [...host.querySelectorAll('[role="status"]')].find((n) =>
-    /Verification|Verify against source/.test(n.textContent ?? ""),
+    /Verification|Checked against the source/.test(n.textContent ?? ""),
   );
   expect(el, "verification status region").toBeTruthy();
   return el!.textContent ?? "";
 }
-
-beforeEach(() => { events = []; });
 
 afterEach(() => {
   act(() => root?.unmount());
@@ -66,37 +88,77 @@ afterEach(() => {
 });
 
 describe("T3 verification feedback", () => {
-  it("tells the candidate the act is recorded before they use it", () => {
+  it("tells the candidate verification is per claim, and that opening the source is not", () => {
     mount();
-    expect(statusText()).toContain("Verify against source");
+    expect(statusText()).toContain("per claim");
+    expect(statusText()).toContain("Opening the source is not scored");
   });
 
-  it("reports the first verification in the singular", () => {
+  it("attributes the emitted event to the claim that was checked", () => {
     mount();
-    click("Verify against source");
-    expect(statusText()).toBe("Verification recorded 1 time.");
+    click(checkBtn(CLAIM));
+    expect(events.filter((e) => e.verb === "verified")).toEqual([
+      expect.objectContaining({ verb: "verified", object: `claim:${CLAIM}` }),
+    ]);
   });
 
-  it("counts repeat verifications", () => {
+  it("reports the first checked claim in the singular", () => {
     mount();
-    click("Verify against source");
-    click("Verify against source");
-    click("Verify against source");
-    expect(statusText()).toBe("Verification recorded 3 times.");
+    click(checkBtn(CLAIM));
+    expect(statusText()).toBe(
+      "Checked against the source: 1 claim. Re-checking the same claim adds nothing.",
+    );
   });
 
-  it("still emits exactly one verified event per press", () => {
+  it("counts DISTINCT claims, not presses", () => {
     mount();
-    click("Verify against source");
-    click("Verify against source");
-    expect(events.filter((e) => e.verb === "verified" && e.object === "source")).toHaveLength(2);
+    click(checkBtn(CLAIM));
+    click(checkBtn(CLAIM));
+    click(checkBtn(CLAIM));
+    expect(statusText()).toContain("1 claim.");
+    click(checkBtn(OTHER));
+    expect(statusText()).toContain("2 claims.");
+  });
+
+  it("still records every press, so a re-check is auditable", () => {
+    mount();
+    click(checkBtn(CLAIM));
+    click(checkBtn(CLAIM));
+    expect(events.filter((e) => e.verb === "verified")).toHaveLength(2);
+  });
+
+  it("marks a checked claim as pressed for a screen reader", () => {
+    mount();
+    expect(checkBtn(CLAIM).getAttribute("aria-pressed")).toBe("false");
+    click(checkBtn(CLAIM));
+    expect(checkBtn(CLAIM).getAttribute("aria-pressed")).toBe("true");
+    expect(checkBtn(OTHER).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("restores the tally from the persisted transcript after a reload", () => {
+    mount(
+      workCheckpoint([
+        { seq: 0, verb: "assisted", object: "assist:1", claimIds: [CLAIM], clientTs: "t" },
+        { seq: 1, verb: "verified", object: `claim:${CLAIM}`, claimIds: [CLAIM], clientTs: "t" },
+      ]),
+    );
+    expect(statusText()).toContain("1 claim.");
+    expect(checkBtn(CLAIM).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("opening the source emits nothing scored", () => {
+    mount();
+    const open = [...host.querySelectorAll("button")].find((b) => b.textContent === "Open the source");
+    expect(open).toBeTruthy();
+    click(open as HTMLButtonElement);
+    expect(events.filter((e) => e.verb === "verified")).toHaveLength(0);
   });
 
   it("is a polite live region, not a bare paragraph", () => {
     mount();
-    click("Verify against source");
+    click(checkBtn(CLAIM));
     const el = [...host.querySelectorAll('[role="status"]')].find((n) =>
-      (n.textContent ?? "").startsWith("Verification recorded"),
+      (n.textContent ?? "").startsWith("Checked against the source"),
     );
     expect(el).toBeTruthy();
   });

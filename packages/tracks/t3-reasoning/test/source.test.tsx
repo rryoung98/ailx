@@ -80,12 +80,12 @@ describe("T3 source document panel", () => {
     expect(c.textContent).toContain("38 months in 2025");
   });
 
-  it("'Verify against source' emits an instrumented 'verified' event and reopens the panel", () => {
+  it("'Open the source' reopens the panel and emits nothing scored (F5)", () => {
     const events: TrackEvent[] = [];
     const c = mount((e) => events.push(e));
     act(() => btn(c, "Collapse").click());
-    act(() => btn(c, "Verify against source").click());
-    expect(events.some((e) => e.verb === "verified" && e.object === "source")).toBe(true);
+    act(() => btn(c, "Open the source").click());
+    expect(events.some((e) => e.verb === "verified")).toBe(false);
     expect(c.textContent).toContain("38 months in 2025");
   });
 

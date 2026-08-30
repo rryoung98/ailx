@@ -159,7 +159,7 @@ function processNotes(process: ShareProcess | null): DiagnosisProcessNote[] {
     verifications > 0
       ? {
           headline: "You check things",
-          detail: `${verifications} verification action(s) recorded across the run. That habit is what T3 rewards.`,
+          detail: `${verifications} assistant claim(s) checked against the source or challenged. That habit is what T3 rewards.`,
         }
       : {
           headline: "No verification actions recorded",

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core";
 import type { Judgment } from "@ailx/core";
 import { plugin, validateT3Config } from "../src/plugin.js";
-import { rairCreditForClaim, revisionChainLength, scoreT3 } from "../src/scoring.js";
+import { rairCreditForClaim, revisionChainLength, scoreT3, verifiedClaimIds } from "../src/scoring.js";
 import {
   config, credulousTranscript, goodAnswer, goodTranscript,
   juryJudgments, overRejectTranscript, shortAnswer,
@@ -66,10 +66,10 @@ describe("T3 score()", () => {
     expect(rairCreditForClaim(blind, "ca-cluster")).toBe(0.5);
   });
 
-  it("F5: verification between surfacing and acceptance restores full credit", () => {
+  it("F5: verifying THAT claim between surfacing and acceptance restores full credit", () => {
     const deliberate: T3Turn[] = [
       { verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster"], seq: 0, clientTs: "2026-02-01T10:00:00Z" },
-      { verb: "verified", object: "source", seq: 1, clientTs: "2026-02-01T10:01:00Z" },
+      { verb: "verified", object: "claim:ca-cluster", claimIds: ["ca-cluster"], seq: 1, clientTs: "2026-02-01T10:01:00Z" },
       { verb: "accepted", object: "claim:ca-cluster", seq: 2, clientTs: "2026-02-01T10:02:00Z" },
     ];
     expect(rairCreditForClaim(deliberate, "ca-cluster")).toBe(1);
@@ -77,10 +77,64 @@ describe("T3 score()", () => {
     // A verify that happened BEFORE the claim surfaced is not deliberation
     // on that claim.
     const staleVerify: T3Turn[] = [
-      { verb: "verified", object: "source", seq: 0, clientTs: "2026-02-01T09:59:00Z" },
+      { verb: "verified", object: "claim:ca-cluster", claimIds: ["ca-cluster"], seq: 0, clientTs: "2026-02-01T09:59:00Z" },
       ...blindShift(deliberate.filter((t) => t.verb !== "verified")),
     ];
     expect(rairCreditForClaim(staleVerify, "ca-cluster")).toBe(0.5);
+  });
+
+  it("F5: a verification of ANOTHER claim is not deliberation on this one", () => {
+    const elsewhere: T3Turn[] = [
+      { verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster", "ca-equity"], seq: 0, clientTs: "2026-02-01T10:00:00Z" },
+      { verb: "verified", object: "claim:ca-equity", claimIds: ["ca-equity"], seq: 1, clientTs: "2026-02-01T10:01:00Z" },
+      { verb: "accepted", object: "claim:ca-cluster", seq: 2, clientTs: "2026-02-01T10:02:00Z" },
+    ];
+    expect(rairCreditForClaim(elsewhere, "ca-cluster")).toBe(0.5);
+  });
+
+  it("F5: pressing an unattributed verify button buys no process points", () => {
+    // The dogfood exploit: five presses of one track-wide button, with no
+    // claim surfaced and no source read, used to pay a full quarter of the
+    // 20-point Process component.
+    const spam: T3Turn[] = [0, 1, 2, 3, 4].map((i) => ({
+      verb: "verified" as const, object: "source", seq: i, clientTs: `2026-02-01T10:0${i}:00Z`,
+    }));
+    expect(verifiedClaimIds(spam).size).toBe(0);
+    expect(score(spam, goodAnswer).raw.verificationCount).toBe(0);
+    // Same run, same clicks, but nothing was checked: the verification
+    // quarter of Process stays unpaid (only the deliberation term can pay,
+    // and no claim was surfaced either).
+    expect(score(spam, goodAnswer).raw.process).toBe(0);
+  });
+
+  it("F5: verification counts DISTINCT surfaced claims, never clicks", () => {
+    const base: T3Turn[] = [
+      { verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster", "ca-equity"], seq: 0, clientTs: "2026-02-01T10:00:00Z" },
+    ];
+    const repeat: T3Turn[] = [
+      ...base,
+      ...[1, 2, 3].map((i) => ({
+        verb: "verified" as const, object: "claim:ca-cluster", claimIds: ["ca-cluster"],
+        seq: i, clientTs: `2026-02-01T10:0${i}:00Z`,
+      })),
+    ];
+    expect([...verifiedClaimIds(repeat)]).toEqual(["ca-cluster"]);
+    const two: T3Turn[] = [
+      ...repeat,
+      { verb: "verified", object: "claim:ca-equity", claimIds: ["ca-equity"], seq: 4, clientTs: "2026-02-01T10:04:00Z" },
+    ];
+    expect(verifiedClaimIds(two).size).toBe(2);
+    // Two distinct claims max out the verification quarter; three presses of
+    // one claim do not.
+    const q = config.weights.process / 4;
+    expect(score(two, goodAnswer).raw.process - score(repeat, goodAnswer).raw.process).toBeCloseTo(q / 2, 6);
+  });
+
+  it("F5: a claim that never surfaced cannot be verified", () => {
+    const ghost: T3Turn[] = [
+      { verb: "verified", object: "claim:never-said", claimIds: ["never-said"], seq: 0, clientTs: "2026-02-01T10:00:00Z" },
+    ];
+    expect(verifiedClaimIds(ghost).size).toBe(0);
   });
 
   it("over-rejection is a failure too: challenging correct advice zeroes RAIR", () => {
@@ -163,7 +217,7 @@ describe("T3 score()", () => {
           "rair": 10,
           "revisionChainLength": 2,
           "rsr": 25,
-          "verificationCount": 3,
+          "verificationCount": 4,
           "wordCount": 192,
         },
         "scaled": 88,

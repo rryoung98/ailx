@@ -76,6 +76,8 @@ export default function ExamPage() {
   // must not cover the one affordance that gets the candidate moving again.
   const [crashed, setCrashed] = useState(false);
   const crashPausedRef = useRef(false);
+  /** Track whose time-up notice has been acknowledged (see TimeUpNotice). */
+  const [timeUpAck, setTimeUpAck] = useState<TrackId | null>(null);
 
   // Start gate: a run needs a connected model (key or custom base URL).
   const [connected, setConnected] = useState(false);
@@ -136,6 +138,12 @@ export default function ExamPage() {
   }, []);
 
   const state = useMemo(() => (log ? project(log) : null), [log]);
+  /**
+   * True while the track clock is HELD for a post-submit presentation
+   * screen. Derived from the log (not local state), so a reload mid-replay
+   * restores a held clock and the right chrome instead of a pause veil.
+   */
+  const presenting = state?.phase === "paused" && state.pauseReason === "presentation";
 
   /**
    * Pause is a full-workspace modal. Keyboard and screen-reader users have
@@ -147,11 +155,11 @@ export default function ExamPage() {
   const pauseBtnRef = useRef<HTMLButtonElement>(null);
   const wasPausedRef = useRef(false);
   useEffect(() => {
-    const isPaused = state?.phase === "paused" && !crashed;
+    const isPaused = state?.phase === "paused" && !crashed && !presenting;
     if (isPaused) resumeRef.current?.focus();
     else if (wasPausedRef.current) pauseBtnRef.current?.focus();
     wasPausedRef.current = isPaused;
-  }, [state?.phase, crashed]);
+  }, [state?.phase, crashed, presenting]);
 
   /** Monotonic event timestamp: the machine rejects backwards clocks. */
   const stamp = useCallback((): number => {
@@ -259,15 +267,27 @@ export default function ExamPage() {
   useEffect(() => {
     if (!state || !state.currentTrack) return;
     if (state.phase !== "in_track" && state.phase !== "paused") return;
+    // The watchdog may never fire over a presentation screen. The clock is
+    // held there, so this is normally unreachable — except when the budget
+    // was ALREADY spent as the screen opened, and that is exactly the case
+    // that used to eject a candidate mid-read. The track then finishes when
+    // they leave the screen, with timedOut still derived from accounting.
+    if (presenting) return;
     const t = state.currentTrack;
     if (secondsRemaining(state, t, now) <= 0) {
+      // Re-read the log: a runner that opens its presentation screen in the
+      // same commit as this tick has already appended the hold, and `state`
+      // here is that commit's stale projection. Without this the buzzer
+      // could still eject a candidate on the first frame of the replay.
+      const fresh = logRef.current ? project(logRef.current) : null;
+      if (fresh?.pauseReason === "presentation") return;
       const cp = state.attemptId
         ? loadCheckpoint(window.localStorage, state.attemptId, t)
         : undefined;
       finishTrack(t, checkpointToArtifact(t, cp));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, state]);
+  }, [now, state, presenting]);
 
   /**
    * Append only the entries the machine will accept, dropping the rest.
@@ -310,6 +330,40 @@ export default function ExamPage() {
       { type: "paused", ts },
     ]);
     setCrashed(true);
+  }, [commitIfLegal, stamp]);
+
+  /**
+   * P0 fairness: a post-submit PRESENTATION screen (T2's replay, T3's
+   * reveal, T4's delivery gallery) holds the track clock. The scored work
+   * is already captured there, so charging it is charging the candidate for
+   * reading — and the watchdog used to eject them mid-sentence, with no
+   * notice and no way back. Called with a screen id on open and null on
+   * close. Mirrors the crash pattern exactly: an auditable cause event
+   * first, then the clock change, both dropped if the machine refuses them
+   * (an exhausted budget legitimately rejects further track events — the
+   * pause itself still applies, so the screen is never charged).
+   */
+  const handlePresentation = useCallback((screen: string | null) => {
+    const cur = logRef.current ? project(logRef.current) : null;
+    if (!cur || !cur.currentTrack) return;
+    const t = cur.currentTrack;
+    const opening = screen !== null;
+    // Opening: only from a running clock (a candidate/crash pause stands).
+    // Closing: only undo a hold WE placed, and only while it is still held.
+    if (opening ? cur.phase !== "in_track" : cur.pauseReason !== "presentation") return;
+    const ts = stamp();
+    commitIfLegal([
+      {
+        type: "track_event", trackId: t, ts,
+        event: {
+          verb: opening ? "presentation_opened" : "presentation_closed",
+          object: `track:${t}`,
+          context: { track: t, screen: screen ?? "closed", clock: opening ? "held" : "running" },
+          clientTs: new Date().toISOString(),
+        },
+      },
+      opening ? { type: "paused", reason: "presentation", ts } : { type: "resumed", ts },
+    ]);
   }, [commitIfLegal, stamp]);
 
   const retryRunner = useCallback(() => {
@@ -437,6 +491,23 @@ export default function ExamPage() {
 
   // ---- Between tracks -----------------------------------------------------
   if (state.phase === "between_tracks") {
+    // A track that ended on the timer says so, explicitly, at the moment it
+    // happens. It used to teleport the candidate to the track list, which
+    // reads as a crash rather than a timeout. Completion follows the fixed
+    // T1→T4 order, so the last completed track is the one just finished.
+    const justFinished = [...state.order].reverse().find((id) => state.tracks[id].status === "completed");
+    if (justFinished && state.tracks[justFinished].timedOut && timeUpAck !== justFinished) {
+      return (
+        <main className="page">
+          <PersistWarning warning={persistWarning} />
+          <TimeUpNotice
+            trackId={justFinished}
+            budgetSeconds={state.config!.budgets[justFinished]}
+            onContinue={() => setTimeUpAck(justFinished)}
+          />
+        </main>
+      );
+    }
     const next = nextTrack(state);
     const done = state.order.filter((t) => state.tracks[t].status === "completed");
     return (
@@ -497,6 +568,10 @@ export default function ExamPage() {
   const meta = TRACK_META[t];
   const remaining = secondsRemaining(state, t, now);
   const paused = state.phase === "paused";
+  // The veil hides the workspace for a candidate pause only. A crash shows
+  // its recovery panel; a presentation hold shows the screen being read —
+  // veiling either would hide the very thing the pause exists for.
+  const veiled = paused && !crashed && !presenting;
 
   const uiProps = {
     attemptId: state.attemptId!,
@@ -515,6 +590,7 @@ export default function ExamPage() {
       commit([{ type: "track_event", trackId: t, event, ts }]);
     },
     onComplete: (artifact: unknown) => finishTrack(t, artifact),
+    onPresentation: handlePresentation,
     secondsRemaining: remaining,
     // F2: the runner rehydrates from the last checkpoint and persists every
     // meaningful mutation back through onCheckpoint.
@@ -550,7 +626,14 @@ export default function ExamPage() {
               {remaining <= 60 && remaining > 0 ? "Less than one minute remaining on the track clock." : ""}
             </span>
             <span className={`timer${remaining <= 60 ? " low" : ""}`} role="timer" aria-label={`Time remaining ${fmt(remaining)}`}>{fmt(remaining)}</span>
-            {paused ? (
+            {presenting ? (
+              /* Nothing here is scored and nothing is charged: no Pause to
+                 offer, and no Resume that could restart the clock under a
+                 candidate who is only reading. */
+              <span className="badge" data-testid="clock-held" role="status">
+                clock held · this screen is not timed
+              </span>
+            ) : paused ? (
               <button className="btn" onClick={() => commit([{ type: "resumed", ts: stamp() }])}>Resume</button>
             ) : (
               <button className="btn" ref={pauseBtnRef} onClick={() => commit([{ type: "paused", ts: stamp() }])}>Pause</button>
@@ -561,7 +644,7 @@ export default function ExamPage() {
           {/* F2: the Runner stays MOUNTED while paused — a veil covers it so
               content is hidden but in-progress state survives. */}
           {mod ? (
-            <div aria-hidden={paused && !crashed} style={paused && !crashed ? { visibility: "hidden" } : undefined}>
+            <div aria-hidden={veiled} style={veiled ? { visibility: "hidden" } : undefined}>
               {/* P0-1: a runner throw must never white-screen a timed run.
                   The boundary is keyed by runnerEpoch so "retry" remounts a
                   clean runner from the last stored checkpoint. */}
@@ -577,7 +660,7 @@ export default function ExamPage() {
           ) : (
             <p className="muted">Loading track runner…</p>
           )}
-          {paused && !crashed && (
+          {veiled && (
             <div
               role="dialog" aria-modal="true" aria-label="Paused"
               style={{
@@ -610,6 +693,46 @@ export default function ExamPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * Explicit end-of-clock state (P0 fairness). A timed-out track used to drop
+ * the candidate straight onto the track list with no word about what had
+ * happened — indistinguishable from a crash, and doubly unfair when the
+ * clock had been running behind a screen they could not score on. Says what
+ * happened, what was kept, and what is never charged.
+ */
+function TimeUpNotice({
+  trackId, budgetSeconds, onContinue,
+}: { trackId: TrackId; budgetSeconds: number; onContinue: () => void }) {
+  const meta = TRACK_META[trackId];
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // The screen replaces the whole workspace: land focus on it, or a
+  // keyboard/AT user is told nothing at all.
+  useEffect(() => { headingRef.current?.focus(); }, []);
+  return (
+    <div className="container" style={{ maxWidth: 820 }} data-testid="time-up">
+      <div className="eyebrow">{meta.code} · {meta.name}</div>
+      <h1 ref={headingRef} tabIndex={-1} style={{ outline: "none" }}>Time up</h1>
+      <p className="lede">
+        The {fmt(budgetSeconds)} clock on {meta.code} ran out while you were
+        working, so the track closed itself.
+      </p>
+      <p className="muted">
+        Your work was kept: {meta.code} was scored from everything saved up to
+        that moment, by the same deterministic scorer as a track you finish by
+        hand. Nothing was discarded, and the run continues.
+      </p>
+      <p className="muted">
+        Only working time is charged. The screens shown after you submit — T2&apos;s
+        replay, T3&apos;s reveal, T4&apos;s delivered set — hold the clock, so reading
+        them never costs you time.
+      </p>
+      <button className="btn primary" onClick={onContinue} data-testid="time-up-continue">
+        Continue
+      </button>
+    </div>
   );
 }
 
