@@ -136,7 +136,24 @@ describe("the streak", () => {
   it("tells a player with nothing yet what one round is worth", async () => {
     payload = report();
     const html = await markup();
-    expect(html).toContain("One finished round is a day");
+    expect(html).toContain("is a day, and the first one starts the streak");
+  });
+
+  it("draws no counters at all before the first practice day", async () => {
+    payload = report();
+    const html = await markup();
+    // "0 day streak / 0 your best / 0 days practised" reads as a broken page
+    // and as a record nobody has failed to set. Nothing to count, so nothing
+    // is counted.
+    expect(html).not.toContain("your best");
+    expect(html).not.toContain("days practised");
+    expect(html).not.toContain(">0<");
+  });
+
+  it("gives the empty page one thing to actually press", async () => {
+    payload = report();
+    const html = await markup();
+    expect(html).toContain('class="btn primary" href="/practice"');
   });
 });
 

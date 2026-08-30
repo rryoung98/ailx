@@ -156,31 +156,43 @@ function SittingsChart({ sittings }: { sittings: readonly SittingPoint[] }) {
 }
 
 function Streak({ streak }: { streak: ProgressReport["streak"] }) {
+  // Before the first round there is nothing to count, and three zeros in a
+  // row read as a broken page rather than a new one — "0 your best" is a
+  // record nobody has failed to set yet. So the counters appear once there
+  // is a day behind them; the rules below them are the same either way.
+  const started = streak.totalDays > 0;
   return (
     <>
-      <p className={styles.streakRow}>
-        <span className="stat">
-          <span className="value">{streak.current}</span>
-          <span className="label">day streak</span>
-        </span>
-        <span className="stat">
-          <span className="value">{streak.best}</span>
-          <span className="label">your best</span>
-        </span>
-        <span className="stat">
-          <span className="value">{streak.totalDays}</span>
-          <span className="label">days practised</span>
-        </span>
-      </p>
-      <p className="muted" style={{ maxWidth: "58ch" }}>
-        {streak.current === 0 && streak.best > 0
-          ? `Your streak has lapsed. Your best run of ${streak.best} day${streak.best === 1 ? "" : "s"} stands — a break costs the run, never the record. One round starts a new one.`
-          : streak.practisedToday
-            ? "Today is in."
-            : streak.current > 0
-              ? "Today is still open, so the streak is still yours. One round keeps it."
-              : "Nothing yet. One finished round is a day."}
-      </p>
+      {started ? (
+        <>
+          <p className={styles.streakRow}>
+            <span className="stat">
+              <span className="value">{streak.current}</span>
+              <span className="label">day streak</span>
+            </span>
+            <span className="stat">
+              <span className="value">{streak.best}</span>
+              <span className="label">your best</span>
+            </span>
+            <span className="stat">
+              <span className="value">{streak.totalDays}</span>
+              <span className="label">days practised</span>
+            </span>
+          </p>
+          <p className="muted" style={{ maxWidth: "58ch" }}>
+            {streak.current === 0
+              ? `Your streak has lapsed. Your best run of ${streak.best} day${streak.best === 1 ? "" : "s"} stands — a break costs the run, never the record. One round starts a new one.`
+              : streak.practisedToday
+                ? "Today is in."
+                : "Today is still open, so the streak is still yours. One round keeps it."}
+          </p>
+        </>
+      ) : (
+        <p className="lede" style={{ maxWidth: "46ch" }}>
+          No practice days behind you yet. One finished round of {PRACTICE_MIN_ANSWERS} cards is
+          a day, and the first one starts the streak.
+        </p>
+      )}
       <p className="small faint" style={{ maxWidth: "62ch" }}>
         A day counts when you finish a whole round of {PRACTICE_MIN_ANSWERS} cards, in your own
         local day, at a speed that means you read them. A streak survives one missed day, and can
@@ -232,8 +244,14 @@ export default async function ProgressPage() {
         <section aria-labelledby="streak">
           <h2 id="streak">Streak</h2>
           <Streak streak={progress.streak} />
+          {/* The one thing this page wants you to do, as the button it is.
+              It used to be a text link under two paragraphs of small print,
+              which on a page whose every section says "not yet" left nothing
+              to actually press. */}
           <p>
-            <Link href="/practice">Practise now →</Link>
+            <Link className="btn primary" href="/practice">
+              {progress.streak.practisedToday ? "Practise again" : "Practise now"}
+            </Link>
           </p>
         </section>
 
