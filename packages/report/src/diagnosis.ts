@@ -188,8 +188,11 @@ function processNotes(process: ShareProcess | null): DiagnosisProcessNote[] {
   );
   if (timedOut.length > 0) {
     notes.push({
-      headline: "You ran out of clock",
-      detail: `${codes(timedOut)} ended on the timer. Bank a submission earlier, then improve it.`,
+      headline: "A track ended on the clock",
+      detail:
+        `${codes(timedOut)} reached the end of the working budget and was scored ` +
+        `from everything saved up to that point. Only working time is charged — the ` +
+        `review screens after you submit hold the clock.`,
     });
   } else if (rushed.length > 0) {
     notes.push({

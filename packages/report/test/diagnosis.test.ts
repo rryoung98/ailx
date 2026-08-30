@@ -16,6 +16,9 @@ import { AXES, cohortMedians, playerType } from "../src/playerType.js";
 import { TRACK_META } from "../src/tracks.js";
 import type { ShareProcess } from "../src/share.js";
 
+/** Headline for a track that ended on the timer (asserted in several tests). */
+const TIMED_OUT_HEADLINE = "A track ended on the clock";
+
 const shape = (v: number[]): TrackRawScores => ({ t1: v[0], t2: v[1], t3: v[2], t4: v[3] });
 
 const med = cohortMedians();
@@ -160,8 +163,12 @@ describe("diagnose — process habits", () => {
     const p = process();
     p.tracks = p.tracks.map((t) => ({ ...t, timedOut: t.track === "t3" }));
     const notes = diagnose({ trackRaw: T2_WEAK, process: p }).process;
-    expect(notes[2].headline).toBe("You ran out of clock");
+    expect(notes[2].headline).toBe(TIMED_OUT_HEADLINE);
     expect(notes[2].detail).toContain("T3");
+    // The copy must not blame the candidate for time the product took:
+    // the post-submit review screens hold the clock (P0 fairness fix).
+    expect(notes[2].detail).toMatch(/Only working time is charged/);
+    expect(notes[2].detail).not.toMatch(/Bank a submission earlier/);
   });
 
   it("reports finishing early only when nothing timed out", () => {
@@ -175,14 +182,14 @@ describe("diagnose — process habits", () => {
     // A timed-out track is never ALSO called rushed.
     p.tracks = p.tracks.map((t) => ({ ...t, timedOut: true }));
     expect(diagnose({ trackRaw: T2_WEAK, process: p }).process[2].headline).toBe(
-      "You ran out of clock",
+      TIMED_OUT_HEADLINE,
     );
   });
 
   it("says nothing about pace when the run used a normal share of its budget", () => {
     const notes = diagnose({ trackRaw: T2_WEAK, process: process() }).process;
     expect(notes.map((n) => n.headline)).not.toContain("You finished early");
-    expect(notes.map((n) => n.headline)).not.toContain("You ran out of clock");
+    expect(notes.map((n) => n.headline)).not.toContain(TIMED_OUT_HEADLINE);
   });
 
   it("survives a zero budget without dividing by it", () => {
