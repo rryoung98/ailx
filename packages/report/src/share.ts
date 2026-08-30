@@ -22,11 +22,17 @@
  * this function cannot retroactively widen what an already-created link
  * exposes; `v` records which shape a stored row was written under, and a v1
  * row reads back with every v2 section absent.
+ *
+ * That freeze is also why the player-type DERIVATION can change without
+ * breaking a published card: the code, the name, the tagline and the four
+ * poles are stored bytes, and `/s/<token>` renders the stored row rather than
+ * re-deriving it. An already-shared card keeps saying exactly what it said on
+ * the day it was made; only new shares read the behavioural signals.
  */
 import { TRACK_IDS, type Band, type SessionState, type TrackId, type TrackRawScores } from "@ailx/session";
 import { candidateComposite } from "./composite.js";
 import { trackInsights, type TrackProcessInsight } from "./insights.js";
-import { playerType, type Pole } from "./playerType.js";
+import { identitySignals, playerType, type PlayerTypeSignals, type Pole } from "./playerType.js";
 
 export const SHARE_PAYLOAD_VERSION = 2;
 
@@ -213,9 +219,11 @@ export function buildSharePayload(
   const summary = candidateComposite(state);
   if (summary === null) return null;
   const sections = options.sections ?? DEFAULT_SHARE_SECTIONS;
-  const process = sections.process ? shareProcessFrom(trackInsights(state)) : null;
+  const insights = trackInsights(state);
+  const process = sections.process ? shareProcessFrom(insights) : null;
   return sharePayloadFrom(summary.trackRaw, summary.band as Band, {
     instrument: `${state.config?.instrument ?? "ailx"} ${state.config?.version ?? "2026.1"}`,
+    signals: identitySignals(state, insights),
     site: options.site ?? null,
     sections,
     process,
@@ -226,6 +234,13 @@ export function buildSharePayload(
 
 export interface SharePayloadMeta {
   instrument: string;
+  /**
+   * Behavioural readings for the player-type axes (`identitySignals`). Omit
+   * when the caller has only the four aggregate scores: the type then falls
+   * back to the cohort-median split, which is the same type an old row was
+   * written with.
+   */
+  signals?: PlayerTypeSignals;
   site?: string | null;
   sections?: ShareSections;
   process?: ShareProcess | null;
@@ -249,7 +264,7 @@ export function sharePayloadFrom(
   meta: SharePayloadMeta,
 ): SharePayload {
   const sections = meta.sections ?? ALL_SHARE_SECTIONS;
-  const p = playerType(trackRaw);
+  const p = playerType(trackRaw, meta.signals);
   const tracks = {} as Record<TrackId, number>;
   for (const t of TRACK_IDS) tracks[t] = round1(trackRaw[t]);
   return {

@@ -231,7 +231,7 @@ describe("buildSharePayload", () => {
     events: [
       { verb: "prompted", object: "p1", clientTs: "2026-01-01T00:00:00.000Z" },
       { verb: "revised", object: "p1", clientTs: "2026-01-01T00:01:00.000Z" },
-      { verb: "verified", object: "s1", clientTs: "2026-01-01T00:02:00.000Z" },
+      { verb: "verified", object: "claim:s1", clientTs: "2026-01-01T00:02:00.000Z" },
     ],
     score: { raw: {}, scaled },
   });
@@ -260,13 +260,25 @@ describe("buildSharePayload", () => {
     expect(p).not.toBeNull();
     expect(p!.instrument).toBe("ailx 2026.1");
     expect(p!.band).toBe("Distinction");
-    expect(p!.playerType.code).toBe("MSVD");
+    // BEHAVIOUR, not just the four scores: T1 revised its build (Maker) and
+    // T3 recorded ONE verification (Accepter) even though every track scored
+    // 90. T2 has no sensitivity in this fixture's raw, so it falls back to
+    // the score (Skeptic), as does T4 (Director).
+    expect(p!.playerType.code).toBe("MSAD");
     expect(p!.site).toBeNull();
+  });
+
+  it("reads the T3 axis from verification events, not the T3 score", () => {
+    const s = state([90, 90, 90, 90]);
+    s.tracks.t3.events = [1, 2, 3].map((n) => ({
+      verb: "verified", object: `claim:s${n}`, clientTs: "2026-01-01T00:02:00.000Z",
+    })) as never;
+    expect(buildSharePayload(s)!.playerType.code).toBe("MSVD");
   });
 
   it("fills the default sections and leaves the authored ones empty", () => {
     const p = buildSharePayload(state([90, 90, 90, 90]))!;
-    expect(p.profile!.strengths.length).toBe(4);
+    expect(p.profile!.strengths.length).toBe(3);
     expect(p.process!.tracks.map((t) => t.track)).toEqual([...TRACK_IDS]);
     expect(p.process!.totalActiveSeconds).toBe(480);
     expect(p.process!.tracks[0].iterationRatio).toBe(1);

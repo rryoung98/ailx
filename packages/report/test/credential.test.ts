@@ -27,7 +27,7 @@ import {
   type CredentialClaim,
   type CredentialState,
 } from "../src/credential.js";
-import { playerType } from "../src/playerType.js";
+import { playerTypeFor } from "../src/playerType.js";
 
 const ORIGIN = "https://ailx.example";
 const shape = (v: number[]): TrackRawScores => ({ t1: v[0], t2: v[1], t3: v[2], t4: v[3] });
@@ -120,7 +120,7 @@ describe("buildCredentialClaim", () => {
       instrumentVersion: "2026.1",
       completedOn: "2026-02-03",
       tracksAttempted: ["T1", "T2", "T3", "T4"],
-      playerType: { code: playerType(RAW).code, name: playerType(RAW).name },
+      playerType: (({ code, name }) => ({ code, name }))(playerTypeFor(completedState(), RAW)),
       artifact: "/api/site/abc/index.html",
       claims: ["sitting-completed"],
     });

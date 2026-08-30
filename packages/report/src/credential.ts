@@ -39,8 +39,8 @@
  *
  * Pure: no clock, no I/O, no randomness. Stamps and codes are injected.
  */
-import { TRACK_IDS, type SessionState, type TrackId } from "@ailx/session";
-import { playerType } from "./playerType.js";
+import { TRACK_IDS, type SessionState, type TrackId, type TrackRawScores } from "@ailx/session";
+import { playerTypeFor } from "./playerType.js";
 import { TRACK_META } from "./tracks.js";
 
 /** Shape version of a STORED claim row, so an old row reads back honestly. */
@@ -185,17 +185,23 @@ export interface CredentialClaimOptions {
  * Build the claim for a finished sitting, or null when there is nothing to
  * certify: a run with no completion stamp and no player type is not a
  * sitting, and issuing for one would be the first false claim.
+ *
+ * The player type reads the run's own behaviour (`playerTypeFor`). The claim
+ * is written ONCE, at issue, and `/verify/<code>` serves the stored row — so
+ * a later change to how the type is derived can never change what an
+ * already-published credential says. Re-deriving one is not how verification
+ * works, and a re-issue is a deliberate revoke-then-issue.
  */
 export function buildCredentialClaim(
   state: SessionState,
-  trackRawOrNull: Parameters<typeof playerType>[0] | null,
+  trackRawOrNull: TrackRawScores | null,
   options: CredentialClaimOptions = {},
 ): CredentialClaim | null {
   const completedOn = dayOf(state.lastTs);
   const tracksAttempted = attemptedTrackCodes(state);
   if (completedOn === null || trackRawOrNull === null || tracksAttempted.length === 0) return null;
   const version = state.config?.version ?? "2026.1";
-  const p = playerType(trackRawOrNull);
+  const p = playerTypeFor(state, trackRawOrNull);
   return {
     v: CREDENTIAL_CLAIM_VERSION,
     instrument: `${state.config?.instrument ?? "ailx"} ${version}`,

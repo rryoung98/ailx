@@ -6,6 +6,13 @@
  *
  * Three product decisions are encoded here, not in the UI:
  *
+ *  0. TYPES FROM SHAPES. The cohort is counted in SQL and arrives here as
+ *     four aggregate scores per run — no event log — so `playerType` is
+ *     called without behavioural signals and every world-page type is the
+ *     cohort-median read of a run's four scores. That is the only derivation
+ *     available to a population query, and it is deterministic; an individual
+ *     card, which does have the log, can legitimately show a different
+ *     letter. The page says the distribution is a read of the four scores.
  *  1. DISTRIBUTIONS ONLY, AND ONLY WHAT IS TRUE TODAY. Participation counts,
  *     the player-type distribution, per-track shape histograms, item exposure
  *     and trends are computable from stored inputs. The summit judging

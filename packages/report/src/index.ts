@@ -16,7 +16,6 @@ export * from "./diagnosis.js";
 export * from "./exportTiers.js";
 export * from "./insights.js";
 export * from "./judging.js";
-export * from "./personality.js";
 export * from "./playerType.js";
 export * from "./practice.js";
 export * from "./progress.js";

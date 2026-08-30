@@ -12,8 +12,8 @@ import {
 } from "@ailx/session";
 import {
   calibrationBins, candidateComposite, cohortMedians, demoRubricVersion,
-  judgeT1, judgeT3, judgeT4, narratives, participantExport, playerProfile,
-  playerType, researchExport, t2ResponsesFromArtifact, trackInsights,
+  identitySignals, judgeT1, judgeT3, judgeT4, narratives, participantExport,
+  playerType, playerTypeFor, researchExport, t2ResponsesFromArtifact, trackInsights,
   buildSharePayload, ALL_SHARE_SECTIONS, buildCredentialClaim, credentialDocument, diagnose,
 } from "../src/index.js";
 
@@ -93,7 +93,8 @@ describe("@ailx/report purity", () => {
         credential: buildCredentialClaim(state, composite.trackRaw, {
           artifact: "/api/site/abc/index.html",
         }),
-        profile: playerProfile(state, insights),
+        signals: identitySignals(state, insights),
+        playerTypeFor: playerTypeFor(state, composite.trackRaw, insights),
         participant: participantExport(state, composite),
         research: researchExport(state, LOG, composite),
         rubricVersions: TRACK_IDS.map((t) => demoRubricVersion(t)),
