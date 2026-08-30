@@ -40,6 +40,9 @@ let dealt: string[] = [];
 let streak = { current: 3, best: 7, totalDays: 12, lastDay: "2026-03-10", practisedToday: true, restDayAvailable: false };
 let qualification = { counted: true, reason: "ok" };
 
+/** Set to make the SUBMIT (never the deal) fail the way an offline tab does. */
+let submitOffline = false;
+
 function installFetch(): void {
   vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
     const body = init?.body === undefined ? undefined : JSON.parse(String(init.body));
@@ -47,6 +50,9 @@ function installFetch(): void {
     if (String(url).endsWith("/api/practice")) {
       return new Response(JSON.stringify({ session: { id: SESSION_ID, itemIds: dealt } }), { status: 201 });
     }
+    // Exactly what a browser with no network throws: a TypeError whose
+    // message is the string "Failed to fetch".
+    if (submitOffline) throw new TypeError("Failed to fetch");
     return new Response(
       JSON.stringify({
         result: { answered: dealt.length, correct: dealt.length, qualification },
@@ -84,6 +90,19 @@ async function click(match: RegExp): Promise<void> {
   });
 }
 
+/**
+ * Break the current card's picture the way the network does. `"error"` is a
+ * request that never arrived; `"load"` is jsdom's zero-pixel image, which is
+ * what a truncated or empty response looks like to `naturalWidth`.
+ */
+async function breakStimulus(kind: "error" | "load" = "error"): Promise<void> {
+  const img = host.querySelector("img");
+  expect(img, "an image to break").toBeTruthy();
+  await act(async () => {
+    img!.dispatchEvent(new Event(kind));
+  });
+}
+
 /** Play the whole deck, always calling "AI-generated". */
 async function playThrough(): Promise<void> {
   for (let i = 0; i < PRACTICE_DECK_SIZE; i++) {
@@ -95,6 +114,7 @@ async function playThrough(): Promise<void> {
 beforeEach(() => {
   posted.length = 0;
   store.clear();
+  submitOffline = false;
   dealt = PRACTICE_BANK.slice(0, PRACTICE_DECK_SIZE).map((i) => i.id);
   qualification = { counted: true, reason: "ok" };
   streak = { current: 3, best: 7, totalDays: 12, lastDay: "2026-03-10", practisedToday: true, restDayAvailable: false };
@@ -250,6 +270,136 @@ describe("hosted build", () => {
     vi.stubGlobal("fetch", async () => new Response("nope", { status: 500 }));
     await mount(true);
     expect(host.querySelector('[role="alert"]')).toBeTruthy();
+    expect(buttons().some((b) => /Try again/.test(b.textContent ?? ""))).toBe(true);
+  });
+});
+
+
+/**
+ * Offline behaviour. Two things must never happen when the network drops:
+ * a card whose picture never arrived must not be graded (that would record a
+ * network failure as a miss against the candidate), and a failed submit must
+ * not show the browser's own exception text or take the round away.
+ */
+describe("when the network fails under it", () => {
+  const calls = /AI-generated|Real photograph/;
+
+  it("does not offer a call on a card whose picture never loaded", async () => {
+    await mount(true);
+    await breakStimulus();
+    expect(buttons().some((b) => calls.test(b.textContent ?? ""))).toBe(false);
+    expect(host.textContent).toMatch(/did not load/i);
+    expect(host.textContent).toMatch(/not been counted/i);
+    // The half-drawn <img> is gone; the plate keeps its space.
+    expect(host.querySelector("img")).toBeNull();
+    expect(host.querySelector('[class*="plateEmpty"]')).toBeTruthy();
+    expect(host.querySelector('[role="status"]')).toBeTruthy();
+    expect(buttons().some((b) => /Try loading it again/.test(b.textContent ?? ""))).toBe(true);
+    expect(buttons().some((b) => /Skip this card/.test(b.textContent ?? ""))).toBe(true);
+  });
+
+  it("treats a picture that loaded with no pixels as one that did not load", async () => {
+    // A truncated or empty response fires `load` with naturalWidth 0 — it
+    // paints a blank grey box, which is not a stimulus.
+    await mount(true);
+    await breakStimulus("load");
+    expect(buttons().some((b) => calls.test(b.textContent ?? ""))).toBe(false);
+    expect(host.textContent).toMatch(/did not load/i);
+  });
+
+  it("asks for the picture again, and restores the calls, on retry", async () => {
+    await mount(true);
+    await breakStimulus();
+    await click(/Try loading it again/);
+    const img = host.querySelector("img");
+    expect(img).toBeTruthy();
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    expect(img!.getAttribute("src")).toContain(first.material.src);
+    expect(buttons().some((b) => calls.test(b.textContent ?? ""))).toBe(true);
+  });
+
+  it("keeps a skipped card out of the tally, the pips and the submit", async () => {
+    await mount(true);
+    const skipped = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    await breakStimulus();
+    await click(/Skip this card/);
+    expect(host.textContent).toContain(`Card 2 of ${PRACTICE_DECK_SIZE}`);
+    const strip = host.querySelector('[class*="pips"]')!;
+    expect(strip.children[0].className).toMatch(/pipDropped/);
+    expect(strip.children[0].className).not.toMatch(/pipWrong/);
+    // Play the rest of the deck, always calling "AI-generated".
+    const rest = dealt.slice(1).map((id) => PRACTICE_BANK.find((i) => i.id === id)!);
+    for (let i = 0; i < rest.length; i++) {
+      await click(/AI-generated/);
+      await click(/Next card|Finish the round/);
+    }
+    const right = rest.filter((i) => i.key === 0).length;
+    expect(host.textContent).toContain(`${right} of ${rest.length}`);
+    expect(host.textContent).toContain(`${right} right, ${rest.length - right} missed`);
+    expect(host.textContent).toMatch(/One card never loaded/);
+    const body = posted[posted.length - 1].body as { answers: Array<{ seq: number; itemId: string }> };
+    expect(body.answers).toHaveLength(rest.length);
+    expect(body.answers.map((a) => a.itemId)).not.toContain(skipped.id);
+    expect(body.answers.map((a) => a.seq)).toEqual(rest.map((_, i) => i));
+  });
+
+  it("does not drop focus on <body> when the skipped card is unmounted", async () => {
+    await mount(true);
+    await breakStimulus();
+    await click(/Skip this card/);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+    expect(host.contains(document.activeElement)).toBe(true);
+  });
+
+  it("explains a failed send in human words and keeps the round on screen", async () => {
+    submitOffline = true;
+    await mount(true);
+    await playThrough();
+    // Never the exception: offline, `err.message` is literally this.
+    expect(host.textContent).not.toContain("Failed to fetch");
+    const alert = host.querySelector('[role="alert"]')!;
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toMatch(/could not be sent/i);
+    expect(alert.textContent).toMatch(/not recorded yet/i);
+    // The round itself survives the failure.
+    expect(host.textContent).toMatch(/\d+ right, \d+ missed/);
+    expect(host.querySelector('[class*="pips"]')!.children).toHaveLength(PRACTICE_DECK_SIZE);
+    expect(buttons().some((b) => /Try sending it again/.test(b.textContent ?? ""))).toBe(true);
+  });
+
+  it("re-sends the same round when the retry is pressed", async () => {
+    submitOffline = true;
+    await mount(true);
+    await playThrough();
+    expect(host.textContent).not.toContain("day streak");
+    submitOffline = false;
+    await click(/Try sending it again/);
+    const submits = posted.filter((p) => p.url.includes(`/api/practice/${SESSION_ID}`));
+    expect(submits).toHaveLength(2);
+    expect(submits[1].body).toEqual(submits[0].body);
+    expect(host.textContent).toContain("day streak");
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("keeps the streak panel a failed send would otherwise have wiped out", async () => {
+    await mount(true);
+    await playThrough();
+    expect(host.textContent).toContain("day streak");
+    await click(/Another round/);
+    submitOffline = true;
+    await playThrough();
+    expect(host.textContent).toContain("day streak");
+    expect(host.textContent).toContain("7"); // best, still from the server
+    expect(host.textContent).toMatch(/last recorded round/i);
+  });
+
+  it("never shows a raw exception when the deal itself fails", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await mount(true);
+    expect(host.textContent).not.toContain("Failed to fetch");
+    expect(host.querySelector('[role="alert"]')!.textContent).toMatch(/could not deal a round/i);
     expect(buttons().some((b) => /Try again/.test(b.textContent ?? ""))).toBe(true);
   });
 });

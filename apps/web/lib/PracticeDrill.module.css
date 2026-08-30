@@ -42,6 +42,9 @@
 .pipCurrent { background: var(--fg); }
 .pipRight { background: var(--good); }
 .pipWrong { background: var(--bad); }
+/* A card whose picture never loaded. Neither good nor bad, because it was
+   never called: it must not read as a miss. */
+.pipDropped { background: var(--border-strong); }
 
 /* The round's number is the only thing on the done screen that takes focus,
    and a full-bleed h2 draws a focus ring the width of the stage. */
@@ -87,6 +90,37 @@
 @media (max-width: 640px) {
   .image { height: min(38vh, 20rem); }
   .stage { gap: 0.7rem; }
+}
+
+/* The plate keeps its exact size when the picture did not arrive, so the
+   controls under it do not jump and the round does not re-flow around a
+   network failure. */
+.plateEmpty {
+  border: 1px dashed var(--border-strong);
+  background: var(--bg-raised);
+}
+
+/*
+ * Trouble: a picture that never loaded, or a round that could not be sent.
+ * Shaped like the feedback block (same left rule, same rhythm) because it is
+ * the same kind of message — something happened, here is what and what next —
+ * and deliberately NOT coloured like a wrong answer: nothing here is the
+ * candidate's fault.
+ */
+.trouble {
+  border-left: 3px solid var(--border-strong);
+  padding: 0.25rem 0 0.25rem 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  max-width: 46rem;
+}
+
+.trouble p { margin: 0; color: var(--muted); }
+
+.restart:disabled {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 /* Attribution is a licence obligation, not a caption: small, but always on. */
