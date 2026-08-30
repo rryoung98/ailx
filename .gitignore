@@ -11,6 +11,7 @@ apps/web/out/
 test-results/
 playwright-report/
 next-env.d.ts
+.vercel
 # Raw model generations staged for the practice corpus (the shipped
 # re-encode is committed; the megabyte originals are not).
 .ailx-generated/

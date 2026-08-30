@@ -1,6 +1,6 @@
 {
   "$schema": "./README.md",
-  "version": "practice-2026.1-media-2",
+  "version": "practice-2026.1-media-3",
   "note": "Curation input, hand-written. build-practice-corpus.py turns it into corpus.json + assets.",
   "items": [
     {
@@ -275,6 +275,89 @@
         0.17
       ],
       "crop_reason": "framing"
+    },
+    {
+      "slug": "kilt-pleats-front",
+      "source": "generated",
+      "key": "synthetic",
+      "family": "social",
+      "difficulty": "medium",
+      "model": "openai/gpt-5-image",
+      "prompt": "A man in full Scottish Highland dress standing on a stone terrace, photographed from directly in front at eye level, full length. The kilt's deep knife pleats fall across the FRONT of his body facing the camera; there is no flat apron panel at the front. Overcast daylight, 50mm, sharp wool texture. Photorealistic documentary photograph, natural available light, no text, no lettering, no numbers, no signage and no watermark anywhere in the frame.",
+      "alt": "A man in a tweed jacket, waistcoat, tartan kilt, sporran and knee socks standing on a stone terrace in front of a low balustrade.",
+      "tell": "A kilt is flat at the front: one broad apron crosses the body and every pleat is sewn into the back. Here the knife pleats run the full width of the front and no apron edge exists anywhere, so the garment could not be wrapped or fastened. Ask how clothing is CONSTRUCTED before you judge how it is patterned.",
+      "crop": [
+        0.16,
+        0.0,
+        0.16,
+        0.0
+      ],
+      "crop_reason": "framing"
+    },
+    {
+      "slug": "genkan-shoes-inside",
+      "source": "generated",
+      "key": "synthetic",
+      "family": "social",
+      "difficulty": "medium",
+      "model": "google/gemini-2.5-flash-image",
+      "prompt": "The entrance hall of an ordinary Japanese home: a lowered tiled step at the door and a raised wooden floor above it, a shoe cupboard, a row of house slippers. Four pairs of outdoor leather shoes and trainers stand ON the raised wooden floor above the step, all of them pointing inwards towards the house. Soft daylight from the open door, no people, 35mm. Photorealistic documentary photograph, natural available light, no text, no lettering, no numbers, no signage and no watermark anywhere in the frame.",
+      "alt": "The entrance hall of a house: a tiled floor at door level, a raised wooden floor above a single step, a shoe cupboard, and several pairs of shoes.",
+      "tell": "The raised step is the boundary between outside and inside. Outdoor shoes are left on the tiled floor below it, turned back towards the door; only slippers belong on the wood. Here four pairs of outdoor shoes stand up on the raised floor pointing indoors while two pairs sit correctly below, so the picture obeys and breaks the same rule at once.",
+      "crop": [
+        0.0,
+        0.14,
+        0.0,
+        0.14
+      ],
+      "crop_reason": "framing"
+    },
+    {
+      "slug": "village-cricket-stumps",
+      "source": "generated",
+      "key": "synthetic",
+      "family": "social",
+      "difficulty": "medium",
+      "model": "openai/gpt-5.4-image-2",
+      "prompt": "A village cricket match on an English green on a summer afternoon, seen from square of the wicket. The wicket behind the batsman has only TWO stumps standing in the ground and no bails resting across their tops. Players in whites, long grass boundary, oak trees behind, 200mm telephoto, shallow depth of field. Photorealistic documentary photograph, natural available light, no text, no lettering, no numbers, no signage and no watermark anywhere in the frame.",
+      "alt": "A batsman in whites playing a shot on a village green in summer, with two fielders in front of him and a wicket at his heels.",
+      "tell": "A cricket wicket is three stumps standing nine inches wide with two bails laid across their tops. Behind this batsman are two thin stumps a hand's width apart with nothing resting on them — a wicket that cannot be broken, which is the whole point of it. Count the parts of the equipment a scene is built around.",
+      "crop": [
+        0.0,
+        0.1,
+        0.0,
+        0.15
+      ],
+      "crop_reason": "framing"
+    },
+    {
+      "slug": "bicycle-chain-mid-air",
+      "source": "generated",
+      "key": "synthetic",
+      "family": "function",
+      "difficulty": "easy",
+      "model": "google/gemini-2.5-flash-image",
+      "prompt": "An ordinary city bicycle leaning against a brick wall in daylight, photographed from the drive side. The chain runs off the front chainring and ends in mid-air beside the rear wheel: it does not pass around the rear sprocket, and the rear sprocket is bare. Sharp close detail of the frame and wheels, 50mm. Photorealistic documentary photograph, natural available light, no text, no lettering, no numbers, no signage and no watermark anywhere in the frame.",
+      "alt": "A blue city bicycle with a wire front basket leaning against a brick wall on a pavement.",
+      "tell": "Follow the chain. Both of its runs leave the chainring and pass straight across the face of the rear wheel — over the tyre and the rim, around no sprocket at all — and one branch climbs vertically through the open frame and stops in the air. A chain is a closed loop between two toothed wheels, or the machine does not move.",
+      "crop": [
+        0.0,
+        0.08,
+        0.0,
+        0.1
+      ],
+      "crop_reason": "framing"
+    },
+    {
+      "slug": "ladder-one-stile",
+      "source": "generated",
+      "key": "synthetic",
+      "family": "physics",
+      "difficulty": "medium",
+      "model": "google/gemini-3.1-flash-lite-image",
+      "prompt": "A wooden ladder leaning against the rendered wall of a house on a sunny day in an ordinary back garden. Each rung of the ladder is fixed to only ONE of the two side rails; the other end of every rung stops short in the air and never reaches the second rail. Hard sunlight, sharp timber grain, 35mm. Photorealistic documentary photograph, natural available light, no text, no lettering, no numbers, no signage and no watermark anywhere in the frame.",
+      "alt": "A weathered wooden ladder leaning against the rendered wall of a house beside a window, with a garden and fence behind it.",
+      "tell": "The ladder standing against the wall has ten close rungs; the ladder-shaped shadow cast on the wall beside it has four widely spaced ones. Light can stretch, skew or blur a shadow, but it cannot delete six rungs from it. Compare a shadow with the object that casts it, not only with the direction of the sun."
     }
   ]
 }
