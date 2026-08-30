@@ -28,6 +28,13 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   how it upgrades to a scored claim without reissuing, and why a revoked
   credential still resolves while a revoked share token 404s.
 
+## Frontend/backend separation
+- `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
+  the exam: why content custody (a private, digest-pinned item bank plus a
+  server-rendered redacted item view) comes first, why the runtime split waits
+  for the Phase 4 judging workload, why the repo is not split, and the stack,
+  data-layer and migration choices that follow.
+
 ## Deploying the hosted mode
 - `docs/DEPLOY.md` — Vercel (serverless) deploy: required env vars, T1 snapshot
   storage on Vercel Blob, Neon connection pooling, platform body-size limits,
