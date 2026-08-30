@@ -19,9 +19,11 @@
  * `footerModeCopy()`.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   FAMILY_META,
   PRACTICE_OPTIONS,
+  SIGNAL_CHOICE,
   practiceItem,
   samplePracticeDeck,
   type PracticeItem,
@@ -45,6 +47,32 @@ type Phase = "loading" | "card" | "feedback" | "done" | "error";
 interface SubmitBody {
   result: { answered: number; correct: number; qualification: { counted: boolean; reason: string } };
   progress: ProgressReport;
+}
+
+/**
+ * The round so far, as a row of pips — one per card, coloured by outcome the
+ * moment a card is answered. It is decoration on purpose: the same two facts
+ * (which card, how many right) are in the visible line beside it, so colour
+ * is never the only cue and a screen reader is not asked to read a bar chart
+ * built out of empty spans.
+ */
+function Pips({ deck, answers }: { deck: readonly PracticeItem[]; answers: readonly Answered[] }) {
+  return (
+    <span className={styles.pips} aria-hidden>
+      {deck.map((item, i) => {
+        const done = answers[i];
+        const state =
+          done === undefined
+            ? i === answers.length
+              ? styles.pipCurrent
+              : ""
+            : done.correct
+              ? styles.pipRight
+              : styles.pipWrong;
+        return <span key={item.id} className={`${styles.pip} ${state}`} />;
+      })}
+    </span>
+  );
 }
 
 /** Minutes EAST of UTC — the sign convention @ailx/report `localDay` expects. */
@@ -175,9 +203,18 @@ export function PracticeDrill() {
     const streak = outcome?.progress.streak;
     return (
       <div className={styles.stage}>
-        <h2 ref={headingRef} tabIndex={-1}>
+        <h2 ref={headingRef} tabIndex={-1} className={styles.tally}>
           {correctCount} of {answers.length}
         </h2>
+        {/* The shape of the round, so the number is not the only thing you
+            leave with: which cards you called right, in the order you saw
+            them. */}
+        <p className={styles.progress}>
+          <Pips deck={deck} answers={answers} />
+          <span className={styles.count}>
+            {correctCount} right, {answers.length - correctCount} missed
+          </span>
+        </p>
         <p className="muted">
           Practice is not scored and never reaches your result. What it does is give you the
           tell before the clock is running.
@@ -216,10 +253,14 @@ export function PracticeDrill() {
             {error}
           </p>
         ) : null}
-        <p>
+        <p className={styles.after}>
           <button type="button" className={styles.restart} onClick={() => void deal()}>
             Another round
           </button>
+          {/* The end of a round is where somebody actually wants to see the
+              trend, so the link is here and not only at the foot of the page.
+              The static export has no /progress, so it is server-only. */}
+          {server ? <Link href="/progress">See your progress →</Link> : null}
         </p>
       </div>
     );
@@ -228,14 +269,14 @@ export function PracticeDrill() {
   const showing = phase === "feedback" ? last!.item : current!;
   return (
     <div className={styles.stage}>
-      <p className={styles.progress} aria-label={`Card ${index + (phase === "feedback" ? 0 : 1)} of ${deck.length}`}>
-        {deck.map((item, i) => (
-          <span
-            key={item.id}
-            aria-hidden
-            className={`${styles.pip} ${i < answers.length ? styles.pipDone : i === answers.length ? styles.pipCurrent : ""}`}
-          />
-        ))}
+      <p className={styles.progress}>
+        <Pips deck={deck} answers={answers} />
+        {/* Visible text, not an aria-label: an `aria-label` on a <p> is not
+            reliably exposed, so the old markup announced nothing at all. */}
+        <span className={styles.count}>
+          Card {index + (phase === "feedback" ? 0 : 1)} of {deck.length}
+          {answers.length > 0 ? ` · ${correctCount} right so far` : ""}
+        </span>
       </p>
       {/* The family is deliberately NOT shown before the call. Naming it up
           front would prime the answer, and the call under test is T2's own:
@@ -300,7 +341,11 @@ export function PracticeDrill() {
             <span className={last!.correct ? styles.rightText : styles.wrongText}>
               {last!.correct ? "Right." : "Missed it."}
             </span>{" "}
-            It was {PRACTICE_OPTIONS[last!.item.key].toLowerCase()}.
+            {/* Not `PRACTICE_OPTIONS[key].toLowerCase()`: that rendered the
+                sentence "It was ai-generated." SIGNAL_CHOICE is the
+                load-bearing index (@ailx/report), so the prose hangs off it
+                rather than off the button label's spelling. */}
+            It was {last!.item.key === SIGNAL_CHOICE ? "an AI-generated image" : "a real photograph"}.
           </p>
           <p className="eyebrow">{FAMILY_META[last!.item.family].name.toUpperCase()}</p>
           <p className={styles.tell}>{last!.item.tell}</p>

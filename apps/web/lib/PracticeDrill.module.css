@@ -13,8 +13,22 @@
 
 .progress {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  margin: 0;
+}
+
+.pips {
+  display: flex;
   gap: 0.35rem;
   align-items: center;
+}
+
+.count {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .pip {
@@ -22,10 +36,26 @@
   height: 0.3rem;
   border-radius: 999px;
   background: var(--border);
+  transition: background 180ms ease;
 }
 
-.pipDone { background: var(--accent); }
 .pipCurrent { background: var(--fg); }
+.pipRight { background: var(--good); }
+.pipWrong { background: var(--bad); }
+
+/* The round's number is the only thing on the done screen that takes focus,
+   and a full-bleed h2 draws a focus ring the width of the stage. */
+.tally {
+  width: fit-content;
+  margin: 0;
+}
+
+.after {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
 
 .plate {
   margin: 0;
@@ -34,11 +64,18 @@
   gap: 0.5rem;
 }
 
+/*
+ * A FIXED plate, not an auto-height one. The corpus mixes portrait and
+ * landscape, so `height: auto` moved the call buttons by up to ~200px between
+ * cards — the answer you are about to press slides out from under the cursor,
+ * and on a phone the buttons started BELOW the fold on every card. A fixed
+ * box (letterboxed by `object-fit: contain`, which the portrait cards already
+ * were) keeps the two calls in exactly the same place for the whole round.
+ */
 .image {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: 60vh;
+  height: min(46vh, 24rem);
   object-fit: contain;
   border-radius: 4px;
   background: var(--bg-raised);
@@ -83,11 +120,19 @@
   outline-offset: 2px;
 }
 
+/* The teaching arrives in one movement rather than appearing fully formed —
+   the moment you called it is the moment worth marking. */
+@keyframes tellIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
 .feedback {
   border-left: 3px solid var(--border-strong);
   padding: 0.25rem 0 0.25rem 0.9rem;
   display: grid;
   gap: 0.4rem;
+  animation: tellIn 220ms ease-out;
 }
 
 .right { border-left-color: var(--good); }
@@ -96,6 +141,13 @@
 .verdict {
   font-weight: 600;
   letter-spacing: 0.02em;
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedback { animation: none; }
+  .pip { transition: none; }
 }
 
 .rightText { color: var(--good); }

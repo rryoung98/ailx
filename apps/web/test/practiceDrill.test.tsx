@@ -157,6 +157,56 @@ describe("hosted build", () => {
     expect(host.querySelector('[role="status"]')).toBeTruthy();
   });
 
+  it("writes the answer as a sentence, not as a lower-cased button label", async () => {
+    await mount(true);
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    await click(/AI-generated/);
+    // The old copy did `PRACTICE_OPTIONS[key].toLowerCase()`, which rendered
+    // "It was ai-generated." mid-sentence.
+    expect(host.textContent).not.toContain("ai-generated");
+    expect(host.textContent).toContain(
+      first.key === 0 ? "It was an AI-generated image." : "It was a real photograph.",
+    );
+  });
+
+  it("keeps a visible running count of the round, and colours the pips by outcome", async () => {
+    await mount(true);
+    // An `aria-label` on a <p> is not reliably exposed, so the position is
+    // visible text.
+    expect(host.textContent).toContain(`Card 1 of ${PRACTICE_DECK_SIZE}`);
+    expect(host.textContent).not.toContain("right so far");
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    await click(first.key === 0 ? /AI-generated/ : /Real photograph/);
+    expect(host.textContent).toContain(`Card 1 of ${PRACTICE_DECK_SIZE}`);
+    expect(host.textContent).toContain("1 right so far");
+    // The strip is decoration: the same two facts are in the text beside it.
+    const strip = host.querySelector('[class*="pips"]')!;
+    expect(strip.getAttribute("aria-hidden")).toBe("true");
+    expect(strip.children).toHaveLength(PRACTICE_DECK_SIZE);
+    expect(strip.children[0].className).toMatch(/pipRight/);
+    await click(/Next card/);
+    expect(host.textContent).toContain(`Card 2 of ${PRACTICE_DECK_SIZE}`);
+  });
+
+  it("marks a missed card red rather than done", async () => {
+    await mount(true);
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    await click(first.key === 0 ? /Real photograph/ : /AI-generated/);
+    const strip = host.querySelector('[class*="pips"]')!;
+    expect(strip.children[0].className).toMatch(/pipWrong/);
+    expect(host.textContent).toContain("0 right so far");
+  });
+
+  it("ends the round with its shape and a way onwards", async () => {
+    await mount(true);
+    await playThrough();
+    expect(host.textContent).toMatch(/\d+ right, \d+ missed/);
+    const strip = host.querySelector('[class*="pips"]')!;
+    expect(strip.children).toHaveLength(PRACTICE_DECK_SIZE);
+    // The end of a round is where somebody wants the trend.
+    expect(host.querySelector('a[href="/progress"]')).toBeTruthy();
+  });
+
   it("names a miss as a miss and still teaches the tell", async () => {
     await mount(true);
     const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
@@ -211,6 +261,12 @@ describe("static export build", () => {
     expect(host.textContent).toMatch(/Is this a photograph, or an AI-generated image\?/);
   });
 
+  it("offers no /progress link, because the static export has no such page", async () => {
+    await mount(false);
+    await playThrough();
+    expect(host.querySelector('a[href="/progress"]')).toBeNull();
+  });
+
   it("says plainly that nothing was recorded and shows no streak", async () => {
     await mount(false);
     await playThrough();
@@ -232,8 +288,10 @@ describe("it can never show a scored item", () => {
     dealt = ["not-a-practice-item", ...PRACTICE_BANK.slice(0, 2).map((i) => i.id)];
     await mount(true);
     expect(host.textContent).not.toContain("not-a-practice-item");
-    // The unknown id is dropped; the round is simply shorter.
-    expect(host.querySelectorAll('[class*="pip"]').length).toBe(2);
+    // The unknown id is dropped; the round is simply shorter. (Count the
+    // pips inside the strip, not everything whose class contains "pip" —
+    // the strip's own wrapper is `pips`.)
+    expect(host.querySelector('[class*="pips"]')!.children.length).toBe(2);
   });
 });
 
@@ -250,5 +308,23 @@ describe("styling stays on the token palette", () => {
     const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
     expect(css).toMatch(/:focus-visible/);
     expect(css).toMatch(/outline: 2px/);
+  });
+
+  it("gates every animation on prefers-reduced-motion", () => {
+    const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
+    const declared = [...css.matchAll(/@keyframes\s+([\w-]+)/g)].map((m) => m[1]);
+    expect(declared.length).toBeGreaterThan(0);
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduced).toMatch(/animation: none/);
+    expect(reduced).toMatch(/transition: none/);
+  });
+
+  it("pins the plate to a fixed height so the call buttons never move", () => {
+    // Portrait and landscape cards alternate; with `height: auto` the two
+    // calls jumped by ~200px between cards and started below the fold on a
+    // phone.
+    const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
+    expect(css).toMatch(/\.image\s*\{[^}]*height: min\(/);
+    expect(css).toMatch(/\.image\s*\{[^}]*object-fit: contain/);
   });
 });

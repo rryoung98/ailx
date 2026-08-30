@@ -26,14 +26,23 @@ export default function PracticePage() {
       <div className="container">
         <p className="eyebrow">PRACTICE · UNSCORED · {PRACTICE_DECK_SIZE} CARDS</p>
         <h1 style={{ maxWidth: "20ch" }}>Practise the tells.</h1>
+        {/* One sentence, deliberately. The second half of this lede used to
+            live here and pushed the two call buttons below the fold on a
+            phone — you had to scroll before you could answer anything. It now
+            sits under the drill, where it reads as the reason to play again
+            rather than as a wall between you and the first card. */}
         <p className="lede">
           Real photographs and real AI-generated images, one at a time, with the answer and the
-          reason the moment you call it. Published work moved typical participants from 31% to
-          51% detection in about five minutes of exactly this — being shown the thing you looked
-          straight past is the teaching.
+          reason the moment you call it.
         </p>
 
         <PracticeDrill />
+
+        <p className="muted" style={{ maxWidth: "58ch" }}>
+          Published work moved typical participants from 31% to 51% detection in about five
+          minutes of exactly this — being shown the thing you looked straight past is the
+          teaching.
+        </p>
 
         <section aria-labelledby="families">
           <h2 id="families">The three families</h2>
