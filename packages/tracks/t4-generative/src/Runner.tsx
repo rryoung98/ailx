@@ -143,6 +143,8 @@ export function Runner(props: TrackUIProps) {
   const [note, setNote] = useState(restored?.note ?? "");
   const [disclosed, setDisclosed] = useState(restored?.disclosed ?? false);
   const [submitted, setSubmitted] = useState(restored?.submitted ?? false);
+  /** Presentation-only announcement of the last quota spend (see promote). */
+  const [promotionNotice, setPromotionNotice] = useState<string | null>(null);
   // BYOK OpenRouter image generation — SAME key slot as T1's assist panel;
   // the key lives only in the candidate's browser.
   const [orKey, setOrKey] = useState("");
@@ -349,6 +351,16 @@ export function Runner(props: TrackUIProps) {
       nextFinals = { ...finals, video: f };
     }
     setFinals(nextFinals);
+    // Promotion spends a HARD, irreversible quota. The only feedback used
+    // to be a number inside an <h2>, which no screen reader announces and
+    // which is easy to miss on a clock — so say it out loud, including
+    // which draft was spent (promoting the same draft twice is legal and
+    // was completely silent).
+    setPromotionNotice(
+      kind === "image"
+        ? `Final image ${nextFinals.images.length} promoted from draft ${draft.index + 1}. ${imagesLeft - 1} image render${imagesLeft - 1 === 1 ? "" : "s"} left.`
+        : `Final video promoted from draft ${draft.index + 1}. ${videoLeft - 1} video render${videoLeft - 1 === 1 ? "" : "s"} left.`,
+    );
     props.onEvent({
       verb: "promoted",
       object: `t4/final-${kind}`,
@@ -551,7 +563,16 @@ export function Runner(props: TrackUIProps) {
               padding: "8px 10px",
             }}
           >
-            <h2 style={h2}>Target brief · {fmtTime(props.secondsRemaining)} left</h2>
+            {/* Clock kept (the page header scrolls out of reach in this
+                two-pane layout) but moved OUT of the heading: a heading
+                that rewrites itself every second is announced on every
+                heading jump. */}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+              <h2 style={h2}>Target brief</h2>
+              <span style={{ ...h2, textTransform: "none", letterSpacing: 0 }}>
+                {fmtTime(props.secondsRemaining)} left
+              </span>
+            </div>
             <p style={{ margin: "4px 0 0", fontSize: 14 }}>{cfg.brief}</p>
             <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
               Audience: {cfg.audience} · Deliverable: {cfg.finalImageQuota} final images +{" "}
@@ -706,8 +727,13 @@ export function Runner(props: TrackUIProps) {
             placeholder="What should the viewer understand? Which revisions were diagnostic, and why is the chosen set the right one?"
           />
           <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+            {/* flexShrink:0 — the flex label squashed the box to 9x13px
+                on a 390px viewport, which is both illegible and an
+                unhittable target for the one control that decides whether
+                the delivered set carries an AI disclosure. */}
             <input
               type="checkbox"
+              style={{ flexShrink: 0, width: 18, height: 18, margin: 0 }}
               checked={disclosed}
               onChange={(e) => {
                 setDisclosed(e.target.checked);
@@ -739,6 +765,9 @@ export function Runner(props: TrackUIProps) {
               No finals yet. Promote a draft to spend quota.
             </p>
           )}
+          <p role="status" style={{ margin: 0, color: "var(--muted)", fontSize: 12, minHeight: 0 }}>
+            {promotionNotice ?? ""}
+          </p>
           <div
             style={{
               display: "grid",
