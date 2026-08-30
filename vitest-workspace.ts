@@ -19,6 +19,6 @@ export default defineWorkspace([
   "packages/*",
   "!packages/tracks",
   "packages/tracks/*",
-  "apps/web",
+  "apps/*",
   "services/*",
 ]);
