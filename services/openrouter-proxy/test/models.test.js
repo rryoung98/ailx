@@ -12,7 +12,7 @@ describe("models catalog", () => {
     expect(res.body.data.map((m) => m.id)).toEqual([
       "openai/gpt-4.1-nano",
       "google/gemini-3.1-flash-image",
-      "google/gemini-3.1-flash-image-lite",
+      "google/gemini-3.1-flash-lite-image",
     ]);
   });
 

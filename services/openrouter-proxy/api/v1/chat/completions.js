@@ -17,10 +17,14 @@ import { applyCors, clampMaxTokens, clientIp, createRateLimiter } from "../../_l
 
 export const config = { maxDuration: 60 };
 
+// EXACT upstream ids. `google/gemini-3.1-flash-lite-image` was written here as
+// `...-flash-image-lite` and does not exist at OpenRouter, so the allowlist
+// advertised a model every request for it would 404 on; checked against
+// https://openrouter.ai/api/v1/models on 2026-08-30.
 const ALLOWED_MODELS = new Set([
   "openai/gpt-4.1-nano",
   "google/gemini-3.1-flash-image",
-  "google/gemini-3.1-flash-image-lite",
+  "google/gemini-3.1-flash-lite-image",
 ]);
 const MAX_TOKENS = 8000;
 const PER_IP_PER_HOUR = 60;
