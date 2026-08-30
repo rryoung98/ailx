@@ -70,7 +70,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # Versioning, deliberately minimal: one immutable tag per deployed commit.
   # A 1-repo, 1-app project with no consumers publishing no packages gains
