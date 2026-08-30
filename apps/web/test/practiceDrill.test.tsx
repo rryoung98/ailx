@@ -121,14 +121,29 @@ describe("hosted build", () => {
     expect(shown[0].getAttribute("src")).toContain(first.material.src);
     // Alt text is the screen-reader's copy of the card, so it must be there.
     expect(shown[0].getAttribute("alt")).toBe(first.material.alt);
-    // Attribution is a licence condition, not a nicety: it ships with the card.
-    expect(host.textContent).toContain(first.credit.license);
-    expect(host.textContent).toContain(first.credit.author);
+    // Attribution is NOT on the unanswered card: a Commons author is often
+    // called "midjourney", and a generated item's credit names the model, so
+    // a caption before the call would hand over the answer.
+    expect(host.textContent).not.toContain(first.credit.author);
     // The next card is not on screen yet — exposure is one card at a time.
     const second = PRACTICE_BANK.find((i) => i.id === dealt[1])!;
     expect(shown[0].getAttribute("src")).not.toContain(second.material.src);
     // And the family is NOT named before the call, or it would prime it.
     expect(host.textContent).not.toContain(FAMILY_META[first.family].name);
+  });
+
+  it("credits the image only AFTER the call, and never leaks the model", async () => {
+    // The credit is a licence condition and an answer key at the same time.
+    // It arrives with the teaching, and the prompt never arrives at all.
+    await mount(true);
+    const first = PRACTICE_BANK.find((i) => i.id === dealt[0])!;
+    expect(host.textContent).not.toContain(first.credit.author);
+    if (first.credit.model) expect(host.textContent).not.toContain(first.credit.model);
+    await click(/AI-generated/);
+    expect(host.textContent).toContain(first.credit.author);
+    expect(host.textContent).toContain(first.credit.license);
+    if (first.credit.model) expect(host.textContent).toContain(first.credit.model);
+    if (first.credit.prompt) expect(host.textContent).not.toContain(first.credit.prompt);
   });
 
   it("gives immediate right/wrong feedback with the teaching", async () => {

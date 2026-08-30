@@ -252,13 +252,33 @@ export function PracticeDrill() {
           width={800}
           height={600}
         />
-        {/* CC-BY / CC-BY-SA require attribution wherever the work is shown. */}
-        <figcaption className={styles.credit}>
-          <a href={showing.credit.source_url} rel="noopener noreferrer" target="_blank">
-            {showing.credit.commons_title.replace(/^File:/, "")}
-          </a>{" "}
-          · {showing.credit.author} · {showing.credit.license} · via Wikimedia Commons
-        </figcaption>
+        {/* Attribution is a licence condition, but it is shown AFTER the call,
+            never before it. The credit line names the author, and a Commons
+            author is often called "midjourney" or "Gemini"; on an image we
+            generated it would name the model outright. Either way a candidate
+            could read the answer off the caption instead of the picture, and
+            hiding it on generated items only would make a MISSING caption the
+            giveaway. So every card is uncaptioned until it is answered, and
+            every credit then appears in full — with docs/CREDITS.md carrying
+            the same attribution outside the app. The prompt is deliberately
+            never rendered: it names the artefact. */}
+        {phase === "feedback" ? (
+          <figcaption className={styles.credit}>
+            {showing.credit.origin === "generated" ? (
+              <>
+                {showing.credit.author} · {showing.credit.model} · {showing.credit.license} ·
+                generated {showing.credit.retrieved}
+              </>
+            ) : (
+              <>
+                <a href={showing.credit.source_url} rel="noopener noreferrer" target="_blank">
+                  {showing.credit.commons_title?.replace(/^File:/, "")}
+                </a>{" "}
+                · {showing.credit.author} · {showing.credit.license} · via Wikimedia Commons
+              </>
+            )}
+          </figcaption>
+        ) : null}
       </figure>
 
       {phase === "card" ? (
