@@ -101,7 +101,7 @@ describe("T1 disconnect", () => {
     expect(store.get(OPENROUTER_KEY_STORAGE)).toBeUndefined();
     expect(store.get(LLM_BASE_URL_STORAGE)).toBeUndefined();
     expect(button("Disconnect")).toBeUndefined();
-    expect(host.textContent).toContain("Connect a model on the run start screen");
+    expect(host.textContent).toContain("No model is connected");
   });
 
   it("is offered for a custom endpoint with no key (key-less local servers)", () => {
@@ -127,7 +127,7 @@ describe("T1 disconnect", () => {
       mount();
       click("Disconnect");
       expect(button("Disconnect")).toBeUndefined();
-      expect(host.textContent).toContain("Connect a model on the run start screen");
+      expect(host.textContent).toContain("No model is connected");
     } finally {
       Object.defineProperty(window, "localStorage", original);
     }
@@ -165,6 +165,29 @@ describe("T1 real-mode failure affordance", () => {
     expect(host.textContent).toContain("demo assist");
     // The failed prompt is answered, not lost.
     expect(host.textContent).toContain("give me a nav bar");
+  });
+
+  it("does not echo the failed prompt a second time in the chat", async () => {
+    // askVibe already rendered the "you" bubble before the call failed;
+    // the offline answer must reuse it, not append a duplicate. The chat is
+    // the candidate's read of a transcript they are told is a submission
+    // artifact, so a doubled prompt reads as a doubled send.
+    mount();
+    await send("give me a nav bar");
+    click("Use the offline demo assist");
+    const echoes = [...host.querySelectorAll("div")].filter(
+      (d) => d.textContent === "yougive me a nav bar",
+    );
+    expect(echoes).toHaveLength(1);
+  });
+
+  it("never tells a mid-track candidate to use the run start screen", () => {
+    // That screen does not exist once a track is live: the old copy named
+    // an action the candidate could not take.
+    mount();
+    click("Disconnect");
+    expect(host.textContent).not.toContain("run start screen to use real vibe coding");
+    expect(host.textContent).toContain("Code tab");
   });
 
   it("shows no retry affordance for the run budget cap (retrying cannot help)", async () => {

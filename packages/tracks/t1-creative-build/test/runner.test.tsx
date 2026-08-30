@@ -31,7 +31,7 @@ describe("T1 Runner (SSR smoke)", () => {
     expect(html).not.toContain("aria-label=\"API base URL\"");
     expect(html).toContain("aria-label=\"Assist model\"");
     expect(html).toContain("aria-label=\"Custom model override\"");
-    expect(html).toContain("Connect a model on the run start screen");
+    expect(html).toContain("No model is connected");
     expect(html).not.toMatch(/sk-or-/);
   });
 });

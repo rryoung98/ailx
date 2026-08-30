@@ -195,6 +195,8 @@ export function Runner(props: TrackUIProps) {
   const [selfReport, setSelfReport] = useState(restored?.selfReport ?? "");
   const [rationaleOpen, setRationaleOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  /** Submit is a two-step act — see the confirm block in the render. */
+  const [confirmingSubmit, setConfirmingSubmit] = useState(false);
   const promptLog = useRef<PromptLogEntry[]>(restored?.promptLog ?? []);
   const dirtySinceRun = useRef(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -298,11 +300,17 @@ export function Runner(props: TrackUIProps) {
     }
   };
 
-  /** Drop the dead connection and answer the failed prompt offline. */
+  /**
+   * Drop the dead connection and answer the failed prompt offline.
+   * `askVibe` already pushed the "you" bubble for this prompt before the
+   * call failed, so the offline answer must NOT echo it again — the chat
+   * showed the same prompt twice, which reads as a double send on a
+   * transcript the candidate is told is a submission artifact.
+   */
   const fallbackToDemo = () => {
     const p = failedPrompt;
     disconnect();
-    if (p) askDemo(p);
+    if (p) askDemo(p, { echoUser: false });
   };
 
   // In real mode, optionally populate the selector from GET /models.
@@ -363,7 +371,8 @@ export function Runner(props: TrackUIProps) {
     return () => clearTimeout(id);
   }, [html]);
 
-  const askDemo = (p: string) => {
+  const askDemo = (p: string, opts?: { echoUser?: boolean }) => {
+    const echoUser = opts?.echoUser !== false;
     const reply = demoAssist(p);
     const entry: PromptLogEntry = { kind: "prompted", prompt: p, modelId: reply.modelId, clientTs: now() };
     promptLog.current = [...promptLog.current, entry];
@@ -376,8 +385,8 @@ export function Runner(props: TrackUIProps) {
     });
     setChat((c) => [
       ...c,
-      { role: "user", text: p },
-      { role: "assistant", text: `${reply.title} — ${reply.note}`, code: reply.code },
+      ...(echoUser ? [{ role: "user" as const, text: p }] : []),
+      { role: "assistant" as const, text: `${reply.title} — ${reply.note}`, code: reply.code },
     ]);
     checkpoint({});
   };
@@ -508,7 +517,17 @@ export function Runner(props: TrackUIProps) {
             padding: "8px 10px",
           }}
         >
-          <h2 style={h2}>Brief · {fmtTime(props.secondsRemaining)} left</h2>
+          {/* The clock stays (the page header scrolls out of reach in this
+              two-pane layout) but it is NOT part of the heading: a heading
+              that rewrites itself every second is announced on every
+              heading jump and makes the two clocks look like they
+              disagree. */}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+            <h2 style={h2}>Brief</h2>
+            <span style={{ ...h2, textTransform: "none", letterSpacing: 0 }}>
+              {fmtTime(props.secondsRemaining)} left
+            </span>
+          </div>
           <p style={{ margin: "4px 0 0", fontSize: 14 }}>{cfg.brief}</p>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>
             Required elements: {cfg.requiredElements.join(" · ")}
@@ -525,7 +544,7 @@ export function Runner(props: TrackUIProps) {
             <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
               {realMode
                 ? "Real vibe coding (your key/endpoint, your browser only). Describe a change — the model returns the full updated document and the preview re-renders."
-                : "demo simulator — deterministic offline demo: same prompt, same answer. Every prompt is logged to your submission artifact."}
+                : "demo simulator — deterministic offline demo: same prompt, same answer. It replies with a SNIPPET and does not edit your document: paste what you want into the Code tab yourself. Every prompt is logged to your submission artifact."}
             </p>
           )}
           {chat.map((m, i) => (
@@ -619,7 +638,13 @@ export function Runner(props: TrackUIProps) {
         </div>
         {!realMode && (
           <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-            Connect a model on the run start screen to use real vibe coding here.
+            {/* This used to read "connect a model on the run start screen" —
+                that screen is gone once the track is live, so it named an
+                action the candidate could not take. */}
+            No model is connected, so the offline demo assist answers here.
+            You can still edit the document by hand in the Code tab; a real
+            model can be connected again from the run start screen before
+            your next run.
           </p>
         )}
 
@@ -677,15 +702,41 @@ export function Runner(props: TrackUIProps) {
               placeholder="State your intent: audience, message, and the choices that serve them."
             />
           </div>
-          <button
-            type="button"
-            className="t1-btn"
-            style={{ marginTop: 8, marginLeft: rationaleOpen ? 0 : 8 }}
-            onClick={submit}
-            disabled={submitted}
-          >
-            {submitted ? "Submitted" : "Submit final artifact"}
-          </button>
+          {/* Submitting ENDS the track and forfeits the rest of the clock,
+              and this button sits a few pixels under "Send" — one stray
+              click used to throw away the whole remaining budget with no
+              warning. It is armed first, then confirmed. */}
+          {submitted || !confirmingSubmit ? (
+            <button
+              type="button"
+              className="t1-btn"
+              style={{ marginTop: 8, marginLeft: rationaleOpen ? 0 : 8 }}
+              onClick={() => setConfirmingSubmit(true)}
+              disabled={submitted}
+            >
+              {submitted ? "Submitted" : "Submit final artifact"}
+            </button>
+          ) : (
+            <div
+              role="alert"
+              style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
+            >
+              <span style={{ fontSize: 12, color: "var(--muted)", flexBasis: "100%" }}>
+                Submitting ends T1 now and forfeits the {fmtTime(props.secondsRemaining)} left
+                on the clock. You cannot come back to it.
+              </span>
+              <button type="button" className="t1-btn" onClick={submit}>
+                Yes, submit final artifact
+              </button>
+              <button
+                type="button"
+                className="t1-btn ghost"
+                onClick={() => setConfirmingSubmit(false)}
+              >
+                Keep working
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
