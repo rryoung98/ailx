@@ -105,11 +105,38 @@ describe("what it refuses to publish", () => {
   it("suppresses every breakdown below the cohort floor, and explains the rule", async () => {
     payload = aggregates(MIN_COHORT_SIZE - 1);
     const html = await markup();
-    expect(html).toContain(`at least ${MIN_COHORT_SIZE} complete runs`);
+    expect(html).toContain(`published only once ${MIN_COHORT_SIZE} are behind it`);
     expect(html).not.toContain("class=\"histogram\"");
     expect(html).not.toContain("type-bars");
     // Population counts survive: they describe everyone, so they name nobody.
     expect(html).toContain("runs started");
+  });
+
+  it("shows how far the cohort is from the floor, from counts already public", async () => {
+    payload = aggregates(MIN_COHORT_SIZE - 1);
+    const html = await markup();
+    // The distance is drawn as a meter and stated as a fraction. Both are
+    // derived from `cohortSize` and `minCohortSize` — no new number.
+    expect(html).toContain(`${MIN_COHORT_SIZE - 1} of ${MIN_COHORT_SIZE}`);
+    expect(html).toContain(`aria-label="${MIN_COHORT_SIZE - 1} of ${MIN_COHORT_SIZE} complete runs needed"`);
+    expect(html).toContain("suppressed");
+  });
+
+  it("never draws a meter past full, and never divides by a zero floor", async () => {
+    payload = { ...aggregates(MIN_COHORT_SIZE - 1), cohortSize: MIN_COHORT_SIZE + 5, minCohortSize: 0 };
+    const html = await markup();
+    expect(html).toContain("width:100%");
+    expect(html).not.toContain("NaN");
+    expect(html).not.toContain("Infinity");
+  });
+
+  it("marks the median decile on every track histogram", async () => {
+    const html = await markup();
+    const marked = html.match(/histogram-col median/g) ?? [];
+    expect(marked).toHaveLength(4); // one per track
+    // The marker is a position, not a new figure: the median it uses is the
+    // one already printed beside the chart.
+    expect(html).toContain("median");
   });
 
   it("renders an empty instrument without inventing numbers", async () => {

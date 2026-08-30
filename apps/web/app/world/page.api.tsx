@@ -32,14 +32,26 @@ export const metadata: Metadata = {
 
 const pct = (n: number): string => `${Math.round(n * 100)}%`;
 
-/** Hand-rolled histogram (no chart library — FRONTEND.md §7). */
-function Histogram({ buckets, label }: { buckets: number[]; label: string }) {
+/**
+ * Hand-rolled histogram (no chart library — FRONTEND.md §7).
+ *
+ * The median decile is marked, because ten equal bars is the one shape a
+ * reader cannot get anything out of at a glance. The marker is derived from
+ * the median already printed under the chart — it adds a position, never a
+ * number.
+ */
+function Histogram({ buckets, median, label }: { buckets: number[]; median: number; label: string }) {
   const peak = Math.max(1, ...buckets);
+  const medianBucket = Math.min(buckets.length - 1, Math.max(0, Math.floor(median / 10)));
   return (
     <div className="histogram" role="img" aria-label={label}>
       {buckets.map((count, i) => (
-        <div className="histogram-col" key={i}>
-          <div className="histogram-bar" style={{ height: `${(count / peak) * 100}%` }} />
+        <div className={`histogram-col${i === medianBucket ? " median" : ""}`} key={i}>
+          <div
+            className="histogram-bar"
+            style={{ height: `${(count / peak) * 100}%` }}
+            title={`${i * 10}–${i * 10 + 10}: ${count} run${count === 1 ? "" : "s"}`}
+          />
           <span className="histogram-tick mono">{i * 10}</span>
         </div>
       ))}
@@ -47,12 +59,29 @@ function Histogram({ buckets, label }: { buckets: number[]; label: string }) {
   );
 }
 
-function Suppressed({ min }: { min: number }) {
+/**
+ * The floor, shown as a floor rather than as a shrug.
+ *
+ * This used to be one line of prose repeated verbatim under three headings,
+ * which read as "broken" rather than "not yet". The counts are already public
+ * one section up, so drawing the SAME two numbers as a meter invents nothing
+ * — it just answers the question the sentence provokes: how far off is it?
+ */
+function Suppressed({ have, min }: { have: number; min: number }) {
+  const share = Math.min(1, min === 0 ? 1 : have / min);
   return (
-    <p className="muted">
-      Not shown yet. A breakdown is published only once at least {min} complete runs are behind
-      it, so no chart on this page can ever be about one identifiable person.
-    </p>
+    <div className="suppressed">
+      <p className="meter" role="img" aria-label={`${have} of ${min} complete runs needed`}>
+        <span style={{ width: pct(share) }} />
+      </p>
+      <p className="small">
+        <span className="mono">
+          {have} of {min}
+        </span>{" "}
+        complete runs. A breakdown is published only once {min} are behind it, so no chart on
+        this page can ever be about one identifiable person.
+      </p>
+    </div>
   );
 }
 
@@ -110,14 +139,14 @@ export default async function WorldPage() {
             is a playful read on four aggregate numbers, and the scored composite never reads it.
           </p>
           {a.playerTypes === null ? (
-            <Suppressed min={a.minCohortSize} />
+            <Suppressed have={a.cohortSize} min={a.minCohortSize} />
           ) : (
             <ul className="type-bars">
               {a.playerTypes.map((t) => (
                 <li key={t.code}>
                   <span className="mono type-bar-code">{t.code}</span>
                   <span className="meter type-bar-meter">
-                    <span style={{ display: "block", height: "100%", background: "var(--accent)", width: pct(t.share) }} />
+                    <span style={{ width: pct(t.share) }} />
                   </span>
                   <span className="small">
                     {t.name} <span className="faint mono">{t.count}</span>
@@ -136,7 +165,7 @@ export default async function WorldPage() {
             judged result.
           </p>
           {a.tracks === null ? (
-            <Suppressed min={a.minCohortSize} />
+            <Suppressed have={a.cohortSize} min={a.minCohortSize} />
           ) : (
             <div className="grid2">
               {a.tracks.map((t) => (
@@ -146,7 +175,8 @@ export default async function WorldPage() {
                   </h3>
                   <Histogram
                     buckets={t.buckets}
-                    label={`${TRACK_META[t.track].name}: ${t.buckets
+                    median={t.median}
+                    label={`${TRACK_META[t.track].name}: median ${t.median}; ${t.buckets
                       .map((c, i) => `${i * 10} to ${i * 10 + 10}: ${c}`)
                       .join(", ")}`}
                   />
@@ -168,7 +198,7 @@ export default async function WorldPage() {
             contents would invalidate every future sitting.
           </p>
           {a.exposure === null ? (
-            <Suppressed min={a.minCohortSize} />
+            <Suppressed have={a.cohortSize} min={a.minCohortSize} />
           ) : (
             <div className="grid4">
               <p className="stat">
@@ -194,7 +224,7 @@ export default async function WorldPage() {
         <section aria-labelledby="trend">
           <h2 id="trend">Over time</h2>
           {a.trend === null ? (
-            <Suppressed min={a.minCohortSize} />
+            <Suppressed have={a.cohortSize} min={a.minCohortSize} />
           ) : (
             <table className="trend-table">
               <caption className="small faint">Runs per week, and how many were finished.</caption>
