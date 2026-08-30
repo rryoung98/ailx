@@ -35,11 +35,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function mount() {
+async function mount(listing: () => unknown = () => ({ ok: true, json: async () => ({ items: [SUB] }) })) {
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     if (String(url).endsWith("/vote")) return { ok: true, json: async () => ({ ok: true }) };
     if (String(url).includes("/subs/")) return { ok: true, json: async () => DOC };
-    return { ok: true, json: async () => ({ items: [SUB] }) };
+    return listing();
   }));
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -65,5 +65,52 @@ describe("gallery wall", () => {
     await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(btn.textContent).toContain("3"); // no double vote
     expect(JSON.parse(store.get("ailx:gallery-voted")!)).toContain("abc123");
+  });
+
+  it("labels the upvote, so its accessible name is not the string \"▲ 2\"", async () => {
+    await mount();
+    const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
+    expect(btn.getAttribute("aria-label")).toBe("Upvote this set — 2 votes");
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(btn.getAttribute("aria-label")).toBe("You upvoted this set — 3 votes");
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("conveys the current sort with aria-pressed, not with colour alone", async () => {
+    await mount();
+    const sorts = [...host.querySelectorAll("button")].filter((b) => /^(Top|New)$/.test(b.textContent!));
+    expect(sorts).toHaveLength(2);
+    expect(sorts.map((b) => b.getAttribute("aria-pressed"))).toEqual(["true", "false"]);
+    expect(sorts.every((b) => b.getAttribute("type") === "button")).toBe(true);
+    await act(async () => sorts[1].dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(sorts.map((b) => b.getAttribute("aria-pressed"))).toEqual(["false", "true"]);
+  });
+
+  it("offers a retry and a way onwards when the shared service is unreachable", async () => {
+    let fail = true;
+    await mount(() => {
+      if (fail) throw new Error("network");
+      return { ok: true, json: async () => ({ items: [SUB] }) };
+    });
+    const alert = host.querySelector('[role="alert"]')!;
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toMatch(/shared demo service did not answer/);
+    expect(host.querySelector('a[href="/gallery"]')).toBeTruthy();
+    // The retry actually re-fetches, rather than only clearing the message.
+    fail = false;
+    const retry = [...host.querySelectorAll("button")].find((b) => /Try again/.test(b.textContent!))!;
+    await act(async () => retry.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.querySelectorAll('[data-testid="gallery-card"]')).toHaveLength(1);
+  });
+
+  it("uses the shared page shell, and an eyebrow class that exists", async () => {
+    await mount();
+    // `.kicker` is not defined in globals.css, so the old markup rendered the
+    // wall's eyebrow as unstyled body text on a different left edge.
+    expect(host.querySelector(".kicker")).toBeNull();
+    expect(host.querySelector("main.page > .container > .eyebrow")).toBeTruthy();
   });
 });
