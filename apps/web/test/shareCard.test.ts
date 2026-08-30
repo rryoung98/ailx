@@ -12,6 +12,7 @@ import {
   SHARE_CARD_COLORS,
   SHARE_CARD_HEIGHT,
   SHARE_CARD_WIDTH,
+  clampLine,
   shareCardElement,
 } from "../lib/shareCardArt";
 
@@ -26,6 +27,37 @@ function texts(node: unknown, out: string[] = []): string[] {
   if (typeof node === "string" || typeof node === "number") out.push(String(node));
   else if (Array.isArray(node)) node.forEach((n) => texts(n, out));
   else if (isValidElement(node)) texts((node.props as { children?: unknown }).children, out);
+  return out;
+}
+
+/** Every `lineClamp` set anywhere in the tree, in draw order. */
+function lineClamps(node: unknown, out: number[] = []): number[] {
+  if (Array.isArray(node)) node.forEach((n) => lineClamps(n, out));
+  else if (isValidElement(node)) {
+    const props = node.props as { style?: { lineClamp?: number }; children?: unknown };
+    if (typeof props.style?.lineClamp === "number") out.push(props.style.lineClamp);
+    lineClamps(props.children, out);
+  }
+  return out;
+}
+
+/** The width of every accent-filled meter in the tree, in draw order. */
+function barFillWidths(node: unknown, out: string[] = []): string[] {
+  if (Array.isArray(node)) node.forEach((n) => barFillWidths(n, out));
+  else if (isValidElement(node)) {
+    const props = node.props as {
+      style?: { width?: unknown; height?: unknown; background?: unknown };
+      children?: unknown;
+    };
+    const s = props.style;
+    if (
+      typeof s?.width === "string" && s.width.endsWith("%") &&
+      s.height === "100%" && s.background === SHARE_CARD_COLORS.accent
+    ) {
+      out.push(s.width);
+    }
+    barFillWidths(props.children, out);
+  }
   return out;
 }
 
@@ -73,6 +105,70 @@ describe("share card art", () => {
     expect(texts(shareCardElement(noNote)).join(" ")).toContain(noNote.profile!.strengths[0]);
     const bare = texts(shareCardElement(payload)).join(" ");
     expect(bare).not.toContain("min on task");
+  });
+
+
+  it("draws the four-track shape as bars, not only as numbers", () => {
+    const widths = barFillWidths(shareCardElement(payload));
+    // One fill per track, each proportional to that track's 0-100 value.
+    expect(widths).toEqual(["88.2%", "79.5%", "71.1%", "66.9%"]);
+  });
+
+  it("keeps a bar visible at zero and never past full", () => {
+    const edge = sharePayloadFrom({ t1: 0, t2: 100, t3: 0.4, t4: 50 }, "Pass", {
+      instrument: "ailx 2026.1",
+      sections: { profile: false, process: false, completed: false, site: false, note: false },
+    });
+    expect(barFillWidths(shareCardElement(edge))).toEqual(["2%", "100%", "2%", "50%"]);
+  });
+
+  describe("the card is a fixed 630px box, so long text must not push the footer off it", () => {
+    it("clampLine keeps short text untouched", () => {
+      expect(clampLine("I built a co-op site.", 150)).toBe("I built a co-op site.");
+      expect(clampLine("exactly-ten", 11)).toBe("exactly-ten");
+    });
+
+    it("clampLine cuts on a word boundary and marks the cut", () => {
+      const out = clampLine("alpha bravo charlie delta echo foxtrot", 20);
+      expect(out).toBe("alpha bravo charlie\u2026");
+      expect(out.length).toBeLessThanOrEqual(20);
+    });
+
+    it("clampLine falls back to a hard cut when one word fills the budget", () => {
+      const out = clampLine("a".repeat(60), 20);
+      expect(out).toBe(`${"a".repeat(19)}\u2026`);
+      expect(out.length).toBe(20);
+    });
+
+    it("clamps a maximum-length note before it can overflow the card", () => {
+      const long = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 5, t4: 4 }, "Merit", {
+        instrument: "ailx 2026.1",
+        sections: ALL_SHARE_SECTIONS,
+        completedOn: "2026-02-03",
+        // The server accepts SHARE_NOTE_MAX (240) characters; the card cannot
+        // draw that many, so it must shorten rather than clip mid-glyph.
+        note: "word ".repeat(48).trim(),
+        process: { totalActiveSeconds: 1800, tracks: [] },
+      });
+      const drawn = texts(shareCardElement(long));
+      const highlight = drawn.find((t) => t.startsWith("word word"))!;
+      expect(highlight.length).toBeLessThanOrEqual(150);
+      expect(highlight.endsWith("\u2026")).toBe(true);
+    });
+
+    it("bounds the box as well as the string, for text that is wide but short", () => {
+      // A CJK note is far wider per character than Latin, so the character
+      // budget alone cannot save it: satori must clamp the rendered lines too.
+      const withNote = sharePayloadFrom({ t1: 1, t2: 2, t3: 3, t4: 4 }, "Pass", {
+        instrument: "ailx 2026.1",
+        sections: ALL_SHARE_SECTIONS,
+        note: "\u5b9f\u969b\u306b\u81ea\u5206\u3067\u4f5c\u3063\u305f\u30b5\u30a4\u30c8\u3067\u3059\u3002",
+      });
+      // tagline + highlight: the only two slots that carry variable-length text.
+      expect(lineClamps(shareCardElement(withNote))).toEqual([2, 2]);
+      // With nothing opted in there is no highlight, so only the tagline.
+      expect(lineClamps(shareCardElement(payload))).toEqual([2]);
+    });
   });
 
   it("is deterministic for a given payload", () => {
