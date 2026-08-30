@@ -17,6 +17,7 @@ import {
   type SequencedEntry, type SessionConfig,
 } from "@ailx/session";
 import { saveCheckpoint } from "../lib/checkpoints";
+import { trackConfig } from "../lib/instrument";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -103,5 +104,44 @@ describe("the real T2 replay inside the real exam page", () => {
     await act(async () => { vi.advanceTimersByTime(400_000); });
     expect(project(storedLog()).tracks.t2.status).not.toBe("completed");
     expect(host!.textContent).toContain("how each call should be reasoned");
+  });
+
+  it("places the hold when the LAST deck item is answered, not only on reload", async () => {
+    // The production path: the candidate answers the final item and the deck
+    // flips to the replay in the same interaction.
+    const deck = trackConfig("t2", "en", "att-t2") as { items: { id: string }[] };
+    const answered = deck.items.slice(0, deck.items.length - 1).map((it) => ({
+      itemId: it.id, choice: 0, confidence: 50, latencyMs: 1000,
+    }));
+    saveCheckpoint(window.localStorage, "att-t2", "t2", {
+      phase: "deck", deckIndex: deck.items.length - 1, replayIdx: 0, responses: answered,
+    });
+    await mountExam();
+
+    // Let the stimulus settle, then answer the last card and lock confidence.
+    await act(async () => { vi.advanceTimersByTime(2_000); });
+    // The last item of the shipped deck is a provenance item, which renders
+    // option buttons rather than the two swipe answers.
+    const answer = [...host!.querySelectorAll("button")].find(
+      (b) => b.className.includes("t2-answer-btn") || b.className.includes("t2-option-btn"),
+    );
+    expect(answer, "an answer button on the last card").toBeDefined();
+    await act(async () => { answer!.click(); });
+    const slider = host!.querySelector('input[type="range"]') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    await act(async () => {
+      setter.call(slider, "70");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const lockIn = [...host!.querySelectorAll("button")].find(
+      (b) => (b.textContent ?? "").trim() === "Lock in",
+    );
+    await act(async () => { lockIn!.click(); });
+
+    expect(host!.textContent).toContain("how each call should be reasoned");
+    expect(project(storedLog()).pauseReason, "the hold is placed on the live transition").toBe("presentation");
+    const frozen = timerText();
+    await act(async () => { vi.advanceTimersByTime(90_000); });
+    expect(timerText()).toBe(frozen);
   });
 });
