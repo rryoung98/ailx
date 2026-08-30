@@ -89,8 +89,26 @@ describe("the wall", () => {
   it("shows the empty state instead of an empty grid", async () => {
     listing = listingOf([]);
     const html = await markup();
-    expect(html).toContain("Nothing published yet.");
+    expect(html).toContain("Nobody has published a card yet");
     expect(html).not.toContain("gallery-card");
+    // An empty wall is not a filter miss, and it never says both.
+    expect(html).not.toContain("No published card matches this filter");
+    // Filters over nothing are chrome that implies content.
+    expect(html).not.toContain("gallery-filters");
+  });
+
+  it("distinguishes a filter miss from an empty wall, and offers a way out", async () => {
+    listing = listingOf([], {
+      total: 0,
+      facets: [{ code: payload.playerType.code, name: payload.playerType.name, count: 4 }],
+    });
+    const html = await markup();
+    expect(html).toContain("No published card matches this filter");
+    expect(html).toContain("Clear the filters");
+    expect(html).toContain("all 4 of them");
+    expect(html).not.toContain("Nobody has published a card yet");
+    // There ARE cards, so the filters stay on screen.
+    expect(html).toContain("gallery-filters");
   });
 
   it("links each card to its own share view, and leaks nothing else", async () => {

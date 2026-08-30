@@ -91,6 +91,9 @@ export default async function GalleryPage({ searchParams }: GalleryParams) {
           <Link href="/exam">Play a run and get your own type →</Link>
         </p>
 
+        {/* Filters over nothing are chrome that implies content. They appear
+            once there is something to filter. */}
+        {listed === 0 ? null : (
         <nav className="gallery-filters" aria-label="Filter and sort the gallery">
           <div className="filter-row" role="group" aria-label="Player type">
             <Link
@@ -132,18 +135,31 @@ export default async function GalleryPage({ searchParams }: GalleryParams) {
             </Link>
           </div>
         </nav>
+        )}
 
-        <p className="small faint" aria-live="polite">
-          {total === 0
-            ? "Nothing published yet."
-            : `Showing ${query.offset + 1}–${shown} of ${total} published card${total === 1 ? "" : "s"}.`}
-        </p>
+        {/* One message, not two. This used to print "Nothing published yet."
+            and "No cards match this filter yet." one under the other, which
+            contradict each other: an empty gallery is not a filter miss, and
+            a filter miss on a full gallery is not an empty gallery. */}
+        {total > 0 ? (
+          <p className="small faint" aria-live="polite">
+            {`Showing ${query.offset + 1}–${shown} of ${total} published card${total === 1 ? "" : "s"}.`}
+          </p>
+        ) : null}
 
         {entries.length === 0 ? (
-          <p className="muted">
-            No cards match this filter yet. Finish a run, then publish your card from the report —
-            it appears here the moment you do.
-          </p>
+          listed === 0 ? (
+            <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">
+              Nobody has published a card yet, so this wall is genuinely empty rather than
+              broken. Finish a run and publish yours from the report — it appears here the
+              moment you do, and you can revoke it just as fast.
+            </p>
+          ) : (
+            <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">
+              No published card matches this filter.{" "}
+              <Link href="/gallery">Clear the filters</Link> to see all {listed} of them.
+            </p>
+          )
         ) : (
           <div className="gallery-grid">
             {entries.map((entry) => (
