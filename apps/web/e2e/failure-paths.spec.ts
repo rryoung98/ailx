@@ -54,7 +54,11 @@ test.describe("T1 failure paths", () => {
     );
 
     await page.context().setOffline(true);
+    // Submitting is a two-step act: the first press ARMS the finish step
+    // (one stray click used to end the track and forfeit the clock), the
+    // second confirms inside it.
     await page.getByRole("button", { name: "Submit final artifact" }).click();
+    await page.getByRole("button", { name: "Yes, submit final artifact" }).click();
 
     // Stated, not swallowed — and the track itself is still complete and
     // scored, so no response was dropped on the floor.

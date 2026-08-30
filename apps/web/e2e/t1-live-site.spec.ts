@@ -25,7 +25,11 @@ test.describe("T1 live site", () => {
       `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>site</title></head>` +
         `<body><h1>${marker}</h1></body></html>`,
     );
+    // Submitting is a two-step act: the first press ARMS the finish step
+    // (one stray click used to end the track and forfeit the clock), the
+    // second confirms inside it.
     await page.getByRole("button", { name: "Submit final artifact" }).click();
+    await page.getByRole("button", { name: "Yes, submit final artifact" }).click();
 
     const link = page.getByRole("link", { name: /open your site/i });
     await expect(link).toBeVisible();
