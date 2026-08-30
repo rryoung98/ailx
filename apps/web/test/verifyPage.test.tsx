@@ -106,6 +106,20 @@ describe("a genuine credential", () => {
     }
   });
 
+  it("gives the long facts a full row so the id is copyable, not hyphenated", async () => {
+    const d = dom(await markup());
+    const facts = [...d.querySelectorAll(".verify-facts > div")];
+    const cell = (label: string) =>
+      facts.find((f) => f.querySelector("dt")?.textContent === label)!;
+    // The 29-character id used to break across four lines in a 140px column.
+    expect(cell("Credential id").getAttribute("style")).toContain("1 / -1");
+    expect(cell("Player type").getAttribute("style")).toContain("1 / -1");
+    // The short ones stay in the compact auto-fit grid.
+    for (const short of ["Issued by", "Issued on", "Instrument", "Tracks attempted"]) {
+      expect(cell(short).getAttribute("style"), short).toBeNull();
+    }
+  });
+
   it("prints what it does NOT assert with equal weight", async () => {
     const html = await markup();
     for (const limit of CREDENTIAL_LIMITS) {

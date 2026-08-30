@@ -63,6 +63,9 @@ export async function generateMetadata({ params }: VerifyParams): Promise<Metada
   };
 }
 
+/** A fact too long for a 140px auto-fit column: give it the whole row. */
+const WIDE_FACT = { gridColumn: "1 / -1" } as const;
+
 function day(iso: string): string {
   return iso.slice(0, 10);
 }
@@ -127,14 +130,15 @@ export default async function VerifyPage({ params }: VerifyParams) {
 
         <section className="card">
           <h2 style={{ marginTop: 0 }}>{credentialName(claim.instrumentVersion)}</h2>
+          {/* `.verify-facts` is a 140px auto-fit grid, which is right for a
+              date and wrong for the two long values: the 29-character
+              credential id — the one fact a checker copies — broke across
+              four lines. Those two claim a full row instead of being
+              hyphenated into confetti. */}
           <dl className="verify-facts">
             <div>
               <dt>Issued by</dt>
               <dd>{CREDENTIAL_ISSUER}</dd>
-            </div>
-            <div>
-              <dt>Credential id</dt>
-              <dd className="mono">{credential.code}</dd>
             </div>
             <div>
               <dt>Issued on</dt>
@@ -152,7 +156,11 @@ export default async function VerifyPage({ params }: VerifyParams) {
               <dt>Tracks attempted</dt>
               <dd className="mono">{claim.tracksAttempted.join(" · ")}</dd>
             </div>
-            <div>
+            <div style={WIDE_FACT}>
+              <dt>Credential id</dt>
+              <dd className="mono" style={{ overflowWrap: "anywhere" }}>{credential.code}</dd>
+            </div>
+            <div style={WIDE_FACT}>
               <dt>Player type</dt>
               <dd>
                 <span className="mono">{claim.playerType.code}</span> — {claim.playerType.name}
