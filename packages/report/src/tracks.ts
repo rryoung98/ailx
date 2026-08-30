@@ -56,7 +56,9 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
   t3: {
     id: "t3", code: "T3", pluginId: "instrumented-assistant@2", name: "AI-Assisted Reasoning",
     packageName: "@ailx/track-t3", points: 100,
-    hype: "T3 — the assistant lies twice. Catch both.",
+    // Three, not two: the shipped config plants three errors and the reveal
+    // lists all three (apps/web/test/wiring.test.ts pins the count).
+    hype: "T3 — the assistant plants three errors. Catch them.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t3, demoBudgetSeconds: 10 * 60,
     brief:
       "Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis. Thirty-five of the hundred points are model-free measurement of behaviour.",
@@ -70,7 +72,11 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
   t4: {
     id: "t4", code: "T4", pluginId: "generative-studio@2", name: "Generative Direction",
     packageName: "@ailx/track-t4", points: 100,
-    hype: "T4 — six generations, no more. Make them count.",
+    // The hard quota is the DELIVERABLE quota — 3 finished images and 1
+    // video (t4 `finalImageQuota` / `finalVideoQuota`). Drafts are unlimited,
+    // so "six generations" both named the wrong number and described the
+    // wrong thing to budget against.
+    hype: "T4 — three images and one video. Make them count.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t4, demoBudgetSeconds: 8 * 60,
     brief:
       "Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts. Blind viewers are asked what the work communicates; the score is agreement with the brief's stated intent.",

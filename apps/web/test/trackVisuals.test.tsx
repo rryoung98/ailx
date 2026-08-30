@@ -54,8 +54,8 @@ describe("track visual cards", () => {
     const h = render();
     expect(h.querySelectorAll(".tviz")).toHaveLength(4);
     expect(h.textContent).toContain("Can you spot the fakes?");
-    expect(h.textContent).toContain("The assistant lies twice. Catch it.");
-    expect(h.textContent).toContain("Six shots. Make them count.");
+    expect(h.textContent).toContain("The assistant plants three errors. Catch them.");
+    expect(h.textContent).toContain("Three images, one video. Make them count.");
   });
 
   it("T2 preview shows real snapshot media with REAL/AI stamps", () => {

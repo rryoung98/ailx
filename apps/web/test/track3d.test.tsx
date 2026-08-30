@@ -222,7 +222,7 @@ describe("TrackBands", () => {
     expect(nums).toEqual(["T1", "T2", "T3", "T4"]);
     expect(h.textContent).toContain("Creative Build");
     expect(h.textContent).toContain("Can you spot the fakes?");
-    expect(h.textContent).toContain("The assistant lies twice. Catch both.");
+    expect(h.textContent).toContain("The assistant plants three errors. Catch them.");
     expect([...h.querySelectorAll(".track-band-line")]).toHaveLength(4);
   });
 
