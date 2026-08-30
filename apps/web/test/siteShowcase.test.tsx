@@ -258,9 +258,12 @@ describe("pill guard + scrub shortening", () => {
     expect(pill).not.toContain("max-width: 640px");
   });
 
-  it("CSS still carries the small-screen rule; the component owns the rest", () => {
+  it("CSS owns the whole cleared state, at every width", () => {
     const mob = css.slice(css.indexOf("mobile compatibility"));
-    expect(mob).toMatch(/@media \(max-width: 640px\) \{\s*\.pill-cta-cleared \{[^}]*pointer-events: none/s);
+    // The rule is no longer nested in `@media (max-width: 640px)`: that gate
+    // was the reason PillCTA duplicated the same three declarations inline.
+    expect(mob).toMatch(/^\.pill-cta-cleared \{[^}]*pointer-events: none/m);
+    expect(mob).not.toMatch(/@media \(max-width: 640px\) \{\s*\.pill-cta-cleared/s);
     const scrub = mob.indexOf("@media (prefers-reduced-motion: no-preference) and (max-width: 640px)");
     expect(scrub).toBeGreaterThan(-1);
     const gated = mob.slice(scrub);

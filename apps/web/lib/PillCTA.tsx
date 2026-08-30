@@ -21,7 +21,6 @@
  */
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { prefersReducedMotion } from "./reducedMotion";
 
 const CLEAR_BAND_PX = 140;
 /** Distance from the document bottom at which the footer is in play. */
@@ -89,20 +88,12 @@ export function PillCTA({
   }, []);
 
   const cleared = overlapping || atPageEnd;
+  /* One class, no inline twin. `.pill-cta-cleared` in globals.css carries
+     opacity, pointer-events and the slide, at EVERY width — it used to be
+     gated inside a 640px media query, which is why this component also
+     wrote the same three declarations inline. The reduced-motion snap lives
+     in the same stylesheet block. */
   const cls = `pill-cta${cleared ? " pill-cta-cleared" : ""}`;
-  /* The class is styled only below 640px in globals.css; the state is the
-     same at every width, so the hidden state is applied here rather than
-     duplicated as a second breakpoint. Under reduced motion it snaps instead
-     of sliding — the pill still gets out of the way, it just does not move. */
-  const clearedStyle = cleared
-    ? {
-        opacity: 0,
-        pointerEvents: "none" as const,
-        ...(prefersReducedMotion()
-          ? { transition: "none" }
-          : { transform: "translateY(24px)" }),
-      }
-    : undefined;
   const inner = (
     <>
       <span className="dot" aria-hidden />
@@ -111,7 +102,7 @@ export function PillCTA({
   );
   if (href) {
     return (
-      <Link className={cls} href={href} style={clearedStyle} aria-hidden={cleared || undefined} tabIndex={cleared ? -1 : undefined}>
+      <Link className={cls} href={href} aria-hidden={cleared || undefined} tabIndex={cleared ? -1 : undefined}>
         {inner}
       </Link>
     );
@@ -120,7 +111,7 @@ export function PillCTA({
     <button
       type="button"
       className={`${cls}${disabled ? " disabled" : ""}`}
-      style={clearedStyle}
+     
       aria-disabled={disabled || undefined}
       aria-hidden={cleared || undefined}
       tabIndex={cleared ? -1 : undefined}

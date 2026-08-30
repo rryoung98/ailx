@@ -272,3 +272,44 @@ describe("the credential surfaces are legible and never colour-only", () => {
     expect(page).toContain("verify-status");
   });
 });
+
+describe("shared layout tokens and shell rules", () => {
+  it("publishes the sticky header height as a token, at every wrap width", () => {
+    // A second sticky element (the track runner's clock bar) needs the
+    // header's own height to sit under it; the nav wraps as the viewport
+    // narrows, so the token steps with it.
+    const decls = [...css.matchAll(/--header-h:\s*(\d+)px/g)].map((m) => Number(m[1]));
+    expect(decls).toEqual([66, 110, 130]);
+    expect(css).toMatch(/@media \(max-width: 660px\) \{ :root \{ --header-h: 110px; \} \}/);
+    expect(css).toMatch(/@media \(max-width: 500px\) \{ :root \{ --header-h: 130px; \} \}/);
+  });
+
+  it("pushes the footer to the bottom of a short page", () => {
+    expect(css).toMatch(/body \{[^}]*min-height: 100dvh/);
+    expect(css).toMatch(/#main \{[^}]*flex: 1 0 auto/);
+  });
+
+  it("clears the floating Play pill at every width, not only on mobile", () => {
+    // The PillCTA observer sets this class at every width; the rule used to
+    // be gated inside `@media (max-width: 640px)`, so on a desktop viewport
+    // the pill stayed lit over the copy it was meant to get out of the way of.
+    const at = css.indexOf(".pill-cta-cleared");
+    // Every brace before the rule is closed, so the rule is at the top level
+    // rather than nested inside an `@media` block.
+    const before = css.slice(0, at).replace(/\/\*[\s\S]*?\*\//g, "");
+    expect((before.match(/\{/g) ?? []).length).toBe((before.match(/\}/g) ?? []).length);
+    expect(css.slice(at)).toMatch(/^\.pill-cta-cleared \{[^}]*opacity: 0/);
+  });
+
+  it("stops the pill transform under prefers-reduced-motion", () => {
+    const reduced = css.slice(css.indexOf(".pill-cta-cleared"));
+    expect(reduced).toMatch(/@media \(prefers-reduced-motion: reduce\)[^}]*\{[\s\S]{0,200}\.pill-cta-cleared \{ transform: none; \}/);
+  });
+
+  it("stacks a stat's numeral above its caption instead of running them together", () => {
+    // `.value` and `.label` are both inline spans, so without the grid the
+    // markup rendered "29people".
+    const block = css.slice(css.indexOf(".stat {"));
+    expect(block.slice(0, block.indexOf("}"))).toMatch(/display: grid/);
+  });
+});

@@ -81,6 +81,22 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 
 /* Layout */
 .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+/*
+ * `--header-h` is the sticky header's own height, published as a token so a
+ * second sticky element (the track runner's clock + Pause bar) can sit
+ * directly under it with `top: var(--header-h)` instead of guessing.
+ *
+ * It is NOMINAL, not measured: the primary nav wraps as the viewport
+ * narrows, so the token steps with it. The three values are read off the
+ * shipped header (66px above ~660px, 110px in the one-wrap band, 130px below
+ * ~500px) and the header is deliberately NOT forced to the token — a drift
+ * then costs a few pixels of gap under a sticky child, never a header that
+ * clips its own nav.
+ */
+:root { --header-h: 66px; }
+@media (max-width: 660px) { :root { --header-h: 110px; } }
+@media (max-width: 500px) { :root { --header-h: 130px; } }
+
 .site-header {
   position: sticky; top: 0; z-index: 20;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
@@ -104,6 +120,15 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
 }
 main.page { padding-top: 3rem; }
 
+/*
+ * The footer sits at the bottom of the viewport on a short page.
+ * `#main` is the skip-link target wrapper the layout renders around every
+ * page; without this the footer floated mid-screen above dead space on the
+ * short pages (an empty report, /verify). Requested by the ux-share pass.
+ */
+body { display: flex; flex-direction: column; min-height: 100dvh; }
+#main { flex: 1 0 auto; }
+
 /* Components */
 .card {
   background: var(--card); border: 1px solid var(--border);
@@ -124,9 +149,15 @@ main.page { padding-top: 3rem; }
 .faint { color: var(--faint); }
 .small { font-size: 0.85rem; }
 
-.stat { border-left: 2px solid var(--border-strong); padding-left: 0.9rem; }
-.stat .value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
-.stat .label { color: var(--muted); font-size: 0.8rem; }
+/* A stat is a numeral with its caption UNDER it, never beside it: `.value`
+   and `.label` are both inline spans, so without an explicit grid they run
+   together and render "29people". */
+.stat {
+  display: grid; justify-items: start; gap: 0.1rem;
+  border-left: 2px solid var(--border-strong); padding-left: 0.9rem;
+}
+.stat .value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.stat .label { color: var(--muted); font-size: 0.8rem; line-height: 1.25; }
 
 .btn {
   display: inline-block; cursor: pointer; border-radius: 7px;
@@ -159,8 +190,15 @@ main.page { padding-top: 3rem; }
 .band-Pass { color: var(--pass); }
 .band-Participation { color: var(--participation); }
 
-.meter { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 5px; height: 10px; overflow: hidden; }
-.meter > div { height: 100%; background: var(--accent); }
+/* `> *`, not `> div`: the fill is a <span> wherever the meter itself is a
+   <p> (a <div> inside a <p> is invalid HTML), and every caller was otherwise
+   forced to repeat the fill's colour inline. */
+.meter { background: var(--bg-raised); border: 1px solid var(--border); border-radius: 5px; height: 10px; overflow: hidden; margin: 0; }
+.meter > * { display: block; height: 100%; background: var(--accent); }
+
+/* A breakdown held back by the cohort floor: how far off it is, not a shrug. */
+.suppressed { display: grid; gap: 0.5rem; max-width: 32rem; margin: 0.8rem 0; }
+.suppressed p { margin: 0; }
 
 .timer {
   font-family: var(--mono); font-size: 1.4rem; font-weight: 600;
@@ -1199,8 +1237,14 @@ html[data-ailx-loaded="1"] .loader { display: none; }
    element (teaser, connect panel, runner controls) sits in the bottom band
    of a small viewport (IO helper in PillCTA toggles the class). */
 .pill-cta { transition: transform 160ms ease, box-shadow 160ms ease, opacity 200ms ease; }
-@media (max-width: 640px) {
-  .pill-cta-cleared { opacity: 0; pointer-events: none; transform: translateY(24px); }
+/* Not width-gated. The PillCTA observer sets this class at every width, and
+   gating the rule at 640px meant the pill stayed lit over landing copy and
+   over the footer on a desktop viewport — the one place the class is set but
+   was ignored. Requested by the ux-share pass. */
+.pill-cta-cleared { opacity: 0; pointer-events: none; transform: translateY(24px); }
+@media (prefers-reduced-motion: reduce) {
+  .pill-cta { transition: opacity 200ms ease; }
+  .pill-cta-cleared { transform: none; }
 }
 /* Shorter scrubs on small screens: kill the cream dead-gap before the desk
    section and keep the floating quote inside the desk image. */
@@ -1417,6 +1461,14 @@ main .card {
 .histogram-col { display: grid; align-content: end; gap: 2px; height: 100%; }
 .histogram-bar { background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
 .histogram-tick { font-size: 0.6rem; color: var(--faint); text-align: center; }
+/* The median decile, so ten bars have a landmark. Marked by an ink rule and
+   a bold tick, not by lightening the bar: a paler fill would drop the bar
+   below the 3:1 that a meaningful graphic needs. */
+.histogram-col.median .histogram-bar { box-shadow: inset 0 0 0 1px var(--card); }
+.histogram-col.median .histogram-tick {
+  color: var(--fg); font-weight: 700;
+  border-top: 2px solid var(--fg);
+}
 .type-bars { list-style: none; margin: 0.8rem 0; padding: 0; display: grid; gap: 0.45rem; }
 .type-bars li { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: 0.7rem; align-items: center; }
 .type-bar-code { color: var(--accent); font-weight: 700; }

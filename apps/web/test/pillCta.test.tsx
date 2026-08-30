@@ -78,7 +78,6 @@ describe("PillCTA clearance", () => {
   it("is visible and reachable in the middle of a long page", () => {
     act(() => root!.render(createElement(PillCTA, { href: "/exam" }, "Play")));
     expect(pill().className).not.toContain("pill-cta-cleared");
-    expect(pill().style.opacity).toBe("");
     expect(pill().getAttribute("aria-hidden")).toBeNull();
   });
 
@@ -86,10 +85,10 @@ describe("PillCTA clearance", () => {
     act(() => root!.render(createElement(PillCTA, { href: "/exam" }, "Play")));
     fire(marked, true);
     expect(pill().className).toContain("pill-cta-cleared");
-    // The class is only styled below 640px in globals.css, so the state has
-    // to be carried on the element to hold at 1440px.
-    expect(pill().style.opacity).toBe("0");
-    expect(pill().style.pointerEvents).toBe("none");
+    // One class, no inline twin: `.pill-cta-cleared` is styled at every
+    // width in globals.css (pinned by a11y.test.tsx), so nothing has to be
+    // written onto the element to hold at 1440px.
+    expect(pill().getAttribute("style")).toBeNull();
     fire(marked, false);
     expect(pill().className).not.toContain("pill-cta-cleared");
   });
@@ -97,9 +96,9 @@ describe("PillCTA clearance", () => {
   it("clears at the end of the page, where the layout footer is", () => {
     act(() => root!.render(createElement(PillCTA, { href: "/exam" }, "Play")));
     scrollTo(60);
-    expect(pill().style.opacity).toBe("0");
+    expect(pill().className).toContain("pill-cta-cleared");
     scrollTo(3000);
-    expect(pill().style.opacity).toBe("");
+    expect(pill().className).not.toContain("pill-cta-cleared");
   });
 
   it("leaves no hidden tab stop or announced link behind", () => {
@@ -109,7 +108,10 @@ describe("PillCTA clearance", () => {
     expect(pill().getAttribute("tabindex")).toBe("-1");
   });
 
-  it("snaps instead of sliding under prefers-reduced-motion", () => {
+  it("leaves the reduced-motion snap to the stylesheet, not to an inline style", () => {
+    // The pill still gets out of the way under reduced motion; it just does
+    // not slide. That is one media query in globals.css rather than a
+    // hydration-sensitive matchMedia read here.
     const reduce = vi.fn((q: string) => ({
       matches: q.includes("prefers-reduced-motion"),
       addEventListener: () => {},
@@ -119,8 +121,8 @@ describe("PillCTA clearance", () => {
     Object.defineProperty(window, "matchMedia", { configurable: true, value: reduce });
     act(() => root!.render(createElement(PillCTA, { onClick: () => {} }, "Play")));
     scrollTo(60);
-    expect(pill().style.transform).toBe("");
-    expect(pill().style.transition).toBe("none");
+    expect(pill().className).toContain("pill-cta-cleared");
+    expect(pill().getAttribute("style")).toBeNull();
   });
 
   it("works as a button too, and keeps aria-disabled independent of clearing", () => {
@@ -129,6 +131,6 @@ describe("PillCTA clearance", () => {
     expect(pill().getAttribute("aria-disabled")).toBe("true");
     scrollTo(60);
     expect(pill().getAttribute("aria-disabled")).toBe("true");
-    expect(pill().style.opacity).toBe("0");
+    expect(pill().className).toContain("pill-cta-cleared");
   });
 });
