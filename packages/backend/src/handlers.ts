@@ -6,6 +6,7 @@
  */
 
 import type { TrackId } from "@ailx/session";
+import type { Instrument, RedactedItem } from "@ailx/instrument";
 import type { Queryable } from "./db.js";
 import type { AuthProvider, HeaderMap } from "./auth.js";
 import {
@@ -17,7 +18,7 @@ import {
   finalizeAttempt,
   getAttempt,
   getDecks,
-  type DeckRecord,
+  getItemChoices,
   type InstrumentRef,
   type TranscriptVerb,
 } from "./store.js";
@@ -33,11 +34,15 @@ export interface ApiContext {
   db: Queryable;
   auth: AuthProvider;
   /**
-   * Content-aware deck sampler (the backend stays content-agnostic — the
-   * host wires in the instrument snapshot). MUST be a pure, deterministic
-   * function of (attemptId, locale) so recorded decks are re-derivable.
+   * The mounted instrument (@ailx/instrument). The backend stays
+   * content-agnostic: it holds this INTERFACE, never a bank. It replaces the
+   * old `sampleDecks?` callback, which forwarded its arguments and hid
+   * nothing — deck sampling, redaction, grading and the audit digests are one
+   * responsibility with one owner (docs/ARCHITECTURE.md §3).
+   *
+   * Optional because the log-mirror routes do not need content at all.
    */
-  sampleDecks?: (attemptId: string, locale: string) => readonly DeckRecord[];
+  instrument?: Instrument;
 }
 
 export interface ApiResult {
@@ -108,9 +113,10 @@ export async function handleCreateAttempt(
     instrumentVer: typeof b.instrumentVer === "string" ? b.instrumentVer : DEFAULT_INSTRUMENT.instrumentVer,
   };
   const locale = typeof b.locale === "string" && LOCALE_RE.test(b.locale) ? b.locale : "en";
+  const instrument = ctx.instrument;
   const sampler =
-    b.decks === true && ctx.sampleDecks
-      ? (attemptId: string) => ctx.sampleDecks!(attemptId, locale)
+    b.decks === true && instrument
+      ? (attemptId: string) => instrument.sampleDecks(attemptId, locale)
       : undefined;
   return withParticipant(ctx, headers, async (participantId) => {
     const attempt = await createAttempt(ctx.db, participantId, ref, sampler);
@@ -132,6 +138,54 @@ export async function handleGetAttempt(
     if (attempt === null) return errorResult("not_found", "attempt not found");
     const decks = await getDecks(ctx.db, attemptId, participantId);
     return { status: 200, body: decks.length > 0 ? { attempt, decks } : { attempt } };
+  });
+}
+
+/**
+ * GET /api/attempts/:id/items — the redacted deck.
+ *
+ * THE PHASE IS DERIVED, NEVER BELIEVED. It comes from this attempt's own
+ * `finalized_at` as the database holds it; there is no query parameter, no
+ * header and no body field a candidate could set to unlock the answers early.
+ * The client names a wish; the server states a fact.
+ *
+ * During the sitting the response body has no `key` and no `rationale` — not
+ * blanked, absent — because {@link RedactedItem} is a discriminated union and
+ * the redaction builds the sitting object from presented fields only.
+ */
+export async function handleGetItems(
+  ctx: ApiContext,
+  headers: HeaderMap,
+  attemptId: string,
+): Promise<ApiResult> {
+  return withParticipant(ctx, headers, async (participantId) => {
+    const instrument = ctx.instrument;
+    if (!instrument) return errorResult("not_found", "no instrument is mounted");
+    const attempt = await getAttempt(ctx.db, attemptId, participantId);
+    if (attempt === null) return errorResult("not_found", "attempt not found");
+    const phase = attempt.finalizedAt === null ? "sitting" : "review";
+
+    const deck = (await getDecks(ctx.db, attemptId, participantId)).find((d) => d.trackId === "t2");
+    // An attempt created without `decks: true` was never dealt one. That is
+    // an empty deck, not an error, and certainly not "here is the whole bank".
+    if (deck === undefined) {
+      return { status: 200, body: { phase, deckDigest: null, items: [] as RedactedItem[] } };
+    }
+
+    // Own choices only, and only once the sitting is over.
+    let answers: Map<string, number> | undefined;
+    if (phase === "review") {
+      answers = new Map();
+      for (const [itemId, payload] of await getItemChoices(ctx.db, attemptId, participantId)) {
+        const choice = (payload as { choice?: unknown } | null)?.choice;
+        if (typeof choice === "number") answers.set(itemId, choice);
+      }
+    }
+    const items = instrument.itemView(deck, phase, "en", answers);
+    return {
+      status: 200,
+      body: { phase, deckDigest: deck.bankSha256, released: instrument.released, items },
+    };
   });
 }
 

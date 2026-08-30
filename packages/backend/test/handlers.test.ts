@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import type { Instrument } from "@ailx/instrument";
 import { DEV_USER_HEADER, DevAuthProvider } from "../src/auth.js";
 import {
   handleAppendResponse,
@@ -154,7 +155,33 @@ describe("per-attempt deck sampling over the API surface", () => {
   const sampler = (attemptId: string, locale: string) => [
     { trackId: "t2" as const, bankSha256: SHA, itemIds: [`${locale}:${attemptId}:a`, `${locale}:${attemptId}:b`] },
   ];
-  const deckCtx = () => ({ ...ctx, sampleDecks: sampler });
+  /**
+   * A STUB instrument. The backend holds the `Instrument` interface, never a
+   * bank, so these tests need no content at all — only a sampler that is a
+   * pure function of (attemptId, locale). Everything else throws, which is
+   * the assertion that attempt creation reads nothing else.
+   */
+  const stubInstrument = (
+    sampleDecks: (attemptId: string, locale: string) => ReturnType<typeof sampler>,
+  ): Instrument => ({
+    instrumentId: "ailx",
+    instrumentVer: "2026.1",
+    packageDigest: SHA,
+    released: false,
+    sampleDecks,
+    itemView: () => {
+      throw new Error("attempt creation must not view items");
+    },
+    gradeResponse: () => {
+      throw new Error("attempt creation must not grade");
+    },
+    scoringConfig: () => {
+      throw new Error("attempt creation must not build a scoring config");
+    },
+    rubricVersion: () => "unused",
+    scoringDigest: () => "unused",
+  });
+  const deckCtx = () => ({ ...ctx, instrument: stubInstrument(sampler) });
 
   it("decks:true records + returns the sampled ids, keyed to the new attempt id", async () => {
     const user = fresh();
@@ -183,7 +210,7 @@ describe("per-attempt deck sampling over the API surface", () => {
     expect(read.body.decks).toBeUndefined();
   });
 
-  it("decks:true without a configured sampler records nothing (static-content host)", async () => {
+  it("decks:true with no instrument mounted records nothing (static-content host)", async () => {
     const res = await handleCreateAttempt(ctx, fresh(), { decks: true });
     expect(res.status).toBe(201);
     expect(res.body.decks).toBeUndefined();
@@ -191,7 +218,10 @@ describe("per-attempt deck sampling over the API surface", () => {
 
   it("a sampler emitting an invalid record 400s and creates no attempt", async () => {
     const user = fresh();
-    const badCtx = { ...ctx, sampleDecks: () => [{ trackId: "t2" as const, bankSha256: "nope", itemIds: ["a"] }] };
+    const badCtx = {
+      ...ctx,
+      instrument: stubInstrument(() => [{ trackId: "t2" as const, bankSha256: "nope", itemIds: ["a"] }]),
+    };
     const res = await handleCreateAttempt(badCtx, user, { decks: true });
     expect(res.status).toBe(400);
   });

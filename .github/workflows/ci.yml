@@ -67,6 +67,21 @@ jobs:
       - name: Build (typechecks all packages + static export)
         run: pnpm -r build
 
+      # Dual-mode drift is invisible unless both builds run (FRONTEND.md 6.5).
+      # The static export above has no API surface at all; this one compiles
+      # the `route.api.ts` handlers.
+      #
+      # It runs BEFORE the tests on purpose: `apps/web/test/bundleSecrecy.test.ts`
+      # greps the BUILT client assets of BOTH modes for operational answer-key
+      # material, and it can only do that if both outputs exist. The static
+      # export lands in `apps/web/out`, the hosted client chunks in
+      # `apps/web/.next/static` — so this step must be the one that leaves
+      # `.next` behind.
+      - name: Build server mode (AILX_BACKEND=1)
+        env:
+          AILX_BACKEND: "1"
+        run: pnpm --filter @ailx/web build
+
       # ONE vitest for every package (vitest-workspace.ts). The hosted runner
       # has more cores than the 4-fork laptop default, and no other work to do
       # with them.
@@ -101,14 +116,6 @@ jobs:
           files: coverage/lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-
-      # Dual-mode drift is invisible unless both builds run (FRONTEND.md 6.5).
-      # The static export above has no API surface at all; this one compiles
-      # the `route.api.ts` handlers.
-      - name: Build server mode (AILX_BACKEND=1)
-        env:
-          AILX_BACKEND: "1"
-        run: pnpm --filter @ailx/web build
 
   e2e:
     name: e2e

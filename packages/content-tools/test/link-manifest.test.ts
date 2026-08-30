@@ -10,19 +10,22 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ITEMS = fileURLToPath(
-  new URL("../../../instruments/2026.1/tracks/t2-discrimination/items", import.meta.url),
-);
-const bankRaw = readFileSync(join(ITEMS, "bank.jsonl"), "utf8");
-const manifest = JSON.parse(readFileSync(join(ITEMS, "link-check.json"), "utf8")) as {
-  bank_sha256: string;
-  checked_at: string;
-  url_count: number;
-  all_ok: boolean;
-  results: Array<{ url: string; status: number; ok: boolean; item_ids: string[] }>;
-};
+/** Both tiers commit their own manifest: operational and released-practice. */
+const TIERS = ["2026.1", "demo-2026.1"] as const;
 
-describe("provenance link-check manifest", () => {
+describe.each(TIERS)("provenance link-check manifest (%s)", (tier) => {
+  const ITEMS = fileURLToPath(
+    new URL(`../../../instruments/${tier}/tracks/t2-discrimination/items`, import.meta.url),
+  );
+  const bankRaw = readFileSync(join(ITEMS, "bank.jsonl"), "utf8");
+  const manifest = JSON.parse(readFileSync(join(ITEMS, "link-check.json"), "utf8")) as {
+    bank_sha256: string;
+    checked_at: string;
+    url_count: number;
+    all_ok: boolean;
+    results: Array<{ url: string; status: number; ok: boolean; item_ids: string[] }>;
+  };
+
   it("is fresh: manifest was generated from exactly this bank", () => {
     const sha = createHash("sha256").update(bankRaw).digest("hex");
     expect(manifest.bank_sha256).toBe(sha);
@@ -42,6 +45,16 @@ describe("provenance link-check manifest", () => {
     const checked = new Set(manifest.results.map((r) => r.url));
     for (const u of wanted) expect(checked, `missing from manifest: ${u}`).toContain(u);
     expect(manifest.url_count).toBe(manifest.results.length);
+  });
+
+  it("names only items that are actually in this tier's bank", () => {
+    const ids = new Set(
+      bankRaw.split("\n").filter(Boolean).map((l) => (JSON.parse(l) as { id: string }).id),
+    );
+    for (const r of manifest.results) {
+      expect(r.item_ids.length, `${r.url} names no item`).toBeGreaterThan(0);
+      for (const id of r.item_ids) expect(ids, `${r.url} names foreign item ${id}`).toContain(id);
+    }
   });
 
   it("every checked URL resolved (2xx/3xx)", () => {

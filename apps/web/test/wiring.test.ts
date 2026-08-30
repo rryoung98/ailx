@@ -44,7 +44,7 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
     expect(exposure["media-audio"]).toBe(10);
     expect(exposure["message-email"]).toBe(25);
     expect(exposure["message-page"]).toBe(25);
-    expect(exposure["provenance"]).toBeUndefined(); // untimed
+    expect(exposure.provenance).toBeUndefined(); // untimed
     for (const i of t2Items("en")) {
       if (i.type === "provenance") {
         expect(i.exposureSeconds).toBeUndefined();
@@ -65,11 +65,27 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
   });
 
   it("bank item ids are content addresses: id = sha256(canonical_json(item-sans-id))", () => {
-    const bank = snapshotTrack("t2").bank!;
-    for (const item of bank.items) {
-      const { id, ...rest } = item as Record<string, unknown> & { id: string };
-      expect(itemId(rest)).toBe(id);
-    }
+    // Verified against the bank ON DISK, not against the snapshot the browser
+    // holds. The public snapshot is built with `--public`, which drops each
+    // item's `provenance` record (it names generation prompts and the
+    // OPERATIONAL `source_item` a translation derives from), so a redacted
+    // item can no longer re-hash to its own id — that is what redaction means.
+    // The address itself is still enforced, on the canonical bytes, by
+    // `hashBank` and by @ailx/content-tools' CI gate.
+    const path = new URL(
+      "../../../instruments/demo-2026.1/tracks/t2-discrimination/items/bank.jsonl",
+      import.meta.url,
+    );
+    const items = readFileSync(path, "utf8")
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line) as Record<string, unknown> & { id: string });
+    expect(items.length).toBeGreaterThan(0);
+    // Every id the browser was handed is one of these — no more, no fewer.
+    expect(new Set(snapshotTrack("t2").bank!.items.map((i) => i.id))).toEqual(
+      new Set(items.map((i) => i.id)),
+    );
+    for (const { id, ...rest } of items) expect(itemId(rest)).toBe(id);
   });
 
   it("t3 scenario validates and matches its pinned content hash (F16)", () => {

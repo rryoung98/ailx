@@ -1,0 +1,22 @@
+# PUBLIC RELEASED-PRACTICE TIER — the opposite of secure.
+#
+# Every item in this package publishes its `key`, `rationale` and
+# `provenance` ON PURPOSE (spec §09 released tier). It exists so the static
+# GitHub Pages demo can run a real T2 deck WITHOUT the operational bank.
+# It issues NO SCORE OF RECORD.
+#
+# GENERATED/DERIVED — see README.md. Everything except manifest.yaml and
+# tracks/t2-discrimination/items/ is a symlink into ../2026.1.
+id: ailx-demo-practice
+version: "demo-2026.1"
+notice: >-
+  Public released-practice tier. Answer keys, rationales and provenance are
+  published on purpose; this instrument issues no score of record. The
+  operational 2026.1 bank is not part of this package.
+effective_from: 2026-01-01
+locales: [en, ja, ko]
+tracks:
+  - t1-creative-build
+  - t2-discrimination
+  - t3-reasoning
+  - t4-generative

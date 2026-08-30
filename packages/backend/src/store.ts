@@ -15,6 +15,7 @@
  */
 
 import { TRACK_IDS, type TrackId } from "@ailx/session";
+import type { DeckRecord } from "@ailx/instrument";
 import { withTransaction, type Queryable, type QueryResultRow } from "./db.js";
 
 export type StoreErrorCode =
@@ -126,13 +127,11 @@ function attemptFromRow(row: QueryResultRow): Attempt {
  * was SHOWN, in order. Persisted at attempt creation (attempt_decks,
  * insert-once) so per-item stats/IRT cover presented-but-unanswered items.
  */
-export interface DeckRecord {
-  trackId: TrackId;
-  /** Content-addressed sha256 of the bank the ids index into. */
-  bankSha256: string;
-  /** Presented order; non-empty, no duplicates. */
-  itemIds: readonly string[];
-}
+/**
+ * Re-exported, not redeclared: `@ailx/instrument` samples the deck, so it owns
+ * the shape the store records. One name, one definition.
+ */
+export type { DeckRecord } from "@ailx/instrument";
 
 const SHA256_RE = /^[0-9a-f]{64}$/;
 
@@ -217,6 +216,32 @@ export async function getDecks(
     bankSha256: r.bank_sha256 as string,
     itemIds: (typeof r.item_ids === "string" ? JSON.parse(r.item_ids) : r.item_ids) as string[],
   }));
+}
+
+/**
+ * Owned read: the candidate's OWN recorded choice per item id, latest row
+ * wins. Only `responses` rows that name an item (`item_id NOT NULL`) count —
+ * the lazy log mirror writes one row per LOG entry with a null item id, and
+ * those are events, not answers.
+ */
+export async function getItemChoices(
+  db: Queryable,
+  attemptId: string,
+  participantId: string,
+): Promise<Map<string, unknown>> {
+  if (!UUID_RE.test(attemptId) || !UUID_RE.test(participantId)) return new Map();
+  const { rows } = await db.query(
+    `SELECT r.item_id, r.payload
+     FROM responses r JOIN attempts a ON a.id = r.attempt_id
+     WHERE r.attempt_id = $1 AND a.participant_id = $2 AND r.item_id IS NOT NULL
+     ORDER BY r.seq`,
+    [attemptId, participantId],
+  );
+  const out = new Map<string, unknown>();
+  for (const r of rows) {
+    out.set(String(r.item_id), typeof r.payload === "string" ? JSON.parse(r.payload) : r.payload);
+  }
+  return out;
 }
 
 export interface AttemptSummary extends Attempt {

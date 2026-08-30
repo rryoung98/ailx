@@ -10,6 +10,7 @@ export {
   finalizeAttempt,
   getAttempt,
   getDecks,
+  getItemChoices,
   type AppendResult,
   type DeckRecord,
   type Attempt,
@@ -189,6 +190,7 @@ export {
   handleCreateAttempt,
   handleFinalizeAttempt,
   handleGetAttempt,
+  handleGetItems,
   type ApiContext,
   type ApiResult,
 } from "./handlers.js";

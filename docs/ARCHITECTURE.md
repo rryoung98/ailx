@@ -20,7 +20,9 @@ on evidence, and this document says exactly when.
 ### The precipitating fact (verified)
 
 `apps/web/lib/instrument.ts` statically imports `instruments/2026.1/snapshot.json`. That
-snapshot carries all 104 T2 items with `key`, `rationale` and `provenance`. The deployed
+snapshot carried all 104 T2 items with `key`, `rationale` and `provenance` (since
+2026-08-30 it carries the 84 operational items; the other 20 moved to the released-practice
+tier `instruments/demo-2026.1` — see §10 step 1). The deployed
 static export leaks them:
 
 ```
@@ -95,7 +97,7 @@ client names a wish; the server states a fact. Same rule `practice.ts` already f
 // apps/web/lib/instrument.client.ts (bundled in BOTH builds)
 export const trackConfig = isServerMode() ? fetchTrackConfig : demoTrackConfig;
 // demoTrackConfig comes from instruments/demo-2026.1 — the released practice tier:
-// ~12 items, keys and rationales published ON PURPOSE, labelled "practice".
+// 20 items, keys and rationales published ON PURPOSE, labelled "practice".
 ```
 
 The operational bank is simply absent from that build's module graph. `footerModeCopy()`
@@ -190,7 +192,7 @@ Red flags screened (per the architect skill's `design-red-flags.md`):
 | T2 item id, stem, material, options, exposure seconds | yes | yes | — |
 | T2 `key`, `rationale`, `provenance` | **no** | yes (own attempt only) | — |
 | Which items were sampled for *another* attempt | no | no | **never** |
-| Full bank (all 104), bank `sha256` preimage | no | no | **never** |
+| Full operational bank (84 items), bank `sha256` preimage | no | no | **never** |
 | T1/T4 judge prompts, rubric criteria weights, band anchors | no | anchors only, as report copy | raw prompts **never** |
 | Scoring config that embeds keys | no | no | **never** |
 | `scorers[]` digests, rubric versions, instrument digest | yes | yes | — (they are audit facts, not secrets) |
@@ -368,7 +370,8 @@ Each step is independently releasable and independently revertible.
    driver is now satisfied** even if nothing else in this document ever happens.
 2. **Make custody real.** Move the operational bank out of the public repo into a private,
    digest-pinned artefact (spec §14 OCI + cosign, or a private package as an interim);
-   `instruments.package_digest` records it. Rotate the exposed 104 items — they are burned,
+   `instruments.package_digest` records it. Rotate the 84 exposed operational items — they
+   are burned,
    and a leaked bank cannot be un-leaked. Treat 2026.1's operational form as compromised and
    re-cut it.
 3. **Migrations.** Baseline `0000` from the deployed database, then `0001…` from

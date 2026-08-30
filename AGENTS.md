@@ -9,7 +9,8 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 - `packages/report/` — pure scoring-adjacent derivation: composite, insights, calibration, export tiers, demo judging, track metadata
 - `packages/tracks/` — t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
 - `packages/session/` — event-sourced session engine
-- `instruments/2026.1/` — content-as-data: manifest, rubrics, judge prompts, item banks
+- `instruments/2026.1/` — content-as-data: manifest, rubrics, judge prompts, item banks (84 operational T2 items)
+- `instruments/demo-2026.1/` — PUBLIC released-practice tier for the static demo: 20 T2 items whose keys/rationales are published on purpose, no score of record. Rubrics/prompts are symlinks into `2026.1/`; regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`
 - `instruments/characters/2026.1/` — the sixteen player-type characters (art direction, prompts, vetting ledger); assets ship in `apps/web/public/characters/`
 - `db/schema.sql` — Postgres schema (append-only responses; scores superseded, never updated)
 - `services/` — openrouter-proxy

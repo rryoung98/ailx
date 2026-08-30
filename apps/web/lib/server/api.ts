@@ -143,9 +143,13 @@ export async function withApiContext<T>(
   provider?: AuthProvider,
 ): Promise<T> {
   const resolved = provider ?? (await authProvider());
+  const { instrument } = await import("./instrument");
+  // Wired in ONE place: every handler gets the same instrument, so a route
+  // cannot forget to pass it and silently fall back to "no content".
+  const mounted = await instrument();
   const client = await getPool().connect();
   try {
-    return await fn({ db: client, auth: resolved });
+    return await fn({ db: client, auth: resolved, instrument: mounted });
   } finally {
     client.release();
   }

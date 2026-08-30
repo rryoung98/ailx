@@ -45,7 +45,7 @@ export const T2_ITEMS: T2Item[] = [
 
 /**
  * Landing-page teaser data: three REAL items pulled from the committed
- * instrument snapshot (instruments/2026.1/snapshot.json) — one real-media
+ * RELEASED practice tier (instruments/demo-2026.1/snapshot.json) — one real-media
  * photo-pair member, one AI-vs-human text passage, one hostile message —
  * so the landing demo exercises the actual instrument, not toy content.
  * Items are pinned by content-addressed id; a test asserts they exist.
@@ -69,8 +69,11 @@ export interface TeaserItem {
 
 /** Content-addressed ids of the three teaser items in the snapshot bank. */
 export const TEASER_BANK_IDS = [
-  // image-provenance: AI photo-pair member (FLUX.1 hedgehog vs real Commons hedgehogs)
-  "d4b4c861ac359dce676210a00440bd409892857289c13d9969c366c6d4295e19",
+  // image-provenance: AI photo-pair member, from the RELEASED practice tier.
+  // The teaser shows each item's answer and its tell on the public landing
+  // page, so every id here MUST be a released item — showing an operational
+  // one would publish an exam answer to every visitor.
+  "db482cd7e9d0d80490d73d01e022ac906029e96a7edb914461b5b8a4b7c71f94",
   // text-authenticity: genuinely model-generated civic passage (OpenRouter, see bank provenance)
   "08a88a7beba12c10f67ee3761db43986e72b20ff74df9d15000d3d956880a2f6",
   // message-hostility: credential-phishing suspension lure (FTC/APWG pattern family)

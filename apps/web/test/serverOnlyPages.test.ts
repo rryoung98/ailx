@@ -29,7 +29,18 @@ const files = walk(APP).map((path) => ({
   source: readFileSync(path, "utf8"),
 }));
 
-const SERVER_ONLY = /from "[^"]*lib\/server\/|from "pg"|from "node:/;
+/**
+ * What "server capability" means, in one regex.
+ *
+ * `@ailx/instrument` joins the list because it owns the OPERATIONAL item bank
+ * — keys, rationales and provenance. A client module that imports it would
+ * ship 100+ answers to the candidate's devtools, which is exactly the leak
+ * this convention now also exists to prevent (docs/ARCHITECTURE.md §6).
+ * `instruments/2026.1` is listed too: a direct JSON import of the snapshot is
+ * the same leak wearing a different import specifier.
+ */
+const SERVER_ONLY =
+  /from "[^"]*lib\/server\/|from "pg"|from "node:|from "@ailx\/instrument"|from "[^"]*instruments\/2026\.1/;
 
 describe("server-only files carry a server-only extension", () => {
   it("finds the app router files at all (guards against a silent glob bug)", () => {
@@ -119,5 +130,43 @@ describe("server-only files carry a server-only extension", () => {
     const shareFiles = files.filter((f) => f.rel.includes("share") || f.rel.startsWith("s/"));
     expect(shareFiles.length).toBeGreaterThanOrEqual(3);
     for (const f of shareFiles) expect(f.rel, f.rel).toMatch(/\.api\.tsx?$/);
+  });
+});
+
+/**
+ * The same rule, applied to `lib/**` rather than `app/**`.
+ *
+ * `app/` has a naming convention that keeps server-only files out of the
+ * static export. `lib/` has a DIRECTORY convention instead: only
+ * `lib/server/**` may reach server capability. The operational item bank is
+ * now server capability, so this test is what stops
+ * `apps/web/lib/instrument.ts` from importing it again — the import that put
+ * 104 answer keys into a public GitHub Pages bundle.
+ */
+describe("no client-reachable module reaches the operational item bank", () => {
+  const LIB = fileURLToPath(new URL("../lib", import.meta.url));
+  const libFiles = walk(LIB).map((path) => ({
+    rel: path.slice(LIB.length + 1),
+    source: readFileSync(path, "utf8"),
+  }));
+
+  it("finds the lib files at all (guards against a silent glob bug)", () => {
+    expect(libFiles.length).toBeGreaterThan(10);
+  });
+
+  it("only lib/server/** imports @ailx/instrument or the operational snapshot", () => {
+    const offenders = libFiles
+      .filter((f) => SERVER_ONLY.test(f.source))
+      .filter((f) => !f.rel.startsWith("server/"))
+      .map((f) => f.rel);
+    expect(offenders).toEqual([]);
+  });
+
+  it("lib/instrument.ts reads the PUBLIC released-practice tier, not the exam", () => {
+    const client = libFiles.find((f) => f.rel === "instrument.ts");
+    expect(client, "apps/web/lib/instrument.ts").toBeDefined();
+    const imports = client!.source.match(/^import .*$/gm) ?? [];
+    expect(imports.join("\n")).toContain("instruments/demo-2026.1/snapshot.json");
+    expect(imports.filter((l) => /instruments\/2026\.1/.test(l))).toEqual([]);
   });
 });

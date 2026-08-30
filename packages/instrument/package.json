@@ -1,5 +1,5 @@
 {
-  "name": "@ailx/backend",
+  "name": "@ailx/instrument",
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.js",
@@ -8,10 +8,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./t1": {
-      "types": "./dist/t1/index.d.ts",
-      "default": "./dist/t1/index.js"
     }
   },
   "sideEffects": false,
@@ -20,14 +16,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ailx/core": "workspace:*",
-    "@ailx/instrument": "workspace:*",
-    "@ailx/report": "workspace:*",
     "@ailx/session": "workspace:*",
-    "@clerk/backend": "^3.16.0"
+    "@ailx/track-t2": "workspace:*"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0",
     "@types/node": "^22.0.0"

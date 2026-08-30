@@ -5,6 +5,13 @@ export type Locale = "en" | "ja" | "ko";
 export interface InstrumentManifest {
   id: string;
   version: string;
+  /**
+   * Optional one-paragraph statement of what this package IS, carried into
+   * the snapshot so a tier cannot be mistaken for another once it is JSON.
+   * The released-practice tier uses it to say its keys are public on purpose
+   * and that it issues no score of record.
+   */
+  notice?: string;
   effective_from: string;
   locales: Locale[];
   tracks: string[];
@@ -54,7 +61,12 @@ export interface BankItem {
   options: Array<{ id: string; label: string }>;
   key: string;
   difficulty: "easy" | "medium" | "hard";
-  provenance: Record<string, unknown>;
+  /**
+   * How the item was made. Required on disk; ABSENT from a `public: true`
+   * snapshot, because it names generation prompts, models and — via
+   * `source_item` — the operational items a translated item derives from.
+   */
+  provenance?: Record<string, unknown>;
   rationale: string;
 }
 

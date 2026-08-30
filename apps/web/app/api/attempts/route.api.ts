@@ -1,12 +1,11 @@
 import { handleCreateAttempt } from "@ailx/backend";
-import { t2DeckRecords } from "../../../lib/instrument";
 import { apiRoute } from "../../../lib/server/api";
 
+/**
+ * Deck sampling now travels on `ApiContext.instrument` (wired once in
+ * `lib/server/api.ts`), not on a per-route callback: the sampler and the keys
+ * it samples over have one owner (docs/ARCHITECTURE.md §3).
+ */
 export async function POST(req: Request): Promise<Response> {
-  // Content-aware deck sampler: the backend stays content-agnostic; the web
-  // host wires in the committed instrument snapshot. Pure + deterministic —
-  // the recorded deck is re-derivable from (attempt id, bank sha) alone.
-  return apiRoute(req, (ctx, headers, body) =>
-    handleCreateAttempt({ ...ctx, sampleDecks: t2DeckRecords }, headers, body),
-  );
+  return apiRoute(req, handleCreateAttempt);
 }

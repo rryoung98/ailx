@@ -1,7 +1,16 @@
 /**
- * Instrument wiring: derives track configs from the COMMITTED instrument
- * snapshot (instruments/2026.1/snapshot.json) — the authoritative content
- * package — into the config shapes each track plugin validates (F16).
+ * PUBLIC instrument wiring: derives track configs from the RELEASED PRACTICE
+ * TIER (instruments/demo-2026.1/snapshot.json) into the config shapes each
+ * track plugin validates (F16).
+ *
+ * THIS MODULE IS BUNDLED INTO THE BROWSER, so it may only ever read a bank
+ * whose keys are published ON PURPOSE. It used to import
+ * `instruments/2026.1/snapshot.json`, and the deployed GitHub Pages export
+ * therefore carried all 104 operational T2 items with `key`, `rationale` and
+ * `provenance` — 40 occurrences of `"key":"ai"` in one chunk. The operational
+ * bank now lives behind `@ailx/instrument`, which is server-only; two tests
+ * keep it that way (`test/serverOnlyPages.test.ts` bans the import,
+ * `test/bundleSecrecy.test.ts` greps the BUILT bundles of both build modes).
  *
  * T2 items come from the snapshot's embedded bank; per-item exposure
  * seconds come from the snapshot's instrument config blocks (F3). The T3
@@ -9,7 +18,7 @@
  * pinned and asserted at test time.
  */
 import { D_PRIME_CEILING, maxAttainableDPrime, sampleT2DeckIds, t2DeckSeed } from "@ailx/track-t2";
-import snapshotRaw from "../../../instruments/2026.1/snapshot.json";
+import snapshotRaw from "../../../instruments/demo-2026.1/snapshot.json";
 import { assetUrl } from "./mode";
 
 interface BankItem {

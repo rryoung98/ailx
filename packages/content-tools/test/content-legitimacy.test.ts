@@ -17,7 +17,16 @@ import { fileURLToPath } from "node:url";
 import { loadInstrument } from "../src/loader.js";
 
 const DIR = fileURLToPath(new URL("../../../instruments/2026.1", import.meta.url));
-const bank = loadInstrument(DIR).tracks.find((t) => t.trackId === "t2-discrimination")!.bank!;
+const DEMO_DIR = fileURLToPath(new URL("../../../instruments/demo-2026.1", import.meta.url));
+const t2Bank = (dir: string) =>
+  loadInstrument(dir).tracks.find((t) => t.trackId === "t2-discrimination")!.bank!;
+/**
+ * Legitimacy is a property of every authored item, wherever it now lives:
+ * 84 operational (instruments/2026.1) + 20 published (instruments/demo-2026.1)
+ * after the released-practice split (docs/ARCHITECTURE.md §10 step 1).
+ * Publishing an item's key does NOT lower its sourcing bar.
+ */
+const bank = { items: [...t2Bank(DIR).items, ...t2Bank(DEMO_DIR).items] };
 
 interface Prov {
   method?: string;

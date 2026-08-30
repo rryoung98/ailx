@@ -1,7 +1,7 @@
 {
-  "bank_sha256": "52acbf761911783b33b3743ddd5b3fb3bfe4db11f428a807192aae38222c12d3",
+  "bank_sha256": "163580fefd4e745f06f0369414e49e83c368ffd89e2562a539a8f49b78a7a51d",
   "checked_at": "2026-08-21",
-  "url_count": 67,
+  "url_count": 61,
   "all_ok": true,
   "results": [
     {
@@ -12,8 +12,7 @@
         "01bd3f97ec0e8edffd389d3d6d8b764ae81ba6d3cde1cb4fbfaf932075dcdc8b",
         "1047471c402809783589277c6200cd8a78d05879c8839c123fa9592683a2697b",
         "513568b7a3a6dbbc1bac5a92c1117a3e7ac7b391916d9b0c3444cb37d177b0c6",
-        "6ad59859150bfcef69a68b0d186728fff4be37bb3f21a8c21a7ecb6f1f1b4fe2",
-        "7d71adb8ad13bb12f54ee3f42cd346b3775196849ee4a513efd10898d03f7bb0"
+        "6ad59859150bfcef69a68b0d186728fff4be37bb3f21a8c21a7ecb6f1f1b4fe2"
       ]
     },
     {
@@ -25,12 +24,8 @@
         "2000b314284308b84f432810a4d92207f94733df3566f824f60f4369b7dc34e1",
         "2c950ff59261eb76239942f2a1ca0428ed63c5edc0aa1e71558a74dd9cf4f1e4",
         "7d34215878daf85cad92b842d9134a380f2b1a5225de135a494424faa31f040d",
-        "9afd7a80e3ff5745e67f20150429228cb3b6a2786082f72c2509eb33bd69f51c",
         "ae3cc8aeda754fe1196dd1e96e45eb3407f2f4c217e3f2e19dd91ac10004ba90",
-        "b4cb1960c7bf6ea9ed9516537cf67761bde0d0324ef4985ef557e02631f8c5e5",
-        "c064fbdcea13b94da112295a592f0cdd8a11c145e8ef16ce5984e77b0be8c28e",
         "cb4d0189725e5840550d89b35598702ab78a90f38c086f382b606280b1ba0240",
-        "d012ebe571eea7236546163071baeb557c3479e190418711517d5a1d0eba0723",
         "e1e8e3ad9c8d1cec72fd8a4d606f7b20651886c9699551d8f2f42bee00cb344e",
         "efe86b98f7c8e76a433174a461d67fb1daa8aaca535e101ed2f6a4b16ada4c30"
       ]
@@ -56,9 +51,7 @@
       "status": 200,
       "ok": true,
       "item_ids": [
-        "1ae8af46524f3230a244c403160b2b4fad41447fa6d9bc34bd61126359ca8d80",
-        "6400207b520b6a0fc47316b30c7778c6fdd786ee4ff25bc08729cc482277e26b",
-        "9a329c4d4d0fb465ac851213d4509a079d523540ea43d329a624b78f7445c413"
+        "1ae8af46524f3230a244c403160b2b4fad41447fa6d9bc34bd61126359ca8d80"
       ]
     },
     {
@@ -124,8 +117,7 @@
       "item_ids": [
         "06d0a8c653ca173a9c55210f98a9f1dfe7341de69a89efc170fe9f81767ccc18",
         "815043e2570ada1cf0794b8595021e588779d4cb6ffb905e0580b25e1a03acd8",
-        "817735540c133dc3e6698aca05737e0b6b2223083f67ff5046e83d2591822ce2",
-        "db482cd7e9d0d80490d73d01e022ac906029e96a7edb914461b5b8a4b7c71f94"
+        "817735540c133dc3e6698aca05737e0b6b2223083f67ff5046e83d2591822ce2"
       ]
     },
     {
@@ -250,14 +242,6 @@
       ]
     },
     {
-      "url": "https://commons.wikimedia.org/wiki/File:Exterior_facade_of_Residence_Bassac_at_blue_hour,_town_of_Champasak,_Laos.jpg",
-      "status": 200,
-      "ok": true,
-      "item_ids": [
-        "40a6526ecc7b6a0f4a018ffdf6075bbd4c98531ed8c5bb1de3267e301dc36191"
-      ]
-    },
-    {
       "url": "https://commons.wikimedia.org/wiki/File:Facade_-_National_City_Christian_Church.JPG",
       "status": 200,
       "ok": true,
@@ -329,9 +313,7 @@
       "status": 200,
       "ok": true,
       "item_ids": [
-        "467f1542f1768b7d6b12c4a1cf1bab38818862623c3436956a036a436a6a79fd",
-        "9d9472063de84cd0384910ccbcf5e8f46ab0e0fdbb10d76695e9475948f3295c",
-        "eb8a1ecdb191f988d0a7d4959bd58e5fc8aa2ccab44c1ced90bf06f2f23f3af4"
+        "9d9472063de84cd0384910ccbcf5e8f46ab0e0fdbb10d76695e9475948f3295c"
       ]
     },
     {
@@ -366,14 +348,6 @@
       "ok": true,
       "item_ids": [
         "af3972eed947a8cae77b99a439a18740078ab49ba29ede1e8278d33053956866"
-      ]
-    },
-    {
-      "url": "https://commons.wikimedia.org/wiki/File:Ma%C3%A7%C3%A3-verde_em_fundo_preto.jpg",
-      "status": 200,
-      "ok": true,
-      "item_ids": [
-        "1c8ff5ea70da707850836ee4da907a72e21f898136c3c9f7e49e1d7880e6e02c"
       ]
     },
     {
@@ -416,14 +390,6 @@
         "16d701b42b4b806036858a07d8279088fb4859793e93fe7a69a641ac0c77b1bf",
         "3d6960706c47e6e0452e9b9be2c93f60dcd286906eeb1ac3a25f10170f99fdcd",
         "3d729213199066e55843b6625b28e6a41386d41b15f13d600cbd287c4a0df2e5"
-      ]
-    },
-    {
-      "url": "https://commons.wikimedia.org/wiki/File:Plaza_Calderon_in_Binondo,_Manila,_Philippines_late_1800%27s_to_early_1900%27s.jpg",
-      "status": 200,
-      "ok": true,
-      "item_ids": [
-        "99aa164bad9534302bf6410ec3fa57834867290ed3e5e2c0aed698c4af81b7fd"
       ]
     },
     {
@@ -485,10 +451,7 @@
         "46e9ec79fa20a40b7bd6994a6db9a8b4ead54342bdb2c65ebf76578f8941fc0e",
         "513568b7a3a6dbbc1bac5a92c1117a3e7ac7b391916d9b0c3444cb37d177b0c6",
         "6ad59859150bfcef69a68b0d186728fff4be37bb3f21a8c21a7ecb6f1f1b4fe2",
-        "6e77a478835b3097e6957e63173b44f7319ed64998cca618797edf55fbdb8c40",
-        "7d71adb8ad13bb12f54ee3f42cd346b3775196849ee4a513efd10898d03f7bb0",
-        "cea6f4526502532744dac668ff869fa6242830123a17133e348cd4d33b8964cd",
-        "e5c2f2a504b3ecf7074c4ae7befa8f954df8cfd43c8067a4d3ea1fa141e49f01"
+        "6e77a478835b3097e6957e63173b44f7319ed64998cca618797edf55fbdb8c40"
       ]
     },
     {
@@ -518,14 +481,6 @@
       ]
     },
     {
-      "url": "https://ko.wikipedia.org/w/index.php?oldid=13326844",
-      "status": 200,
-      "ok": true,
-      "item_ids": [
-        "21c7a83e8996e1a442dde96fd78640d6253bb19520c479bb7222da941a9ee36b"
-      ]
-    },
-    {
       "url": "https://petapixel.com/2025/09/22/nikon-cant-fully-solve-the-z6-iiis-c2pa-problems-alone/",
       "status": 200,
       "ok": true,
@@ -540,8 +495,7 @@
       "item_ids": [
         "1047471c402809783589277c6200cd8a78d05879c8839c123fa9592683a2697b",
         "513568b7a3a6dbbc1bac5a92c1117a3e7ac7b391916d9b0c3444cb37d177b0c6",
-        "6ad59859150bfcef69a68b0d186728fff4be37bb3f21a8c21a7ecb6f1f1b4fe2",
-        "7d71adb8ad13bb12f54ee3f42cd346b3775196849ee4a513efd10898d03f7bb0"
+        "6ad59859150bfcef69a68b0d186728fff4be37bb3f21a8c21a7ecb6f1f1b4fe2"
       ]
     },
     {
@@ -553,27 +507,11 @@
       ]
     },
     {
-      "url": "https://www.boho.or.kr/",
-      "status": 200,
-      "ok": true,
-      "item_ids": [
-        "0c0ba40a715f675c3ed9c737407d261d1c71fa996eeae1532e69f2dd44fa4e84"
-      ]
-    },
-    {
       "url": "https://www.digitalcameraworld.com/photography/photojournalism/nikon-revokes-all-c2pa-image-authenticity-certificates-after-major-vulnerability-exposed",
       "status": 200,
       "ok": true,
       "item_ids": [
         "17e05abf6af0df2419afb1328215cab163b09c2771e3b4618fd0fb3d504f56ea"
-      ]
-    },
-    {
-      "url": "https://www.gutenberg.org/ebooks/308",
-      "status": 200,
-      "ok": true,
-      "item_ids": [
-        "a78afdff4d93e3ee261ea94db503c460cd7f7405ca10383a234ec62023d876e6"
       ]
     },
     {

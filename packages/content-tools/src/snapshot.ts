@@ -17,26 +17,65 @@ export interface InstrumentSnapshot {
   scorers?: ScorerRecord[];
 }
 
+export interface SnapshotOptions {
+  /** Directory holding the track packages; adds the score() source digests. */
+  tracksRoot?: string;
+  /**
+   * Build a snapshot a BROWSER may hold: drops every item's `provenance`
+   * record.
+   *
+   * The released-practice tier publishes its keys on purpose, but provenance
+   * is a different kind of byte: it records how an item was made, with which
+   * model and prompt, and — for the translated ja/ko items — the `source_item`
+   * id of the OPERATIONAL item it was translated from. Shipping that enumerates
+   * a bank the candidate is not supposed to be able to enumerate
+   * (docs/ARCHITECTURE.md §4). Nothing in the browser reads it.
+   *
+   * The operational snapshot keeps provenance: it never leaves the server, and
+   * provenance is audit material.
+   */
+  public?: boolean;
+}
+
 /** Build the whole validated instrument as one JSON value (no YAML at runtime). */
 export function buildSnapshot(
   instrumentDir: string,
-  tracksRoot?: string,
+  options: SnapshotOptions = {},
 ): InstrumentSnapshot {
+  const instrument = loadInstrument(instrumentDir);
   const snap: InstrumentSnapshot = {
     format: "ailx-instrument-snapshot@1",
     generated_by: "@ailx/content-tools build-snapshot",
-    instrument: loadInstrument(instrumentDir),
+    instrument: options.public === true ? withoutProvenance(instrument) : instrument,
   };
-  if (tracksRoot) snap.scorers = scorerRecordsIn(tracksRoot);
+  if (options.tracksRoot) snap.scorers = scorerRecordsIn(options.tracksRoot);
   return snap;
+}
+
+/** Strip `provenance` from every bank item, leaving the rest byte-identical. */
+function withoutProvenance(instrument: InstrumentPackage): InstrumentPackage {
+  return {
+    ...instrument,
+    tracks: instrument.tracks.map((track) =>
+      track.bank === undefined
+        ? track
+        : {
+            ...track,
+            bank: {
+              ...track.bank,
+              items: track.bank.items.map(({ provenance: _dropped, ...rest }) => rest),
+            },
+          },
+    ),
+  };
 }
 
 export function writeSnapshot(
   instrumentDir: string,
   outPath: string,
-  tracksRoot?: string,
+  options: SnapshotOptions = {},
 ): InstrumentSnapshot {
-  const snap = buildSnapshot(instrumentDir, tracksRoot);
+  const snap = buildSnapshot(instrumentDir, options);
   writeFileSync(outPath, JSON.stringify(snap, null, 2) + "\n");
   return snap;
 }

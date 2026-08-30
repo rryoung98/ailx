@@ -1,0 +1,119 @@
+{
+  "bank_sha256": "695cb4573d83fa9bb70937fddfc483fd74057cd249cb367f0bd976edf8a30511",
+  "checked_at": "2026-08-21",
+  "url_count": 13,
+  "all_ok": true,
+  "results": [
+    {
+      "url": "https://apwg.org/trendsreports/",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "7d71adb8ad13bb12f54ee3f42cd346b3775196849ee4a513efd10898d03f7bb0"
+      ]
+    },
+    {
+      "url": "https://c2pa.org/specifications/specifications/2.1/specs/C2PA_Specification.html",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "9afd7a80e3ff5745e67f20150429228cb3b6a2786082f72c2509eb33bd69f51c",
+        "b4cb1960c7bf6ea9ed9516537cf67761bde0d0324ef4985ef557e02631f8c5e5",
+        "c064fbdcea13b94da112295a592f0cdd8a11c145e8ef16ce5984e77b0be8c28e",
+        "d012ebe571eea7236546163071baeb557c3479e190418711517d5a1d0eba0723"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:140510_Tamba_Traditional_Art_Craft_Park_Sue_no_Sato_Sasayama_Hyogo_pref_Japan02s3.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "6400207b520b6a0fc47316b30c7778c6fdd786ee4ff25bc08729cc482277e26b",
+        "9a329c4d4d0fb465ac851213d4509a079d523540ea43d329a624b78f7445c413"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Cabine_balneari.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "db482cd7e9d0d80490d73d01e022ac906029e96a7edb914461b5b8a4b7c71f94"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Exterior_facade_of_Residence_Bassac_at_blue_hour,_town_of_Champasak,_Laos.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "40a6526ecc7b6a0f4a018ffdf6075bbd4c98531ed8c5bb1de3267e301dc36191"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Japanese_buildings_and_Turkish_tulips.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "467f1542f1768b7d6b12c4a1cf1bab38818862623c3436956a036a436a6a79fd",
+        "eb8a1ecdb191f988d0a7d4959bd58e5fc8aa2ccab44c1ced90bf06f2f23f3af4"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Ma%C3%A7%C3%A3-verde_em_fundo_preto.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "1c8ff5ea70da707850836ee4da907a72e21f898136c3c9f7e49e1d7880e6e02c"
+      ]
+    },
+    {
+      "url": "https://commons.wikimedia.org/wiki/File:Plaza_Calderon_in_Binondo,_Manila,_Philippines_late_1800%27s_to_early_1900%27s.jpg",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "99aa164bad9534302bf6410ec3fa57834867290ed3e5e2c0aed698c4af81b7fd"
+      ]
+    },
+    {
+      "url": "https://consumer.ftc.gov/articles/how-recognize-and-avoid-phishing-scams",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "7d71adb8ad13bb12f54ee3f42cd346b3775196849ee4a513efd10898d03f7bb0",
+        "cea6f4526502532744dac668ff869fa6242830123a17133e348cd4d33b8964cd",
+        "e5c2f2a504b3ecf7074c4ae7befa8f954df8cfd43c8067a4d3ea1fa141e49f01"
+      ]
+    },
+    {
+      "url": "https://ko.wikipedia.org/w/index.php?oldid=13326844",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "21c7a83e8996e1a442dde96fd78640d6253bb19520c479bb7222da941a9ee36b"
+      ]
+    },
+    {
+      "url": "https://publicsuffix.org/",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "7d71adb8ad13bb12f54ee3f42cd346b3775196849ee4a513efd10898d03f7bb0"
+      ]
+    },
+    {
+      "url": "https://www.boho.or.kr/",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "0c0ba40a715f675c3ed9c737407d261d1c71fa996eeae1532e69f2dd44fa4e84"
+      ]
+    },
+    {
+      "url": "https://www.gutenberg.org/ebooks/308",
+      "status": 200,
+      "ok": true,
+      "item_ids": [
+        "a78afdff4d93e3ee261ea94db503c460cd7f7405ca10383a234ec62023d876e6"
+      ]
+    }
+  ]
+}

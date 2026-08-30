@@ -10,14 +10,21 @@ import { loadBank } from "../src/loader.js";
  */
 const REPO = resolve(__dirname, "..", "..", "..");
 const TRACK_DIR = join(REPO, "instruments", "2026.1", "tracks", "t2-discrimination");
+/**
+ * The shipped t2-media pool serves BOTH tiers since the released-practice
+ * split: 84 operational items in instruments/2026.1 and 20 published items in
+ * instruments/demo-2026.1 (docs/ARCHITECTURE.md §10 step 1). Asset coverage
+ * is a property of the union — either half alone under-references the pool.
+ */
+const DEMO_TRACK_DIR = join(REPO, "instruments", "demo-2026.1", "tracks", "t2-discrimination");
 const PUBLIC_DIR = join(REPO, "apps", "web", "public");
 const MEDIA_DIR = join(PUBLIC_DIR, "t2-media");
 
 interface ImageMaterial { kind: string; src?: string; alt?: string }
 
 describe("t2 media assets", () => {
-  const bank = loadBank(TRACK_DIR);
-  const imageItems = bank.items.filter(
+  const items = [...loadBank(TRACK_DIR).items, ...loadBank(DEMO_TRACK_DIR).items];
+  const imageItems = items.filter(
     (i) => (i.material as unknown as ImageMaterial).kind === "image",
   );
 

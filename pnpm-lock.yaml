@@ -29,6 +29,9 @@ importers:
       '@ailx/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@ailx/instrument':
+        specifier: workspace:*
+        version: link:../../packages/instrument
       '@ailx/report':
         specifier: workspace:*
         version: link:../../packages/report
@@ -99,6 +102,9 @@ importers:
       '@ailx/core':
         specifier: workspace:*
         version: link:../core
+      '@ailx/instrument':
+        specifier: workspace:*
+        version: link:../instrument
       '@ailx/report':
         specifier: workspace:*
         version: link:../report
@@ -142,6 +148,25 @@ importers:
         version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)
 
   packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)
+
+  packages/instrument:
+    dependencies:
+      '@ailx/session':
+        specifier: workspace:*
+        version: link:../session
+      '@ailx/track-t2':
+        specifier: workspace:*
+        version: link:../tracks/t2-discrimination
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

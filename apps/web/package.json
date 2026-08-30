@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "test": "vitest run --passWithNoTests",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "lint": "next lint || true"
   },
   "dependencies": {
     "next": "^15.1.0",
@@ -23,7 +24,8 @@
     "@react-three/fiber": "^9.0.0",
     "@ailx/backend": "workspace:*",
     "pg": "^8.23.0",
-    "@vercel/blob": "^2.8.0"
+    "@vercel/blob": "^2.8.0",
+    "@ailx/instrument": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

@@ -34,6 +34,7 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
   if (typeof doc !== "object" || doc === null) fail(path, "not a YAML mapping");
   const id = req<string>(doc, "id", path);
   const version = String(req<unknown>(doc, "version", path));
+  const notice = doc.notice === undefined ? undefined : String(doc.notice);
   const effective_from = String(req<unknown>(doc, "effective_from", path));
   const locales = req<Locale[]>(doc, "locales", path);
   const tracks = req<string[]>(doc, "tracks", path);
@@ -41,7 +42,7 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
   for (const l of locales) {
     if (!LOCALES.includes(l)) fail(path, `unknown locale '${l}'`);
   }
-  return { id, version, effective_from, locales, tracks };
+  return { id, version, ...(notice ? { notice } : {}), effective_from, locales, tracks };
 }
 
 export function parseTrackConfig(raw: string, path: string): TrackConfigFile {
