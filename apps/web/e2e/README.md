@@ -50,5 +50,29 @@ browser warning) will fail the T1 site spec for reasons that are not ours.
   with `clock.fastForward`, never `waitForTimeout`.
 - **Isolation.** One attempt and one dev user per test, both created in
   fixtures; state is seeded through `localStorage` exactly as the app writes it.
-- **Fixtures, not helpers-in-tests.** Shared locators and the focus invariant
-  live in `fixtures.ts` so no spec re-implements them.
+- **Fixtures, not helpers-in-tests.** Shared locators, the focus invariant and
+  the runner fault injector live in `fixtures.ts` so no spec re-implements them
+  — and so an injector cannot rot in one copy while the other still works.
+- **Visual contracts, not eyeballs.** Geometry lives in `visual.ts` and is
+  applied in `visual.spec.ts` (FRONTEND.md §6.7). Never re-measure a box inside
+  a spec.
+- **Settle the harness scroll first.** Playwright scrolls an element into view
+  as part of its actionability checks, so a click can move the page for reasons
+  that are not the app's. `settleOn()` before any stability assertion.
+
+## The visual layer
+
+```
+visual.ts                 the contracts (on screen, centred, covered, tappable,
+                          stable, unclipped) — the assertions jsdom cannot host
+visual-contracts.spec.ts  MUTATION TESTS for the contracts themselves: each one
+                          is proven to FAIL on a deliberately broken layout.
+                          Needs no server, no database, no deck.
+visual.spec.ts            the contracts applied to the surfaces where this class
+                          of bug has actually bitten
+visual-baselines.spec.ts  four screenshot baselines (element shots, deterministic
+                          copy only). Per platform; the committed ones are darwin
+```
+
+Update baselines with `pnpm --filter @ailx/web e2e --update-snapshots`, and read
+the diff before committing it — an unread baseline is a rubber stamp.

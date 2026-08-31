@@ -38,7 +38,17 @@ export default defineConfig({
   workers: process.env.CI ? 2 : undefined,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   timeout: 60_000,
-  expect: { timeout: 10_000 },
+  expect: {
+    timeout: 10_000,
+    /**
+     * Screenshot baselines (e2e/visual-baselines.spec.ts). Animations are
+     * frozen and the caret hidden, because a blinking cursor or a 200ms ease
+     * is the difference between a baseline and a flake. The diff ratio is
+     * deliberately small: these are element shots of copy-only surfaces, so
+     * anything past antialiasing noise is a real change.
+     */
+    toHaveScreenshot: { animations: "disabled", caret: "hide", scale: "css", maxDiffPixelRatio: 0.01 },
+  },
   use: {
     baseURL,
     trace: "on-first-retry",

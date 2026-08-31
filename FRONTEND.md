@@ -571,6 +571,112 @@ tests are strictly better for:
 Async Server Components are E2E by policy — [React Testing Library cannot render
 them](https://nextjs.org/docs/app/guides/testing) — but we have none today.
 
+### 6.7 Visual contracts: what "green" is not
+
+Four true stories from this repo, all of them green at the time:
+
+1. A unit test asserted *"a 308 redirect was emitted"* while an **infinite redirect
+   loop** was live. Only a real browser following the chain found it.
+2. A T2 scroll test passed because the deck happened to fit a desktop viewport. On a
+   390x844 phone the page jumped 464px and the confidence panel landed **above the
+   fold**.
+3. A crash-recovery fault injector broke `scrollIntoView` to induce a fault. The runner
+   stopped calling `scrollIntoView`. The injector then faulted **nothing**, the test still
+   passed, and it tested nothing for hours.
+4. A dogfooder found the confidence panel **invisible** on provenance items — it rendered
+   behind the card. Every DOM assertion passed.
+
+The common cause is not carelessness. It is that
+[jsdom lists Layout as unimplemented](https://www.npmjs.com/package/jsdom): every box it
+reports is 0x0 at (0,0). "Is this modal centred", "is it above the fold", "is it covered",
+"is this tap target big enough" are not questions jsdom answers wrongly — they are
+questions it **cannot be asked**. A component test that passes has said nothing about any
+of them.
+
+> **Green means every question we asked was answered "yes". It never means the screen is
+> right.** A modal that is supposed to be a centred popup and renders in the corner passes
+> every DOM test ever written about it.
+
+**Rule of record:** a change to what the candidate SEES ships with a visual contract, or
+with a stated reason in the PR why it does not need one. "The unit tests pass" is not that
+reason.
+
+#### 6.7.1 Where each assertion belongs
+
+| Question | Where | Why |
+|---|---|---|
+| Is the right text/role/name rendered? Is the button disabled? | jsdom component test | Cheap, exhaustive, and jsdom answers it correctly. |
+| Does the copy say the honest thing? Are the colour tokens right? | unit / CSS-string test | Strings and maths; a browser adds nothing. |
+| Is it on screen, centred, unclipped, uncovered, big enough to tap? Did the page jump? | **Playwright, `e2e/visual.ts`** | Needs a layout engine. jsdom cannot host these at all. |
+| Does focus really move? Is there a keyboard trap? | Playwright | jsdom's focus semantics are unreliable. |
+| Where does this redirect chain END? | Playwright | A cycle satisfies every per-hop assertion (§6.4). |
+| Does the score come out right? | unit, under `runPure()` | Never through a UI. |
+
+#### 6.7.2 The contracts
+
+`apps/web/e2e/visual.ts` is the only place these are implemented; a spec that re-measures
+a box by hand is a bug.
+
+- `expectInViewport` — wholly on screen: not above the fold, not below it, not clipped.
+- `expectCentred` — centred in the viewport or a named container, within a tolerance.
+- `expectNoOverlap` — two elements share no pixel (e.g. *confirm* and *keep working*).
+- `expectCovers` — a veil really covers the workspace it hides.
+- `expectNotOccluded` — nothing PAINTS over it. Pointer-events are neutralised for the
+  probe, because the card that hid the confidence panel had `pointer-events: none` and a
+  plain hit test would have looked straight through it.
+- `expectTapTarget` / `expectTapTargets` — interactive targets are ≥ 44x44 CSS px
+  (WCAG 2.5.5 AAA; this is a timed exam and a missed tap is charged to the candidate).
+- `expectNoHorizontalOverflow` — the page does not scroll sideways, and the culprit
+  element is named in the failure.
+- `expectScrollStable` / `expectStablePosition` — nothing moves under the candidate
+  across a transition. Both exist on purpose: scroll anchoring deliberately changes
+  `window.scrollY` in order to keep the pixels still, so `scrollY` alone is neither
+  necessary nor sufficient — what the candidate experiences is whether the thing they are
+  looking at stayed put.
+- `expectTextNotClipped` / `expectNoInnerScroll` — content is not silently truncated by
+  its container, and a modal step is not something you must scroll INSIDE.
+
+One harness note that is easy to get wrong: Playwright scrolls an element into view as
+part of its actionability checks, so a click can move the page for reasons that have
+nothing to do with the app. Settle the harness's scroll BEFORE a stability contract starts
+measuring (`settleOn` in `visual.spec.ts`), or the contract fails on the test runner.
+
+#### 6.7.3 A test that cannot fail is worse than no test
+
+It costs the same to run, and it spends the reviewer's trust. Story 3 above is the proof:
+the injector was patching a call the code no longer made.
+
+- **Every visual contract is mutation-tested.** `e2e/visual-contracts.spec.ts` breaks the
+  exact thing each contract protects — a corner modal, a panel above the fold, a
+  `pointer-events: none` cover, a 20px button, a 464px scroll jump — and proves the
+  contract FAILS, with the message it promises. It runs in the normal suite: it is the
+  regression test for the test layer.
+- **A fault injector must follow the code it faults.** It patches something the runner
+  demonstrably still calls, and the spec that uses it asserts the fault ARRIVED (a visible
+  crash notice), never merely that the run survived. It lives in `e2e/fixtures.ts`, once,
+  so it cannot rot in one copy.
+
+#### 6.7.4 Screenshot baselines: few, deterministic, or not at all
+
+A baseline earns its keep only where a human would notice the regression instantly AND the
+pixels are deterministic. Anything else becomes flake that people learn to click past,
+which costs more than the bug it was meant to catch.
+
+`e2e/visual-baselines.spec.ts` holds four ELEMENT screenshots of copy-only surfaces with
+no seeded content and no clock in frame: the pause overlay, the time-up notice, the runner
+crash notice, and the shared player-type card. Motion is off twice over (the app's
+reduced-motion branch and Playwright's `animations: "disabled"`), fonts are awaited, and
+the viewport is pinned.
+
+Deliberately NOT baselined: the T2 card and its confidence step (the deck is seeded per
+attempt, so the shot would be mostly mask) and the landing hero (an animated canvas plus a
+randomly drawn practice card). Both are covered geometrically instead, which is the honest
+tool for them.
+
+Baselines are per platform — Playwright puts `{platform}` in the snapshot name — and the
+committed ones are darwin, so the CI job that runs them runs on macOS. Regenerate with
+`pnpm --filter @ailx/web e2e --update-snapshots` and READ the diff before committing it.
+
 ---
 
 ## 7. Flexible, not over-engineered
