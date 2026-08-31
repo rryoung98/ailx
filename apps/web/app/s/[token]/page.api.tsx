@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { shareCardPath, shareUrlPath } from "@ailx/backend";
+import { shareCardPath, shareUrlPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
 import { pageOrigin, serverApiBase } from "../../../lib/server/page";
 import { ShareView, type SharedView } from "../../../lib/ShareView";

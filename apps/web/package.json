@@ -10,10 +10,8 @@
     "lint": "next lint || true"
   },
   "dependencies": {
-    "@ailx/backend": "workspace:*",
     "@ailx/contract": "workspace:*",
     "@ailx/core": "workspace:*",
-    "@ailx/instrument": "workspace:*",
     "@ailx/report": "workspace:*",
     "@ailx/session": "workspace:*",
     "@ailx/track-t1": "workspace:*",
@@ -23,7 +21,6 @@
     "@react-three/fiber": "^9.0.0",
     "@vercel/blob": "^2.8.0",
     "next": "^15.1.0",
-    "pg": "^8.23.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.182.0"
@@ -31,7 +28,6 @@
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.0.0",
-    "@types/pg": "^8.11.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.2.5",
     "@types/three": "^0.182.0",

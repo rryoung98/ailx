@@ -1,11 +1,19 @@
 // @vitest-environment jsdom
 /**
- * T1 live-site upload — client side. The ZIP writer is verified through the
- * REAL backend validator (readZip / snapshotFromZip), and the upload logic
- * through programmable fetch/storage doubles (persistence.test.ts pattern).
+ * T1 live-site upload — client side, through programmable fetch/storage
+ * doubles (the persistence.test.ts pattern).
+ *
+ * MOVED, not deleted: the assertions that fed `buildSiteZip` output through
+ * the REAL server validator (`readZip` / `snapshotFromZip`) now live in the
+ * private repo, as `packages/backend/test/t1-zip-roundtrip.test.ts`. The
+ * validator is server code and no longer exists here, and a round trip needs
+ * BOTH ends: the writer is `writeStoredZip` in `@ailx/core`, which is a shared
+ * package vendored into that repo and compared byte for byte in CI, so the
+ * test asserts the same two implementations it always did — just from the side
+ * that can see the reader. `buildSiteZip` is a re-export of that writer
+ * (lib/siteUpload.ts), so nothing about the browser's bytes is untested.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readZip, snapshotFromZip } from "@ailx/backend/t1";
 import { T1_LIMITS } from "@ailx/contract";
 import {
   DIRECT_UPLOAD_MIN_BYTES,
@@ -95,46 +103,9 @@ const upload = (
   uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
 
 // ---------------------------------------------------------------------------
-// buildSiteZip — validated by the REAL server-side reader.
+// buildSiteZip round-trip: see the header — it moved to the private repo with
+// the validator it round-trips through.
 // ---------------------------------------------------------------------------
-
-describe("buildSiteZip", () => {
-  it("round-trips through the backend readZip validator (CRCs and sizes agree)", () => {
-    const files = [
-      { path: "index.html", data: utf8("<!doctype html><h1>hé — こんにちは</h1>") },
-      { path: "assets/style.css", data: utf8("body{margin:0}") },
-      { path: "empty.txt", data: new Uint8Array(0) },
-    ];
-    const entries = readZip(buildSiteZip(files), T1_LIMITS);
-    expect(entries.map((e) => e.path)).toEqual(files.map((f) => f.path));
-    for (let i = 0; i < files.length; i++) {
-      // Array.from: cross-realm Uint8Arrays (jsdom vs node) defeat toEqual.
-      expect(Array.from(entries[i].data)).toEqual(Array.from(files[i].data));
-      expect(entries[i].isSymlink).toBe(false);
-    }
-  });
-
-  it("passes the FULL snapshot pipeline and gets a stable content digest", () => {
-    const files = [{ path: "index.html", data: utf8("<h1>site</h1>") }];
-    const a = snapshotFromZip(buildSiteZip(files));
-    const b = snapshotFromZip(buildSiteZip(files));
-    // Deterministic bytes (zeroed timestamps) → same digest → an accidental
-    // resubmit is an idempotent replay server-side, never a 409.
-    expect(buildSiteZip(files)).toEqual(buildSiteZip(files));
-    expect(a.digest).toBe(b.digest);
-    expect(a.fileCount).toBe(1);
-  });
-
-  it("handles binary content byte-exactly", () => {
-    const data = new Uint8Array(4096).map((_, i) => (i * 7 + 13) & 0xff);
-    const [entry] = readZip(buildSiteZip([{ path: "img/raw.png", data }]), T1_LIMITS);
-    expect(Array.from(entry.data)).toEqual(Array.from(data));
-  });
-
-  it("produces an empty-but-valid archive for zero files", () => {
-    expect(readZip(buildSiteZip([]), T1_LIMITS)).toEqual([]);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // uploadSiteZip — success + every failure path.
@@ -461,9 +432,13 @@ describe("submitT1Site", () => {
       const r = await submitT1Site(ATTEMPT, { html: "<h1>site</h1>", promptLog: [], selfReport: "" });
       expect(r).toMatchObject({ ok: true });
       expect(server.calls).toHaveLength(1);
-      const [entry] = readZip(server.calls[0].body, T1_LIMITS);
-      expect(entry.path).toBe("index.html");
-      expect(new TextDecoder().decode(entry.data)).toBe("<h1>site</h1>");
+      // The BODY is what this test owns: that submitT1Site sent a ZIP built
+      // from the candidate's html. Its readability by the server validator is
+      // the private repo's round-trip test; here we assert the bytes are a
+      // real archive carrying that content.
+      const body = server.calls[0].body as Uint8Array;
+      expect(body.slice(0, 2)).toEqual(new Uint8Array([0x50, 0x4b])); // "PK"
+      expect(body).toEqual(buildSiteZip([{ path: "index.html", data: utf8("<h1>site</h1>") }]));
     } finally {
       vi.unstubAllGlobals();
       window.localStorage.removeItem(`ailx:sync:v1:${ATTEMPT}`);

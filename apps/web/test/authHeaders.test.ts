@@ -7,8 +7,7 @@
  * §10.2): the switch has to be atomic, so the half that does not need a
  * provider ships first, dormant, with its edge cases already pinned.
  */
-import { DevAuthProvider } from "@ailx/backend";
-import { DEV_USER_COOKIE, DEV_USER_HEADER } from "@ailx/contract";
+import { DEV_USER_COOKIE, DEV_USER_HEADER, isDevUserId } from "@ailx/contract";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DEV_USER_KEY,
@@ -47,9 +46,14 @@ describe("with no provider mounted (today)", () => {
   });
 
   it("produces a header the server's own provider accepts", async () => {
+    // The provider itself lives in the PRIVATE repo now, so this half asserts
+    // that what the browser SENDS satisfies the shared contract, and the
+    // private suite asserts that DevAuthProvider accepts exactly that set
+    // (packages/backend/test/auth.test.ts). One predicate, pinned from both
+    // sides — which is stronger than the in-process round trip it replaces,
+    // because that one could only ever see its own repo.
     const h = await authHeaders(storage);
-    const auth = await new DevAuthProvider().verify({ [DEV_USER_HEADER]: h[DEV_USER_HEADER] as string });
-    expect(auth).toEqual({ authRef: `dev:${h[DEV_USER_HEADER]}` });
+    expect(isDevUserId(h[DEV_USER_HEADER])).toBe(true);
   });
 });
 

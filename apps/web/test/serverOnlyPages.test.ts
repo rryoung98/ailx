@@ -82,10 +82,12 @@ describe("server-only files carry a server-only extension", () => {
     expect(pages[0].source).not.toMatch(SERVER_ONLY);
   });
 
-  it("the practice API is server-only by name, on both of its routes", () => {
-    const routes = files.filter((f) => f.rel.startsWith("api/practice/"));
-    expect(routes.length).toBe(2);
-    for (const f of routes) expect(f.rel, f.rel).toMatch(/route\.api\.ts$/);
+  it("has NO API routes at all — the exam service is the only backend", () => {
+    // This app used to carry a second copy of every handler. Deleting them is
+    // the point of the split; asserting the absence is what stops one coming
+    // back one route at a time. The module-graph guard in
+    // packages/core/test/frontendOnly.test.ts says the same thing repo-wide.
+    expect(files.filter((f) => f.rel.startsWith("api/")).map((f) => f.rel)).toEqual([]);
   });
 
   it("no route has both a static and a server-only page (duplicate route)", () => {
@@ -105,7 +107,7 @@ describe("server-only files carry a server-only extension", () => {
     // them may exist at all, so a "moderation" file with a static extension
     // is a build failure rather than a review comment.
     const mod = files.filter((f) => f.rel.startsWith("review/") || f.rel.includes("moderation"));
-    expect(mod.length).toBeGreaterThanOrEqual(4);
+    expect(mod.length).toBeGreaterThanOrEqual(2);
     for (const f of mod) expect(f.rel, f.rel).toMatch(/\.api\.tsx?$/);
     expect(mod.map((f) => f.rel).sort()).toContain("review/[id]/page.api.tsx");
   });
@@ -117,18 +119,20 @@ describe("server-only files carry a server-only extension", () => {
     const credential = files.filter(
       (f) => f.rel.startsWith("verify/") || f.rel.includes("credential"),
     );
-    expect(credential.length).toBeGreaterThanOrEqual(3);
+    expect(credential.length).toBeGreaterThanOrEqual(1);
     for (const f of credential) expect(f.rel, f.rel).toMatch(/\.api\.tsx?$/);
-    expect(credential.map((f) => f.rel).sort()).toEqual([
-      "api/attempts/[id]/credential/route.api.ts",
-      "api/credentials/[code]/route.api.ts",
-      "verify/[code]/page.api.tsx",
-    ]);
+    // The two credential ROUTES moved to the exam service; the page that
+    // renders a verification stayed, and must still be absent from the export.
+    expect(credential.map((f) => f.rel).sort()).toEqual(["verify/[code]/page.api.tsx"]);
   });
 
   it("the share view and its routes are all server-only by name", () => {
+    // The share VIEW and its Open Graph card. The card is the one route
+    // handler this app kept, because rasterizing the frontend's own preview
+    // image is a frontend job — see app/s/[token]/card.png/route.api.ts.
     const shareFiles = files.filter((f) => f.rel.includes("share") || f.rel.startsWith("s/"));
-    expect(shareFiles.length).toBeGreaterThanOrEqual(3);
+    expect(shareFiles.length).toBeGreaterThanOrEqual(2);
+    expect(shareFiles.map((f) => f.rel).sort()).toContain("s/[token]/card.png/route.api.ts");
     for (const f of shareFiles) expect(f.rel, f.rel).toMatch(/\.api\.tsx?$/);
   });
 });

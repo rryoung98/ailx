@@ -20,11 +20,16 @@ describe("share url conventions", () => {
   it("builds the share and card paths from one place", () => {
     expect(shareUrlPath("abc")).toBe("/s/abc");
     expect(shareUrlPath("abc", "/ailx")).toBe("/ailx/s/abc");
-    expect(shareCardPath("abc")).toBe("/api/share/abc/card.png");
+    // The card sits BESIDE the view, not under /api: it is rendered by the
+    // frontend, and /api now means the exam service. Safe to have moved —
+    // unlike siteUrlPath, this string is never frozen into an issued payload.
+    expect(shareCardPath("abc")).toBe("/s/abc/card.png");
   });
 
-  it("honours a basePath-prefixed API root for the card", () => {
-    expect(shareCardPath("abc", "/ailx/api")).toBe("/ailx/api/share/abc/card.png");
+  it("honours the same basePath prefix as the view it previews", () => {
+    expect(shareCardPath("abc", "/ailx")).toBe("/ailx/s/abc/card.png");
+    // One prefix, one spelling: the card is always the view plus /card.png.
+    expect(shareCardPath("abc", "/ailx")).toBe(`${shareUrlPath("abc", "/ailx")}/card.png`);
   });
 
   it("accepts exactly a 43-character base64url token", () => {

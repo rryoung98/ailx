@@ -35,7 +35,15 @@ export function shareUrlPath(token: string, root = ""): string {
   return `${root}/s/${token}`;
 }
 
-/** Canonical path of a share's social-preview image (server mode only). */
-export function shareCardPath(token: string, apiRoot = "/api"): string {
-  return `${apiRoot}/share/${token}/card.png`;
+/**
+ * Canonical path of a share's social-preview image (server mode only).
+ *
+ * It sits beside the share VIEW, not under `/api/`, because it is rendered by
+ * the FRONTEND and `/api` now means the exam service. Safe to move: unlike
+ * `/api/site/<digest>`, this string is never frozen into an issued payload —
+ * the page computes it when it renders its meta tags. `root` carries any
+ * basePath prefix, exactly as `shareUrlPath` does.
+ */
+export function shareCardPath(token: string, root = ""): string {
+  return `${shareUrlPath(token, root)}/card.png`;
 }

@@ -9,8 +9,7 @@
  * only ever read by DevAuthProvider (Clerk remains the real answer).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { DevAuthProvider } from "@ailx/backend";
-import { DEV_USER_COOKIE } from "@ailx/contract";
+import { DEV_USER_COOKIE, isDevUserId } from "@ailx/contract";
 import { DEV_USER_KEY, clearDevUser, devUser } from "../lib/persistence";
 
 /** This vitest/jsdom combo exposes no storage (see
@@ -51,10 +50,14 @@ describe("devUser", () => {
     expect(cookieValue(DEV_USER_COOKIE)).toBe("returning-player");
   });
 
-  it("writes a cookie the server can then resolve to the same auth_ref", async () => {
+  it("writes a cookie carrying an id the server's contract accepts", async () => {
+    // Same split as authHeaders.test.ts: the browser's half is asserted here
+    // against the shared predicate, and DevAuthProvider's half is asserted in
+    // the private repo. Neither repo can import the other, and a shared
+    // predicate is the only version of this guarantee that both can check.
     const user = devUser(storage);
-    const ctx = await new DevAuthProvider().verify({ cookie: document.cookie });
-    expect(ctx).toEqual({ authRef: `dev:${user}` });
+    expect(isDevUserId(user)).toBe(true);
+    expect(cookieValue(DEV_USER_COOKIE)).toBe(user);
   });
 
   it("never adopts a cookie back into localStorage — no silent re-identification", () => {
@@ -85,7 +88,7 @@ describe("clearDevUser", () => {
     clearDevUser(storage);
     expect(storage.getItem(DEV_USER_KEY)).toBeNull();
     expect(cookieValue(DEV_USER_COOKIE)).toBeUndefined();
-    expect(await new DevAuthProvider().verify({ cookie: document.cookie })).toBeNull();
+    expect(cookieValue(DEV_USER_COOKIE)).toBeUndefined();
   });
 
   it("is safe to call when there was no identity at all", () => {

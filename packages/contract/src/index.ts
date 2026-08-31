@@ -21,7 +21,13 @@
  */
 export { type ApiResult, FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "./api.js";
 export { clampInt } from "./clamp.js";
-export { DEV_USER_COOKIE, DEV_USER_HEADER, type HeaderMap } from "./identity.js";
+export {
+  DEV_USER_COOKIE,
+  DEV_USER_HEADER,
+  DEV_USER_RE,
+  isDevUserId,
+  type HeaderMap,
+} from "./identity.js";
 export {
   DEFAULT_REPO_NAME,
   SITE_INDEX,
