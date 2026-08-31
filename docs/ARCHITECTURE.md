@@ -426,22 +426,19 @@ read first and an ILLEGAL header is refused outright, never demoted to the cooki
 and never reflects an arbitrary `Origin`. A Vercel PREVIEW deployment gets a different
 hostname and is therefore refused by design; only the production alias is allowed.
 
-**`app/api/**` and `lib/server/api.ts` are now a DUPLICATE HOST.** They are kept only
-because `apps/web/e2e/**` still boots the Next app and drives its own routes. Before they
-can be deleted, in this order:
+**The duplicate host is GONE (2026-08-31).** `app/api/**` and `lib/server/api.ts` were kept
+only because `apps/web/e2e/**` booted the Next app and drove its own routes. All three steps
+below are done, in this order, and the rest of this section is the record of what each one
+cost:
 
-1. Repoint the Playwright suite at a running `services/api` (its fixtures seed the database
-   and assert against `/api/...` today).
-2. Move the server-rendered pages that read the database — `/progress`, `/s/[token]`,
-   `/review`, `/verify/[code]`, `/gallery`, `/world` — off `lib/server/api.ts`. Each becomes
-   either a client fetch through `apiBase()` (and loses the cookie identity, so `/progress`
-   needs the header) or a page the service renders.
-3. Delete `app/api/**/route.api.ts`, `lib/server/api.ts`, and the frontend half of the
-   `AILX_BACKEND` dual-mode branch that exists only to compile them.
+1. ~~Repoint the Playwright suite at a running `services/api`.~~ Done.
+2. ~~Move the server-rendered pages off `lib/server/api.ts`.~~ Done.
+3. ~~Delete `app/api/**/route.api.ts` and `lib/server/api.ts`.~~ Done — with
+   `packages/backend`, `packages/instrument`, `db/` and the `pg` dependency.
 
-Until then the two hosts share one Neon database, so a request answered by either sees the
-same rows — a duplicate host, not a second truth. That is tolerable for exactly as long as
-step 1 takes.
+`packages/core/test/frontendOnly.test.ts` now fails the build if any of it comes back, and
+the private repo's `pnpm sync:shared:check` fails if a package both repos need stops
+matching this one. Read §10.3 before adding a route handler here.
 
 **Step 2 is done: the seven server-rendered pages now fetch.** `/progress`, `/world`,
 `/gallery`, `/review`, `/review/[id]`, `/s/[token]` and `/verify/[code]` no longer import
@@ -518,6 +515,67 @@ The Clerk instance is a DEVELOPMENT instance repurposed from another product, wh
 for staging and NOT fine for real candidates: dev instances have relaxed limits and a
 separate user pool, so a production Clerk instance is a prerequisite for the first real
 sitting.
+
+### 10.3 Step 3, and the three things it could not simply delete (2026-08-31)
+
+**What went.** `apps/web/app/api/**` (25 route handlers), `lib/server/{api,site,instrument}.ts`,
+`packages/backend`, `packages/instrument`, `db/`, and the `pg` / `@types/pg` /
+`@ailx/backend` / `@ailx/instrument` dependencies. Roughly 16,000 lines. The public repository
+is a frontend.
+
+**The Playwright suite (step 1).** It seeds through the exam service now. `apps/web/e2e/service.ts`
+is the only module that reads `AILX_E2E_API_BASE`, mirroring the one-place rule `lib/mode.ts`
+follows, so `/v1` and the frozen `/api/site/<digest>` space cannot drift apart here either. There
+is deliberately NO DEFAULT: a default of localhost makes a suite that seeds nothing look like a
+suite that passed, and a default of staging writes append-only rows into a database people demo
+from. The skip is granular — only files taking the seeding fixtures skip, with a reason naming the
+variable, and the measurement specs still run with no backend at all. A suite that quietly skips
+itself into silence is the same bug as a test that cannot fail (FRONTEND.md §6.7.3). Public CI
+cannot boot a private service, so its `e2e` job is a documented skip and the private repo's CI
+runs the same specs against a freshly booted `services/api`.
+
+**One route handler survived, and it MOVED.** The Open Graph card is `app/s/[token]/card.png`,
+beside the view it previews. It is not an exam handler: it reads the already-public share payload
+over HTTP, holds no key, touches no store and makes no policy decision. What it does is
+RASTERIZE, and rendering the frontend's own pictures is the frontend's job — putting it in
+`services/api` would put React and satori inside the exam image, which that repo is deliberately
+kept free of. Moving it out of `/api` is what lets the guard say "no `app/api/**`, ever" instead
+of carrying an exception. Safe to move because `shareCardPath()` is computed when the page renders
+its meta tags and is never frozen into an issued payload — unlike `/api/site/<digest>`, which is,
+and which is exactly why THAT path space did not move.
+
+**Three cross-repo assertions were rehomed, not dropped.** Each had been an in-process round trip
+that only worked while both halves lived in one repository:
+
+- *Dev identity.* The browser wrote a header and handed it straight to `DevAuthProvider`. The rule
+  now lives once, in `@ailx/contract` (`DEV_USER_RE` / `isDevUserId`), and each repo pins its own
+  half: here, every id the browser emits satisfies the predicate; there,
+  `packages/backend/test/devIdentityContract.test.ts` asserts the provider accepts EXACTLY that
+  set and refuses everything else, and fails if anyone re-adds a private copy of the regex. That is
+  stronger than the round trip it replaces, which could only ever see one repo.
+- *The T1 ZIP.* A candidate's browser zips their site and the service decides whether it is
+  admissible; if the halves disagree by one CRC, every submission dies at the last step of a timed
+  track. The test moved to the private repo, where the validator is, and drives `writeStoredZip`
+  from `@ailx/core` — the same function `buildSiteZip` re-exports here, vendored there and compared
+  byte for byte by the sync gate.
+- *Server-only naming.* `serverOnlyPages.test.ts` now asserts there are NO `api/**` files at all,
+  rather than naming which routes had to be server-only.
+
+**The view counter, which the page migration silently dropped.** `/s/[token]` counted a view by
+passing `countView` into the same call that read the share, because rendering the page and reading
+the store were one server-side act. They are not any more, and putting `countView` back on the GET
+would have counted every Open Graph crawler and link checker as a person opening the link. Counting
+is now `POST /v1/share/:token/views`: same capability rule, same 404 for a revoked or unknown token
+so a counter cannot confirm a link ever existed, and the read stays safe.
+
+**The released-practice tier is now SHARED, with this repo as the source of truth.** It is public
+by design and both repos serve it, and for one afternoon they served two different versions of it:
+redacting the rubrics here moved all four `rubricVersion` values, while the private copy still
+carried the old ones — so a practice score cut by the service would have recorded a version the
+browser never displayed. `instruments/demo-2026.1` is in the sync contract now, as an explicit
+FILE LIST rather than a directory, because the private copy legitimately keeps judge prompts and
+dealt `form.json` files beside the shared ones and a directory-wide rule would have pushed those
+the wrong way.
 
 ## 11. What I would not do
 

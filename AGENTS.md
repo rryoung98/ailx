@@ -3,25 +3,59 @@
 Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Plan: `docs/PLAN.md`. Positioning: `docs/POSITIONING.md`. Progression/streaks loop: `docs/PROGRESSION.md`.
 
 ## Layout
-- `apps/web/` — Next.js platform (currently static export on GitHub Pages; hosted backend in progress)
-- `packages/core/` — TrackPlugin interface, scoring purity harness, content addressing
-- `packages/backend/` — hosted-mode persistence: Postgres store (append-only writes over `db/schema.sql`), AuthProvider (Clerk/dev), framework-agnostic API handlers
+
+**This repository is a FRONTEND.** The exam service — the HTTP handlers, the append-only store,
+the auth providers and the OPERATIONAL item bank — lives in the PRIVATE `rryoung98/ailx-backend`
+repository and nowhere else. It used to live here too, and that cost us twice: the bank was
+readable in a public JS chunk, and the two copies of the handlers drifted until a browser called
+a route the deployed service did not have. Do not bring either back. See "The repository split".
+
+- `apps/web/` — Next.js frontend. Static export on GitHub Pages, and a hosted build (`AILX_BACKEND=1`) that adds the seven database-reading PAGES. It has NO API routes: it calls the exam service through `lib/mode.ts`
+- `packages/core/` — TrackPlugin interface, scoring purity harness, content addressing, the T1 ZIP writer
+- `packages/contract/` — the browser-facing API CONTRACT: wire types, frozen URL spellings, query parsers, the dev-identity predicate. Pure — no `node:`, no env, no I/O
 - `packages/report/` — pure scoring-adjacent derivation: composite, insights, calibration, export tiers, demo judging, track metadata
 - `packages/tracks/` — t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
 - `packages/session/` — event-sourced session engine
 - `instruments/demo-2026.1/` — the ONLY instrument in this repo. PUBLIC released-practice tier for the static demo: 20 T2 items whose keys/rationales are published on purpose, no score of record. Self-contained and REDACTED — `manifest.yaml` sets `redacted: true`, and the content-tools loader refuses the package if a rubric `description`, a `band_anchors` block or a `prompts/` directory ever appears. Regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`
 - The OPERATIONAL tier (`instruments/2026.1`: 84 keyed T2 items, T1/T3/T4 judge prompts, rubric marking detail, the T1/T3/T4 `form.json` files) lives in the PRIVATE backend repo and must never be added here. `packages/content-tools/test/public-tree.test.ts` fails the build if it comes back
 - `instruments/characters/2026.1/` — the sixteen player-type characters (art direction, prompts, vetting ledger); assets ship in `apps/web/public/characters/`
-- `db/schema.sql` — Postgres schema (append-only responses; scores superseded, never updated)
-- `services/` — openrouter-proxy
+- `services/` — openrouter-proxy (the shared demo MODEL proxy; it holds no exam content and answers no exam route)
 - `infra/` — GCP infrastructure
+
+## The repository split
+
+| | public (`rryoung98/ailx`) | private (`rryoung98/ailx-backend`) |
+|---|---|---|
+| the browser's code | **here** | — |
+| HTTP handlers, store, auth | — | **there** (`packages/backend`, `services/api`) |
+| operational bank, judge prompts | — | **there** (`instruments/2026.1`) |
+| released-practice tier | **source of truth** | vendored copy |
+| `core`, `contract`, `report`, `session` | **source of truth** | vendored copy |
+
+**Two gates keep it that way, and they are not optional.**
+
+- Here: `packages/core/test/frontendOnly.test.ts` fails if this repo declares or imports
+  `@ailx/backend`/`@ailx/instrument`, grows a `pg`/`node-pg-migrate`/`@clerk/backend`
+  dependency, grows an `app/api/**` route, re-adds a server request adapter or `db/`, or adds
+  a second route handler. It fails just as loudly if what a browser legitimately needs goes
+  missing. `packages/content-tools/test/public-tree.test.ts` guards the content tree.
+- There: `pnpm sync:shared:check` compares the vendored copies byte for byte against THIS repo
+  on every PR. **This repo is the source of truth**, so fix a shared package HERE and sync it
+  there — never the other way round.
+
+There is exactly ONE route handler in this repo, `app/s/[token]/card.png`: the frontend's own
+Open Graph image. It rasterizes an already-public share payload. It holds no key, touches no
+store and decides no policy, and the guard allows it BY NAME so a second one is a decision
+somebody makes in front of a reviewer.
 
 ## Commands
 - `pnpm install` · `pnpm test` · `pnpm -r build` (both must pass before any commit)
 - `pnpm test` is ONE vitest for the whole monorepo (`vitest-workspace.ts`), with one worker pool capped at 4 forks — the ceiling is memory, not CPU. Raise it with `AILX_TEST_FORKS=8 pnpm test` on a big machine. `pnpm -r test` still works and still runs the same tests, but it starts a vitest per package, so it costs more RAM and more time.
 - `vitest run` inside a package is the way to debug one package.
 - `pnpm test:reap` — kill vitest workers orphaned by an interrupted run (reparented to pid 1, each still holding its heap). The capped pool and the per-file PGlite close make this rare rather than routine.
-- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm test`: it boots its own server build and needs a disposable Postgres. See `apps/web/e2e/README.md`.
+- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm test`. It boots the frontend itself but needs a RUNNING EXAM SERVICE: set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). There is no default, on purpose: guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
+- Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page".
+- Never run `next dev` in `apps/web` while anyone is testing: it leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps exactly that directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
 
 ## Credential and diagnosis
 - `docs/CREDENTIAL.md` — what an AILX credential asserts (a completed sitting,
@@ -45,63 +79,30 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
 
-## Server-mode environment (`apps/web`, API routes only)
-- `AILX_BACKEND=1` — compile the API routes (unset = static Pages export).
-- `AILX_AUTH` — auth adapter: `dev` (no keys) or `clerk`. **Required — there is
-  no default.** An unset/unknown value refuses to start instead of falling back
-  to `dev`: `DevAuthProvider` identity is asserted (`x-ailx-dev-user: <id>`),
-  never proven, so a forgotten variable would let anyone impersonate any
-  participant. Use `clerk` (with `CLERK_SECRET_KEY`) anywhere real participants
-  can reach.
-  Under `dev`, identity also travels as the `ailx_dev_user` COOKIE (written by
-  the browser next to `localStorage["ailx:dev-user"]`), because a header cannot
-  survive a navigation and server-rendered pages like `/progress` would
-  otherwise see every visitor as anonymous. The header still wins. It is a
-  convenience, not a session — see `docs/DEPLOY.md` §4.1.
-- `AILX_ALLOW_INSECURE_DEV_AUTH=1` — the ONLY way to run `AILX_AUTH=dev` under
-  `NODE_ENV=production` (the Playwright suite boots a production build against a
-  disposable database). Never set it on a deployment that holds real data.
-- Request bodies are capped before the handler runs: raw uploads at
-  `T1_LIMITS.maxTotalBytes` (the T1 snapshot cap — one number, not two), JSON at
-  1 MB, both rejected with 413 mid-stream. Callers are authenticated first, so
-  an anonymous client can never make the server buffer.
-- `AILX_REVIEWERS` — comma/whitespace list of AuthProvider refs (`clerk:<sub>`,
-  `dev:<id>`) allowed to approve or refuse a site-carrying gallery submission
-  (`/review`, `/api/gallery/review`). Fails closed: unset means nobody, and a
-  `*` entry is dropped, never read as "everyone". There is no staff/roles
-  table on purpose — see `docs/SHARING.md` §7.2.
-- `DATABASE_URL` — Postgres for the append-only store.
-- `AILX_SNAPSHOT_STORE` — where T1 candidate sites live: `fs` (default, local
-  disk) or `blob` (Vercel Blob, private objects). Serverless MUST use `blob`:
-  its filesystem is per-invocation, so an `fs` upload is invisible to the
-  request that serves it. Selection lives only in `apps/web/lib/server/site.ts`.
-- `BLOB_READ_WRITE_TOKEN` — required by `AILX_SNAPSHOT_STORE=blob` (Vercel
-  injects it when a Blob store is linked). `AILX_SNAPSHOT_BLOB_PREFIX`
-  (default `t1`) namespaces one bucket across deployments.
-- `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root for `fs` (default `<cwd>/.ailx-snapshots`).
-- `AILX_GITHUB_CLIENT_ID` — GitHub OAuth **app client id** for the T1 artifact export
-  ("Put it on GitHub"). Device flow, so there is NO client secret to hold and no redirect
-  URI to register; the id is public by design, as it is for a CLI. The one scope requested
-  is `public_repo` — enough to create a public repository and push to it, and nothing at
-  all over private repositories. Unset (the default) the GitHub and Vercel rungs answer
-  501 and the export panel offers Download only. See `docs/FUTURE-TRACKS.md`
-  "The offboarding ramp".
-- `NEXT_PUBLIC_AILX_API_BASE` — the exam service's absolute origin (Cloud Run). Set it and
-  the BROWSER calls that service (`<origin>/v1/...`) instead of this app's own `/api`
-  routes; unset, nothing changes and the static export still needs no server. Read in
-  exactly ONE place, `apps/web/lib/mode.ts` (`apiBase()`, `siteApiRoot()`, `siteHref()`),
-  and a test fails the build if a second module reads it. Cross-origin the `ailx_dev_user`
-  cookie is not sent — identity rides the header from `apps/web/lib/authHeaders.ts`. See
-  docs/ARCHITECTURE.md §10.1.
-- `AILX_PG_POOL_MAX` — pg clients per instance (default 3). Serverless keeps one
-  pool per warm instance, so point `DATABASE_URL` at a POOLED endpoint (Neon's
-  `-pooler` host) and keep this small.
-- `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`.
-  Required behind any proxy/CDN: it is baked into the served-site CSP allowlist and the
-  bare-digest 308 redirect. Must be an absolute http(s) origin with no path/query/fragment.
+## Frontend environment (`apps/web`)
+
+Short, because this app is a frontend. Everything about the database, the auth mode, the
+snapshot store, the reviewer allowlist, the connection pool and the GitHub export now belongs to
+the exam service — see the PRIVATE repo's README §3. If you find yourself wanting to set
+`DATABASE_URL` here, the thing you want is running `services/api`.
+
+- `AILX_BACKEND=1` — add `page.api.tsx` / `route.api.ts` to `pageExtensions`, i.e. build the
+  seven database-reading PAGES and the one Open Graph card route. Unset = the static Pages
+  export, which has none of them. It no longer compiles any API route, because there are none.
+- `NEXT_PUBLIC_AILX_API_BASE` — the exam service's absolute origin (Cloud Run). Read in exactly
+  ONE place, `apps/web/lib/mode.ts` (`apiBase()`, `siteApiRoot()`, `siteHref()`); a test fails
+  the build if a second module reads it. Unset, the app has no backend and the pages that need
+  one say so honestly. Cross-origin the `ailx_dev_user` cookie is NOT sent — identity rides the
+  header from `apps/web/lib/authHeaders.ts`. See docs/ARCHITECTURE.md §10.1.
+- `NEXT_PUBLIC_BASE_PATH` — GitHub Pages subpath prefix.
+- `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`. Used by
+  `generateMetadata` for absolute Open Graph URLs. Must be a bare absolute http(s) origin.
 - `AILX_TRUST_PROXY=1` — fall back to `x-forwarded-proto`/`x-forwarded-host` when
-  `AILX_PUBLIC_ORIGIN` is unset. Only set this when a trusted proxy always overwrites
-  those headers; otherwise they are attacker-controlled (host-header injection, CSP widening).
+  `AILX_PUBLIC_ORIGIN` is unset. Only when a trusted proxy always overwrites those headers;
+  otherwise they are attacker-controlled (host-header injection).
+- `AILX_E2E_API_BASE` — Playwright only: the exam service the suite drives. No default, and no
+  staging (every spec appends rows). `AILX_E2E_BASE_URL` / `AILX_E2E_PORT` pick the frontend
+  under test.
 
 ## Shared-demo proxy environment (`services/openrouter-proxy`)
 - `AILX_ALLOWED_ORIGINS` — optional comma/whitespace separated list of extra allowed CORS

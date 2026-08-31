@@ -17,14 +17,29 @@ Full specification: [`AILX-Spec-2026.1.md`](./AILX-Spec-2026.1.md). Build plan: 
 
 ## Repository layout
 
+**This repository is the FRONTEND.** The exam service — the HTTP API, the append-only store, the
+auth providers and the operational item bank with its answer keys — lives in the PRIVATE
+`ailx-backend` repository. An exam whose bank is public is not an exam, it is a worksheet.
+
 ```
-apps/web/              Next.js platform (Cloud Run, standalone output)
-packages/core/         TrackPlugin interface, scoring purity harness, content addressing
-packages/tracks/       t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
-instruments/2026.1/    Content-as-data: manifest, rubrics, judge prompts, item banks
-infra/                 GCP infrastructure (Cloud Run, Cloud SQL, Cloud Tasks, buckets)
-docs/                  Plan, ADRs, runbooks
+apps/web/                 Next.js frontend. Static export for GitHub Pages, plus a
+                          hosted build that adds the database-reading PAGES. No API routes.
+packages/core/            TrackPlugin interface, scoring purity harness, content addressing
+packages/contract/        the browser-facing API contract: wire types, frozen URL spellings
+packages/report/          pure derivation the client renders: composite, insights, player type
+packages/session/         event-sourced session engine
+packages/tracks/          t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
+instruments/demo-2026.1/  the PUBLIC released-practice tier — 20 T2 items whose keys are
+                          published on purpose, so the static demo can be played with no server
+infra/                    GCP infrastructure
+docs/                     Plan, ADRs, runbooks
 ```
+
+Two gates keep the split honest, and neither is optional:
+`packages/core/test/frontendOnly.test.ts` fails if this repo grows a server handler, a server
+package or a database dependency; the private repo's `pnpm sync:shared:check` fails if a package
+both repos need stops matching this one, with **this repo as the source of truth**. See
+`docs/ARCHITECTURE.md` §10.3.
 
 ## Core invariants (from the spec)
 
@@ -65,7 +80,7 @@ Branch → PR → green CI → merge → auto-deploy. `main` is protected; push 
 2. Open a PR. The `ci` workflow gates it with two jobs, and their names are the branch
    protection contract: **`verify`** (install, `pnpm -r build` — which typechecks every
    package — `pnpm test:coverage`, the coverage report on the PR, and the `AILX_BACKEND=1`
-   server build) and **`e2e`** (Playwright against a Postgres service). Both must be green
+   server build) and **`e2e`** (Playwright against a running exam service). Both must be green
    to merge. A further gate is added as a new job with `needs: verify`, alongside `e2e`,
    never chained behind it.
    Two more workflows run outside the merge gate: `codeql` (static analysis, on merge to
