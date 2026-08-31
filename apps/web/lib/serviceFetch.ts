@@ -82,6 +82,24 @@ export async function serviceFetch<T>(
 }
 
 /**
+ * A page's own query string, ready to append to a service path.
+ *
+ * FIRST VALUE ONLY. The server pages flattened `searchParams` before handing
+ * it to a handler, so `?lane=decided&lane=pending` was one value, not two.
+ * `useSearchParams()` keeps both, and a service reading "the last one" would
+ * silently answer a different question than the page it replaced. Empty query
+ * gives an empty string, so `/gallery` stays `/gallery`.
+ */
+export function firstValueQuery(params: URLSearchParams | null | undefined): string {
+  const out = new URLSearchParams();
+  if (params !== null && params !== undefined) {
+    for (const key of new Set(params.keys())) out.set(key, params.get(key)!);
+  }
+  const qs = out.toString();
+  return qs === "" ? "" : `?${qs}`;
+}
+
+/**
  * The same read, as a hook. `path` may be null when there is nothing to ask
  * for yet; the state then stays `loading` and no request is made.
  */

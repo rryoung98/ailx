@@ -4,13 +4,18 @@
  *
  * The derivation is proven pure in @ailx/report and against real Postgres in
  * @ailx/backend. What is asserted HERE is the page's half of the contract:
- * it draws only what the handler gave it, it says WHY a figure is missing
+ * it draws only what the service gave it, it says WHY a figure is missing
  * instead of drawing an empty chart, it never renders anything score-shaped
  * that we cannot back, it renders nothing personal to a caller the server did
  * not recognise, and its charts are hand-rolled accessible SVG.
+ *
+ * Since the page moved off the in-process handler it also has to prove the
+ * IDENTITY story: the `ailx_dev_user` cookie is `SameSite=Lax` and never
+ * reaches another origin, so this page must send the header on every read,
+ * and must say something honest when the read fails outright.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
 import {
   PROGRESS_BASIS,
   progressReport,
@@ -19,7 +24,21 @@ import {
   type SittingPoint,
 } from "@ailx/report";
 import { TRACK_IDS, type TrackRawScores } from "@ailx/session";
-import { DevAuthProvider } from "@ailx/backend";
+import { DEV_USER_HEADER } from "@ailx/backend";
+import {
+  installMemoryStorage,
+  renderClient,
+  renderClientPending,
+  stubFailingFetch,
+  stubHangingFetch,
+  stubJsonFetch,
+  type StubbedCall,
+} from "./helpers/clientPage";
+import { setAuthTokenSource } from "../lib/authHeaders";
+import { ProgressView } from "../lib/ProgressView";
+import { metadata } from "../app/progress/page.api";
+
+installMemoryStorage();
 
 const shape = (n: number): TrackRawScores =>
   Object.fromEntries(TRACK_IDS.map((t, i) => [t, n + i])) as TrackRawScores;
@@ -49,46 +68,12 @@ const busyDays: PracticeDayCounts[] = [4, 3, 2, 1, 0].map((n) => ({
 
 let status = 200;
 let payload: ProgressReport;
-const seenHeaders: Record<string, string>[] = [];
-/** What the deployment's AuthProvider is — the anonymous copy depends on it. */
-let authMode = "dev";
-/** What the browser actually sent. A navigation carries cookies, not headers. */
-let requestHeaders: Record<string, string> = { "x-ailx-dev-user": "player-1" };
+let calls: StubbedCall[] = [];
 
-vi.mock("../lib/server/api", async () => {
-  const { DevAuthProvider } = await vi.importActual<typeof import("@ailx/backend")>("@ailx/backend");
-  return {
-    withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) =>
-      fn({ db: {}, auth: new DevAuthProvider() }),
-    requestHeaderMap: async () => ({ ...requestHeaders }),
-    authProviderName: async () => authMode,
-  };
-});
-vi.mock("next/headers", () => ({
-  headers: async () => new Headers(requestHeaders),
-}));
-vi.mock("@ailx/backend", async () => {
-  const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");
-  return {
-    ...actual,
-    handleProgress: async (_ctx: unknown, headers: Record<string, string>) => {
-      seenHeaders.push(headers);
-      return status === 200
-        ? { status, body: { progress: payload } }
-        : { status, body: { error: { code: "unauthorized", message: "authentication required" } } };
-    },
-  };
-});
-
-const { default: ProgressPage, metadata } = await import("../app/progress/page.api");
-
-const markup = async (): Promise<string> => renderToStaticMarkup(await ProgressPage());
+const markup = async (): Promise<string> => renderClient(createElement(ProgressView));
 
 beforeEach(() => {
-  seenHeaders.length = 0;
   status = 200;
-  authMode = "dev";
-  requestHeaders = { "x-ailx-dev-user": "player-1" };
   payload = report({
     days: busyDays,
     sittings: [
@@ -96,27 +81,38 @@ beforeEach(() => {
       { attemptId: "b", startedOn: "2026-02-20", scores: shape(60) },
     ],
   });
+  window.localStorage.setItem("ailx:dev-user", "player-1");
+  calls = stubJsonFetch(() => ({
+    status,
+    body:
+      status === 200
+        ? { progress: payload }
+        : { error: { code: "unauthorized", message: "authentication required" } },
+  }));
+});
+afterEach(() => {
+  setAuthTokenSource(null);
+  vi.unstubAllGlobals();
 });
 
 describe("who it is for", () => {
-  it("forwards the real request headers to the handler rather than trusting a prop", async () => {
+  it("asks the seam for /progress", async () => {
     await markup();
-    expect(seenHeaders[0]["x-ailx-dev-user"]).toBe("player-1");
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toMatch(/\/api\/progress$/);
   });
 
-  it("forwards the COOKIE too — a navigation carries no header at all", async () => {
-    requestHeaders = { cookie: "other=1; ailx_dev_user=web-abc" };
+  it("sends identity as a HEADER — the Lax cookie never crosses an origin", async () => {
     await markup();
-    expect(seenHeaders[0]["cookie"]).toBe("other=1; ailx_dev_user=web-abc");
-    // ...and that map is enough for the real provider to name the caller,
-    // which is the whole reason /progress was unreachable in a browser.
-    expect(await new DevAuthProvider().verify(seenHeaders[0])).toEqual({ authRef: "dev:web-abc" });
+    expect(calls[0].headers[DEV_USER_HEADER]).toBe("player-1");
   });
 
-  it("lets an explicit header win over the cookie the browser is carrying", async () => {
-    requestHeaders = { "x-ailx-dev-user": "player-1", cookie: "ailx_dev_user=web-abc" };
+  it("sends a proven token instead of the asserted id when one is mounted", async () => {
+    setAuthTokenSource(async () => "jwt-123");
     await markup();
-    expect(await new DevAuthProvider().verify(seenHeaders[0])).toEqual({ authRef: "dev:player-1" });
+    expect(calls[0].headers.authorization).toBe("Bearer jwt-123");
+    // Never both: the server must not be able to choose which one it reads.
+    expect(calls[0].headers[DEV_USER_HEADER]).toBeUndefined();
   });
 
   it("renders nothing personal when the server did not recognise the caller", async () => {
@@ -130,7 +126,10 @@ describe("who it is for", () => {
   });
 
   it("does not tell a dev-auth deployment to sign in — there is nowhere to do it", async () => {
-    status = 401;
+    // No token source is mounted, and a dev deployment answers 200 to any
+    // asserted id, so the only non-200 it can produce is a refusal of a
+    // malformed one. Either way there is no sign-in to point at.
+    status = 400;
     const html = await markup();
     expect(html).not.toMatch(/[Ss]ign in/);
     expect(html).toContain("Nothing has been played in this browser");
@@ -138,8 +137,9 @@ describe("who it is for", () => {
   });
 
   it("does offer sign-in when the deployment actually has accounts", async () => {
+    // A 401 can only come from a provider that VERIFIES, so it is the honest
+    // signal that accounts exist on this deployment.
     status = 401;
-    authMode = "clerk";
     const html = await markup();
     expect(html).toContain("We do not know who you are");
     expect(html).toContain("Sign in and come back");
@@ -147,12 +147,31 @@ describe("who it is for", () => {
 
   it("offers to forget the browser only where identity IS the browser", async () => {
     expect(await markup()).toContain("Forget this browser");
-    authMode = "clerk";
+    setAuthTokenSource(async () => "jwt-123");
     expect(await markup()).not.toContain("Forget this browser");
   });
 
   it("is never indexed — it is one person's history", () => {
     expect(metadata.robots).toMatchObject({ index: false });
+  });
+});
+
+describe("when the service cannot be reached", () => {
+  it("says it is loading first, and shows no figure it does not have", async () => {
+    stubHangingFetch();
+    const html = await renderClientPending(createElement(ProgressView));
+    expect(html).toContain("Loading");
+    expect(html).not.toContain("day streak");
+  });
+
+  it("says so honestly instead of rendering an empty history", async () => {
+    stubFailingFetch();
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    // Crucially NOT the "nothing has been played" copy: an outage must never
+    // be reported to a player as "you did nothing".
+    expect(html).not.toContain("Nothing has been played in this browser");
+    expect(html).not.toContain("day streak");
   });
 });
 

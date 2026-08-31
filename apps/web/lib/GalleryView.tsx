@@ -25,7 +25,7 @@ import { useSearchParams } from "next/navigation";
 import type { GalleryListing, GalleryQuery } from "@ailx/backend";
 import { GalleryCard } from "./GalleryCard";
 import { PageError, PageLoading } from "./PageNotice";
-import { useService } from "./serviceFetch";
+import { firstValueQuery, useService } from "./serviceFetch";
 
 const EYEBROW = "PUBLIC GALLERY · PUBLISHED BY THEIR OWNERS";
 const TITLE = "What people can actually do with AI.";
@@ -51,22 +51,9 @@ const SORTS: { key: GalleryQuery["sort"]; label: string }[] = [
   { key: "type", label: "By type" },
 ];
 
-/**
- * First value only — a repeated parameter must not reach the service as an
- * array, which is exactly what the server page's `one()` guaranteed.
- */
-function firstValues(params: URLSearchParams): string {
-  const out = new URLSearchParams();
-  for (const key of new Set(params.keys())) out.set(key, params.get(key)!);
-  const qs = out.toString();
-  return qs === "" ? "" : `?${qs}`;
-}
-
 export function GalleryView() {
   const search = useSearchParams();
-  const result = useService<{ gallery: GalleryListing }>(
-    `/gallery${firstValues(new URLSearchParams(search?.toString() ?? ""))}`,
-  );
+  const result = useService<{ gallery: GalleryListing }>(`/gallery${firstValueQuery(search)}`);
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title={TITLE} />;
   // The wall is public and unauthenticated, so a non-200 is an outage, not a
   // state with a story. Saying "nobody has published a card yet" because the

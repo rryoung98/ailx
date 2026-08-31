@@ -4,16 +4,28 @@
  *
  * The gate itself is server-side and proven against Postgres in
  * packages/backend; what these tests hold is the PAGE's half of the contract:
- * it renders nothing at all for a caller the server refused (no queue, no
- * site link, not even the page's own copy), it forwards the real request
- * headers to the gate rather than trusting a prop, and each lane shows the
- * operational facts a moderator works from — what was decided, when, by whom
- * and why.
+ * it renders nothing at all for a caller the service refused (no queue, no
+ * site link, not even the page's own copy), it sends the reviewer's identity
+ * as a HEADER — the only transport that survives a cross-origin service —
+ * and each lane shows the operational facts a moderator works from: what was
+ * decided, when, by whom and why.
+ *
+ * A refusal and an OUTAGE are deliberately different pages. A moderator shown
+ * a 404 because the network dropped would think they had lost access.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
-import { FORBIDDEN_RESULT, parseCaseQuery, type CaseListing, type ModerationCase } from "@ailx/backend";
+import { createElement } from "react";
+import { FORBIDDEN_RESULT, DEV_USER_HEADER, parseCaseQuery, type CaseListing, type ModerationCase } from "@ailx/backend";
 import { sharePayloadFrom } from "@ailx/report";
+import {
+  installMemoryStorage,
+  renderClient,
+  renderClientPending,
+  stubFailingFetch,
+  stubHangingFetch,
+} from "./helpers/clientPage";
+
+installMemoryStorage();
 
 const payload = sharePayloadFrom({ t1: 70, t2: 60, t3: 50, t4: 40 }, "Merit", {
   instrument: "ailx 2026.1",
@@ -40,32 +52,20 @@ function moderationCase(over: Partial<ModerationCase> = {}): ModerationCase {
 let result: { status: number; body: Record<string, unknown> };
 const seenHeaders: Record<string, string>[] = [];
 const seenQuery: Record<string, string | undefined>[] = [];
+const urls: string[] = [];
+let search = new URLSearchParams();
 
-vi.mock("../lib/server/api", () => ({
-  withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) => fn({ db: {}, auth: {} }),
-  requestHeaderMap: async () => ({ "x-ailx-dev-user": "reviewer-1", host: "ailx.example" }),
-}));
-vi.mock("@ailx/backend", async () => {
-  const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");
-  return {
-    ...actual,
-    handleModerationCases: async (
-      _ctx: unknown,
-      headers: Record<string, string>,
-      raw: Record<string, string | undefined>,
-    ) => {
-      seenHeaders.push(headers);
-      seenQuery.push(raw);
-      return result;
-    },
-  };
-});
 const notFound = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
 });
-vi.mock("next/navigation", () => ({ notFound, useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  notFound,
+  useSearchParams: () => search,
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
-const { default: ModerationPage, metadata } = await import("../app/review/page.api");
+const { ReviewView } = await import("../lib/ReviewView");
+const { metadata } = await import("../app/review/page.api");
 
 function listingOf(cases: ModerationCase[], raw: Record<string, string> = {}): CaseListing {
   return {
@@ -76,8 +76,33 @@ function listingOf(cases: ModerationCase[], raw: Record<string, string> = {}): C
   };
 }
 
-const markup = async (search: Record<string, string | string[] | undefined> = {}): Promise<string> =>
-  renderToStaticMarkup(await ModerationPage({ searchParams: Promise.resolve(search) }));
+/** Stand in for GET /moderation/cases: record the ask, answer with `result`. */
+function stubModerationService(): void {
+  vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+    urls.push(String(url));
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries((init?.headers ?? {}) as Record<string, string>)) {
+      headers[k.toLowerCase()] = v;
+    }
+    seenHeaders.push(headers);
+    const raw: Record<string, string | undefined> = {};
+    for (const [k, v] of new URLSearchParams(String(url).split("?")[1] ?? "")) raw[k] = v;
+    seenQuery.push(raw);
+    return new Response(JSON.stringify(result.body), { status: result.status });
+  });
+}
+
+const markup = async (
+  query: Record<string, string | string[] | undefined> = {},
+): Promise<string> => {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) {
+    if (v === undefined) continue;
+    for (const one of Array.isArray(v) ? v : [v]) params.append(k, one);
+  }
+  search = params;
+  return renderClient(createElement(ReviewView));
+};
 
 beforeEach(() => {
   // These pages exist only in the hosted build, whose basePath is "" — the
@@ -86,10 +111,16 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   seenHeaders.length = 0;
   seenQuery.length = 0;
+  urls.length = 0;
   notFound.mockClear();
+  window.localStorage.setItem("ailx:dev-user", "reviewer-1");
   result = { status: 200, body: { listing: listingOf([moderationCase()]) } };
+  stubModerationService();
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("the gate", () => {
   it("renders nothing for a non-reviewer — a 403 from the gate is a 404 page", async () => {
@@ -103,13 +134,37 @@ describe("the gate", () => {
     await expect(markup()).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
-  it("hands the REQUEST headers to the server gate, lower-cased", async () => {
+  it("sends the reviewer's identity as a HEADER, which crosses an origin", async () => {
     await markup();
-    expect(seenHeaders[0]!["x-ailx-dev-user"]).toBe("reviewer-1");
+    expect(urls[0]).toMatch(/\/api\/moderation\/cases/);
+    expect(seenHeaders[0]![DEV_USER_HEADER]).toBe("reviewer-1");
+  });
+
+  it("forwards the lane query to the service rather than deciding it here", async () => {
+    await markup({ lane: "decided", auto: "1", offset: "40" });
+    expect(seenQuery[0]).toMatchObject({ lane: "decided", auto: "1", offset: "40" });
   });
 
   it("is never indexed — the dashboard holds sites nobody has vetted", () => {
     expect(metadata.robots).toMatchObject({ index: false, follow: false });
+  });
+});
+
+describe("when the service cannot be reached", () => {
+  it("waits visibly instead of flashing an empty queue", async () => {
+    stubHangingFetch();
+    search = new URLSearchParams();
+    const html = await renderClientPending(createElement(ReviewView));
+    expect(html).toContain("Loading");
+    expect(html).not.toContain("The queue is empty");
+  });
+
+  it("says the service is unreachable — it does NOT pretend the gate refused", async () => {
+    stubFailingFetch();
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    expect(notFound).not.toHaveBeenCalled();
+    expect(html).not.toContain("The queue is empty");
   });
 });
 

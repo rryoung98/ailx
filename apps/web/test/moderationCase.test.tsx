@@ -7,27 +7,26 @@
  * including internal notes, superseded rows and who wrote them. The candidate
  * sees the messages sent to them and NOTHING that names a reviewer — asserted
  * against the exact payload the server sends and against the DOM it produces.
+ *
+ * The case page reads the service over HTTP now, so the gate is also asserted
+ * through a real status code, and an unreachable service is proven to be a
+ * different page from a refusal.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { renderToStaticMarkup } from "react-dom/server";
-import { FORBIDDEN_RESULT, type ModerationCaseDetail, type ModerationComment } from "@ailx/backend";
+import { DEV_USER_HEADER, FORBIDDEN_RESULT, type ModerationCaseDetail, type ModerationComment } from "@ailx/backend";
 import { sharePayloadFrom } from "@ailx/report";
+import {
+  installMemoryStorage,
+  renderClient,
+  renderClientPending,
+  stubFailingFetch,
+  stubHangingFetch,
+} from "./helpers/clientPage";
 
-(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
-
-const store = new Map<string, string>();
-Object.defineProperty(window, "localStorage", {
-  configurable: true,
-  value: {
-    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-    setItem: (k: string, v: string) => void store.set(k, String(v)),
-    removeItem: (k: string) => void store.delete(k),
-    clear: () => void store.clear(),
-  },
-});
+installMemoryStorage();
 
 const CASE_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 const ATTEMPT = "11111111-1111-4111-8111-111111111111";
@@ -69,29 +68,47 @@ function detail(over: Partial<ModerationCaseDetail> = {}): ModerationCaseDetail 
 }
 
 let result: { status: number; body: Record<string, unknown> };
+const urls: string[] = [];
+const seenHeaders: Record<string, string>[] = [];
 
-vi.mock("../lib/server/api", () => ({
-  withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) => fn({ db: {}, auth: {} }),
-  requestHeaderMap: async () => ({ "x-ailx-dev-user": "reviewer-1" }),
-}));
-vi.mock("@ailx/backend", async () => {
-  const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");
-  return { ...actual, handleModerationCase: async () => result };
-});
 const notFound = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
 });
-vi.mock("next/navigation", () => ({ notFound, useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  notFound,
+  useParams: () => ({ id: CASE_ID }),
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
-const { default: CasePage } = await import("../app/review/[id]/page.api");
+const { ModerationCaseView } = await import("../lib/ModerationCaseView");
 const { CandidateThread } = await import("../lib/Moderation");
 
-const markup = async (): Promise<string> =>
-  renderToStaticMarkup(await CasePage({ params: Promise.resolve({ id: CASE_ID }) }));
+function stubCaseService(): void {
+  vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+    urls.push(String(url));
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries((init?.headers ?? {}) as Record<string, string>)) {
+      headers[k.toLowerCase()] = v;
+    }
+    seenHeaders.push(headers);
+    return new Response(JSON.stringify(result.body), { status: result.status });
+  });
+}
+
+const markup = async (): Promise<string> => renderClient(createElement(ModerationCaseView));
 
 beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   notFound.mockClear();
+  urls.length = 0;
+  seenHeaders.length = 0;
+  window.localStorage.setItem("ailx:dev-user", "reviewer-1");
   result = { status: 200, body: { case: detail() } };
+  stubCaseService();
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("the case gate", () => {
@@ -103,6 +120,22 @@ describe("the case gate", () => {
   it("404s an anonymous caller too", async () => {
     result = { status: 401, body: {} };
     await expect(markup()).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("reads ONE case, by the id in the URL, with the reviewer's header", async () => {
+    await markup();
+    expect(urls[0]).toMatch(new RegExp(`/api/moderation/${CASE_ID}$`));
+    expect(seenHeaders[0]![DEV_USER_HEADER]).toBe("reviewer-1");
+  });
+
+  it("waits visibly, and says so when the service cannot be reached", async () => {
+    stubHangingFetch();
+    expect(await renderClientPending(createElement(ModerationCaseView))).toContain("Loading");
+    stubFailingFetch();
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    // An outage is NOT a refusal: a moderator must not think access was lost.
+    expect(notFound).not.toHaveBeenCalled();
   });
 });
 
