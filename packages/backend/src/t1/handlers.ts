@@ -46,19 +46,39 @@ export interface SiteServeContext {
  */
 export const T1_SITE_UNIQUE_INDEX = "responses_one_t1_site_per_attempt";
 
-/** The already-recorded site submission for an attempt, if any. */
-async function recordedSubmission(
+/** The one site submission an attempt may hold. */
+export interface RecordedSubmission {
+  id: string;
+  digest: string;
+  /** ISO-8601 server timestamp of the append. */
+  submittedAt: string;
+}
+
+/**
+ * The already-recorded site submission for an attempt, if any. Exported
+ * because the EXPORT path (./export.ts) asks the same question: which digest
+ * does THIS attempt own — the one authorization check that a capability URL
+ * can never stand in for.
+ */
+export async function recordedSubmission(
   db: Queryable,
   attemptId: string,
-): Promise<{ id: string; digest: string } | null> {
+): Promise<RecordedSubmission | null> {
   const { rows } = await db.query(
-    `SELECT id, payload->>'digest' AS digest FROM responses
+    `SELECT id, payload->>'digest' AS digest, server_ts FROM responses
      WHERE attempt_id = $1 AND payload->>'kind' = $2
      ORDER BY seq LIMIT 1`,
     [attemptId, T1_SITE_RESPONSE_KIND],
   );
   const row = rows[0];
-  return row === undefined ? null : { id: String(row.id), digest: row.digest as string };
+  if (row === undefined) return null;
+  return {
+    id: String(row.id),
+    digest: row.digest as string,
+    // The SERVER's stamp, not the client's: an export README states when the
+    // site was submitted, and a candidate-supplied clock is not evidence.
+    submittedAt: new Date(row.server_ts as string | Date).toISOString(),
+  };
 }
 
 /** Did this write lose the one-submission-per-attempt race in the DB? */
@@ -193,13 +213,13 @@ export async function recordSiteSubmission(
  * work — no stranger gets to spend our CPU on a 25 MB archive, or to
  * learn whether an attempt id exists.
  */
-export async function withOwnedAttempt(
+export async function withOwnedAttempt<T = ApiResult>(
   ctx: T1ApiContext,
   headers: HeaderMap,
   attemptId: string,
-  fn: (participantId: string) => Promise<ApiResult>,
-): Promise<ApiResult> {
-  return withParticipant(ctx, headers, async (participantId) => {
+  fn: (participantId: string) => Promise<T | ApiResult>,
+): Promise<T | ApiResult> {
+  return withParticipant<T>(ctx, headers, async (participantId) => {
     const attempt = await getAttempt(ctx.db, attemptId, participantId);
     if (attempt === null) {
       return { status: 404, body: { error: { code: "not_found", message: "attempt not found" } } };

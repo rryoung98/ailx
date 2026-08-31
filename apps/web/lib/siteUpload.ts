@@ -11,7 +11,7 @@
  * The upload is strictly additive to the local flow: the artifact lives in
  * the event log (and is scored) whether or not the upload ever succeeds.
  */
-import { crc32 } from "@ailx/core";
+import { writeStoredZip, type ZipFile } from "@ailx/core";
 import { isServerMode } from "./mode";
 import type { StorageLike } from "@ailx/session";
 import { canonicalSitePath, siteUrlPath } from "@ailx/backend";
@@ -24,81 +24,16 @@ import {
 } from "./persistence";
 
 // ---------------------------------------------------------------------------
-// Store-only ZIP writer — the byte-level mirror of the backend's readZip
-// validator (packages/backend/src/t1/zip.ts): store method only, UTF-8
-// names, CRC-32 from @ailx/core, no zip64/encryption/extra fields.
+// Store-only ZIP writer — @ailx/core owns it, because the EXPORT path
+// (packages/backend/src/t1/export.ts) repacks a stored snapshot with the same
+// writer. One writer, one set of bytes: a site downloaded from an export
+// re-uploads to the content address it was scored under.
 // ---------------------------------------------------------------------------
 
-export interface SiteFile {
-  path: string;
-  data: Uint8Array;
-}
+export type SiteFile = ZipFile;
 
-const SIG_LOCAL = 0x04034b50;
-const SIG_CENTRAL = 0x02014b50;
-const SIG_EOCD = 0x06054b50;
-
-/**
- * Build a ZIP archive with every entry stored (method 0) and all timestamps
- * zeroed — deterministic bytes for deterministic content addressing.
- */
-export function buildSiteZip(files: readonly SiteFile[]): Uint8Array<ArrayBuffer> {
-  const enc = new TextEncoder();
-  const locals: Uint8Array[] = [];
-  const centrals: Uint8Array[] = [];
-  let offset = 0;
-  for (const f of files) {
-    const name = enc.encode(f.path);
-    const crc = crc32(f.data);
-
-    const local = new Uint8Array(30 + name.length + f.data.length);
-    const lv = new DataView(local.buffer);
-    lv.setUint32(0, SIG_LOCAL, true);
-    lv.setUint16(4, 20, true); // version needed: 2.0
-    // flags(6), method(8: store), dos time(10), dos date(12) all stay 0.
-    lv.setUint32(14, crc, true);
-    lv.setUint32(18, f.data.length, true); // compressed == uncompressed (store)
-    lv.setUint32(22, f.data.length, true);
-    lv.setUint16(26, name.length, true);
-    // extra length(28) stays 0.
-    local.set(name, 30);
-    local.set(f.data, 30 + name.length);
-    locals.push(local);
-
-    const central = new Uint8Array(46 + name.length);
-    const cv = new DataView(central.buffer);
-    cv.setUint32(0, SIG_CENTRAL, true);
-    cv.setUint16(4, 20, true); // version made by: 2.0, host 0 (DOS — no unix attrs)
-    cv.setUint16(6, 20, true); // version needed
-    // flags/method/time/date (8..14) stay 0.
-    cv.setUint32(16, crc, true);
-    cv.setUint32(20, f.data.length, true);
-    cv.setUint32(24, f.data.length, true);
-    cv.setUint16(28, name.length, true);
-    // extra/comment lengths, disk, attributes (30..41) stay 0.
-    cv.setUint32(42, offset, true); // local header offset
-    central.set(name, 46);
-    centrals.push(central);
-    offset += local.length;
-  }
-
-  const cdSize = centrals.reduce((a, c) => a + c.length, 0);
-  const out = new Uint8Array(offset + cdSize + 22);
-  let p = 0;
-  for (const chunk of [...locals, ...centrals]) {
-    out.set(chunk, p);
-    p += chunk.length;
-  }
-  const ev = new DataView(out.buffer, p);
-  ev.setUint32(0, SIG_EOCD, true);
-  // disk numbers (4, 6) stay 0.
-  ev.setUint16(8, files.length, true);
-  ev.setUint16(10, files.length, true);
-  ev.setUint32(12, cdSize, true);
-  ev.setUint32(16, offset, true);
-  // comment length (20) stays 0.
-  return out;
-}
+/** The T1 spelling of `writeStoredZip`, re-exported so call sites keep one import. */
+export const buildSiteZip = writeStoredZip;
 
 // ---------------------------------------------------------------------------
 // Upload
