@@ -59,11 +59,23 @@ const DECK_MAX_H = 460;
  * The floor is set by the confidence step, not by the card: the step's own
  * controls (your call, slider, hint, Lock in) need about this much, and a
  * step the candidate has to scroll INSIDE is the same failure as a page
- * that scrolls. Measured on a 390px phone with the tallest option list
- * (provenance), where the space left over is only ~185px. Below the floor
- * the page is allowed to scroll rather than the step.
+ * that scrolls. Below the floor the page is allowed to scroll rather than
+ * the step.
+ *
+ * 312 and not 300: at 312 the floor is a claim about the STEP, and 300 was
+ * twelve pixels short of one. Measured in a real browser on a 390x844
+ * phone, on a provenance item (the tallest option list), the panel's own
+ * content is 308px against a 300px panel — so the candidate had to scroll
+ * 8px INSIDE a timed, scored step to reach Lock in. No DOM test could see
+ * it: jsdom reports every box as 0x0. `expectNoInnerScroll` in
+ * apps/web/e2e/visual.spec.ts found it and re-measures it every run.
+ *
+ * 312 rather than a rounder 320 because the floor is also what decides
+ * whether a SHORT DESKTOP window (1440x700) can hold the deck and its
+ * answer buttons without the page scrolling: 320 costs that by two pixels,
+ * 312 keeps both promises with four pixels to spare.
  */
-const DECK_MIN_H = 300;
+const DECK_MIN_H = 312;
 /** Breathing room under the answer buttons, so they are not flush against
  *  the bottom edge of the screen. */
 const DECK_GUTTER = 12;

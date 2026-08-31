@@ -313,6 +313,15 @@ describe("no viewport is scrolled when the step opens (mobile regression)", () =
     for (const o of focusOptions) expect(o?.preventScroll).toBe(true);
   });
 
+  /**
+   * This one also pins a PREMISE OF THE E2E FAULT INJECTOR. `breakNextRunnerFocus`
+   * in apps/web/e2e/fixtures.ts crashes the runner by making the first
+   * `HTMLElement.focus()` throw, which only faults anything while answering a
+   * card really does focus the slider. Its predecessor broke `scrollIntoView`,
+   * which this runner had stopped calling, and it silently faulted nothing for
+   * hours (FRONTEND.md §6.7.3). If this test ever goes red, the injector has to
+   * move with the code — do not just delete the assertion.
+   */
   it("still focuses the slider — preventScroll must not cost focus", () => {
     mount();
     startDeck();
@@ -388,10 +397,18 @@ describe("the frame is sized to the viewport, so nothing needs scrolling to", ()
   it("stops shrinking at a card-shaped floor rather than becoming a sliver", () => {
     // A landscape phone cannot fit a card at all; a 120px sliver would be
     // useless, so the deck keeps a card shape and the page may scroll.
+    //
+    // The floor is 312, not 300: a real browser measured the confidence
+    // panel's own content at 308px on a 390x844 phone (provenance item), so
+    // the old floor made the candidate scroll 8px INSIDE the step. jsdom
+    // cannot re-measure that here — every box it reports is 0x0 — so this
+    // guards the NUMBER and apps/web/e2e/visual.spec.ts guards the geometry.
+    // The short-desktop test above is the other half of the trade: the floor
+    // may not grow so far that the deck stops fitting a 700px window.
     layout(400, PHONE);
     mount();
     startDeck();
-    expect(Number.parseFloat(frame().style.height)).toBe(300);
+    expect(Number.parseFloat(frame().style.height)).toBe(312);
   });
 });
 
