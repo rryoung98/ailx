@@ -9,7 +9,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { sharePayloadFrom, ALL_SHARE_SECTIONS, DEFAULT_SHARE_SECTIONS } from "@ailx/report";
+import {
+  ALL_SHARE_SECTIONS,
+  DEFAULT_SHARE_SECTIONS,
+  SHARE_NETWORKS,
+  shareIntentUrl,
+  sharePayloadFrom,
+} from "@ailx/report";
 import { ShareLink } from "../lib/ShareLink";
 import { syncKey } from "../lib/persistence";
 
@@ -446,5 +452,21 @@ describe("ShareLink in server mode", () => {
     expect(container.querySelector("#share-heading")!.tagName).toBe("H2");
     // Status text is announced, never only coloured.
     expect(container.querySelector('[role="status"]')).toBeTruthy();
+  });
+
+  it("offers the network targets on a live link, in the owner's own voice", async () => {
+    fetchMock.mockImplementation(async () =>
+      new Response(JSON.stringify({ share: serverShare() }), { status: 200 }),
+    );
+    await render();
+    const url = `${window.location.origin}/s/${TOKEN}`;
+    for (const network of SHARE_NETWORKS) {
+      const el = container.querySelector<HTMLAnchorElement>(`[data-testid="share-${network}"]`)!;
+      expect(el.getAttribute("href")).toBe(shareIntentUrl(network, PAYLOAD, url, "mine"));
+    }
+    // Copy link survives as the always-works fallback, and revoke still sits
+    // in the same row.
+    expect(container.querySelector('[data-testid="share-copy"]')).toBeTruthy();
+    expect(byName("button", /Revoke link/)).toBeTruthy();
   });
 });

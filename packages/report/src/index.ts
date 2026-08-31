@@ -20,4 +20,5 @@ export * from "./playerType.js";
 export * from "./practice.js";
 export * from "./progress.js";
 export * from "./share.js";
+export * from "./shareText.js";
 export * from "./tracks.js";

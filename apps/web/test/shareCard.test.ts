@@ -43,6 +43,17 @@ function imgs(node: unknown, out: { src: string; width: number }[] = []) {
   return out;
 }
 
+/** Every `flexWrap` in the tree — a wrapping row is a second line of height. */
+function flexWraps(node: unknown, out: string[] = []): string[] {
+  if (Array.isArray(node)) for (const n of node) flexWraps(n, out);
+  else if (isValidElement(node)) {
+    const props = node.props as { style?: { flexWrap?: string }; children?: unknown };
+    if (typeof props.style?.flexWrap === "string") out.push(props.style.flexWrap);
+    flexWraps(props.children, out);
+  }
+  return out;
+}
+
 /** Every `lineClamp` set anywhere in the tree, in draw order. */
 function lineClamps(node: unknown, out: number[] = []): number[] {
   if (Array.isArray(node)) for (const n of node) lineClamps(n, out);
@@ -181,6 +192,24 @@ describe("share card art", () => {
       expect(lineClamps(shareCardElement(withNote))).toEqual([2, 2]);
       // With nothing opted in there is no highlight, so only the tagline.
       expect(lineClamps(shareCardElement(payload))).toEqual([2]);
+    });
+    it("never lets the footnote row wrap — a second line falls off the 630px box", () => {
+      // Rasterized at 1200x630, three footnotes with a THREE-digit minute
+      // count are wider than the content box: with `flexWrap: "wrap"` the row
+      // became two lines and "· built a site" was cut in half at the bottom
+      // edge. Structural, because the pixel is only reachable by rendering.
+      const wide = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 5, t4: 4 }, "Merit", {
+        instrument: "ailx 2026.1",
+        sections: ALL_SHARE_SECTIONS,
+        site: "/api/site/sha256:abc/index.html",
+        completedOn: "2026-02-03",
+        note: "word ".repeat(48).trim(),
+        process: { totalActiveSeconds: 6000, tracks: [] },
+      });
+      const drawn = texts(shareCardElement(wide)).join(" ");
+      expect(drawn).toContain("100 min on task");
+      expect(drawn).toContain("built a site");
+      expect(flexWraps(shareCardElement(wide))).not.toContain("wrap");
     });
   });
 

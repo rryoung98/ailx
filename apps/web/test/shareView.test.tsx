@@ -7,7 +7,13 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ALL_SHARE_SECTIONS, sharePayloadFrom } from "@ailx/report";
+import {
+  ALL_SHARE_SECTIONS,
+  SHARE_NETWORKS,
+  shareIntentUrl,
+  sharePayloadFrom,
+  shareText,
+} from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 
 const payload = sharePayloadFrom(
@@ -226,5 +232,34 @@ describe("share view page", () => {
     expect(el.querySelectorAll("h2").length).toBeGreaterThanOrEqual(2);
     const radar = el.querySelector('svg[role="img"]')!;
     expect(radar.getAttribute("aria-label")).toContain("T1 88.2");
+  });
+});
+
+
+describe("passing the link on", () => {
+  it("renders the three network targets and a copy button, third-person", async () => {
+    const html = await markup();
+    expect(html).toContain("Send this on");
+    for (const network of SHARE_NETWORKS) {
+      const href = shareIntentUrl(network, payload, `https://ailx.example/s/${TOKEN}`, "theirs");
+      // React escapes `&` in attributes; compare against the escaped form.
+      expect(html).toContain(href.replace(/&/g, "&amp;"));
+    }
+    // Never a first-person claim in a reader's mouth, and never the token in
+    // anything but the canonical URL it already holds.
+    const theirs = shareText(payload, "x", "theirs");
+    expect(/\bI\b/.test(theirs)).toBe(false);
+  });
+
+  it("shares only the canonical /s/<token> URL — no extra payload in the target", async () => {
+    const html = await markup();
+    const hrefs = [...html.matchAll(/href="(https:\/\/(x\.com|www\.linkedin\.com|wa\.me)[^"]*)"/g)];
+    expect(hrefs).toHaveLength(SHARE_NETWORKS.length);
+    for (const [, raw] of hrefs) {
+      const decoded = decodeURIComponent(raw.replace(/&amp;/g, "&"));
+      expect(decoded).toContain(`https://ailx.example/s/${TOKEN}`);
+      expect(decoded).not.toContain(payload.band);
+      for (const v of Object.values(payload.tracks)) expect(decoded).not.toContain(v.toFixed(1));
+    }
   });
 });

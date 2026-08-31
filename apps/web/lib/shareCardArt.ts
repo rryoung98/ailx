@@ -185,7 +185,11 @@ export function shareCardElement(payload: SharePayload, portrait: string | null 
           ),
         ),
         box(
-          { key: "cta", fontSize: 22, color: SHARE_CARD_COLORS.faint, marginTop: 14, gap: 14, flexWrap: "wrap" },
+          // NEVER `flexWrap: "wrap"`: the card is a fixed 630px column, and a
+          // second footnote line falls off the bottom edge (a 3-digit "100 min
+          // on task" plus a date plus "built a site" is wider than the content
+          // box). `overflow: hidden` is the guard for anything wider still.
+          { key: "cta", fontSize: 22, color: SHARE_CARD_COLORS.faint, marginTop: 14, gap: 14, flexWrap: "nowrap", overflow: "hidden" },
           [
             box({ key: "t" }, "AILX — the AI-literacy exam you can play. Find your type."),
             ...lines.footnotes.map((f, i) =>

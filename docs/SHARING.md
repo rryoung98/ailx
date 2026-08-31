@@ -176,6 +176,31 @@ spread. The card's text comes from `shareCardLines` in `@ailx/report`, the
 same function the page uses, so the preview cannot drift from the page. Its
 colours are asserted equal to the `:root` tokens in `app/globals.css`.
 
+### 4.1 The share targets — where a link actually goes
+
+A preview only matters once the link is somewhere. The report and the share
+view both render `apps/web/lib/ShareTargets.tsx`: the OS share sheet
+(`navigator.share`, feature-detected after mount so the server and the client
+render the same tree), X, LinkedIn, WhatsApp, and copy link as the fallback
+that needs no app, no popup and no integration.
+
+The WORDS are derived, once, in `packages/report/src/shareText.ts` — a pure
+module over the frozen payload, so a share text can never say more than the
+payload already allows (§1). Per network it is one message in three voices:
+short for X (clamped to the 280 − 23 budget a t.co link leaves), a
+credential-flavoured paragraph for LinkedIn, one casual line for WhatsApp.
+Two rules hold across all of them:
+
+- **No number.** No band, no track value, no percentile, no grade. The
+  judging pipeline does not exist (§7.4), and a figure in a feed reads as
+  certification whatever the caveat beside it says.
+  `SHARE_TEXT_FORBIDDEN` makes that a test, not a habit.
+- **The right person.** The report writes "mine"; the share view writes
+  "theirs", because whoever holds a link may not be the person on the card.
+
+No pixel, no beacon, no third-party script: the intents are plain links, and
+the day-granular view row of §6 stays the only measurement.
+
 ## 5. Both builds
 
 The share view is `app/s/[token]/page.api.tsx`. `.api.tsx` joins

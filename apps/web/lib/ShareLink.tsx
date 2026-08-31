@@ -30,6 +30,7 @@ import {
   type ShareSections,
 } from "@ailx/report";
 import { assetUrl, basePath, isServerMode } from "./mode";
+import { ShareTargets } from "./ShareTargets";
 import { CandidateThread } from "./Moderation";
 import { browserApiOptions, getServerAttemptId } from "./persistence";
 import { loadSiteSubmission } from "./siteUpload";
@@ -146,7 +147,6 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   const [sections, setSections] = useState<ShareSections>({ ...DEFAULT_SHARE_SECTIONS });
   const [note, setNote] = useState("");
   const [hasSite, setHasSite] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishFailed, setPublishFailed] = useState(false);
 
@@ -248,14 +248,6 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
     }
   };
 
-  const copy = () => {
-    if (!url) return;
-    void navigator.clipboard?.writeText(url).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    });
-  };
-
   const toggle = (key: ShareSection) => (checked: boolean) =>
     setSections((prev) => ({ ...prev, [key]: checked }));
 
@@ -335,10 +327,10 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
               border: "1px solid var(--border-strong)", background: "var(--bg)", color: "var(--fg)",
             }}
           />
-          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
-            <button type="button" className="btn small-btn" onClick={copy}>
-              {copied ? "copied ✓" : "Copy link"}
-            </button>
+          {/* Copy is the fallback, not the loop: the OS sheet and the three
+              networks are the paths a link actually travels down. All of them
+              read the same frozen payload (lib/ShareTargets.tsx). */}
+          <ShareTargets url={url} payload={share.payload} perspective="mine">
             <a className="btn small-btn" href={url} target="_blank" rel="noreferrer">
               Open it <span aria-hidden>↗</span>
               <span className="sr-only"> (opens in a new tab)</span>
@@ -347,7 +339,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
             <span className="faint small" role="status">
               {share.views} view{share.views === 1 ? "" : "s"} · {share.status}
             </span>
-          </div>
+          </ShareTargets>
           <p className="small muted" style={{ margin: 0 }}>
             This link carries: {includedSections(share.payload).length === 0
               ? "your type, shape and band only"
