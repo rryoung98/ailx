@@ -69,7 +69,22 @@ export default defineConfig({
           command: `next build && next start -p ${port}`,
           url: baseURL,
           timeout: 300_000,
-          reuseExistingServer: !process.env.CI,
+          /**
+           * OPT-IN, not the default, and CI is not the reason.
+           *
+           * `reuseExistingServer: !CI` means "if something is already
+           * listening on this port, test that instead". It cost us a full
+           * debugging session on 2026-08-31: a next-server left behind by an
+           * agent that died the previous DAY still held 3210, so the suite
+           * silently drove a 24-hour-old build — a 216px header and a landing
+           * page with no drill — and reported green. A green that describes a
+           * binary nobody built is worse than a red one.
+           *
+           * Playwright cannot tell a stale server from a fresh one; only a
+           * human knows. So the fast inner loop stays available and has to be
+           * ASKED for by name. If you set it, you own what is on the port.
+           */
+          reuseExistingServer: process.env.AILX_E2E_REUSE_SERVER === "1",
           stdout: "pipe",
           env: {
             // Only `page.api.tsx` page extensions; there are no API routes.

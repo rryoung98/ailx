@@ -56,6 +56,7 @@ somebody makes in front of a reviewer.
 - `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm test`. It boots the frontend itself but needs a RUNNING EXAM SERVICE: set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). There is no default, on purpose: guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
 - Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page".
 - Never run `next dev` in `apps/web` while anyone is testing: it leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps exactly that directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
+- The e2e suite always boots its own server. `AILX_E2E_REUSE_SERVER=1` reuses whatever is already on the port for a fast inner loop — and then YOU own what is on that port. It is opt-in because a next-server orphaned by a dead agent once held 3210 for a day and the suite silently tested it, green.
 
 ## Credential and diagnosis
 - `docs/CREDENTIAL.md` — what an AILX credential asserts (a completed sitting,
