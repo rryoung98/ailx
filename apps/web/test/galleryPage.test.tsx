@@ -4,14 +4,22 @@
  *
  * The listing rules themselves are proven against real Postgres in
  * packages/backend; what is asserted here is the PAGE: that it renders only
- * what the handler gives it, that its filters are shareable URLs with the
- * right accessible state, that a hostile query string is normalized by the
- * backend parser rather than trusted, and that a card leaks nothing.
+ * what the service gives it, that its filters are still shareable URLs with
+ * the right accessible state, that a hostile query string is forwarded to the
+ * backend parser rather than trusted, that a card leaks nothing — and, now
+ * that the data arrives over HTTP, that it asks the seam for `/gallery`,
+ * sends no identity, and says something honest when the call does not land.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
 import { parseGalleryQuery, type GalleryEntry, type GalleryListing } from "@ailx/backend";
 import { ALL_SHARE_SECTIONS, sharePayloadFrom, type SharePayload } from "@ailx/report";
+import {
+  renderClient,
+  renderClientPending,
+  stubFailingFetch,
+  stubHangingFetch,
+} from "./helpers/clientPage";
 
 const TOKEN = "g".repeat(43);
 
@@ -39,23 +47,35 @@ function entry(over: Partial<GalleryEntry> = {}): GalleryEntry {
 }
 
 let listing: GalleryListing;
+/** What the SERVICE was asked for — the query as it left the browser. */
 const seen: Record<string, string | undefined>[] = [];
+const urls: string[] = [];
+const identity: Array<Record<string, string>> = [];
+let status = 200;
+/** What `useSearchParams()` returns — the URL the reader is actually on. */
+let search = new URLSearchParams();
 
-vi.mock("../lib/server/api", () => ({
-  withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) => fn({ db: {} }),
-}));
-vi.mock("@ailx/backend", async () => {
-  const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");
-  return {
-    ...actual,
-    handleListGallery: async (_ctx: unknown, raw: Record<string, string | undefined>) => {
-      seen.push(raw);
-      return { status: 200, body: { gallery: { ...listing, query: parseGalleryQuery(raw) } } };
-    },
-  };
-});
+vi.mock("next/navigation", () => ({ useSearchParams: () => search }));
 
-const { default: GalleryPage, metadata } = await import("../app/gallery/page.api");
+const { GalleryView } = await import("../lib/GalleryView");
+const { metadata } = await import("../app/gallery/page.api");
+
+/** Stand in for GET /gallery: parse the query the way the handler does. */
+function stubGalleryService(): void {
+  vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+    urls.push(String(url));
+    identity.push((init?.headers ?? {}) as Record<string, string>);
+    const raw: Record<string, string | undefined> = {};
+    const qs = String(url).split("?")[1] ?? "";
+    for (const [k, v] of new URLSearchParams(qs)) raw[k] = v;
+    seen.push(raw);
+    const body =
+      status === 200
+        ? { gallery: { ...listing, query: parseGalleryQuery(raw) } }
+        : { error: { code: "internal", message: "no" } };
+    return new Response(JSON.stringify(body), { status });
+  });
+}
 
 function listingOf(entries: GalleryEntry[], over: Partial<GalleryListing> = {}): GalleryListing {
   return {
@@ -67,8 +87,16 @@ function listingOf(entries: GalleryEntry[], over: Partial<GalleryListing> = {}):
   };
 }
 
-async function markup(search: Record<string, string | string[] | undefined> = {}): Promise<string> {
-  return renderToStaticMarkup(await GalleryPage({ searchParams: Promise.resolve(search) }));
+async function markup(
+  query: Record<string, string | string[] | undefined> = {},
+): Promise<string> {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) {
+    if (v === undefined) continue;
+    for (const one of Array.isArray(v) ? v : [v]) params.append(k, one);
+  }
+  search = params;
+  return renderClient(createElement(GalleryView));
 }
 
 beforeEach(() => {
@@ -77,9 +105,16 @@ beforeEach(() => {
   // through lib/mode.ts (see siteHref).
   vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   seen.length = 0;
+  urls.length = 0;
+  identity.length = 0;
+  status = 200;
   listing = listingOf([entry()]);
+  stubGalleryService();
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("the wall", () => {
   it("renders a published card with its type, shape and band", async () => {
@@ -205,5 +240,44 @@ describe("keyboard and structure", () => {
   it("labels the radar for assistive technology", async () => {
     const html = await markup();
     expect(html).toMatch(/role="img" aria-label="Track shape: T1 88.2/);
+  });
+});
+
+describe("how it reads the service", () => {
+  it("asks the seam for /gallery and carries the reader's query", async () => {
+    await markup({ type: "MSVD", sort: "oldest" });
+    expect(urls).toHaveLength(1);
+    expect(urls[0]).toMatch(/\/api\/gallery\?/);
+    expect(urls[0]).toContain("type=MSVD");
+    expect(urls[0]).toContain("sort=oldest");
+  });
+
+  it("sends NO identity — a public wall does not depend on who is looking", async () => {
+    await markup();
+    expect(identity[0]["x-ailx-dev-user"]).toBeUndefined();
+    expect(identity[0].authorization).toBeUndefined();
+  });
+
+  it("says it is loading before the call lands", async () => {
+    stubHangingFetch();
+    search = new URLSearchParams();
+    const html = await renderClientPending(createElement(GalleryView));
+    expect(html).toContain("Loading");
+    expect(html).not.toContain("Nobody has published a card yet");
+  });
+
+  it("says so when the call throws, and never claims the wall is empty", async () => {
+    stubFailingFetch();
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    expect(html).not.toContain("Nobody has published a card yet");
+    expect(html).not.toContain("gallery-grid");
+  });
+
+  it("treats a 500 the same way — an outage is not an empty gallery", async () => {
+    status = 500;
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    expect(html).not.toContain("Nobody has published a card yet");
   });
 });

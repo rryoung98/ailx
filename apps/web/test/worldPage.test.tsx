@@ -4,12 +4,25 @@
  *
  * What is asserted here: the page publishes distributions and nothing
  * score-shaped, it says WHY a breakdown is missing instead of rendering an
- * empty chart, and the rendered markup contains no per-person value.
+ * empty chart, the rendered markup contains no per-person value — and, since
+ * it now reads the service over HTTP rather than the store in-process, that
+ * it asks the SEAM for `/aggregates`, sends no identity, and says something
+ * honest when the call does not land.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
 import { MIN_COHORT_SIZE, worldAggregates, type WorldAggregates } from "@ailx/report";
 import type { TrackRawScores } from "@ailx/session";
+import {
+  renderClient,
+  renderClientPending,
+  stubFailingFetch,
+  stubHangingFetch,
+  stubJsonFetch,
+  type StubbedCall,
+} from "./helpers/clientPage";
+import { WorldView } from "../lib/WorldView";
+import { metadata } from "../app/world/page.api";
 
 const shapes = (n: number): TrackRawScores[] =>
   Array.from({ length: n }, (_, i) => ({
@@ -35,25 +48,18 @@ function aggregates(n: number): WorldAggregates {
 }
 
 let payload: WorldAggregates;
+let status = 200;
+let calls: StubbedCall[] = [];
 
-vi.mock("../lib/server/api", () => ({
-  withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) => fn({ db: {} }),
-}));
-vi.mock("@ailx/backend", async () => {
-  const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");
-  return {
-    ...actual,
-    handleWorldAggregates: async () => ({ status: 200, body: { aggregates: payload } }),
-  };
-});
-
-const { default: WorldPage, metadata } = await import("../app/world/page.api");
-
-const markup = async (): Promise<string> => renderToStaticMarkup(await WorldPage());
+const markup = async (): Promise<string> =>
+  renderClient(createElement(WorldView));
 
 beforeEach(() => {
   payload = aggregates(40);
+  status = 200;
+  calls = stubJsonFetch(() => ({ status, body: { aggregates: payload } }));
 });
+afterEach(() => vi.unstubAllGlobals());
 
 describe("what it publishes", () => {
   it("leads with participation counts and a completion rate", async () => {
@@ -125,7 +131,7 @@ describe("what it refuses to publish", () => {
   it("never draws a meter past full, and never divides by a zero floor", async () => {
     payload = { ...aggregates(MIN_COHORT_SIZE - 1), cohortSize: MIN_COHORT_SIZE + 5, minCohortSize: 0 };
     const html = await markup();
-    expect(html).toContain("width:100%");
+    expect(html).toContain("width: 100%");
     expect(html).not.toContain("NaN");
     expect(html).not.toContain("Infinity");
   });
@@ -161,5 +167,42 @@ describe("what it refuses to publish", () => {
   it("is a public, indexable page — it is the argument for the whole product", () => {
     expect(metadata.robots).toBeUndefined();
     expect(String(metadata.title)).toMatch(/world/i);
+  });
+});
+
+describe("how it reads the service", () => {
+  it("asks the seam for /aggregates, and hard-codes no host", async () => {
+    await markup();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toMatch(/\/api\/aggregates$/);
+    expect(calls[0].url).not.toMatch(/^https?:/);
+  });
+
+  it("sends NO identity — nothing on this page is about one person", async () => {
+    await markup();
+    expect(calls[0].headers["x-ailx-dev-user"]).toBeUndefined();
+    expect(calls[0].headers.authorization).toBeUndefined();
+  });
+
+  it("says it is loading before the call lands, never a page of zeroes", async () => {
+    stubHangingFetch();
+    const html = await renderClientPending(createElement(WorldView));
+    expect(html).toContain("Loading");
+    expect(html).not.toContain("runs started");
+  });
+
+  it("says so when the call throws, and invents no distribution", async () => {
+    stubFailingFetch();
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    expect(html).not.toContain("class=\"histogram\"");
+    expect(html).not.toContain("runs started");
+  });
+
+  it("treats a non-200 the same way: an outage, not an empty cohort", async () => {
+    status = 500;
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    expect(html).not.toContain("runs started");
   });
 });
