@@ -10,31 +10,32 @@
     "lint": "next lint || true"
   },
   "dependencies": {
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@ailx/backend": "workspace:*",
     "@ailx/core": "workspace:*",
+    "@ailx/instrument": "workspace:*",
     "@ailx/report": "workspace:*",
     "@ailx/session": "workspace:*",
     "@ailx/track-t1": "workspace:*",
     "@ailx/track-t2": "workspace:*",
     "@ailx/track-t3": "workspace:*",
     "@ailx/track-t4": "workspace:*",
-    "three": "^0.182.0",
     "@react-three/fiber": "^9.0.0",
-    "@ailx/backend": "workspace:*",
-    "pg": "^8.23.0",
     "@vercel/blob": "^2.8.0",
-    "@ailx/instrument": "workspace:*"
+    "next": "^15.1.0",
+    "pg": "^8.23.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.182.0"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "@types/react": "^19.0.0",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.0.0",
-    "jsdom": "^25.0.1",
-    "vitest": "^2.1.0",
-    "@types/three": "^0.182.0",
     "@types/pg": "^8.11.0",
-    "@playwright/test": "^1.62.1"
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.2.5",
+    "@types/three": "^0.182.0",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
   }
 }
