@@ -44,8 +44,12 @@ function eventObject(trackId: TrackId, verb: string): string {
   return trackId === "t3" && T3_CLAIM_VERBS.has(verb) ? "claim:ca-cluster" : `${trackId}:${verb}`;
 }
 
-/** REAL per-track artifact shapes, deterministic content. */
-function fixtureArtifact(trackId: TrackId): unknown {
+/**
+ * REAL per-track artifact shapes, deterministic content. Exported because the
+ * e2e fixtures seed mid-run logs with the same artifacts: a second private
+ * copy of "what a completed T3 looks like" would drift from this one.
+ */
+export function fixtureArtifact(trackId: TrackId): unknown {
   switch (trackId) {
     case "t1":
       return {
