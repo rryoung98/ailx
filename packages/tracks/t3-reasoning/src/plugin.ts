@@ -6,7 +6,9 @@ import type {
   TrackScore,
   Upload,
 } from "@ailx/core";
-import type { T3Artifact, T3Config, T3Session, T3Turn } from "./types.js";
+import type {
+  T3Artifact, T3Config, T3Hosted, T3PresentationConfig, T3Session, T3Turn,
+} from "./types.js";
 import { scoreT3, type T3Raw } from "./scoring.js";
 
 export interface T3Score extends TrackScore {
@@ -18,44 +20,76 @@ function fail(msg: string): never {
   throw new Error(`t3-reasoning config: ${msg}`);
 }
 
-export function validateT3Config(raw: unknown): T3Config {
+/**
+ * ONE validator, two demands — the same split as `t2-discrimination`.
+ *
+ * `secrets: true` requires the marking scheme (the planted errors, their
+ * `truth` and trigger `topic`, the correct advice, the weights): scoring, the
+ * released-practice tier, the static demo. `secrets: false` accepts the
+ * REDACTED sitting form the exam service serves
+ * (`GET /v1/attempts/:id/track/t3`), which carries none of it — and still
+ * checks any of it that happens to be present, so the released-practice
+ * config is validated exactly as strictly through either door.
+ */
+function validate(raw: unknown, secrets: boolean): T3PresentationConfig {
   if (typeof raw !== "object" || raw === null) fail("must be an object");
   const cfg = raw as Record<string, unknown>;
   for (const k of ["title", "brief", "sourceTitle", "sourceExcerpt"] as const) {
     if (typeof cfg[k] !== "string" || (cfg[k] as string).length === 0) fail(`${k} missing`);
   }
-  if (!Array.isArray(cfg.plantedErrors) || cfg.plantedErrors.length === 0) {
-    fail("plantedErrors must be non-empty (the seeded-error mechanism is the track)");
+  const hosted = cfg.hosted;
+  if (hosted !== undefined) {
+    for (const m of ["assist", "record", "reveal"] as const) {
+      if (typeof (hosted as Record<string, unknown>)[m] !== "function") fail(`hosted.${m} must be a function`);
+    }
+    // The leak, stated as a rule: a hosted sitting whose config ALSO carried
+    // the plant list would put the answer key back in the browser, and the
+    // Runner would have two sources of truth for which claim is which.
+    if (cfg.plantedErrors !== undefined || cfg.correctAdvice !== undefined) {
+      fail("a hosted config may not carry plantedErrors/correctAdvice — the server owns the scenario");
+    }
   }
   const ids = new Set<string>();
-  for (const [i, e] of (cfg.plantedErrors as Array<Record<string, unknown>>).entries()) {
-    for (const k of ["id", "topic", "claim", "truth"]) {
-      if (typeof e[k] !== "string" || (e[k] as string).length === 0) fail(`plantedErrors[${i}].${k} missing`);
+  if (secrets || cfg.plantedErrors !== undefined) {
+    if (!Array.isArray(cfg.plantedErrors) || cfg.plantedErrors.length === 0) {
+      fail("plantedErrors must be non-empty (the seeded-error mechanism is the track)");
     }
-    if (ids.has(e.id as string)) fail(`duplicate claim id ${String(e.id)}`);
-    ids.add(e.id as string);
+    for (const [i, e] of (cfg.plantedErrors as Array<Record<string, unknown>>).entries()) {
+      for (const k of ["id", "topic", "claim", "truth"]) {
+        if (typeof e[k] !== "string" || (e[k] as string).length === 0) fail(`plantedErrors[${i}].${k} missing`);
+      }
+      if (ids.has(e.id as string)) fail(`duplicate claim id ${String(e.id)}`);
+      ids.add(e.id as string);
+    }
   }
-  if (!Array.isArray(cfg.correctAdvice)) fail("correctAdvice must be an array");
-  for (const [i, a] of (cfg.correctAdvice as Array<Record<string, unknown>>).entries()) {
-    for (const k of ["id", "topic", "claim"]) {
-      if (typeof a[k] !== "string" || (a[k] as string).length === 0) fail(`correctAdvice[${i}].${k} missing`);
+  if (secrets || cfg.correctAdvice !== undefined) {
+    if (!Array.isArray(cfg.correctAdvice)) fail("correctAdvice must be an array");
+    for (const [i, a] of (cfg.correctAdvice as Array<Record<string, unknown>>).entries()) {
+      for (const k of ["id", "topic", "claim"]) {
+        if (typeof a[k] !== "string" || (a[k] as string).length === 0) fail(`correctAdvice[${i}].${k} missing`);
+      }
+      if (ids.has(a.id as string)) fail(`duplicate claim id ${String(a.id)}`);
+      ids.add(a.id as string);
     }
-    if (ids.has(a.id as string)) fail(`duplicate claim id ${String(a.id)}`);
-    ids.add(a.id as string);
   }
   const minWords = typeof cfg.minWords === "number" ? cfg.minWords : 1200;
+  const base: T3PresentationConfig = {
+    title: cfg.title as string,
+    brief: cfg.brief as string,
+    sourceTitle: cfg.sourceTitle as string,
+    sourceExcerpt: cfg.sourceExcerpt as string,
+    minWords,
+    ...(hosted !== undefined ? { hosted: hosted as T3Hosted } : {}),
+  };
+  if (!secrets && cfg.plantedErrors === undefined) return base;
   const w = (cfg.weights ?? { rsr: 25, analysis: 45, process: 20, rair: 10 }) as Record<string, unknown>;
   for (const k of ["rsr", "analysis", "process", "rair"] as const) {
     if (typeof w[k] !== "number" || (w[k] as number) < 0) fail(`weights.${k} must be a non-negative number`);
   }
   return {
-    title: cfg.title as string,
-    brief: cfg.brief as string,
-    sourceTitle: cfg.sourceTitle as string,
-    sourceExcerpt: cfg.sourceExcerpt as string,
+    ...base,
     plantedErrors: cfg.plantedErrors as T3Config["plantedErrors"],
-    correctAdvice: cfg.correctAdvice as T3Config["correctAdvice"],
-    minWords,
+    correctAdvice: (cfg.correctAdvice ?? []) as T3Config["correctAdvice"],
     weights: {
       rsr: w.rsr as number,
       analysis: w.analysis as number,
@@ -63,6 +97,20 @@ export function validateT3Config(raw: unknown): T3Config {
       rair: w.rair as number,
     },
   };
+}
+
+/** The KEYED config: scoring and the static demo. Demands the whole key. */
+export function validateT3Config(raw: unknown): T3Config {
+  return validate(raw, true) as T3Config;
+}
+
+/**
+ * The config the RUNNER validates, in both modes. A hosted sitting form has
+ * no plant list at all, and demanding one would refuse the only scenario a
+ * hosted candidate may be shown.
+ */
+export function validateT3PresentationConfig(raw: unknown): T3PresentationConfig {
+  return validate(raw, false);
 }
 
 const VERBS = new Set([

@@ -11,7 +11,7 @@ import {
 import {
   DeckMismatchError, getAttemptPersistence, scoreTrackOnServer, startServerAttempt,
 } from "../../lib/persistence";
-import { fetchHostedT2Config } from "../../lib/hostedDeck";
+import { fetchHostedTrackConfig } from "../../lib/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
@@ -88,24 +88,27 @@ export default function ExamPage() {
   /** Start blocked because the server's recorded deck is not this build's. */
   const [staleBuild, setStaleBuild] = useState<string | null>(null);
   /**
-   * HOSTED T2 DECK. In hosted mode the deck is the SERVER's — fetched from
-   * GET /attempts/:id/items, which is also the row the exposure log records.
-   * `undefined` means "not resolved yet" and the track must not mount:
-   * presenting this build's bundled practice deck while the server holds a
-   * different one is exactly the divergence the deck check exists to stop.
-   * `config: null` means this run's deck really is this build's own (static
-   * demo, or a run the backend never created).
+   * HOSTED CONTENT for the track about to mount. In hosted mode the deck (T2)
+   * and the dealt form (T3, T4) are the SERVER's — GET /attempts/:id/items
+   * and GET /attempts/:id/track/:trackId, the same rows the exposure log and
+   * the score are computed from. `undefined` means "not resolved yet" and the
+   * track must not mount: presenting this build's bundled practice content
+   * while the server holds a different scenario is exactly the divergence the
+   * deck check exists to stop. `config: null` means this run's content really
+   * is this build's own (static demo, or a run the backend never created).
    */
-  const [hostedT2, setHostedT2] = useState<
-    { attemptId: string; config: unknown | null } | undefined
+  const [hostedTrack, setHostedTrack] = useState<
+    { attemptId: string; trackId: TrackId; config: unknown | null } | undefined
   >(undefined);
   const [deckError, setDeckError] = useState<string | null>(null);
   const [deckEpoch, setDeckEpoch] = useState(0);
-  const hostedT2Ref = useRef<{ attemptId: string; config: unknown | null } | undefined>(undefined);
-  hostedT2Ref.current = hostedT2;
-  /** A server-issued T2 score that has not landed yet (see finishTrack). */
+  const hostedTrackRef = useRef<
+    { attemptId: string; trackId: TrackId; config: unknown | null } | undefined
+  >(undefined);
+  hostedTrackRef.current = hostedTrack;
+  /** A server-issued score that has not landed yet (see finishTrack). */
   const [scoreError, setScoreError] = useState<string | null>(null);
-  const scoreRetryRef = useRef<{ attemptId: string; artifact: unknown } | null>(null);
+  const scoreRetryRef = useRef<{ attemptId: string; trackId: TrackId; artifact: unknown } | null>(null);
   // T1 live-site upload (server mode). The last submission is kept for the
   // retry affordance; static mode never leaves "idle".
   const [siteStatus, setSiteStatus] = useState<SiteStatus>({ state: "idle" });
@@ -225,33 +228,35 @@ export default function ExamPage() {
   const attemptId = state?.attemptId;
 
   /**
-   * Fetch the server's deck before T2 mounts. Runs once per (attempt, retry):
-   * the deck is a recorded fact about this attempt, not something to re-ask
-   * for on every render. A failure is SHOWN, never papered over with a local
-   * deck — see DeckMismatchError in lib/persistence.ts.
+   * Fetch what the server dealt, before the track mounts. Runs once per
+   * (attempt, track, retry): the deck and the form are recorded facts about
+   * this attempt, not something to re-ask for on every render. A failure is
+   * SHOWN, never papered over with local content — see DeckMismatchError in
+   * lib/persistence.ts.
    */
   // biome-ignore lint/correctness/useExhaustiveDependencies: deckEpoch is the RETRY trigger, not a value this effect reads
   useEffect(() => {
-    if (activeTrack !== "t2" || !attemptId) return;
-    if (hostedT2Ref.current?.attemptId === attemptId) return;   // already resolved
+    if (!activeTrack || !attemptId) return;
+    const cur = hostedTrackRef.current;
+    if (cur?.attemptId === attemptId && cur.trackId === activeTrack) return;   // already resolved
     let cancelled = false;
     setDeckError(null);
-    fetchHostedT2Config(attemptId)
+    fetchHostedTrackConfig(attemptId, activeTrack)
       .then((config) => {
-        if (!cancelled) setHostedT2({ attemptId, config });
+        if (!cancelled) setHostedTrack({ attemptId, trackId: activeTrack, config });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
         setDeckError(
           err instanceof DeckMismatchError
             ? "the deck the server dealt you is not the deck it recorded — this run cannot continue on this tab; reload the page"
-            : `your deck could not be loaded from the server: ${err instanceof Error ? err.message : String(err)}`,
+            : `your ${activeTrack.toUpperCase()} content could not be loaded from the server: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
     return () => {
       cancelled = true;
     };
-    // A failed fetch leaves hostedT2 unset, so the retry button (deckEpoch)
+    // A failed fetch leaves hostedTrack unset, so the retry button (deckEpoch)
     // is what re-runs this — never a render loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTrack, attemptId, deckEpoch]);
@@ -297,22 +302,22 @@ export default function ExamPage() {
    * place in the run. Until it lands the track reads "recorded, not scored",
    * which is the truth, and the retry re-issues the same request.
    */
-  const requestServerScore = useCallback((attemptId: string, artifact: unknown) => {
-    scoreRetryRef.current = { attemptId, artifact };
+  const requestServerScore = useCallback((attemptId: string, trackId: TrackId, artifact: unknown) => {
+    scoreRetryRef.current = { attemptId, trackId, artifact };
     setScoreError(null);
-    void scoreTrackOnServer(attemptId, "t2", artifact)
+    void scoreTrackOnServer(attemptId, trackId, artifact)
       .then((remote) => {
         if (remote === null) throw new Error("this run has no server attempt to score against");
         const cur = logRef.current ? project(logRef.current) : null;
         // A retry that races a landed score must not append a second one:
         // the machine refuses a silent re-score, and it is right to.
-        if (cur?.tracks.t2.score !== undefined) return;
+        if (cur?.tracks[trackId].score !== undefined) return;
         commit([
           {
-            type: "track_scored", trackId: "t2", score: remote.score, judgments: [],
+            type: "track_scored", trackId, score: remote.score, judgments: [],
             rubricVersion: remote.rubricVersion,
             scoringDigest: remote.scoringDigest,
-            modelManifest: trackModelManifest("t2"),
+            modelManifest: trackModelManifest(trackId),
             ts: stamp(),
           },
         ]);
@@ -320,7 +325,7 @@ export default function ExamPage() {
       })
       .catch((err: unknown) => {
         setScoreError(
-          `the server has not issued your T2 score yet: ${err instanceof Error ? err.message : String(err)}`,
+          `the server has not issued your ${trackId.toUpperCase()} score yet: ${err instanceof Error ? err.message : String(err)}`,
         );
       });
   }, [commit, stamp]);
@@ -338,18 +343,23 @@ export default function ExamPage() {
     const ts = stamp();
     const timedOut = secondsRemaining(cur, t, ts) <= 0;
     /**
-     * A HOSTED T2 sitting is scored by the SERVER. The browser holds no
-     * answer key for that deck — that is the point of serving it redacted —
-     * so it cannot mark its own paper (docs/ARCHITECTURE.md §4). The
-     * completion is committed first and on its own: the artifact is the
-     * candidate's work and must survive a scoring round-trip that fails.
-     * Every other case is unchanged, and safe because the bundled
-     * released-practice tier publishes its keys on purpose.
+     * A HOSTED T2 or T3 sitting is scored by the SERVER. The browser holds no
+     * answer key for either — no deck key, and no plant list — so it cannot
+     * mark its own paper (docs/ARCHITECTURE.md §4). T1 and T4 are JUDGED
+     * tracks: the server refuses to score them (400), because a judgment it
+     * did not make is not one it may invent, so those keep the local demo
+     * jury exactly as before. The completion is committed first and on its
+     * own: the artifact is the candidate's work and must survive a scoring
+     * round-trip that fails. Every other case is unchanged, and safe because
+     * the bundled released-practice tier publishes its keys on purpose.
      */
-    const hostedT2Deck = t === "t2" && hostedT2Ref.current?.config != null;
-    if (hostedT2Deck && cur.attemptId) {
+    const serverScored =
+      (t === "t2" || t === "t3") &&
+      hostedTrackRef.current?.trackId === t &&
+      hostedTrackRef.current?.config != null;
+    if (serverScored && cur.attemptId) {
       commit([{ type: "track_completed", trackId: t, artifact, timedOut, ts }]);
-      requestServerScore(cur.attemptId, artifact);
+      requestServerScore(cur.attemptId, t, artifact);
       if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
       return;
     }
@@ -594,7 +604,7 @@ export default function ExamPage() {
                 className="btn"
                 onClick={() => {
                   const last = scoreRetryRef.current;
-                  if (last) requestServerScore(last.attemptId, last.artifact);
+                  if (last) requestServerScore(last.attemptId, last.trackId, last.artifact);
                 }}
               >
                 Retry scoring
@@ -668,7 +678,7 @@ export default function ExamPage() {
                 className="btn"
                 onClick={() => {
                   const last = scoreRetryRef.current;
-                  if (last) requestServerScore(last.attemptId, last.artifact);
+                  if (last) requestServerScore(last.attemptId, last.trackId, last.artifact);
                 }}
               >
                 Retry scoring
@@ -709,20 +719,23 @@ export default function ExamPage() {
   const veiled = paused && !crashed && !presenting;
 
   /**
-   * T2's deck is the SERVER's whenever the server dealt one; every other
-   * track (and the static demo) keeps this build's bundled config. `pending`
-   * holds the track unmounted until that question is answered — mounting the
-   * local deck first and swapping it would present items the exposure log
-   * never recorded.
+   * The content is the SERVER's whenever the server dealt some; the static
+   * demo (and any track the server deals nothing for, T1) keeps this build's
+   * bundled config. `pending` holds the track unmounted until that question
+   * is answered — mounting the local scenario first and swapping it would
+   * present a brief, a deck or an assistant the server never recorded.
    */
-  const hostedT2Config = hostedT2 && hostedT2.attemptId === state.attemptId ? hostedT2.config : undefined;
-  const deckPending = t === "t2" && hostedT2Config === undefined && deckError === null;
+  const hostedConfig =
+    hostedTrack && hostedTrack.attemptId === state.attemptId && hostedTrack.trackId === t
+      ? hostedTrack.config
+      : undefined;
+  const deckPending = hostedConfig === undefined && deckError === null;
   const uiProps = {
     attemptId: state.attemptId!,
     locale: state.config!.locale,
     config:
-      t === "t2" && hostedT2Config != null
-        ? hostedT2Config
+      hostedConfig != null
+        ? hostedConfig
         : trackConfig(t, state.config!.locale, state.attemptId ?? undefined),
     onEvent: (event: TrackEvent) => {
       const cur = logRef.current ? project(logRef.current) : null;

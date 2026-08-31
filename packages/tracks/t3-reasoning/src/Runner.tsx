@@ -12,13 +12,29 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import { assistantReply, DEMO_ASSISTANT_ID } from "./assistant.js";
-import { validateT3Config } from "./plugin.js";
+import { validateT3PresentationConfig } from "./plugin.js";
 import { decodeT3Checkpoint, encodeT3Checkpoint, type T3ChatMsg } from "./checkpoint.js";
-import { revealSummary } from "./reveal.js";
+import { revealSummary, revealSummaryFromPlants, type RevealSummary } from "./reveal.js";
 import { verifiedClaimIds } from "./scoring.js";
-import type { T3Config, T3Turn } from "./types.js";
+import type { T3Config, T3PresentationConfig, T3Turn } from "./types.js";
 
 type Phase = "brief" | "work" | "reveal";
+
+/**
+ * HOSTED mode identifies its assistant honestly: the replies are computed by
+ * the exam service over the OPERATIONAL scenario, because deciding which
+ * claim surfaces requires the planted-error list — the one thing a browser
+ * sitting this track may never hold (docs/ARCHITECTURE.md §4).
+ */
+const HOSTED_ASSISTANT_ID = "ailx-instrumented-assistant@1 (served by the exam service)";
+
+/** What the end-of-track reveal can say, and when. */
+type RevealState =
+  | { state: "loading" }
+  /** The attempt is still open: the server reveals nothing, and neither do we. */
+  | { state: "withheld" }
+  | { state: "ready"; summary: RevealSummary }
+  | { state: "error"; message: string };
 
 const card: CSSProperties = {
   background: "var(--card)",
@@ -112,7 +128,16 @@ function StanceButton({
 }
 
 export function Runner({ config, onEvent, onComplete, onPresentation, secondsRemaining, checkpoint, onCheckpoint }: TrackUIProps) {
-  const cfg: T3Config = useMemo(() => validateT3Config(config), [config]);
+  /**
+   * PRESENTATION config. Hosted mode is handed the redacted sitting form —
+   * title, brief, source, minWords and the hosted seam — and nothing else;
+   * static mode is handed the released-practice scenario, plant list and all.
+   * The validator is the same one either way (see `validate` in plugin.ts).
+   */
+  const cfg: T3PresentationConfig = useMemo(() => validateT3PresentationConfig(config), [config]);
+  /** Present exactly when the SERVER owns this sitting's scenario. */
+  const hosted = cfg.hosted;
+  const assistantId = hosted ? HOSTED_ASSISTANT_ID : DEMO_ASSISTANT_ID;
   // Rehydrate from the persisted checkpoint on (re)mount — F2.
   const restored = useMemo(() => decodeT3Checkpoint(checkpoint), []);
   const [phase, setPhase] = useState<Phase>(restored?.phase ?? "brief");
@@ -140,6 +165,13 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
   const draftRev = useRef(restored?.draftRev ?? 0);
   const regenNonce = useRef(0);
   const completed = useRef(false);
+  /** Hosted only: a reply is in flight, or the last request failed. */
+  const [awaitingReply, setAwaitingReply] = useState(false);
+  const [assistError, setAssistError] = useState<string | null>(null);
+  const pendingAssist = useRef<
+    { prompt: string; nonce: number; replace: boolean; seq: number } | null
+  >(null);
+  const [hostedReveal, setHostedReveal] = useState<RevealState>({ state: "loading" });
   const revealHeadingRef = useRef<HTMLHeadingElement>(null);
 
   // A11y: on submit the whole view is replaced by the reveal — move focus
@@ -147,6 +179,40 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
   useEffect(() => {
     if (phase === "reveal") revealHeadingRef.current?.focus();
   }, [phase]);
+
+  /**
+   * HOSTED reveal. What was planted is the answer key, so it is the SERVER
+   * that decides whether this attempt may see it, from `finalized_at` alone.
+   * Submitting T3 does not finalize the attempt — the run continues — so the
+   * honest answer mid-run is "not yet", and that is what renders. Nothing
+   * here can turn a sitting view into a reveal: there is no plant list in
+   * this tab to fall back on.
+   */
+  useEffect(() => {
+    if (phase !== "reveal" || !hosted) return;
+    let cancelled = false;
+    setHostedReveal({ state: "loading" });
+    hosted
+      .reveal()
+      .then((plants) => {
+        if (cancelled) return;
+        setHostedReveal(
+          plants === null
+            ? { state: "withheld" }
+            : { state: "ready", summary: revealSummaryFromPlants(plants) },
+        );
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setHostedReveal({
+          state: "error",
+          message: err instanceof Error ? err.message : String(err),
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hosted, phase]);
 
   /**
    * P0 fairness: the reveal says of itself that it is "presentation, not
@@ -182,12 +248,33 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
     [onCheckpoint],
   );
 
+  /**
+   * Label for each claim the assistant surfaced.
+   *
+   * STATIC: the released-practice scenario publishes every claim's text, so
+   * the row shows it. HOSTED: the server names a claim by an OPAQUE per-
+   * attempt ref and puts its text inside the reply, on purpose — a per-claim
+   * text endpoint would be a list of "the claims that matter", and the point
+   * of the ref is that a plant and a piece of correct advice are
+   * indistinguishable here. So the row points back at the reply instead.
+   */
   const claimText = useMemo(() => {
     const m = new Map<string, string>();
-    for (const e of cfg.plantedErrors) m.set(e.id, e.claim);
-    for (const a of cfg.correctAdvice) m.set(a.id, a.claim);
+    if (!hosted) {
+      for (const e of cfg.plantedErrors ?? []) m.set(e.id, e.claim);
+      for (const a of cfg.correctAdvice ?? []) m.set(a.id, a.claim);
+      return m;
+    }
+    let reply = 0;
+    for (const msg of messages) {
+      if (msg.role !== "assistant") continue;
+      reply += 1;
+      msg.claimIds.forEach((ref, i) => {
+        if (!m.has(ref)) m.set(ref, `Claim ${i + 1} in the assistant's reply ${reply}`);
+      });
+    }
     return m;
-  }, [cfg]);
+  }, [cfg, hosted, messages]);
 
   const surfaced = useMemo(() => {
     const s: string[] = [];
@@ -195,9 +282,25 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
     return s;
   }, [messages]);
 
+  /**
+   * Append one turn. `seq` may be RESERVED by the caller: a hosted assistant
+   * reply is numbered before its request leaves, so a stance click while the
+   * reply is in flight cannot take the number the reply is stored under (the
+   * server's transcript is keyed by seq, and a collision would silently drop
+   * one of the two turns).
+   *
+   * In hosted mode every CLIENT-authored turn is also mirrored to the
+   * append-only server transcript, which is what the server's score reads.
+   * `assisted` is never mirrored — the server wrote that row itself, and it
+   * refuses a client that claims one.
+   */
   const emit = useCallback(
-    (turn: Omit<T3Turn, "seq" | "clientTs">) => {
-      const full: T3Turn = { ...turn, seq: seq.current++, clientTs: new Date().toISOString() };
+    (turn: Omit<T3Turn, "seq" | "clientTs"> & { seq?: number }) => {
+      const full: T3Turn = {
+        ...turn,
+        seq: turn.seq ?? seq.current++,
+        clientTs: new Date().toISOString(),
+      };
       transcript.current.push(full);
       onEvent({
         verb: full.verb,
@@ -206,13 +309,28 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
         context: {
           track: "t3-reasoning",
           revision_of: full.revisionOf,
-          assistant: DEMO_ASSISTANT_ID,
+          assistant: assistantId,
         },
         clientTs: full.clientTs,
       });
+      if (hosted && full.verb !== "assisted") hosted.record(full);
       return full;
     },
-    [onEvent],
+    [assistantId, hosted, onEvent],
+  );
+
+  /**
+   * One place that moves the chat forward: state, the checkpoint, and the
+   * ref an in-flight reply reads when it lands (a hosted reply resolves
+   * before React has re-rendered, so the closure's `messages` is stale).
+   */
+  const commitMessages = useCallback(
+    (next: ChatMsg[]) => {
+      latest.current = { ...latest.current, messages: next };
+      setMessages(next);
+      saveCheckpoint({ messages: next });
+    },
+    [saveCheckpoint],
   );
 
   const surfacedSet = () => {
@@ -223,48 +341,113 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
     return s;
   };
 
+  /** Record a landed reply — same shape whoever computed it. */
+  const applyReply = useCallback(
+    (reply: { text: string; claimIds: string[] }, nonce: number, replace: boolean, assistSeq: number) => {
+      const object = `assist:${promptSeq.current}`;
+      if (replace) {
+        emit({
+          seq: assistSeq,
+          verb: "regenerated",
+          object: `${object}#${nonce}`,
+          text: reply.text,
+          claimIds: reply.claimIds,
+          revisionOf: object,
+        });
+        const out = [...latest.current.messages];
+        for (let i = out.length - 1; i >= 0; i--) {
+          if (out[i].role === "assistant") {
+            out[i] = { ...out[i], text: reply.text, claimIds: [...reply.claimIds] };
+            break;
+          }
+        }
+        commitMessages(out);
+        return;
+      }
+      emit({ seq: assistSeq, verb: "assisted", object, text: reply.text, claimIds: reply.claimIds });
+      commitMessages([
+        ...latest.current.messages,
+        { role: "assistant", text: reply.text, claimIds: [...reply.claimIds], object },
+      ]);
+    },
+    [commitMessages, emit],
+  );
+
+  /**
+   * Ask for one assistant reply.
+   *
+   * HOSTED: `POST /v1/attempts/:id/t3/assist`, and NOTHING ELSE. There is
+   * deliberately no fallback to `assistantReply` here: the local simulator
+   * needs the planted-error list to decide what surfaces, so a fallback
+   * would mean shipping the answer key to every hosted candidate — the exact
+   * leak this seam closes. A failure is shown, and retried against the same
+   * (prompt, promptSeq, regenNonce), which the server replays rather than
+   * re-runs.
+   *
+   * STATIC: the released-practice scenario is in this bundle on purpose, so
+   * the deterministic simulator runs in the tab, unchanged.
+   */
+  const requestAssist = useCallback(
+    async (prompt: string, nonce: number, replace: boolean, assistSeq: number): Promise<void> => {
+      if (!hosted) {
+        if (!cfg.plantedErrors) return;   // Unreachable: the validator demands one.
+        applyReply(
+          assistantReply(cfg as T3Config, prompt, promptSeq.current, surfacedSet(), nonce),
+          nonce,
+          replace,
+          assistSeq,
+        );
+        return;
+      }
+      pendingAssist.current = { prompt, nonce, replace, seq: assistSeq };
+      setAssistError(null);
+      setAwaitingReply(true);
+      try {
+        const reply = await hosted.assist({
+          prompt,
+          promptSeq: promptSeq.current,
+          regenNonce: nonce,
+          seq: assistSeq,
+        });
+        pendingAssist.current = null;
+        applyReply({ text: reply.text, claimIds: [...reply.claimRefs] }, nonce, replace, assistSeq);
+      } catch (err) {
+        setAssistError(
+          `the assistant could not be reached: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      } finally {
+        setAwaitingReply(false);
+      }
+    },
+    [applyReply, cfg, hosted],
+  );
+
   const send = useCallback(() => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || awaitingReply) return;
     promptSeq.current += 1;
     regenNonce.current = 0;
     const pObj = `prompt:${promptSeq.current}`;
     emit({ verb: "prompted", object: pObj, text });
-    const reply = assistantReply(cfg, text, promptSeq.current, surfacedSet(), 0);
-    emit({ verb: "assisted", object: `assist:${promptSeq.current}`, text: reply.text, claimIds: reply.claimIds });
-    const nextMessages: ChatMsg[] = [
-      ...messages,
-      { role: "user", text, claimIds: [], object: pObj },
-      { role: "assistant", text: reply.text, claimIds: [...reply.claimIds], object: `assist:${promptSeq.current}` },
-    ];
-    setMessages(nextMessages);
+    // Reserved BEFORE the await: see emit().
+    const assistSeq = seq.current++;
+    commitMessages([...latest.current.messages, { role: "user", text, claimIds: [], object: pObj }]);
     setInput("");
-    saveCheckpoint({ messages: nextMessages });
-  }, [cfg, emit, input, messages, saveCheckpoint]);
+    void requestAssist(text, 0, false, assistSeq);
+  }, [awaitingReply, commitMessages, emit, input, requestAssist]);
 
   const regenerate = useCallback(() => {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user");
-    if (!lastUser) return;
+    const lastUser = [...latest.current.messages].reverse().find((m) => m.role === "user");
+    if (!lastUser || awaitingReply) return;
     regenNonce.current += 1;
-    const prior = `assist:${promptSeq.current}`;
-    const reply = assistantReply(cfg, lastUser.text, promptSeq.current, surfacedSet(), regenNonce.current);
-    emit({
-      verb: "regenerated",
-      object: `assist:${promptSeq.current}#${regenNonce.current}`,
-      text: reply.text,
-      claimIds: reply.claimIds,
-      revisionOf: prior,
-    });
-    const out = [...messages];
-    for (let i = out.length - 1; i >= 0; i--) {
-      if (out[i].role === "assistant") {
-        out[i] = { ...out[i], text: reply.text, claimIds: [...reply.claimIds] };
-        break;
-      }
-    }
-    setMessages(out);
-    saveCheckpoint({ messages: out });
-  }, [cfg, emit, messages, saveCheckpoint]);
+    void requestAssist(lastUser.text, regenNonce.current, true, seq.current++);
+  }, [awaitingReply, requestAssist]);
+
+  /** Retry the request that failed, verbatim — the server replays its reply. */
+  const retryAssist = useCallback(() => {
+    const p = pendingAssist.current;
+    if (p) void requestAssist(p.prompt, p.nonce, p.replace, p.seq);
+  }, [requestAssist]);
 
   const saveDraft = useCallback(() => {
     if (draft === savedDraft) return;
@@ -352,10 +535,12 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
           <p>{cfg.brief}</p>
           <p style={{ color: "var(--muted)" }}>
             Work the brief with the assistant. Every prompt, revision, regeneration
-            and verification is recorded. The assistant is a{" "}
-            <strong>deterministic demo simulator</strong> — and, per the exam design,
-            some of what it tells you is wrong. Challenge what you doubt; accept what
-            you verify. Target {cfg.minWords} words.
+            and verification is recorded. The assistant is{" "}
+            <strong>
+              {hosted ? "instrumented by the exam service" : "a deterministic demo simulator"}
+            </strong>{" "}
+            — and, per the exam design, some of what it tells you is wrong. Challenge
+            what you doubt; accept what you verify. Target {cfg.minWords} words.
           </p>
           <button
             style={btn}
@@ -372,13 +557,48 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
   }
 
   if (phase === "reveal") {
-    const summary = revealSummary(cfg, surfaced, stances);
+    /**
+     * The summary, from whoever is entitled to produce it: static mode
+     * derives it from the released-practice plant list in this bundle;
+     * hosted mode has only what the SERVER returned, and null until the
+     * attempt is finalized. There is no third path.
+     */
+    const summary = hosted
+      ? hostedReveal.state === "ready"
+        ? hostedReveal.summary
+        : null
+      : revealSummary({ plantedErrors: cfg.plantedErrors ?? [] }, surfaced, stances);
     const stanceColor: Record<string, string> = {
       challenged: "var(--good, #15803d)", accepted: "var(--bad, #b91c1c)", ignored: "var(--muted)",
     };
     const stanceLabel: Record<string, string> = {
       challenged: "✓ challenged", accepted: "✗ accepted", ignored: "— ignored",
     };
+    if (summary === null) {
+      return (
+        <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: "1rem" }}>
+          <div style={card} data-testid="t3-reveal-withheld">
+            <h2 ref={revealHeadingRef} tabIndex={-1} style={{ marginTop: 0, outline: "none" }}>
+              Your analysis is recorded
+            </h2>
+            <p style={{ color: "var(--muted)" }}>
+              {hostedReveal.state === "error"
+                ? `The reveal could not be loaded: ${hostedReveal.message}`
+                : hostedReveal.state === "loading"
+                  ? "Loading your reveal…"
+                  : "What the assistant was seeded with stays with the exam service until your run is finalized — it is the marking scheme of this track, and it is the same for the candidate sitting next to you. Your diagnostic report shows it once the run is over."}
+            </p>
+            <p style={{ color: "var(--muted)" }}>
+              Transcript stored: {transcript.current.length} events. Scoring runs on the
+              server from the stored transcript and stored jury judgments only.
+            </p>
+            <button style={btn} onClick={finish}>
+              Continue →
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: "1rem" }}>
         <div
@@ -472,7 +692,7 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
       <div style={{ display: "grid", gap: "0.8rem", alignContent: "start" }}>
         <div role="log" aria-label="Assistant conversation" style={{ ...card, maxHeight: 380, overflowY: "auto" }}>
           <div style={{ color: "var(--muted)", fontSize: "0.8rem", marginBottom: "0.5rem" }}>
-            Assistant · {DEMO_ASSISTANT_ID} · {Math.max(0, Math.floor(secondsRemaining / 60))}m left
+            Assistant · {assistantId} · {Math.max(0, Math.floor(secondsRemaining / 60))}m left
           </div>
           {messages.length === 0 && (
             <p style={{ color: "var(--muted)" }}>Ask the assistant about the source or the brief.</p>
@@ -485,6 +705,22 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
               <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
             </div>
           ))}
+          {awaitingReply && (
+            <p role="status" data-testid="assist-pending" style={{ color: "var(--muted)" }}>
+              The assistant is answering…
+            </p>
+          )}
+          {/* A failed reply is SHOWN. It is never quietly replaced by a
+              locally computed one: this tab has no scenario to compute from,
+              and giving it one would hand over the answer key. */}
+          {assistError && (
+            <p role="alert" data-testid="assist-error" style={{ color: "var(--bad, #b91c1c)" }}>
+              {assistError}{" "}
+              <button style={{ ...ghost, ...tiny }} onClick={retryAssist}>
+                Retry
+              </button>
+            </p>
+          )}
         </div>
         {/* flexWrap + minWidth: 0 keep this row from forcing the page wider
             than the phone viewport (min-content of input + two buttons was
@@ -502,8 +738,8 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
               border: "1px solid var(--border)", borderRadius: 8, padding: "0.55rem 0.8rem",
             }}
           />
-          <button style={btn} onClick={send}>Send</button>
-          <button style={ghost} onClick={regenerate} disabled={messages.length === 0}>
+          <button style={btn} onClick={send} disabled={awaitingReply}>Send</button>
+          <button style={ghost} onClick={regenerate} disabled={messages.length === 0 || awaitingReply}>
             Regenerate
           </button>
         </div>

@@ -3535,7 +3535,7 @@
       "sources": [
         {
           "path": "src/plugin.ts",
-          "sha256": "f931a849c92d83904bc3e6e4712cb3ecb296c9988be85fc5d0e0fd02c4eea018"
+          "sha256": "e59471ab252133be358770e5b22d4bd5f88508ad931cdfc677be737e0b77c20a"
         },
         {
           "path": "src/scoring.ts",
@@ -3543,13 +3543,13 @@
         },
         {
           "path": "src/types.ts",
-          "sha256": "b3f8d5342ea80eab7d572ad57018aed39412a68153e7e71f2f389dea8568dc35"
+          "sha256": "43dce399834efafd7ae00e7cdaa47fcfa6d77555d944066782ccaf5713a1e42d"
         }
       ],
       "externals": [
         "@ailx/core@workspace:*"
       ],
-      "digest": "fc1876951bd485ee492641e2cf04498e9602aa04f5865b1d4b5128782a5de5f1"
+      "digest": "a2a4c344628ce0ab8091f48c280585a631c6a765d81fe641f5fe686d694bf121"
     },
     {
       "trackId": "t4",

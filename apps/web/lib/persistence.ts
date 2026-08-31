@@ -410,6 +410,129 @@ export async function fetchPresentedDeck(
 }
 
 /**
+ * One track FORM as `GET /attempts/:id/track/:trackId` serves it: T1, T3 or
+ * T4 (t2 is dealt a deck, not a form, and the server answers 400).
+ *
+ * `view` stays a bare record here on purpose. This module owns the transport;
+ * which fields of a REDACTED view may be presented is a per-track question,
+ * and it is answered in exactly one place — `lib/hostedDeck.ts`.
+ */
+export interface PresentedTrackView {
+  phase: "sitting" | "review";
+  released: boolean;
+  view: Record<string, unknown>;
+}
+
+/** The tracks dealt a form. T2 is dealt a deck — see {@link fetchPresentedDeck}. */
+export type FormTrackId = "t1" | "t3" | "t4";
+
+/**
+ * The redacted form this attempt was dealt for `trackId`.
+ *
+ * There is no phase parameter, and there must never be one: the server reads
+ * the phase off `attempts.finalized_at`, so nothing a browser sends can turn
+ * a sitting view into a review view (docs/ARCHITECTURE.md §4).
+ */
+export async function fetchTrackView(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  attemptId: string,
+  trackId: FormTrackId,
+): Promise<PresentedTrackView> {
+  const body = await getJson(
+    storage,
+    opts,
+    `/attempts/${encodeURIComponent(attemptId)}/track/${trackId}`,
+  );
+  const view = body.view;
+  if (typeof view !== "object" || view === null || Array.isArray(view)) {
+    throw new Error(`GET /attempts/${attemptId}/track/${trackId} returned no view`);
+  }
+  return {
+    phase: body.phase === "review" ? "review" : "sitting",
+    released: body.released === true,
+    view: view as Record<string, unknown>,
+  };
+}
+
+/**
+ * Browser entry point for a hosted track FORM. Null when this run is not the
+ * server's — the same rule (and the same reason) as {@link fetchServerDeck}.
+ */
+export async function fetchServerTrackView(
+  attemptId: string,
+  trackId: FormTrackId,
+): Promise<PresentedTrackView | null> {
+  if (!isServerAttempt(attemptId)) return null;
+  return fetchTrackView(window.localStorage, browserApiOptions(), attemptId, trackId);
+}
+
+/** One assistant turn from `POST /attempts/:id/t3/assist`. */
+export interface T3AssistResponse {
+  text: string;
+  claimRefs: string[];
+  seq: number;
+}
+
+/**
+ * Ask the SERVER for one T3 assistant reply. The reply names its claims by
+ * opaque per-attempt ref, and the server records the turn itself — this
+ * client cannot write an `assisted` row and cannot tell a plant from a piece
+ * of correct advice (docs/ARCHITECTURE.md §4, CONTRACT §3).
+ *
+ * Retrying the same (prompt, promptSeq, regenNonce) replays the stored reply
+ * instead of surfacing the next plant, so a retry is safe.
+ */
+export async function postT3Assist(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  attemptId: string,
+  req: { prompt: string; promptSeq: number; regenNonce: number; seq: number },
+): Promise<T3AssistResponse> {
+  const body = await postJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/t3/assist`, {
+    ...req,
+    clientTs: new Date().toISOString(),
+  });
+  if (typeof body.text !== "string" || !Array.isArray(body.claimRefs)) {
+    throw new Error(`POST /attempts/${attemptId}/t3/assist returned no reply`);
+  }
+  return {
+    text: body.text,
+    claimRefs: body.claimRefs.filter((r): r is string => typeof r === "string"),
+    seq: typeof body.seq === "number" ? body.seq : req.seq,
+  };
+}
+
+/**
+ * Mirror ONE client-authored transcript turn (`prompted`, `challenged`,
+ * `accepted`, `verified`, `revised`, `regenerated`, `submitted`).
+ *
+ * These rows are what the server's T3 score reads for stances and for the
+ * final answer, so a hosted sitting that never posted them would be scored
+ * as a candidate who challenged nothing. `assisted` is refused by the server
+ * and is never sent: that row is the server's own.
+ */
+export async function postTranscriptTurn(
+  storage: StorageLike,
+  opts: ApiPersistenceOptions,
+  attemptId: string,
+  trackId: string,
+  turn: { seq: number; verb: string; object: string; text?: string; claimRefs?: readonly string[] },
+): Promise<void> {
+  await postJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/transcripts`, {
+    trackId,
+    seq: turn.seq,
+    verb: turn.verb,
+    body: {
+      object: turn.object,
+      ...(turn.text !== undefined ? { text: turn.text } : {}),
+      ...(turn.claimRefs !== undefined ? { claimRefs: [...turn.claimRefs] } : {}),
+    },
+    clientTs: new Date().toISOString(),
+  });
+}
+
+/**
  * Ask the server to score a completed track. The browser holds no answer
  * key in hosted mode, so it cannot grade its own sitting: the marking scheme
  * stays inside `@ailx/instrument` and only the resulting score comes back
