@@ -1,8 +1,8 @@
 # E2E suite
 
 Playwright, per FRONTEND.md §6. It is deliberately **not** part of `pnpm test`:
-it needs a real server and a database, and the unit run must stay fast and
-dependency-free.
+it needs a real server (and, for the specs that seed, the exam service), and
+the unit run must stay fast and dependency-free.
 
 ```bash
 pnpm --filter @ailx/web e2e            # boots its own production server build
@@ -11,28 +11,50 @@ pnpm --filter @ailx/web e2e --ui       # same, with the Playwright UI
 
 ## What it needs
 
-A throwaway Postgres. Never staging, never a shared database — the specs write
-append-only rows under a unique dev user per test.
+**A running exam service.** This app is a FRONTEND: it has no API routes of its
+own (docs/ARCHITECTURE.md §10.1), so a spec cannot seed a run by posting to the
+origin under test. Seeding goes to `services/api`, which lives in the PRIVATE
+`ailx-backend` repository, over a disposable Postgres of its own.
 
 ```bash
-docker run -d --name ailx-e2e-pg -p 55432:5432 \
-  -e POSTGRES_USER=ailx -e POSTGRES_PASSWORD=ailx -e POSTGRES_DB=ailx_e2e postgres:16
-psql postgres://ailx:ailx@localhost:55432/ailx_e2e -f ../../db/schema.sql
+# In the private repo: boot services/api against a THROWAWAY database.
+# Never staging, never a shared database — the specs write append-only rows.
+AILX_E2E_API_BASE=http://127.0.0.1:8080 pnpm --filter @ailx/web e2e
 ```
 
-`DATABASE_URL` defaults to `postgres://ailx:ailx@localhost:55432/ailx_e2e`
-(local, disposable, not a credential). Override it — never commit another one.
+`AILX_E2E_API_BASE` has **no default**, and that is deliberate: guessing
+`localhost` would produce a suite that seeds nothing and passes locally, and
+guessing the staging origin would write rows into a database people demo from.
+`e2e/service.ts` is the one module that reads it.
 
-Playwright then runs `next build && next start` itself with `AILX_BACKEND=1`,
-`AILX_AUTH=dev` (plus `AILX_ALLOW_INSECURE_DEV_AUTH=1`, because `next start`
-sets `NODE_ENV=production` and assert-only dev auth is refused there unless a
-throw-away deployment opts in), an `AILX_PUBLIC_ORIGIN` equal to the origin it
-will actually browse, and a fresh `AILX_SNAPSHOT_DIR`. Testing the production build is what
-makes the redirect and CSP behaviour reproducible.
+**Without a service the suite still runs, and still bites.** The skip is
+GRANULAR, never a whole-suite bail: only the describes that SEED skip
+themselves, each with a stated reason. Everything that just loads a page and
+measures it keeps running — `visual-contracts.spec.ts` in full, and the landing
+contracts in `visual.spec.ts`. A layer that only runs where a private service
+happens to be up is a layer that stops running (FRONTEND.md §6.7.3). Current
+service-free result: **22 passed, 20 skipped**.
+
+Playwright then runs `next build && next start` itself with `AILX_BACKEND=1`
+(which for a frontend means only "compile the `page.api.tsx` pages") and
+`NEXT_PUBLIC_AILX_API_BASE` pointed at the service when there is one. Testing
+the production build is what makes the redirect and CSP behaviour reproducible.
+
+Server reuse is **opt-in**: `AILX_E2E_REUSE_SERVER=1`. Without it the suite
+always builds and boots its own server. A stale `next start` left on port 3210
+by an earlier run WILL otherwise answer for a binary nobody built — that
+happened, and the suite reported a 216px header and a landing page with no
+drill on it. If you opt in, you own what is on the port.
 
 `next build` writes to `apps/web/.next`, so do not run `next dev` (or another
 build) in `apps/web` while the suite is running — they would fight over the
-same directory.
+same directory, and a half-written `.next` fails with `Cannot find module
+'./NNNN.js'` rather than anything that names the cause. A `next dev` server in
+that tree also leaves DEV chunks in `.next/static`, which makes
+`test/bundleSecrecy.test.ts` count 24 `"key":"ai"` against a budget of 12 and
+fail for reasons that have nothing to do with secrecy (see AGENTS.md
+"Commands"). `AILX_E2E_PORT` moves the server off 3210; to run two suites in
+one checkout, use a `git worktree`, which gets its own `.next`.
 
 To smoke a deployed environment instead, set `AILX_E2E_BASE_URL=https://…`;
 no server is booted. Note that a tunnel with an interstitial (ngrok's free
@@ -71,7 +93,9 @@ visual-contracts.spec.ts  MUTATION TESTS for the contracts themselves: each one
 visual.spec.ts            the contracts applied to the surfaces where this class
                           of bug has actually bitten
 visual-baselines.spec.ts  four screenshot baselines (element shots, deterministic
-                          copy only). Per platform; the committed ones are darwin
+                          copy only): the pause overlay, the time-up notice, the
+                          runner crash notice, the shared player-type card. Per
+                          platform; the committed ones are darwin
 ```
 
 Update baselines with `pnpm --filter @ailx/web e2e --update-snapshots`, and read

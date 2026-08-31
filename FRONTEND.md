@@ -621,6 +621,10 @@ a box by hand is a bug.
 - `expectCentred` — centred in the viewport or a named container, within a tolerance.
 - `expectNoOverlap` — two elements share no pixel (e.g. *confirm* and *keep working*).
 - `expectCovers` — a veil really covers the workspace it hides.
+- `expectMaxHeight` — a box stays inside a stated budget. Written for the sticky header,
+  which is chrome on every page: when it wraps it spends the visitor's first screen, and
+  the CSS token that claims its height is a string a jsdom test can happily confirm while
+  the rendered header is a different size.
 - `expectNotOccluded` — nothing PAINTS over it. Pointer-events are neutralised for the
   probe, because the card that hid the confidence panel had `pointer-events: none` and a
   plain hit test would have looked straight through it.
@@ -636,10 +640,28 @@ a box by hand is a bug.
 - `expectTextNotClipped` / `expectNoInnerScroll` — content is not silently truncated by
   its container, and a modal step is not something you must scroll INSIDE.
 
-One harness note that is easy to get wrong: Playwright scrolls an element into view as
-part of its actionability checks, so a click can move the page for reasons that have
-nothing to do with the app. Settle the harness's scroll BEFORE a stability contract starts
-measuring (`settleOn` in `visual.spec.ts`), or the contract fails on the test runner.
+Two harness notes that are easy to get wrong, both of them ways to make a true contract
+report a false failure:
+
+- **Settle the harness's own scroll first.** Playwright scrolls an element into view as
+  part of its actionability checks, so a click can move the page for reasons that have
+  nothing to do with the app. `settleOn` in `visual.spec.ts` does it explicitly, with
+  `scrollIntoView({ block: "nearest" })` rather than Playwright's
+  `scrollIntoViewIfNeeded()` — that one is satisfied by a visibility RATIO and leaves an
+  element hanging a pixel or two off the edge, which is exactly the state the next
+  assertion is there to judge. `settleAndSee` retries the scroll and the assertion as one
+  unit, because a page that is still reflowing can invalidate a scroll that was right when
+  it was made.
+- **Wait for the page to stop moving.** `awaitStableLayout` waits for `document.fonts.ready`
+  and then for two identical measurements of the box. Web fonts land after first paint and
+  change every line box, and the T2 deck sizes itself from a `ResizeObserver`; measuring
+  across either asks about the settling rather than the product. Without it the T2
+  stability specs failed intermittently by 2–19px — a flake that looks exactly like a bug.
+
+`expectScrollStable` takes a tolerance for the same honest reason: scroll anchoring
+deliberately moves `window.scrollY` in order to hold the pixels still, so a couple of
+pixels there is the browser doing the right thing. `expectStablePosition`, nested inside
+it, is the assertion that proves nothing actually moved.
 
 #### 6.7.3 A test that cannot fail is worse than no test
 
@@ -648,13 +670,37 @@ the injector was patching a call the code no longer made.
 
 - **Every visual contract is mutation-tested.** `e2e/visual-contracts.spec.ts` breaks the
   exact thing each contract protects — a corner modal, a panel above the fold, a
-  `pointer-events: none` cover, a 20px button, a 464px scroll jump — and proves the
-  contract FAILS, with the message it promises. It runs in the normal suite: it is the
-  regression test for the test layer.
+  `pointer-events: none` cover, a 20px button, a 130px header, a 464px scroll jump — and
+  proves the contract FAILS, with the message it promises. It runs in the normal suite: it
+  is the regression test for the test layer. Its own good-layout case is the other half:
+  a contract that fires on a correct page gets switched off within a week.
+- **The mutation tests are themselves checked, by neutering the contract.** A mutation
+  test only proves something if it goes red when the assertion it exercises is removed.
+  All thirteen helpers in `visual.ts` — `expectInViewport`, `expectCentred`,
+  `expectNoOverlap`, `expectNotOccluded`, `expectMaxHeight`, `expectTapTarget`,
+  `expectTapTargets`, `expectNoHorizontalOverflow`, `expectScrollStable`,
+  `expectStablePosition`, `expectTextNotClipped`, `expectNoInnerScroll`, `expectCovers` —
+  were stubbed to a bare `return` in turn, and in every case the matching mutation test in
+  `visual-contracts.spec.ts` went RED. A contract nobody can make fail does not ship. Run
+  the same campaign whenever a contract is added; it takes about a second per helper
+  against an already-running server (`AILX_E2E_REUSE_SERVER=1`).
 - **A fault injector must follow the code it faults.** It patches something the runner
   demonstrably still calls, and the spec that uses it asserts the fault ARRIVED (a visible
   crash notice), never merely that the run survived. It lives in `e2e/fixtures.ts`, once,
-  so it cannot rot in one copy.
+  so it cannot rot in one copy. Today it patches `HTMLElement.focus`, which the T2 runner
+  calls the moment a card is answered (`Runner.tsx`, focusing the confidence slider).
+  That premise is pinned by a UNIT test, so the injector cannot rot silently again:
+  *"still focuses the slider — preventScroll must not cost focus"* in
+  `packages/tracks/t2-discrimination/test/confidenceInPlace.test.tsx` names the injector
+  in its comment. If it goes red, the injector moves with the code.
+  The three specs that use the injector all seed, so they need the exam service
+  (`AILX_E2E_API_BASE`); the unit test above is the part that runs everywhere.
+
+**What this layer has already found.** `expectNoInnerScroll` measured the T2 confidence
+panel at 308px of content inside a 300px panel on a 390x844 phone: a candidate had to
+scroll 8px INSIDE a timed, scored step to reach *Lock in*. Every jsdom test of that panel
+passed, and always would have — the floor is now 312
+(`packages/tracks/t2-discrimination/src/SwipeDeck.tsx`).
 
 #### 6.7.4 Screenshot baselines: few, deterministic, or not at all
 
@@ -674,8 +720,26 @@ randomly drawn practice card). Both are covered geometrically instead, which is 
 tool for them.
 
 Baselines are per platform — Playwright puts `{platform}` in the snapshot name — and the
-committed ones are darwin, so the CI job that runs them runs on macOS. Regenerate with
-`pnpm --filter @ailx/web e2e --update-snapshots` and READ the diff before committing it.
+committed ones are darwin (`*-chromium-darwin.png`), so the CI job that runs them runs on
+macOS. Regenerate with `pnpm --filter @ailx/web e2e --update-snapshots` and LOOK at each
+image before committing it; an unread baseline is a rubber stamp.
+
+#### 6.7.5 A green run can also be a lie about WHERE it looked
+
+Two more shapes of the same bug, both cheap to hit and both recorded here so the next
+person recognises them:
+
+- **A dev server poisons a build-output scan.** `next dev` writes development chunks into
+  `apps/web/.next/static`, and `test/bundleSecrecy.test.ts` greps that directory. Run
+  `next dev` in the same tree and the scan counts 24 `"key":"ai"` against a budget of 12
+  and fails for reasons that have nothing to do with secrecy — or, worse, a future scan
+  passes on dev output that a production bundle would have failed. The secrecy scan reads
+  BUILD output: stop the dev server (and do not run a second build in `apps/web`) before
+  trusting it, since `next build` and `next dev` fight over the same directory.
+- **A surface that cannot be reached is not a surface that passes.** T4's finish step has
+  no contract, because in hosted mode the T4 runner deals its content from
+  `GET /attempts/:id/track/t4` and this app serves no such route: the track opens on a
+  404 notice. The gap is named in `visual.spec.ts` rather than left as an absence.
 
 ---
 
