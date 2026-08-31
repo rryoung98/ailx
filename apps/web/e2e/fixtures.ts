@@ -1,7 +1,9 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import { ATTEMPT_KEY, append, type SequencedEntry, type SessionConfig, type TrackId } from "@ailx/session";
+import { ATTEMPT_KEY, TRACK_IDS, append, type SequencedEntry, type SessionConfig, type TrackId } from "@ailx/session";
 import { DEV_USER_HEADER } from "@ailx/backend";
+import { fixtureArtifact } from "../lib/sampleAttempt";
+import { completedLog } from "../test/helpers/completedAttempt";
 import { DEV_USER_KEY, syncKey } from "../lib/persistence";
 import { checkpointKey } from "../lib/checkpoints";
 import { buildSiteZip, T1_SITE_SEQ, type SiteFile } from "../lib/siteUpload";
@@ -37,21 +39,19 @@ export function demoConfig(): SessionConfig {
 
 /**
  * A valid session log, built with the REAL session machine, that leaves the
- * candidate mid-run inside `track`. Tracks before it are completed with a
- * minimal artifact — the machine only allows the next pending track to start.
+ * candidate mid-run inside `track`. Tracks before it are completed with the
+ * REAL artifact shape from the bundled sample fixture — the machine only
+ * allows the next pending track to start, and a scorer that later walks this
+ * log must see the shape it was written for.
  */
-export function logInTrack(attemptId: string, track: "t1" | "t2", ts = FIXED_TIME - RUN_AGE_MS): SequencedEntry[] {
+export function logInTrack(attemptId: string, track: TrackId, ts = FIXED_TIME - RUN_AGE_MS): SequencedEntry[] {
   let log = append([], { type: "attempt_started", attemptId, config: demoConfig(), ts });
-  log = append(log, { type: "track_started", trackId: "t1", ts });
-  if (track === "t1") return log;
-  log = append(log, {
-    type: "track_completed",
-    trackId: "t1",
-    artifact: { html: "<!doctype html><title>seed</title>", promptLog: [], selfReport: "" },
-    timedOut: false,
-    ts,
-  });
-  return append(log, { type: "track_started", trackId: "t2", ts });
+  for (const tid of TRACK_IDS) {
+    log = append(log, { type: "track_started", trackId: tid, ts });
+    if (tid === track) return log;
+    log = append(log, { type: "track_completed", trackId: tid, artifact: fixtureArtifact(tid), timedOut: false, ts });
+  }
+  throw new Error(`unknown track ${track}`);
 }
 
 export interface RunSeed {
@@ -220,6 +220,37 @@ export async function remainingSeconds(page: Page): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+// Fault injection
+// ---------------------------------------------------------------------------
+
+/**
+ * Inject one transient fault into the running track: the FIRST `focus()`
+ * throws, then the real implementation is restored. The T2 runner focuses the
+ * confidence slider the moment a card is answered, so this is a real crash on
+ * a real code path — no product test hook, and recoverable, so the retry path
+ * is exercised for real too.
+ *
+ * This used to break `scrollIntoView`, which the runner no longer calls: the
+ * confidence step was moved INTO the card frame precisely so that nothing
+ * scrolls (packages/tracks/t2-discrimination). A fault injector must follow
+ * the code it is meant to fault, or it silently stops testing anything — and
+ * for hours nobody noticed, because "green" looked the same either way
+ * (FRONTEND.md §6.7).
+ *
+ * It lives here, not in one spec, because more than one spec now crashes a
+ * runner on purpose and two copies would rot apart.
+ */
+export async function breakNextRunnerFocus(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const real = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function patched(this: HTMLElement) {
+      HTMLElement.prototype.focus = real;
+      throw new Error("e2e injected runner fault");
+    } as typeof HTMLElement.prototype.focus;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Test fixtures
 // ---------------------------------------------------------------------------
 
@@ -230,6 +261,14 @@ export interface AilxFixtures {
   attemptId: string;
   /** Publish a site snapshot straight through the API (no UI detour). */
   publishSite: (files: readonly SiteFile[]) => Promise<{ digest: string; url: string }>;
+  /**
+   * A live share token for a COMPLETE, really-scored attempt: the bundled
+   * sample log is mirrored through the same append-only endpoint the app
+   * syncs with, then the share is created through the owner's own API. The
+   * payload is therefore deterministic, which is what makes the share view
+   * safe to hold a screenshot baseline for.
+   */
+  shareToken: () => Promise<string>;
 }
 
 export const test = base.extend<AilxFixtures>({
@@ -245,6 +284,23 @@ export const test = base.extend<AilxFixtures>({
     expect(res.status(), await res.text()).toBe(201);
     const body = (await res.json()) as { attempt: { id: string } };
     await use(body.attempt.id);
+  },
+
+  shareToken: async ({ request, devUser, attemptId }, use) => {
+    await use(async () => {
+      const headers = { [DEV_USER_HEADER]: devUser, "content-type": "application/json" };
+      for (const entry of completedLog()) {
+        const res = await request.post(`/api/attempts/${attemptId}/responses`, {
+          headers,
+          data: { seq: entry.seq, payload: entry, clientTs: new Date(entry.ts).toISOString() },
+        });
+        expect(res.status(), await res.text()).toBe(201);
+      }
+      const res = await request.post(`/api/attempts/${attemptId}/share`, { headers, data: {} });
+      expect(res.status(), await res.text()).toBe(201);
+      const body = (await res.json()) as { share: { token: string } };
+      return body.share.token;
+    });
   },
 
   publishSite: async ({ request, devUser, attemptId }, use) => {

@@ -1,5 +1,6 @@
 import {
   answerButtons,
+  breakNextRunnerFocus,
   expect,
   logInTrack,
   remainingSeconds,
@@ -7,7 +8,6 @@ import {
   storedLog,
   test,
 } from "./fixtures";
-import type { Page } from "@playwright/test";
 
 /**
  * Runner crash recovery (FRONTEND.md §6.4.6).
@@ -18,28 +18,6 @@ import type { Page } from "@playwright/test";
  * is about pixels: the candidate gets a way forward, and the fault is not
  * charged to their time budget.
  */
-
-/**
- * Inject one transient fault into the running track: the FIRST `focus()`
- * throws, then the real implementation is restored. The T2 runner focuses the
- * confidence slider the moment a card is answered, so this is a real crash on
- * a real code path — no product test hook, and recoverable, so the retry path
- * is exercised for real too.
- *
- * This used to break `scrollIntoView`, which the runner no longer calls: the
- * confidence step was moved INTO the card frame precisely so that nothing
- * scrolls (packages/tracks/t2-discrimination). A fault injector must follow
- * the code it is meant to fault, or it silently stops testing anything.
- */
-async function breakNextRunnerFocus(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const real = HTMLElement.prototype.focus;
-    HTMLElement.prototype.focus = function patched(this: HTMLElement, ...args: unknown[]) {
-      HTMLElement.prototype.focus = real;
-      throw new Error("e2e injected runner fault");
-    } as typeof HTMLElement.prototype.focus;
-  });
-}
 
 test("a crashed runner offers recovery and stops charging the candidate", async ({
   page,
