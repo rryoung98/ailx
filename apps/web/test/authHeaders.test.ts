@@ -98,7 +98,12 @@ describe("the cookie is a same-origin convenience, never the identity of record"
     // jsdom drops attributes from document.cookie, so pin the written string.
     let written = "";
     const desc = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
-    Object.defineProperty(document, "cookie", { configurable: true, set: (v: string) => void (written = v) });
+    Object.defineProperty(document, "cookie", {
+      configurable: true,
+      set: (v: string) => {
+        written = v;
+      },
+    });
     devUser(storage);
     Object.defineProperty(document, "cookie", desc as PropertyDescriptor);
     expect(written).toContain("SameSite=Lax");

@@ -33,7 +33,9 @@ export function GalleryCard({
   return (
     <article className="gallery-card type-tile" data-testid="gallery-card">
       <div className="type-tile-head">
-        <p className="ptype-code" aria-label={`Type code ${p.playerType.code.split("").join(" ")}`}>
+        {/* role="img": aria-label is not valid on a bare <p>, and this reads
+            better as one spelled-out label than four stray letters. */}
+        <p className="ptype-code" role="img" aria-label={`Type code ${p.playerType.code.split("").join(" ")}`}>
           {p.playerType.poles.map((pole) => (
             <span
               key={pole.track}

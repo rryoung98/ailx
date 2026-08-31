@@ -1,110 +1,110 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.5.11/schema.json",
 
-  // The repo's linter. There was none before: `apps/web`'s "lint" was
-  // `next lint || true`, which cannot fail, so nothing was ever checked.
-  //
-  // Policy (AGENTS.md: right-sized, minimal diff; FRONTEND.md 7: no ceremony):
-  //   error — a real defect. `pnpm lint` and CI fail. This set is green today.
-  //   warn  — a known debt with a fix that is a behaviour change, not a
-  //           rename. Printed on every run, never blocks. Promote a rule to
-  //           error in the commit that clears its last site.
-  //   off   — wrong for THIS repo, with the reason written down.
-  //
-  // A rule set nobody can keep green is a rule set everybody ignores.
-  "files": {
-    "includes": [
-      "**",
-      "!**/node_modules/**",
-      "!**/dist/**",
-      "!**/.next/**",
-      "!**/out/**",
-      "!**/coverage/**",
-      "!**/*.svg",
-      "!**/test-results/**",
-      "!**/playwright-report/**",
-      "!pnpm-lock.yaml"
-    ]
-  },
+	// The repo's linter. There was none before: `apps/web`'s "lint" was
+	// `next lint || true`, which cannot fail, so nothing was ever checked.
+	//
+	// Policy (AGENTS.md: right-sized, minimal diff; FRONTEND.md 7: no ceremony):
+	//   error — a real defect. `pnpm lint` and CI fail. This set is green today.
+	//   warn  — a known debt with a fix that is a behaviour change, not a
+	//           rename. Printed on every run, never blocks. Promote a rule to
+	//           error in the commit that clears its last site.
+	//   off   — wrong for THIS repo, with the reason written down.
+	//
+	// A rule set nobody can keep green is a rule set everybody ignores.
+	"files": {
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/.next",
+			"!**/out",
+			"!**/coverage",
+			"!**/*.svg",
+			"!**/test-results",
+			"!**/playwright-report",
+			"!pnpm-lock.yaml"
+		]
+	},
 
-  // OFF, deliberately. 310 of 419 files disagree with Biome's formatter, and a
-  // 310-file reformat is not a reviewable commit — it would also collide with
-  // every branch in flight. Style is enforced by review here, as it always was.
-  // Turn this on the day someone is willing to land the reformat on its own.
-  "formatter": { "enabled": false },
+	// OFF, deliberately. 310 of 419 files disagree with Biome's formatter, and a
+	// 310-file reformat is not a reviewable commit — it would also collide with
+	// every branch in flight. Style is enforced by review here, as it always was.
+	// Turn this on the day someone is willing to land the reformat on its own.
+	"formatter": { "enabled": false },
 
-  "javascript": {
-    "formatter": { "quoteStyle": "double", "semicolons": "always" }
-  },
+	"javascript": {
+		"formatter": { "quoteStyle": "double", "semicolons": "always" }
+	},
 
-  // Import sorting is a formatting change in disguise: it would rewrite the top
-  // of nearly every file for no defect. Same trigger as the formatter.
-  "assist": { "actions": { "source": { "organizeImports": "off" } } },
+	// Import sorting is a formatting change in disguise: it would rewrite the top
+	// of nearly every file for no defect. Same trigger as the formatter.
+	"assist": { "actions": { "source": { "organizeImports": "off" } } },
 
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
 
-      "a11y": {
-        // "Accessibility is measurement fairness" (FRONTEND.md 1) — so these
-        // are debt to clear, not rules to delete. Counts are at adoption.
-        "useButtonType": "warn", // 36: adding type="button" changes submit behaviour; needs per-site review
-        "useSemanticElements": "warn", // 4
-        "useAriaPropsSupportedByRole": "warn", // 3
-        "noSvgWithoutTitle": "warn", // 2, both decorative marks in the landing hero
-        "noRedundantAlt": "warn", // 2
-        "noAriaHiddenOnFocusable": "warn", // 1, the HeroCanvas decorative layer
-        "noNoninteractiveTabindex": "warn" // 1
-      },
+			"a11y": {
+				// "Accessibility is measurement fairness" (FRONTEND.md 1) — so these
+				// are debt to clear, not rules to delete. Counts are at adoption.
+				"useButtonType": "warn", // 36: adding type="button" changes submit behaviour; needs per-site review
+				"useSemanticElements": "warn", // 4
+				"useAriaPropsSupportedByRole": "warn", // 3
+				"noSvgWithoutTitle": "warn", // 2, both decorative marks in the landing hero
+				"noRedundantAlt": "warn", // 2
+				"noAriaHiddenOnFocusable": "warn", // 1, the HeroCanvas decorative layer
+				"noNoninteractiveTabindex": "warn" // 1
+			},
 
-      "correctness": {
-        "useExhaustiveDependencies": "warn", // 33: several are deliberate one-shot effects; each needs reading, and React Compiler (FRONTEND.md 7.3) changes the answer
-        "noUnusedImports": "warn", // 15, safe autofix — blocked only by files in flight
-        "noUnusedVariables": "warn", // 4
-        "noUnusedFunctionParameters": "warn", // 2
-        "noUnusedPrivateClassMembers": "warn" // 1
-      },
+			"correctness": {
+				"useExhaustiveDependencies": "warn", // 33: several are deliberate one-shot effects; each needs reading, and React Compiler (FRONTEND.md 7.3) changes the answer
+				"noUnusedImports": "warn", // 15, safe autofix — blocked only by files in flight
+				"noUnusedVariables": "warn", // 4
+				"noUnusedFunctionParameters": "warn", // 2
+				"noUnusedPrivateClassMembers": "warn" // 1
+			},
 
-      "suspicious": {
-        "noArrayIndexKey": "warn", // 14: correct where the list is fixed and unordered; wrong where it is not
-        "noExplicitAny": "warn", // 10
-        // `document.cookie` is the documented dev-auth transport: AGENTS.md
-        // requires `ailx_dev_user` to be written next to the localStorage key,
-        // because a header cannot survive a navigation.
-        "noDocumentCookie": "off"
-      },
+			"suspicious": {
+				"noArrayIndexKey": "warn", // 14: correct where the list is fixed and unordered; wrong where it is not
+				"noExplicitAny": "warn", // 10
+				// `document.cookie` is the documented dev-auth transport: AGENTS.md
+				// requires `ailx_dev_user` to be written next to the localStorage key,
+				// because a header cannot survive a navigation.
+				"noDocumentCookie": "off"
+			},
 
-      "complexity": {
-        "noImportantStyles": "warn" // 13: `!important` is how the served candidate site is contained inside our chrome
-      },
+			"complexity": {
+				"noImportantStyles": "warn" // 13: `!important` is how the served candidate site is contained inside our chrome
+			},
 
-      "performance": {
-        "noImgElement": "warn" // 11: next/image is unavailable in the static export path
-      },
+			"performance": {
+				"noImgElement": "warn" // 11: next/image is unavailable in the static export path
+			},
 
-      "style": {
-        // 866 sites. This codebase asserts an invariant and then indexes: the
-        // assertion IS the check, and `!` is how it is spelled. Enforcing this
-        // would be a 866-site rewrite that removes no defect.
-        "noNonNullAssertion": "off",
-        "noDescendingSpecificity": "warn" // 7, in the hand-tuned landing stylesheet
-      }
-    }
-  },
+			"style": {
+				// 866 sites. This codebase asserts an invariant and then indexes: the
+				// assertion IS the check, and `!` is how it is spelled. Enforcing this
+				// would be a 866-site rewrite that removes no defect.
+				"noNonNullAssertion": "off",
+				"noDescendingSpecificity": "warn" // 7, in the hand-tuned landing stylesheet
+			}
+		}
+	},
 
-  "overrides": [
-    {
-      // Playwright's fixture signature is literally `async ({}, use) => …`.
-      "includes": ["apps/web/e2e/**"],
-      "linter": { "rules": { "correctness": { "noEmptyPattern": "off" } } }
-    },
-    {
-      // `noFocusedTests` flags any call to `fit(`, which is Jasmine's focused
-      // test — and also SwipeDeck's local layout function. Keep the rule where
-      // a stray `.only` actually costs coverage: in the test files.
-      "includes": ["**/src/**", "**/lib/**", "**/app/**"],
-      "linter": { "rules": { "suspicious": { "noFocusedTests": "off" } } }
-    }
-  ]
+	"overrides": [
+		{
+			// Playwright's fixture signature is literally `async ({}, use) => …`.
+			"includes": ["apps/web/e2e/**"],
+			"linter": { "rules": { "correctness": { "noEmptyPattern": "off" } } }
+		},
+		{
+			// `noFocusedTests` flags any call to `fit(`, which is Jasmine's focused
+			// test — and also SwipeDeck's local layout function. Keep the rule where
+			// a stray `.only` actually costs coverage: in the test files.
+			"includes": ["**/src/**", "**/lib/**", "**/app/**"],
+			"linter": { "rules": { "suspicious": { "noFocusedTests": "off" } } }
+		}
+	]
 }

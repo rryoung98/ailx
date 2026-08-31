@@ -5,6 +5,7 @@ import { handleViewShare, shareCardPath, shareUrlPath } from "@ailx/backend";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "../../../lib/CharacterPortrait";
+import { ShareTargets } from "../../../lib/ShareTargets";
 import { siteHref } from "../../../lib/mode";
 import { pageOrigin, withApiContext } from "../../../lib/server/api";
 import { TrackRadar } from "../../../lib/TrackRadar";
@@ -90,6 +91,8 @@ export default async function SharePage({ params }: ShareParams) {
   // Where the snapshot is SERVED is a deployment fact, not payload data: the
   // stored path is `/api/site/<digest>/…` on every host (see lib/mode.ts).
   const site = siteHref(p.site);
+  // The link the reader is already on — the only URL this page ever shares.
+  const shareUrl = `${await pageOrigin()}${shareUrlPath(token)}`;
 
   return (
     <main className="page">
@@ -104,7 +107,9 @@ export default async function SharePage({ params }: ShareParams) {
                 <p className="muted" style={{ margin: 0 }}>{p.playerType.tagline}</p>
               </div>
             </div>
-            <div className="ptype-code" aria-label={`Type code ${p.playerType.code.split("").join(" ")}`}>
+            {/* role="img" so the aria-label is valid on a div AND so a screen reader
+                reads the code as one spelled-out label instead of four stray letters. */}
+            <div className="ptype-code" role="img" aria-label={`Type code ${p.playerType.code.split("").join(" ")}`}>
               {p.playerType.poles.map((pole) => (
                 <span
                   key={pole.track}
@@ -249,6 +254,20 @@ export default async function SharePage({ params }: ShareParams) {
             </p>
           </section>
         ) : null}
+
+        {/* Pass it on. The reader already has this URL in their address bar,
+            so these buttons add no reach the owner did not grant — they add
+            the two taps between "nice card" and someone else opening it. The
+            copy is written in the THIRD person here (`perspective="theirs"`):
+            whoever holds the link may not be the person on the card. */}
+        <section className="card" style={{ marginBottom: "1.6rem" }}>
+          <h2 style={{ marginTop: 0 }}>Send this on</h2>
+          <p className="muted small">
+            The same unlisted link, with a line already written for you. Its owner can revoke it
+            at any time, and it stops resolving everywhere the moment they do.
+          </p>
+          <ShareTargets url={shareUrl} payload={p} perspective="theirs" />
+        </section>
 
         <section className="card" style={{ marginBottom: "1.6rem" }}>
           <h2 style={{ marginTop: 0 }}>Find your own type</h2>

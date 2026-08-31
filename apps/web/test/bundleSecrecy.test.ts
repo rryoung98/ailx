@@ -220,7 +220,7 @@ function pickNeedle(body: string, siblings: readonly string[]): string | undefin
   return unique ?? candidates[0];
 }
 
-export interface Needle {
+interface Needle {
   label: string;
   value: string;
 }
@@ -232,7 +232,7 @@ export interface Needle {
  * scenario or the T4 brief (those live with the exam service), so extraction
  * must be proven independently of what today's file happens to contain.
  */
-export function markingNeedles(snap: OperationalSnapshot): Needle[] {
+function markingNeedles(snap: OperationalSnapshot): Needle[] {
   const out: Needle[] = [];
   for (const track of snap.instrument.tracks) {
     if (!JUDGED_TRACKS.includes(track.trackId)) continue;
