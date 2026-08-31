@@ -75,6 +75,10 @@ const TOKEN = "b".repeat(43);
 const params = { params: Promise.resolve({ token: TOKEN }) };
 
 beforeEach(() => {
+  // These pages exist only in the hosted build, whose basePath is "" — the
+  // unit-test fallback would otherwise prefix "/ailx" onto every served path
+  // through lib/mode.ts (see siteHref).
+  vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   counted.length = 0;
   result = { status: 200, body: { share: view } };
   vi.stubEnv("AILX_PUBLIC_ORIGIN", "https://ailx.example");

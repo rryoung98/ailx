@@ -384,6 +384,114 @@ Each step is independently releasable and independently revertible.
    CORS, a second deploy target, the loss of the `ailx_dev_user` cookie convenience, and
    server-rendered pages like `/progress` becoming client fetches.
 
+
+### 10.1 Step 5, staged: the API base seam (2026-08-31)
+
+`services/api` exists and is deployed
+(`https://ailx-backend-932932410694.us-central1.run.app`, Cloud Run, project
+`tenken-staging`), so the frontend can now be pointed at it. It is pointed by ONE
+variable and the routes are NOT deleted yet.
+
+**The seam.** `NEXT_PUBLIC_AILX_API_BASE` is read in exactly one place,
+`apps/web/lib/mode.ts`, which exposes:
+
+| helper | unset (today) | set to the service |
+|---|---|---|
+| `apiOrigin()` | `""` | the validated absolute origin |
+| `apiBase()` | `<basePath>/api` | `<origin>/v1` |
+| `siteApiRoot()` | `<basePath>/api` | `<origin>/api` |
+| `siteHref(path)` | validated path, basePath-prefixed | validated path on the service |
+
+Two path spaces, deliberately: the versioned API is `/api` here and `/v1` there, but a
+served T1 snapshot is `/api/site/<digest>/index.html` on BOTH hosts, because that exact
+string is already frozen inside issued share payloads and credential claims
+(`packages/backend/src/site-url.ts`) and those rows are append-only. `siteHref()` validates
+the stored path and resolves the host in one call, so no caller can do the second without
+the first. A value that is not a bare absolute http(s) origin is ignored, not
+half-honoured — `lib/origin.ts` holds the one origin predicate, shared with the server's
+`AILX_PUBLIC_ORIGIN`. `apps/web/test/apiBase.test.ts` fails the build if a second module
+reads the variable or hard-codes an `/api` fetch.
+
+**Auth, cross-origin.** The `ailx_dev_user` cookie is `SameSite=Lax` and therefore is NOT
+sent to another origin — the cookie convenience §10 step 5 predicted losing is lost the
+moment the seam is set. It survives only for same-origin server-rendered pages. So:
+**header for cross-origin, cookie for same-origin.** Every browser call already sent
+`x-ailx-dev-user`; the two that did not (the reviewer's gallery decision and the moderator
+comment) now do, and the service's CORS allowlist names that header explicitly. The
+`DevAuthProvider` precedence is unchanged and still fails closed: an explicit header is
+read first and an ILLEGAL header is refused outright, never demoted to the cookie.
+
+**CORS.** `AILX_ALLOWED_ORIGINS` on the service is an explicit allowlist
+(`https://rryoung98.github.io,https://ailx-staging.vercel.app`) that drops `*` and `null`
+and never reflects an arbitrary `Origin`. A Vercel PREVIEW deployment gets a different
+hostname and is therefore refused by design; only the production alias is allowed.
+
+**`app/api/**` and `lib/server/api.ts` are now a DUPLICATE HOST.** They are kept only
+because `apps/web/e2e/**` still boots the Next app and drives its own routes. Before they
+can be deleted, in this order:
+
+1. Repoint the Playwright suite at a running `services/api` (its fixtures seed the database
+   and assert against `/api/...` today).
+2. Move the server-rendered pages that read the database — `/progress`, `/s/[token]`,
+   `/review`, `/verify/[code]`, `/gallery`, `/world` — off `lib/server/api.ts`. Each becomes
+   either a client fetch through `apiBase()` (and loses the cookie identity, so `/progress`
+   needs the header) or a page the service renders.
+3. Delete `app/api/**/route.api.ts`, `lib/server/api.ts`, and the frontend half of the
+   `AILX_BACKEND` dual-mode branch that exists only to compile them.
+
+Until then the two hosts share one Neon database, so a request answered by either sees the
+same rows — a duplicate host, not a second truth. That is tolerable for exactly as long as
+step 1 takes.
+
+### 10.2 Clerk: why the switch must be ATOMIC, and the recipe
+
+`AILX_AUTH` has no default and dev auth is asserted, never proven, so staging must not stay
+on `dev` once real people can reach it. The switch cannot be staged, though: the instant the
+service is `AILX_AUTH=clerk`, every call carrying only `x-ailx-dev-user` is 401, and a
+frontend without a signed-in user is a dead page. Provider, sign-in route, token seam and
+the service's env therefore land together or not at all.
+
+What already exists, dormant and tested (`apps/web/lib/authHeaders.ts`,
+`apps/web/test/authHeaders.test.ts`): every browser call gets its identity headers from
+`authHeaders()`. Register a source with `setAuthTokenSource(() => getToken())` and all of
+them send `Authorization: Bearer <jwt>` instead of the dev id — no call site changes. A
+token that is absent, empty, or whose refresh throws falls back to the dev id rather than
+killing the run, because the SERVER decides whether that is enough. It is a registration
+rather than an import so the static Pages export never pulls an auth SDK into its bundle.
+
+The remaining steps, in order:
+
+1. `pnpm --filter @ailx/web add @clerk/nextjs`.
+2. `apps/web/app/layout.tsx`: wrap the tree in `<ClerkProvider>`. Hosted build only — the
+   static export has no auth and must keep rendering without one.
+3. A small client component mounted once (not in `lib/authHeaders.ts`, which must stay
+   SDK-free) that calls `setAuthTokenSource(() => getToken())` on sign-in and
+   `setAuthTokenSource(null)` on sign-out.
+4. A `/sign-in` route, and whatever the run flow does when a candidate is anonymous.
+5. Vercel (project `ailx-staging`, Production): add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+   (publishable by design) and `CLERK_SECRET_KEY` if any server page verifies.
+6. Cloud Run: repo variable `AILX_AUTH=clerk`; the deploy workflow then mounts
+   `CLERK_SECRET_KEY=ailx-clerk-secret-key:latest` on its own
+   (`.github/workflows/deploy.yml`). Drop `AILX_ALLOW_INSECURE_DEV_AUTH`.
+7. Deploy the FRONTEND first (it still works on dev auth), then flip the service, then
+   re-verify in a browser: sign in, create an attempt, sit a card, upload a T1 site.
+
+Verify, not assume: a signed-in `fetch` must carry `Authorization`, and the row it writes
+must land under `participants.auth_ref = clerk:<sub>`. That column is provider-scoped, so
+the existing `dev:<id>` rows stay separate and nothing already in Neon is rewritten — the
+same person signing in with Clerk becomes a NEW participant, which is correct and worth
+saying out loud to anyone demoing a "previous" run.
+
+Rollback: set the repo variable `AILX_AUTH=dev` (plus `AILX_ALLOW_INSECURE_DEV_AUTH=1`) and
+redeploy the service, or `gcloud run services update-traffic ailx-backend --to-revisions
+<previous>=100` for an immediate revert. The frontend needs no rollback: with no provider
+mounted, `authHeaders()` is already back on the dev id.
+
+The Clerk instance is a DEVELOPMENT instance repurposed from another product, which is fine
+for staging and NOT fine for real candidates: dev instances have relaxed limits and a
+separate user pool, so a production Clerk instance is a prerequisite for the first real
+sitting.
+
 ## 11. What I would not do
 
 - **Do not split the repository.** §6.

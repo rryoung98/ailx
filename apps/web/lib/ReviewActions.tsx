@@ -13,6 +13,9 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { REJECT_REASON_MAX } from "@ailx/backend";
+import { authHeaders } from "./authHeaders";
+import { apiBase } from "./mode";
+
 
 type Busy = "approve" | "reject" | null;
 
@@ -30,9 +33,12 @@ export function ReviewActions({ shareId, name }: { shareId: string; name: string
     setBusy(decision);
     setError(null);
     try {
-      const res = await fetch("/api/gallery/review", {
+      // The dev identity rides the HEADER, never the cookie: this POST may
+      // cross an origin (the exam service), where a SameSite=Lax cookie is
+      // not sent at all. Same id either way — see lib/persistence devUser.
+      const res = await fetch(`${apiBase()}/gallery/review`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({ shareId, decision, reason }),
       });
       if (!res.ok) {

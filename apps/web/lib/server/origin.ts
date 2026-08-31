@@ -20,6 +20,8 @@
  * 500 every hosted site, and the fallback is never attacker-controlled.
  */
 
+import { normalizeOrigin } from "../origin";
+
 const TRUTHY = new Set(["1", "true", "yes", "on"]);
 
 /** Pure: is this env value an explicit opt-in? */
@@ -28,28 +30,12 @@ export function isEnabled(value: string | undefined): boolean {
 }
 
 /**
- * Pure: validate an absolute http(s) origin and return it normalized (lowercase
- * scheme/host, default port dropped, IPv6 literals bracketed), or null.
- * Rejects credentials, any path beyond `/`, query, fragment, and non-http(s)
- * schemes. A single trailing slash is tolerated and normalized away.
+ * The origin predicate itself lives in `lib/origin.ts` because the CLIENT
+ * seam (`lib/mode.ts`, which validates `NEXT_PUBLIC_AILX_API_BASE`) needs the
+ * identical rule and may not import `lib/server/**`. Re-exported so existing
+ * server callers keep one import site.
  */
-export function normalizeOrigin(value: string | undefined): string | null {
-  if (value === undefined) return null;
-  const trimmed = value.trim();
-  if (trimmed === "") return null;
-  let url: URL;
-  try {
-    url = new URL(trimmed);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  if (url.username !== "" || url.password !== "") return null;
-  if (url.pathname !== "/" || url.search !== "" || url.hash !== "") return null;
-  // A URL with no authority (e.g. "http:foo") yields an "null" opaque origin.
-  if (url.origin === "null" || url.hostname === "") return null;
-  return url.origin;
-}
+export { normalizeOrigin } from "../origin";
 
 /** First entry of a possibly comma-separated forwarded header value. */
 function firstValue(raw: string | null | undefined): string | undefined {

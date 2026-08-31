@@ -8,6 +8,7 @@ import {
   credentialName,
 } from "@ailx/report";
 import { resolveCredential, type CredentialRecord } from "@ailx/backend";
+import { siteHref } from "../../../lib/mode";
 import { pageOrigin, withApiContext } from "../../../lib/server/api";
 
 /**
@@ -101,6 +102,9 @@ export default async function VerifyPage({ params }: VerifyParams) {
 
   const { claim } = credential;
   const revoked = credential.status === "revoked";
+  // The claim stores the site PATH; which host serves it is a deployment
+  // fact resolved by lib/mode.ts, never payload data.
+  const artifact = siteHref(claim.artifact);
   return (
     <main className="page">
       <div className="container" style={{ maxWidth: 720 }}>
@@ -167,9 +171,9 @@ export default async function VerifyPage({ params }: VerifyParams) {
               </dd>
             </div>
           </dl>
-          {claim.artifact !== null ? (
+          {artifact !== null ? (
             <p style={{ marginBottom: 0 }}>
-              <a className="btn" href={claim.artifact} target="_blank" rel="noreferrer">
+              <a className="btn" href={artifact} target="_blank" rel="noreferrer">
                 Open the site they built <span aria-hidden>↗</span>
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>

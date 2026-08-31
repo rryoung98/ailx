@@ -29,9 +29,9 @@ import {
   type PracticeItem,
   type ProgressReport,
 } from "@ailx/report";
-import { DEV_USER_HEADER } from "@ailx/backend";
-import { assetUrl, isServerMode } from "./mode";
-import { devUser } from "./persistence";
+import { authHeaders } from "./authHeaders";
+import { apiBase, assetUrl, isServerMode } from "./mode";
+
 import styles from "./PracticeDrill.module.css";
 
 /**
@@ -140,9 +140,9 @@ export function PracticeDrill() {
       let id: string;
       let ids: string[];
       if (server) {
-        const res = await fetch(assetUrl("/api/practice"), {
+        const res = await fetch(`${apiBase()}/practice`, {
           method: "POST",
-          headers: { [DEV_USER_HEADER]: devUser(window.localStorage) },
+          headers: await authHeaders(window.localStorage),
         });
         if (!res.ok) throw new Error(`could not start practice (${res.status})`);
         const body = (await res.json()) as { session: { id: string; itemIds: string[] } };
@@ -241,9 +241,9 @@ export function PracticeDrill() {
     if (!server || sessionId === null) return;
     setSending(true);
     try {
-      const res = await fetch(assetUrl(`/api/practice/${sessionId}`), {
+      const res = await fetch(`${apiBase()}/practice/${sessionId}`, {
         method: "POST",
-        headers: { "content-type": "application/json", [DEV_USER_HEADER]: devUser(window.localStorage) },
+        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({
           tzOffsetMinutes: utcOffsetMinutes(),
           // Dropped cards are omitted entirely: the server grades what it is

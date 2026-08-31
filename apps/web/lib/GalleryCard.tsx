@@ -16,14 +16,8 @@ import { shareUrlPath } from "@ailx/backend";
 import { shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait } from "./CharacterPortrait";
+import { siteHref } from "./mode";
 import { TrackRadar } from "./TrackRadar";
-
-/** Same-origin snapshot paths only — never render an arbitrary stored href. */
-const SITE_PATH_RE = /^\/api\/site\/[^"'\s]+$/;
-
-export function safeSitePath(site: string | null): string | null {
-  return site !== null && SITE_PATH_RE.test(site) ? site : null;
-}
 
 export function GalleryCard({
   entry,
@@ -34,7 +28,7 @@ export function GalleryCard({
   children?: React.ReactNode;
 }) {
   const p = entry.payload;
-  const site = safeSitePath(p.site);
+  const site = siteHref(p.site);
   const day = entry.at.slice(0, 10);
   return (
     <article className="gallery-card type-tile" data-testid="gallery-card">

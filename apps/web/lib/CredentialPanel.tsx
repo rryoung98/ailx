@@ -20,10 +20,11 @@
  * and this component renders nothing (FRONTEND.md §2.3.4).
  */
 import { useCallback, useEffect, useState } from "react";
-import { DEV_USER_HEADER, type OwnerCredential } from "@ailx/backend";
+import type { OwnerCredential } from "@ailx/backend";
+import { authHeaders } from "./authHeaders";
 import { CREDENTIAL_LIMITS, linkedInAddUrl } from "@ailx/report";
 import { basePath, isServerMode } from "./mode";
-import { browserApiOptions, devUser, getServerAttemptId } from "./persistence";
+import { browserApiOptions, getServerAttemptId } from "./persistence";
 
 type Phase = "loading" | "none" | "live" | "busy" | "error";
 
@@ -40,7 +41,7 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
         method,
         headers: {
           "content-type": "application/json",
-          [DEV_USER_HEADER]: devUser(window.localStorage),
+          ...(await authHeaders(window.localStorage)),
         },
       });
     },

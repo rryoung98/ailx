@@ -14,10 +14,10 @@
 import { crc32 } from "@ailx/core";
 import { isServerMode } from "./mode";
 import type { StorageLike } from "@ailx/session";
-import { DEV_USER_HEADER, canonicalSitePath, siteUrlPath } from "@ailx/backend";
+import { canonicalSitePath, siteUrlPath } from "@ailx/backend";
+import { authHeaders } from "./authHeaders";
 import {
   browserApiOptions,
-  devUser,
   getAttemptPersistence,
   getServerAttemptId,
   type ApiPersistenceOptions,
@@ -179,7 +179,7 @@ async function siteResultFrom(
     if (typeof digest !== "string") {
       return { ok: false, kind: "unavailable", message: "The server returned an unexpected response." };
     }
-    const url = siteUrlPath(digest, opts.baseUrl);
+    const url = siteUrlPath(digest, opts.siteRoot);
     try {
       storage.setItem(siteKey(clientAttemptId), JSON.stringify({ digest, url }));
     } catch {
@@ -227,7 +227,7 @@ async function requestUploadTicket(
   try {
     res = await opts.fetchFn(`${opts.baseUrl}/attempts/${serverAttemptId}/site/upload-ticket`, {
       method: "POST",
-      headers: { [DEV_USER_HEADER]: devUser(storage) },
+      headers: await authHeaders(storage),
     });
   } catch {
     return null;
@@ -294,7 +294,7 @@ async function uploadSiteZipDirect(
       method: "POST",
       headers: {
         "content-type": "application/json",
-        [DEV_USER_HEADER]: devUser(storage),
+        ...(await authHeaders(storage)),
         "x-ailx-client-ts": new Date().toISOString(),
       },
       body: JSON.stringify({ uploadId: ticket.uploadId, seq: T1_SITE_SEQ }),
@@ -348,7 +348,7 @@ export async function uploadSiteZip(
         method: "POST",
         headers: {
           "content-type": "application/zip",
-          [DEV_USER_HEADER]: devUser(storage),
+          ...(await authHeaders(storage)),
           "x-ailx-client-ts": new Date().toISOString(),
         },
         body: zip,

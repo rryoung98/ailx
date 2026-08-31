@@ -8,7 +8,7 @@
  * right accessible state, that a hostile query string is normalized by the
  * backend parser rather than trusted, and that a card leaks nothing.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parseGalleryQuery, type GalleryEntry, type GalleryListing } from "@ailx/backend";
 import { ALL_SHARE_SECTIONS, sharePayloadFrom, type SharePayload } from "@ailx/report";
@@ -72,9 +72,14 @@ async function markup(search: Record<string, string | string[] | undefined> = {}
 }
 
 beforeEach(() => {
+  // These pages exist only in the hosted build, whose basePath is "" — the
+  // unit-test fallback would otherwise prefix "/ailx" onto every served path
+  // through lib/mode.ts (see siteHref).
+  vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   seen.length = 0;
   listing = listingOf([entry()]);
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("the wall", () => {
   it("renders a published card with its type, shape and band", async () => {

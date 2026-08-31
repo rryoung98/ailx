@@ -20,13 +20,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   COMMENT_BODY_MAX,
-  DEV_USER_HEADER,
   type CandidateComment,
   type CandidateThread as Thread,
   type ModerationComment,
 } from "@ailx/backend";
-import { isServerMode } from "./mode";
-import { browserApiOptions, devUser, getServerAttemptId } from "./persistence";
+import { apiBase, isServerMode } from "./mode";
+import { authHeaders } from "./authHeaders";
+import { browserApiOptions, getServerAttemptId } from "./persistence";
 
 const AUTHOR_LABEL: Record<string, string> = {
   reviewer: "AILX moderator",
@@ -150,9 +150,11 @@ export function ModeratorThread({ shareId, trail }: { shareId: string; trail: Mo
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/moderation/${shareId}`, {
+      // Header identity, not the cookie: cross-origin to the exam service a
+      // SameSite=Lax cookie never travels (docs/DEPLOY.md §4.1).
+      const res = await fetch(`${apiBase()}/moderation/${shareId}`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({ body, visibility: shared ? "shared" : "internal" }),
       });
       if (!res.ok) setError(failure(res.status));
@@ -217,16 +219,12 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
   const endpoint = useCallback(() => {
     const opts = browserApiOptions();
     const serverId = getServerAttemptId(window.localStorage, attemptId) ?? attemptId;
-    return {
-      url: `${opts.baseUrl}/attempts/${serverId}/moderation`,
-      headers: { [DEV_USER_HEADER]: devUser(window.localStorage) },
-      fetchFn: opts.fetchFn,
-    };
+    return { url: `${opts.baseUrl}/attempts/${serverId}/moderation`, fetchFn: opts.fetchFn };
   }, [attemptId]);
 
   const load = useCallback(async () => {
-    const { url, headers, fetchFn } = endpoint();
-    const res = await fetchFn(url, { headers });
+    const { url, fetchFn } = endpoint();
+    const res = await fetchFn(url, { headers: await authHeaders(window.localStorage) });
     if (!res.ok) {
       setThread(null);
       return;
@@ -252,10 +250,10 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
     setBusy(true);
     setError(null);
     try {
-      const { url, headers, fetchFn } = endpoint();
+      const { url, fetchFn } = endpoint();
       const res = await fetchFn(url, {
         method: "POST",
-        headers: { "content-type": "application/json", ...headers },
+        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({ body }),
       });
       if (!res.ok) setError("That did not send. Nothing was written.");

@@ -96,6 +96,7 @@ describe("createApiPersistence", () => {
   const make = () =>
     createApiPersistence(storage, {
       baseUrl: "/api",
+      siteRoot: "/api",
       fetchFn: server.fetchFn,
       onSyncError: (e) => syncErrors.push(e),
     });
@@ -242,7 +243,7 @@ describe("createApiPersistence", () => {
 
   it("warns via console when no onSyncError handler is given", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const bare = createApiPersistence(storage, { baseUrl: "/api", fetchFn: server.fetchFn });
+    const bare = createApiPersistence(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn });
     server.state.failNext = 1;
     bare.save(startedLog());
     await bare.flush();
@@ -257,7 +258,7 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
   it("opts in to deck sampling and pre-writes the sync state under the server id", async () => {
     const storage = fakeStorage();
     const server = fakeFetch(SERVER_ID);
-    const id = await createServerAttempt(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, "ja");
+    const id = await createServerAttempt(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, "ja");
     expect(id).toBe(SERVER_ID);
     expect(server.calls).toHaveLength(1);
     expect(server.calls[0].path).toBe("/api/attempts");
@@ -274,7 +275,7 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
   it("the mirror ADOPTS the pre-created attempt instead of creating a second one", async () => {
     const storage = fakeStorage();
     const server = fakeFetch(SERVER_ID);
-    const opts = { baseUrl: "/api", fetchFn: server.fetchFn };
+    const opts = { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn };
     const id = await createServerAttempt(storage, opts, "en");
     // Session adopts the server id as its attemptId; mirror log follows.
     const p = createApiPersistence(storage, opts);
@@ -292,7 +293,7 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
     const server = fakeFetch(SERVER_ID);
     server.state.failNext = 1;
     await expect(
-      createServerAttempt(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, "en"),
+      createServerAttempt(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, "en"),
     ).rejects.toThrow("network down");
     expect(storage._map.size).toBeLessThanOrEqual(1); // no sync state written (dev id at most)
   });
@@ -335,7 +336,7 @@ describe("presented deck vs recorded deck", () => {
         : { attempt: { id: SERVER_ID }, ...(decks === undefined ? {} : { decks }) };
       return { ok: true, status: 200, json: async () => body } as Response;
     }) as typeof fetch;
-    return { baseUrl: "/api", fetchFn };
+    return { baseUrl: "/api", siteRoot: "/api", fetchFn };
   }
 
   /** Create the attempt (storing the recorded deck), then fetch what it deals. */

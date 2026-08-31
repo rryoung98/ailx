@@ -5,6 +5,7 @@ import { handleViewShare, shareCardPath, shareUrlPath } from "@ailx/backend";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "../../../lib/CharacterPortrait";
+import { siteHref } from "../../../lib/mode";
 import { pageOrigin, withApiContext } from "../../../lib/server/api";
 import { TrackRadar } from "../../../lib/TrackRadar";
 
@@ -86,6 +87,9 @@ export default async function SharePage({ params }: ShareParams) {
   if (share === null) notFound();
   const p = share.payload;
   const issued = new Date(share.createdAt).toISOString().slice(0, 10);
+  // Where the snapshot is SERVED is a deployment fact, not payload data: the
+  // stored path is `/api/site/<digest>/…` on every host (see lib/mode.ts).
+  const site = siteHref(p.site);
 
   return (
     <main className="page">
@@ -112,6 +116,7 @@ export default async function SharePage({ params }: ShareParams) {
               ))}
             </div>
           </div>
+          <CharacterVoice code={p.playerType.code} />
           <div className="ptype-axes">
             {p.playerType.poles.map((pole) => (
               <span key={pole.track} className="small muted">
@@ -229,7 +234,7 @@ export default async function SharePage({ params }: ShareParams) {
           </section>
         ) : null}
 
-        {p.site ? (
+        {site !== null ? (
           <section className="card" style={{ marginBottom: "1.6rem" }}>
             <h2 style={{ marginTop: 0 }}>The thing they actually built</h2>
             <p className="muted small">
@@ -237,7 +242,7 @@ export default async function SharePage({ params }: ShareParams) {
               it is their own work, not a derived figure.
             </p>
             <p style={{ marginBottom: 0 }}>
-              <a className="btn" href={p.site} target="_blank" rel="noreferrer">
+              <a className="btn" href={site} target="_blank" rel="noreferrer">
                 Open the live site <span aria-hidden>↗</span>
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>

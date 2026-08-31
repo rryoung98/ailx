@@ -79,6 +79,13 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   injects it when a Blob store is linked). `AILX_SNAPSHOT_BLOB_PREFIX`
   (default `t1`) namespaces one bucket across deployments.
 - `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root for `fs` (default `<cwd>/.ailx-snapshots`).
+- `NEXT_PUBLIC_AILX_API_BASE` — the exam service's absolute origin (Cloud Run). Set it and
+  the BROWSER calls that service (`<origin>/v1/...`) instead of this app's own `/api`
+  routes; unset, nothing changes and the static export still needs no server. Read in
+  exactly ONE place, `apps/web/lib/mode.ts` (`apiBase()`, `siteApiRoot()`, `siteHref()`),
+  and a test fails the build if a second module reads it. Cross-origin the `ailx_dev_user`
+  cookie is not sent — identity rides the header from `apps/web/lib/authHeaders.ts`. See
+  docs/ARCHITECTURE.md §10.1.
 - `AILX_PG_POOL_MAX` — pg clients per instance (default 3). Serverless keeps one
   pool per warm instance, so point `DATABASE_URL` at a POOLED endpoint (Neon's
   `-pooler` host) and keep this small.

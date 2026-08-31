@@ -69,6 +69,10 @@ const REVOKED = {
 };
 
 beforeEach(() => {
+  // These pages exist only in the hosted build, whose basePath is "" — the
+  // unit-test fallback would otherwise prefix "/ailx" onto every served path
+  // through lib/mode.ts (see siteHref).
+  vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   record = VALID;
   vi.stubEnv("AILX_PUBLIC_ORIGIN", "https://ailx.example");
 });

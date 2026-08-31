@@ -34,6 +34,30 @@ rather than guess.
 | `AILX_REVIEWERS` | for gallery review | Comma/whitespace list of `clerk:<sub>` / `dev:<id>` refs allowed to approve or refuse a site-carrying gallery submission. Fails closed: unset means nobody. |
 | `AILX_ALLOWED_ORIGINS` | on the PROXY project | Extra CORS origins for `services/openrouter-proxy` (add the staging origin there, not here). |
 | `AILX_ALLOW_INSECURE_DEV_AUTH` | never, unless §4 | The only way to run `AILX_AUTH=dev` under `NODE_ENV=production`. |
+| `NEXT_PUBLIC_AILX_API_BASE` | no | The exam service's absolute origin, e.g. `https://ailx-backend-932932410694.us-central1.run.app`. Set it and the BROWSER calls that service instead of this app's own `/api` routes; leave it unset and nothing changes. Read in exactly one place, `apps/web/lib/mode.ts`. A value that is not a bare absolute http(s) origin is ignored. See §1.1 and docs/ARCHITECTURE.md §10.1. |
+
+### 1.1 Pointing the frontend at the exam service
+
+`NEXT_PUBLIC_AILX_API_BASE` is a build-time public variable — Next inlines it into the
+client bundle, so a change needs a REDEPLOY, not just an env edit. When it is set:
+
+- API calls go to `<origin>/v1/...` (the service versions its routes; this app never did).
+- A published T1 site is linked at `<origin>/api/site/<digest>/index.html` — the site path
+  is the same on both hosts because it is frozen inside issued share payloads and
+  credential claims.
+- The `ailx_dev_user` cookie stops mattering: `SameSite=Lax` means a browser does not send
+  it to another origin. Identity travels as the `x-ailx-dev-user` header (or, once Clerk is
+  mounted, `Authorization: Bearer`), which is what `apps/web/lib/authHeaders.ts` sends on
+  every call. Server-rendered pages on THIS app still read the cookie, and still read this
+  app's own database.
+- The service must allow the frontend's origin: `AILX_ALLOWED_ORIGINS` on Cloud Run is an
+  explicit allowlist that drops `*` and `null` and never reflects an arbitrary `Origin`. A
+  Vercel PREVIEW deployment gets a different hostname and is refused by design — verify on
+  the production alias, or add the preview host deliberately.
+
+`AILX_BACKEND=1` still compiles this app's own API routes. They are a duplicate host during
+the cutover, not a fallback: nothing fails over to them, and they are deleted once the
+Playwright suite is repointed (ARCHITECTURE.md §10.1).
 
 ## 2. T1 site snapshots must not use the filesystem
 
@@ -107,7 +131,7 @@ authentication at all. Never set that flag on a deployment holding real data.
 
 `DevAuthProvider` also accepts the identity as a cookie, `ailx_dev_user`,
 which the browser writes itself alongside `localStorage["ailx:dev-user"]`
-(one writer: `devUser()` in `apps/web/lib/persistence.ts`). Order of
+(one writer: `devUser()` in `apps/web/lib/authHeaders.ts`). Order of
 precedence: `x-ailx-dev-user` header, then `Authorization: Bearer dev:<id>`,
 then the cookie — so every scripted caller and the Playwright suite are
 unaffected.

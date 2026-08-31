@@ -91,7 +91,7 @@ const upload = (
   server: ReturnType<typeof fakeUploadServer>,
   zip: Uint8Array = buildSiteZip([{ path: "index.html", data: utf8("<h1>hi</h1>") }]),
 ): Promise<SiteUploadResult> =>
-  uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
+  uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
 
 // ---------------------------------------------------------------------------
 // buildSiteZip — validated by the REAL server-side reader.
@@ -321,7 +321,7 @@ describe("uploadSiteZip — large sites", () => {
     const storage = mirroredStorage();
     const server = fakeDirectServer();
     const zip = oversizeZip();
-    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
     expect(r).toMatchObject({ ok: true, digest: DIGEST, created: true });
 
     expect(server.calls.map((c) => c.path)).toEqual([
@@ -354,7 +354,7 @@ describe("uploadSiteZip — large sites", () => {
     const server = fakeDirectServer();
     const zip = buildSiteZip([{ path: "index.html", data: utf8("<h1>small</h1>") }]);
     expect(zip.length).toBeLessThan(DIRECT_UPLOAD_MIN_BYTES);
-    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
     expect(r).toMatchObject({ ok: true });
     expect(server.calls.map((c) => c.path)).toEqual([`/api/attempts/${SERVER_ID}/site?seq=${T1_SITE_SEQ}`]);
     expect(blobPut).not.toHaveBeenCalled();
@@ -365,7 +365,7 @@ describe("uploadSiteZip — large sites", () => {
       const storage = mirroredStorage();
       const server = fakeDirectServer();
       server.state.ticket = [status, { error: { code: "direct_upload_unavailable", message: "no" } }];
-      const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+      const r = await uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
       expect(r).toMatchObject({ ok: true });
       expect(server.calls.map((c) => c.path)).toEqual([
         `/api/attempts/${SERVER_ID}/site/upload-ticket`,
@@ -379,7 +379,7 @@ describe("uploadSiteZip — large sites", () => {
     const storage = mirroredStorage();
     const server = fakeDirectServer();
     blobPut.mockRejectedValueOnce(new Error("content type not allowed"));
-    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
     expect(r).toMatchObject({ ok: false, kind: "unavailable" });
     expect(server.calls.map((c) => c.path)).toEqual([`/api/attempts/${SERVER_ID}/site/upload-ticket`]);
     expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
@@ -389,7 +389,7 @@ describe("uploadSiteZip — large sites", () => {
     const storage = mirroredStorage();
     const server = fakeDirectServer();
     server.state.finalize = [413, { error: { code: "total_too_large", message: "too big" } }];
-    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
     expect(r).toEqual({ ok: false, kind: "rejected", message: "too big" });
     expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
   });
@@ -398,7 +398,7 @@ describe("uploadSiteZip — large sites", () => {
     const storage = mirroredStorage();
     const server = fakeDirectServer();
     server.state.ticket = [201, { upload: { uploadId: 7 } }];
-    const r = await uploadSiteZip(storage, { baseUrl: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
+    const r = await uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, oversizeZip());
     expect(r).toMatchObject({ ok: true });
     expect(blobPut).not.toHaveBeenCalled();
     expect(server.calls[1].path).toBe(`/api/attempts/${SERVER_ID}/site?seq=${T1_SITE_SEQ}`);

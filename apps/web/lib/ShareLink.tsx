@@ -19,7 +19,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { DEV_USER_HEADER, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/backend";
+import { needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/backend";
+import { authHeaders } from "./authHeaders";
 import {
   DEFAULT_SHARE_SECTIONS,
   SHARE_NOTE_MAX,
@@ -30,7 +31,7 @@ import {
 } from "@ailx/report";
 import { assetUrl, basePath, isServerMode } from "./mode";
 import { CandidateThread } from "./Moderation";
-import { browserApiOptions, devUser, getServerAttemptId } from "./persistence";
+import { browserApiOptions, getServerAttemptId } from "./persistence";
 import { loadSiteSubmission } from "./siteUpload";
 
 /** Label and one honest line per section. Rendered here and nowhere else. */
@@ -161,7 +162,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
         method,
         headers: {
           "content-type": "application/json",
-          [DEV_USER_HEADER]: devUser(window.localStorage),
+          ...(await authHeaders(window.localStorage)),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });

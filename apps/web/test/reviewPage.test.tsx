@@ -10,7 +10,7 @@
  * operational facts a moderator works from — what was decided, when, by whom
  * and why.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FORBIDDEN_RESULT, parseCaseQuery, type CaseListing, type ModerationCase } from "@ailx/backend";
 import { sharePayloadFrom } from "@ailx/report";
@@ -80,11 +80,16 @@ const markup = async (search: Record<string, string | string[] | undefined> = {}
   renderToStaticMarkup(await ModerationPage({ searchParams: Promise.resolve(search) }));
 
 beforeEach(() => {
+  // These pages exist only in the hosted build, whose basePath is "" — the
+  // unit-test fallback would otherwise prefix "/ailx" onto every served path
+  // through lib/mode.ts (see siteHref).
+  vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   seenHeaders.length = 0;
   seenQuery.length = 0;
   notFound.mockClear();
   result = { status: 200, body: { listing: listingOf([moderationCase()]) } };
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("the gate", () => {
   it("renders nothing for a non-reviewer — a 403 from the gate is a 404 page", async () => {
