@@ -3,6 +3,7 @@ import {
   expectCentred,
   expectCovers,
   expectInViewport,
+  expectMaxHeight,
   expectNoHorizontalOverflow,
   expectNoInnerScroll,
   expectNoOverlap,
@@ -86,6 +87,7 @@ test.describe("visual contracts bite", () => {
     await expectNoOverlap(at(page, "modal"), at(page, "other"), ["modal", "other"]);
     await expectNotOccluded(at(page, "modal"), "modal");
     await expectTapTarget(at(page, "button"), "OK button");
+    await expectMaxHeight(at(page, "box"), "the box", 60);
     await expectTapTargets(page.locator("#stage"), "the stage");
     await expectNoHorizontalOverflow(page, "the stage");
     await expectTextNotClipped(at(page, "box"), "the box");
@@ -209,6 +211,17 @@ test.describe("visual contracts bite", () => {
     await expectContractToFail(
       () => expectTapTargets(page.locator("#stage"), "the stage"),
       /controls under 44px/,
+    );
+  });
+
+  test("mutation: a box over its height budget is caught", async ({ page }) => {
+    await goodLayout(page);
+    // The sticky header that wrapped into three rows on a phone: still
+    // visible, still correct, and eating the only screen a visitor gets.
+    await at(page, "box").evaluate((el: HTMLElement) => (el.style.height = "130px"));
+    await expectContractToFail(
+      () => expectMaxHeight(at(page, "box"), "the box", 60),
+      /130px tall, over its 60px budget/,
     );
   });
 

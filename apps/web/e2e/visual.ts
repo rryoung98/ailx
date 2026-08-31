@@ -35,6 +35,26 @@ export async function eventually(assertions: () => Promise<void>, timeout = 5_00
 const EPSILON = 0.5;
 
 /**
+ * Wait for the page to STOP moving before a stability contract measures it.
+ *
+ * Two things settle after "the deck is visible": web fonts (self-hosted by
+ * next/font, but still async — a font swap changes every line box), and the
+ * deck's own fit-to-viewport pass, which runs from a ResizeObserver. Measure
+ * across either and the test is asking about the settling, not about the
+ * product. This is the layout twin of §6.4's rule on terminal states.
+ */
+export async function awaitStableLayout(page: Page, target: Locator, name: string): Promise<void> {
+  await page.evaluate(() => document.fonts.ready);
+  let previous: string | null = null;
+  await expect(async () => {
+    const box = JSON.stringify(await target.boundingBox());
+    const settled = previous !== null && box === previous;
+    previous = box;
+    expect(settled, `${name} is still moving (${box})`).toBe(true);
+  }).toPass({ timeout: 5_000, intervals: [100, 100, 200, 400] });
+}
+
+/**
  * Minimum interactive target, in CSS px. WCAG 2.5.5 (AAA) and the Apple HIG
  * both say 44; WCAG 2.5.8 (AA) says 24. We hold the higher bar because this is
  * a TIMED exam taken on phones — a missed tap is charged to the candidate.
@@ -247,6 +267,23 @@ export async function expectNotOccluded(target: Locator, name: string): Promise<
   expect(covered, `${name} is covered by something else at ${covered.join("; ")}`).toEqual([]);
 }
 
+/**
+ * The element is no taller than `maxPx` — a budget, not a pixel baseline.
+ *
+ * Written for the sticky site header. On a 390x844 phone it wrapped into
+ * three rows and ate 130px of the only screen a first-time visitor gets; the
+ * CSS token that was supposed to describe it (`--header-h`) said so in a
+ * string, which is exactly the kind of claim a jsdom test can confirm while
+ * the rendered header is a different height entirely.
+ */
+export async function expectMaxHeight(target: Locator, name: string, maxPx: number): Promise<void> {
+  const box = await boxOf(target, name);
+  expect(
+    box.height,
+    `${name} is ${box.height.toFixed(0)}px tall, over its ${maxPx}px budget`,
+  ).toBeLessThanOrEqual(maxPx + EPSILON);
+}
+
 // ---------------------------------------------------------------------------
 // 4. Tap targets
 // ---------------------------------------------------------------------------
@@ -334,11 +371,24 @@ export async function expectNoHorizontalOverflow(page: Page, name: string): Prom
  * to move the document by 464px. Height is checked too, because a transition
  * that grows the page has already lost — the scroll is just the symptom.
  */
-export async function expectScrollStable(page: Page, name: string, action: () => Promise<void>): Promise<void> {
+export async function expectScrollStable(
+  page: Page,
+  name: string,
+  action: () => Promise<void>,
+  // Scroll anchoring is allowed a pixel or two: the browser deliberately
+  // moves `scrollY` to keep the PIXELS still when content resolves above the
+  // viewport, and charging that to the app would be charging it for doing the
+  // right thing. Pair this with {@link expectStablePosition}, which asks the
+  // question the candidate actually experiences.
+  tolerancePx = EPSILON,
+): Promise<void> {
   const before = await page.evaluate(() => ({ y: window.scrollY, h: document.documentElement.scrollHeight }));
   await action();
   const after = await page.evaluate(() => ({ y: window.scrollY, h: document.documentElement.scrollHeight }));
-  expect(after.y, `${name} scrolled the page from ${before.y} to ${after.y}`).toBeCloseTo(before.y, 0);
+  expect(
+    Math.abs(after.y - before.y),
+    `${name} scrolled the page from ${before.y} to ${after.y} (tolerance ${tolerancePx}px)`,
+  ).toBeLessThanOrEqual(tolerancePx);
   expect(
     after.h,
     `${name} changed the document height from ${before.h} to ${after.h} — the page will jump`,
