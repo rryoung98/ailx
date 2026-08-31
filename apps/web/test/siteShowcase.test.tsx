@@ -78,8 +78,15 @@ describe("landing proof showcase", () => {
       expect(minis.length).toBeLessThanOrEqual(3);
     }
     // the three mini motifs all appear somewhere in the section
-    expect(h.querySelector(".mini-card-score")!.textContent).toContain("206.6");
-    expect(h.querySelector(".mini-card-score")!.textContent).toContain("Merit");
+    // The score mini shows the SCALE, never a result: the invented "206.6 /
+    // 400 · Merit" was a judged-looking number on the page that sells the
+    // instrument, and no judged number exists yet.
+    const scoreMini = h.querySelector(".mini-card-score")!;
+    expect(scoreMini.querySelector(".mini-card-num")!.textContent).toBe("?/400");
+    expect(scoreMini.querySelector(".mini-card-band")!.textContent).toBe("your score");
+    for (const band of ["Merit", "Distinction", "Pass"]) {
+      expect(scoreMini.textContent).not.toContain(band);
+    }
     const checks = h.querySelector(".mini-card-checks")!;
     for (const s of ["sha256 verified", "replay = live", "export matches"]) {
       expect(checks.textContent).toContain(s);
@@ -186,13 +193,12 @@ describe("header play pill", () => {
       if (props?.children !== undefined) walk(props.children);
     };
     walk((nav.props as { children?: ReactNode }).children);
-    // Static export: the share gallery needs a database, so the nav links the
-    // T4 community wall instead of a route that cannot exist here.
     // Static export: the share gallery and the personal progress page both
-    // need a database, so the nav links the T4 community wall and the drill
-    // itself instead of routes that cannot exist here.
+    // need a database, so the nav links the T4 community wall instead of
+    // routes that cannot exist here. The pill is the free drill (/practice);
+    // the graded run keeps a plain, obvious slot of its own.
     expect(links.map((l) => l.href)).toEqual([
-      "/methodology", "/report", "/wall", "/practice", "/validate", "/exam",
+      "/exam", "/report", "/wall", "/methodology", "/validate", "/practice",
     ]);
     expect(links[links.length - 1].className).toBe("nav-pill");
     for (const l of links.slice(0, -1)) expect(l.className).toBeUndefined();
@@ -218,10 +224,11 @@ describe("header play pill", () => {
         if (props?.children !== undefined) walk(props.children);
       };
       walk((nav.props as { children?: ReactNode }).children);
-      // Practice ships in BOTH builds, so the hosted nav carries it ALONGSIDE
-      // /progress — hiding it left the daily loop reachable only by URL.
+      // Practice ships in BOTH builds and is the pill in both, so the daily
+      // loop is never URL-only; /progress reads the store, so it is here and
+      // not in the export.
       expect(hrefs).toEqual([
-        "/methodology", "/report", "/gallery", "/world", "/practice", "/progress", "/validate", "/exam",
+        "/exam", "/progress", "/report", "/gallery", "/world", "/methodology", "/validate", "/practice",
       ]);
       expect(hrefs).not.toContain("/wall");
     } finally {

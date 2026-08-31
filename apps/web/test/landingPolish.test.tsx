@@ -55,21 +55,24 @@ describe("pill CTA affordance", () => {
   });
 });
 
-describe("what-you-get marketing section", () => {
-  it("renders exactly three steps with the serif one-idea headers", async () => {
+describe("funnel section", () => {
+  it("renders four steps with the serif one-idea headers", async () => {
     const h = await render(createElement(Home));
     const steps = h.querySelectorAll(".wyg-steps .wyg-step");
-    expect(steps).toHaveLength(3);
+    expect(steps).toHaveLength(4);
     const titles = [...h.querySelectorAll(".wyg-title")].map((t) => t.textContent);
+    // Static export copy for step two; the hosted variant is asserted in
+    // landingFunnel.test.tsx.
     expect(titles).toEqual([
-      "Play the four tracks.",
-      "Get one honest score.",
-      "Share a report that proves itself.",
+      "Play one card.",
+      "Learn the families.",
+      "Then take the whole thing.",
+      "Keep what it leaves you.",
     ]);
     // one plain supporting line + one decorative visual per step
-    expect(h.querySelectorAll(".wyg-line")).toHaveLength(3);
+    expect(h.querySelectorAll(".wyg-line")).toHaveLength(4);
     const vizzes = h.querySelectorAll(".wyg-viz");
-    expect(vizzes).toHaveLength(3);
+    expect(vizzes).toHaveLength(4);
     for (const v of vizzes) expect(v.getAttribute("aria-hidden")).toBe("true");
   });
 

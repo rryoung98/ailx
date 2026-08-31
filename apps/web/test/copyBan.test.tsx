@@ -102,8 +102,9 @@ describe("game vocabulary on product surfaces", () => {
     expect(texts.join(" ")).toContain("AILX plays like a game and is built like an instrument.");
   });
 
-  it("nav links to /exam under the label Play (URL frozen, copy not)", () => {
+  it("nav pill plays the free drill, and the graded run keeps its own slot", () => {
     let found = false;
+    let foundRun = false;
     const text = (node: ReactNode): string => {
       if (Array.isArray(node)) return node.map(text).join("");
       if (typeof node === "string") return node;
@@ -114,13 +115,17 @@ describe("game vocabulary on product surfaces", () => {
       if (Array.isArray(node)) { node.forEach(walk); return; }
       if (!isValidElement(node)) return;
       const props = node.props as { href?: string; className?: string; children?: ReactNode };
-      // Header play control is a compact pill (green dot + Play label).
-      if (props?.href === "/exam" && props.className === "nav-pill" && text(props.children) === "Play") {
+      // Header play control is a compact pill (green dot + Play label) and it
+      // points at the fast, free drill. A four-hour sitting is a terrible
+      // first click, so /exam is a plain nav link instead of the pill.
+      if (props?.href === "/practice" && props.className === "nav-pill" && text(props.children) === "Play") {
         found = true;
       }
+      if (props?.href === "/exam" && props.className === undefined) foundRun = true;
       if (props?.children !== undefined) walk(props.children);
     };
     walk(RootLayout({ children: null }) as ReactElement);
     expect(found).toBe(true);
+    expect(foundRun).toBe(true);
   });
 });

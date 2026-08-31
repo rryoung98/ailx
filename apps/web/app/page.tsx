@@ -2,12 +2,12 @@ import Link from "next/link";
 import { Annotation } from "../lib/Annotation";
 import { HeroCanvas } from "../lib/HeroCanvas";
 import { PillCTA } from "../lib/PillCTA";
+import { PracticeDrill } from "../lib/PracticeDrill";
 import { Reveal } from "../lib/Reveal";
-import { Teaser } from "../lib/Teaser";
 import { CampusJourney } from "../lib/track3d/CampusJourney";
 import { TrackBands } from "../lib/track3d/TrackBands";
-import { assetUrl } from "../lib/mode";
-import { TRACK_LIST } from "@ailx/report";
+import { assetUrl, isServerMode } from "../lib/mode";
+import { PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
 
 /**
  * Decorative paper artifacts drifting at different scroll rates behind the
@@ -35,7 +35,7 @@ function HeroArtifacts() {
   );
 }
 
-/** Small CSS-art visuals for the three "what you get" steps. */
+/** Small CSS-art visuals for the four funnel steps. */
 function StepVizTracks() {
   return (
     <div className="wyg-viz wyg-viz-tracks" aria-hidden="true">
@@ -46,10 +46,24 @@ function StepVizTracks() {
   );
 }
 
-function StepVizScore() {
+/** The two calls the drill actually asks for; labels come from the corpus. */
+function StepVizCalls() {
   return (
-    <div className="wyg-viz wyg-viz-score" aria-hidden="true">
-      <span className="wyg-score-ring"><span className="wyg-score-num">1</span></span>
+    <div className="wyg-viz wyg-viz-calls" aria-hidden="true">
+      {PRACTICE_OPTIONS.map((label) => (
+        <span key={label}>{label}</span>
+      ))}
+    </div>
+  );
+}
+
+/** A week of practice days: filled ones behind you, one still open. */
+function StepVizStreak() {
+  return (
+    <div className="wyg-viz wyg-viz-streak" aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span key={i} className={i < 4 ? "wyg-day on" : "wyg-day"} />
+      ))}
     </div>
   );
 }
@@ -72,12 +86,18 @@ function StepVizReport() {
  * pastoral panel at different parallax rates. Pure CSS/DOM (no rasters),
  * decorative only (the wrapping layer is aria-hidden).
  */
+/**
+ * The scale, not a score. This card used to print "206.6 / 400" under the
+ * band "Merit" — an invented result on the page that sells the instrument,
+ * next to pages that say plainly no judged number exists yet. The denominator
+ * is a published fact of the spec; the numerator is deliberately blank.
+ */
 function MiniScoreCard() {
   return (
     <span className="mini-card mini-card-score showcase-float-1">
       <span className="mini-card-eyebrow mono">AILX 2026.1</span>
-      <span className="mini-card-band">Merit</span>
-      <span className="mini-card-num mono">206.6<span className="mini-card-denom">/400</span></span>
+      <span className="mini-card-band">your score</span>
+      <span className="mini-card-num mono">?<span className="mini-card-denom">/400</span></span>
     </span>
   );
 }
@@ -145,25 +165,35 @@ export default function Home() {
             <HeroCanvas />
             <HeroArtifacts />
             <div className="container hero-inner">
-              <div className="grid2" style={{ gap: "2.5rem", alignItems: "center" }}>
-                <div>
-                  <div className="eyebrow hero-fade">AILX 2026.1 · four tracks, one score</div>
+              {/* Front door: the first thing in the viewport is a REAL card
+                  from the practice corpus, playable in both builds, not a
+                  mock and not a four-hour sitting. Three grid children rather
+                  than two columns so a phone reads copy, then the card, then
+                  the calls to action — the card lands where the fold is. */}
+              <div className="hero-grid">
+                <div className="hero-copy">
+                  <div className="eyebrow hero-fade">AILX 2026.1 · free to play · no account</div>
                   <h1 className="hero-title">
                     <span className="hero-line hero-line-1">Benchmarks rate the models.</span>
                     <br />
                     <span className="hero-line hero-line-2">This one rates <span className="script-accent">you</span>.</span>
                   </h1>
-                  <span className="hero-fade"><Annotation>scored like an instrument</Annotation></span>
+                  <span className="hero-fade hero-annotation"><Annotation>one card, right now</Annotation></span>
                   <p className="lede hero-lede hero-fade">
-                    Play four short tracks: build, spot fakes, reason, direct.
-                    Get one score you can check.
-                  </p>
-                  <p className="hero-cta hero-fade" data-pill-clear="">
-                    <Link className="btn primary" href="/exam">Play</Link>
-                    <Link className="btn" href="/validate">See it prove itself</Link>
+                    Start here: photograph, or generated? You get the answer and the tell the
+                    moment you call it.
                   </p>
                 </div>
-                <div className="hero-fade"><Teaser /></div>
+                {/* The drill is tappable end to end, so the fixed bottom pill
+                    must clear it: on a 390x844 phone the pill printed straight
+                    across the two answer buttons. */}
+                <div className="hero-fade hero-play" data-pill-clear="">
+                  <PracticeDrill />
+                </div>
+                <p className="hero-cta hero-fade" data-pill-clear="">
+                  <Link className="btn primary" href="/practice">Play a full round</Link>
+                  <Link className="btn" href="/exam">Go for the credential</Link>
+                </p>
               </div>
             </div>
           </section>
@@ -221,25 +251,64 @@ export default function Home() {
         <TrackBands />
       </section>
 
-      {/* What you get: three steps, one idea each. */}
-      <section className="container wyg" aria-label="What you get">
+      {/* The funnel, in the order it is actually walked: play, come back,
+          then the graded run and what it leaves you with. The scored sitting
+          is step three on purpose — it is the graduation, not the entry fee,
+          and it stays one click away from the hero for anyone who came to
+          certify. Nothing here claims a judged score or a norm: there is no
+          judging pipeline yet, so a number implying one would be a lie. */}
+      <section className="container wyg" aria-label="How AILX works">
         {/* The floating pill is fixed to the bottom of the viewport; without
             this it parks on top of these headings for the whole section. */}
         <ol className="wyg-steps" data-pill-clear="">
           <Reveal as="li" className="wyg-step">
-            <StepVizTracks />
-            <h2 className="wyg-title">Play the four tracks.</h2>
-            <p className="wyg-line">Build a page, spot the fakes, catch the lies, direct the renders.</p>
+            <StepVizCalls />
+            <h2 className="wyg-title">Play one card.</h2>
+            <p className="wyg-line">
+              Photograph or generated? The answer and the tell arrive together. Free, unscored,
+              and it never touches the graded bank.
+            </p>
+            <p className="wyg-more"><Link href="/practice">Practise the tells →</Link></p>
           </Reveal>
           <Reveal as="li" className="wyg-step">
-            <StepVizScore />
-            <h2 className="wyg-title">Get one honest score.</h2>
-            <p className="wyg-line">Four tracks become one number and one band. The math is public.</p>
+            <StepVizStreak />
+            {isServerMode() ? (
+              <>
+                <h2 className="wyg-title">Come back tomorrow.</h2>
+                <p className="wyg-line">
+                  Finish a round and the day counts. The streak is worked out on the server, so
+                  the progress page shows the days you did, not a number you told it.
+                </p>
+                <p className="wyg-more"><Link href="/progress">See your progress →</Link></p>
+              </>
+            ) : (
+              <>
+                <h2 className="wyg-title">Learn the families.</h2>
+                <p className="wyg-line">
+                  Physics, anatomy, culture: the same tells come back until you see them first.
+                  This is the static demo build, so rounds play and nothing is recorded.
+                </p>
+                <p className="wyg-more"><Link href="/practice">Practise the tells →</Link></p>
+              </>
+            )}
+          </Reveal>
+          <Reveal as="li" className="wyg-step">
+            <StepVizTracks />
+            <h2 className="wyg-title">Then take the whole thing.</h2>
+            <p className="wyg-line">
+              Four tracks in one sitting, each on its own clock: build, spot fakes, catch lies,
+              direct. That is the graded run, and it is the long one.
+            </p>
+            <p className="wyg-more"><Link href="/exam">Start the full run →</Link></p>
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizReport />
-            <h2 className="wyg-title">Share a report that proves itself.</h2>
-            <p className="wyg-line">Every point can be recomputed from what you did — no black box, and nothing you cannot check.</p>
+            <h2 className="wyg-title">Keep what it leaves you.</h2>
+            <p className="wyg-line">
+              A report you can share and a credential anyone can check. The credential records a
+              finished sitting, never a grade, and every point is recomputable from what you did.
+            </p>
+            <p className="wyg-more"><Link href="/report">See a sample report →</Link></p>
           </Reveal>
         </ol>
       </section>
@@ -268,7 +337,7 @@ export default function Home() {
         />
         <p className="showcase-caption faint small">This is the demo build of the AILX 2026.1 spec.</p>
       </section>
-      <PillCTA href="/exam">Play</PillCTA>
+      <PillCTA href="/practice">Play a round</PillCTA>
     </main>
   );
 }

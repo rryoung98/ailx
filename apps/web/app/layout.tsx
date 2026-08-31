@@ -29,29 +29,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <img src={assetUrl("/media/logo.svg")} alt="AILX" className="wordmark-img" />
             </Link>
             <nav className="site-nav" aria-label="Primary">
-              <NavLink href="/methodology">Methodology</NavLink>
-              <NavLink href="/report">Report</NavLink>
-              {/* The share gallery reads the database, so it exists only in
-                  the hosted build; the static export links the T4 community
-                  wall instead. One nav slot, never a link that cannot work. */}
-              {isServerMode() ? (
-                <>
-                  <NavLink href="/gallery">Gallery</NavLink>
-                  <NavLink href="/world">World</NavLink>
-                </>
-              ) : (
-                <NavLink href="/wall">Wall</NavLink>
-              )}
-              {/* Practice plays in BOTH builds (its corpus is bundled), so it
-                  always gets a slot — it is the daily loop that brings people
-                  back, and hiding it in the hosted build made it reachable
-                  only by typing the URL. /progress reads the store, so it is
-                  hosted-only and appears alongside rather than instead. */}
-              <NavLink href="/practice">Practice</NavLink>
-              {isServerMode() && <NavLink href="/progress">Progress</NavLink>}
-              <NavLink href="/validate">Validate</NavLink>
-              {/* Compact pill twin of the bottom .pill-cta, aligned right. */}
-              <NavLink href="/exam" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>
+              {/* One scrolling row on a phone (display:contents on desktop, so
+                  the links stay direct flex children there). It used to wrap
+                  into two rows: 130px of chrome on every page before any
+                  content. Every route below is still in it, in both builds. */}
+              <div className="nav-links">
+                {/* The graded run keeps a plain, obvious slot. It is no longer
+                    the pill: the pill is the fast, free thing, and a four-hour
+                    sitting is a terrible first click. */}
+                <NavLink href="/exam">Full run</NavLink>
+                {/* /progress reads the store, so it is hosted-only. Practice
+                    plays in BOTH builds (its corpus is bundled) and is the
+                    pill, so it is not repeated here. */}
+                {isServerMode() && <NavLink href="/progress">Progress</NavLink>}
+                <NavLink href="/report">Report</NavLink>
+                {/* The share gallery reads the database, so it exists only in
+                    the hosted build; the static export links the T4 community
+                    wall instead. One nav slot, never a link that cannot work. */}
+                {isServerMode() ? (
+                  <>
+                    <NavLink href="/gallery">Gallery</NavLink>
+                    <NavLink href="/world">World</NavLink>
+                  </>
+                ) : (
+                  <NavLink href="/wall">Wall</NavLink>
+                )}
+                <NavLink href="/methodology">Methodology</NavLink>
+                <NavLink href="/validate">Validate</NavLink>
+              </div>
+              {/* Compact pill twin of the bottom .pill-cta, aligned right, and
+                  outside the scrolling row so it is never scrolled off. */}
+              <NavLink href="/practice" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>
             </nav>
           </div>
         </header>
