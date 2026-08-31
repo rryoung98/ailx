@@ -57,6 +57,52 @@ agent-hosting platform: when a candidate wants to go further, offboard them (exp
 artifact, point them at real tools) rather than growing an IDE. The same discipline
 applies here — we measure the run, we do not become the runtime.
 
+### The offboarding ramp — built, 2026-08-31
+
+The export half of that principle is no longer a promise. A candidate's T1 site can leave
+AILX by three routes, deliberately ordered by how certain each one is:
+
+1. **Download** — `GET /api/attempts/:id/site/export` returns the stored snapshot as a
+   deterministic ZIP. Always available in server mode, needs no third party, and adds
+   NOTHING to the archive: re-uploading the download re-derives the same content address
+   it was scored under, which is the export's own integrity check. Everything else
+   degrades to this rung.
+2. **GitHub** — `POST /api/attempts/:id/site/github/start` then
+   `POST /api/attempts/:id/site/github` create ONE public repository in the candidate's
+   own account and push the site plus a generated README in a single commit. Auth is
+   GitHub's DEVICE flow with the single scope `public_repo`, chosen because it needs no
+   client secret and no registered redirect URI (the frontend and the exam service can be
+   different origins). The access token is redeemed inside the export request, is never
+   returned to the browser, never stored and never logged.
+3. **Vercel** — a "Deploy with Vercel" link built from Vercel's documented
+   `vercel.com/new/clone?repository-url=…` contract. It clones a public git repository, so
+   it cannot exist before rung 2 and is offered only after it.
+
+**There is no "Open in v0" button, on purpose.** v0 has no supported programmatic import
+for a multi-file *plain static* site into someone else's account: its Platform API is
+keyed by an API key (ours, which would put the candidate's site in OUR account), and the
+shadcn "Open in v0" URL takes a React/shadcn registry item that says nothing about plain
+HTML. What v0 does document is a ZIP upload in its own UI — which is exactly what rung 1
+produces, so the panel says that instead of shipping a button that half works.
+
+Three rules the export must not break, all covered by tests:
+
+- **Ownership, not capability, authorizes it.** `/api/site/<digest>/…` is unauthenticated
+  by design — the digest is what lets a share link render a site. That is enough to LOOK
+  at a site and nowhere near enough to copy one into somebody's GitHub account, so every
+  export entry point is attempt-scoped and goes through `withOwnedAttempt`.
+- **Export READS.** No `responses` row, snapshot object or score is written. The
+  reachability gate, one-submission-per-attempt and content addressing are untouched.
+- **No marking material travels.** A snapshot holds only the candidate's own static
+  assets; the generated README states what the sitting was, claims no score, and names
+  the rubric and judge prompts only as things that are absent.
+
+Code: `packages/backend/src/t1/export.ts` (download + handlers),
+`packages/backend/src/t1/github.ts` (device flow, single-commit push, Vercel link),
+`apps/web/lib/siteExport.ts` and `apps/web/lib/SiteExportPanel.tsx` (client).
+Configuration: `AILX_GITHUB_CLIENT_ID`. Unset, rungs 2 and 3 answer 501 and the panel
+offers Download alone.
+
 ## Fit with the existing design
 
 - Annual re-versioning is already the mechanism for "whatever is cutting edge" (spec §14).

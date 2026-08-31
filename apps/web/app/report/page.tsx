@@ -21,6 +21,8 @@ import { fetchServerAnswerKeys } from "../../lib/hostedDeck";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
+import { SiteExportPanel } from "../../lib/SiteExportPanel";
+import { downloadBlob } from "../../lib/siteExport";
 import { ShareLink } from "../../lib/ShareLink";
 import { TrackRadar } from "../../lib/TrackRadar";
 
@@ -93,21 +95,21 @@ function SiteLiveLink({ attemptId }: { attemptId?: string }) {
   }, [attemptId]);
   if (!sub) return null;
   return (
-    <p className="small" style={{ marginTop: "0.6rem" }}>
-      Live snapshot: <SiteLink url={sub.url} />{" "}
-      <span className="faint">— served sandboxed; anyone with the link can view it.</span>
-    </p>
+    <>
+      <p className="small" style={{ marginTop: "0.6rem" }}>
+        Live snapshot: <SiteLink url={sub.url} />{" "}
+        <span className="faint">— served sandboxed; anyone with the link can view it.</span>
+      </p>
+      {/* The snapshot is AILX's copy; this is how the candidate gets THEIRS. */}
+      {attemptId ? <SiteExportPanel attemptId={attemptId} /> : null}
+    </>
   );
 }
 
 function download(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  // One save mechanism for both downloads on this page (the JSON export here
+  // and the T1 site ZIP in SiteExportPanel) — see lib/siteExport.ts.
+  downloadBlob(filename, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
 }
 
 /** rAF count-up — the score reveal is the reward (§13). */

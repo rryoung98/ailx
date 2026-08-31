@@ -795,7 +795,12 @@ export function Runner(props: TrackUIProps) {
               }}
               placeholder="What should the viewer understand? Which revisions were diagnostic, and why is the chosen set the right one?"
             />
-            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+            {/* minHeight 44 — the LABEL is the tap target (clicking the words
+                toggles the box), so it is the thing that has to clear the
+                44px floor for the one control that decides whether the
+                delivered set carries an AI disclosure. The 18px box inside it
+                is legible, not hittable, and that is fine. */}
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, minHeight: 44 }}>
               {/* flexShrink:0 — the flex label squashed the box to 9x13px
                   on a 390px viewport, which is both illegible and an
                   unhittable target for the one control that decides whether
