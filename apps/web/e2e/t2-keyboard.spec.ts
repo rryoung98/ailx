@@ -12,6 +12,7 @@ import {
   tabTo,
   test,
 } from "./fixtures";
+import { REQUIRES_SERVICE, hasExamService } from "./service";
 
 /**
  * Keyboard-only path through a T2 card (FRONTEND.md §6.4.5).
@@ -25,6 +26,11 @@ import {
  * The deck is seeded per attempt, so nothing below names an item, an option
  * or an answer: only structure and behaviour.
  */
+// Every test here SEEDS through the exam service, so the whole file skips with a
+// stated reason when there is none. Measurement specs are unaffected: they take
+// no seeding fixture and must keep running with no backend (FRONTEND.md §6.7.3).
+test.skip(!hasExamService(), REQUIRES_SERVICE);
+
 test("a candidate can answer a T2 card with the keyboard alone", async ({ page, devUser, attemptId }) => {
   await seedRun(page, devUser, { attemptId, log: logInTrack(attemptId, "t2") });
   await page.goto("/exam");

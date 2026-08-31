@@ -122,35 +122,34 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: ailx
-          POSTGRES_PASSWORD: ailx
-          POSTGRES_DB: ailx_e2e
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U ailx -d ailx_e2e"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    # The suite drives the FRONTEND against the real exam service. This app has
+    # no API routes of its own any more (docs/ARCHITECTURE.md §10.1 step 3), and
+    # `services/api` lives in the PRIVATE ailx-backend repository, which this
+    # workflow cannot check out. So there is no Postgres here and no schema to
+    # bootstrap: the service owns both.
+    #
+    # Set the repository variable `AILX_E2E_API_BASE` to a service this workflow
+    # may write to — a THROW-AWAY one, never staging, because every spec appends
+    # rows. Unset, the job is a documented skip rather than a red gate nobody in
+    # this repository can fix. The same specs DO run on every change to the
+    # service: ailx-backend's CI checks this repo out and runs them against a
+    # freshly booted `services/api`.
     env:
-      DATABASE_URL: postgres://ailx:ailx@127.0.0.1:5432/ailx_e2e
+      AILX_E2E_API_BASE: ${{ vars.AILX_E2E_API_BASE }}
     steps:
       - uses: actions/checkout@v4
 
-      # The Playwright suite lands in a separate change. Until then this job
-      # succeeds without running anything, so it can already be a required
-      # check on `main`.
       - id: suite
-        name: Detect the E2E suite
+        name: Detect the suite and its exam service
         run: |
-          if [ -f apps/web/playwright.config.ts ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
+          if [ ! -f apps/web/playwright.config.ts ]; then
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::apps/web/playwright.config.ts not present yet — skipping E2E."
+            echo "::notice::apps/web/playwright.config.ts not present — skipping E2E."
+          elif [ -z "$AILX_E2E_API_BASE" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AILX_E2E_API_BASE is not set, so there is no exam service to drive. Skipping E2E. The same specs run in ailx-backend CI against a freshly booted services/api."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
       - if: steps.suite.outputs.present == 'true'
@@ -172,18 +171,6 @@ jobs:
       - if: steps.suite.outputs.present == 'true'
         name: Install Chromium
         run: pnpm --filter @ailx/web exec playwright install --with-deps chromium
-
-      # Schema plus the one row `POST /api/attempts` requires: the backend
-      # rejects an attempt against an unknown instrument
-      # (`DEFAULT_INSTRUMENT` in packages/backend/src/handlers.ts).
-      - if: steps.suite.outputs.present == 'true'
-        name: Bootstrap the E2E database
-        run: |
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
-            "INSERT INTO instruments (id, version, package_digest, effective_from)
-             VALUES ('ailx', '2026.1', 'sha256:ci-e2e', '2026-01-01')
-             ON CONFLICT (id, version) DO NOTHING"
 
       - if: steps.suite.outputs.present == 'true'
         name: Run Playwright

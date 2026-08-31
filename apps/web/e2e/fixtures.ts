@@ -1,13 +1,14 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { ATTEMPT_KEY, TRACK_IDS, append, type SequencedEntry, type SessionConfig, type TrackId } from "@ailx/session";
-import { DEV_USER_HEADER } from "@ailx/backend";
+import { DEV_USER_HEADER } from "@ailx/contract";
 import { fixtureArtifact } from "../lib/sampleAttempt";
 import { completedLog } from "../test/helpers/completedAttempt";
 import { DEV_USER_KEY, syncKey } from "../lib/persistence";
 import { checkpointKey } from "../lib/checkpoints";
 import { buildSiteZip, T1_SITE_SEQ, type SiteFile } from "../lib/siteUpload";
 import { OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
+import { apiRoot } from "./service";
 
 export { expect };
 
@@ -254,6 +255,15 @@ export async function breakNextRunnerFocus(page: Page): Promise<void> {
 // Test fixtures
 // ---------------------------------------------------------------------------
 
+/**
+ * Every seeding call below goes to the EXAM SERVICE (`apiRoot()`), not to the
+ * app under test. The app is a frontend and has no API routes of its own, so
+ * "create an attempt exactly as the app does" now means the same HTTP call the
+ * browser makes cross-origin. Identity therefore travels as the
+ * `x-ailx-dev-user` HEADER and never as a cookie: `ailx_dev_user` is
+ * SameSite=Lax and a browser will not send it to another origin
+ * (docs/ARCHITECTURE.md §10.1).
+ */
 export interface AilxFixtures {
   /** Unique dev identity per test — runs can never collide on server rows. */
   devUser: string;
@@ -277,7 +287,7 @@ export const test = base.extend<AilxFixtures>({
   },
 
   attemptId: async ({ request, devUser }, use) => {
-    const res = await request.post("/api/attempts", {
+    const res = await request.post(`${apiRoot()}/attempts`, {
       headers: { [DEV_USER_HEADER]: devUser, "content-type": "application/json" },
       data: { locale: "en", decks: true },
     });
@@ -290,13 +300,13 @@ export const test = base.extend<AilxFixtures>({
     await use(async () => {
       const headers = { [DEV_USER_HEADER]: devUser, "content-type": "application/json" };
       for (const entry of completedLog()) {
-        const res = await request.post(`/api/attempts/${attemptId}/responses`, {
+        const res = await request.post(`${apiRoot()}/attempts/${attemptId}/responses`, {
           headers,
           data: { seq: entry.seq, payload: entry, clientTs: new Date(entry.ts).toISOString() },
         });
         expect(res.status(), await res.text()).toBe(201);
       }
-      const res = await request.post(`/api/attempts/${attemptId}/share`, { headers, data: {} });
+      const res = await request.post(`${apiRoot()}/attempts/${attemptId}/share`, { headers, data: {} });
       expect(res.status(), await res.text()).toBe(201);
       const body = (await res.json()) as { share: { token: string } };
       return body.share.token;
@@ -305,7 +315,7 @@ export const test = base.extend<AilxFixtures>({
 
   publishSite: async ({ request, devUser, attemptId }, use) => {
     await use(async (files) => {
-      const res = await request.post(`/api/attempts/${attemptId}/site?seq=${T1_SITE_SEQ}`, {
+      const res = await request.post(`${apiRoot()}/attempts/${attemptId}/site?seq=${T1_SITE_SEQ}`, {
         headers: {
           [DEV_USER_HEADER]: devUser,
           "content-type": "application/zip",

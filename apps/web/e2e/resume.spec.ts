@@ -10,6 +10,7 @@ import {
   seedRun,
   test,
 } from "./fixtures";
+import { REQUIRES_SERVICE, hasExamService } from "./service";
 
 /**
  * Reload / resume mid-exam (FRONTEND.md §6.4.3).
@@ -20,6 +21,11 @@ import {
  * restart (or silently keep charging). Asserted through the UI, never by
  * reading localStorage bytes.
  */
+// Every test here SEEDS through the exam service, so the whole file skips with a
+// stated reason when there is none. Measurement specs are unaffected: they take
+// no seeding fixture and must keep running with no backend (FRONTEND.md §6.7.3).
+test.skip(!hasExamService(), REQUIRES_SERVICE);
+
 test("a reload mid-track restores the track, the deck position and the clock", async ({
   page,
   devUser,

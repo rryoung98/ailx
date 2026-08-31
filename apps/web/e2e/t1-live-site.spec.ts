@@ -1,5 +1,6 @@
 import { expect, logInTrack, seedRun, test } from "./fixtures";
-import { SITE_INDEX } from "@ailx/backend";
+import { SITE_INDEX } from "@ailx/contract";
+import { REQUIRES_SERVICE, hasExamService, siteRoot } from "./service";
 
 /**
  * T1 live site — the redirect-loop spec (FRONTEND.md §6.4.4).
@@ -12,6 +13,9 @@ import { SITE_INDEX } from "@ailx/backend";
  */
 
 const CANONICAL_URL = /\/api\/site\/sha256:[0-9a-f]{64}\/index\.html$/;
+
+// Seeds through the exam service, so it skips WITH A REASON when there is none.
+test.skip(!hasExamService(), REQUIRES_SERVICE);
 
 test.describe("T1 live site", () => {
   test("the link a candidate sees lands on their rendered page", async ({ page, devUser, attemptId }) => {
@@ -67,7 +71,7 @@ test.describe("T1 live site", () => {
 
     // Enter the way a shared link does: at the BARE digest, the form that
     // 308s. One hop only — the trailing-slash form 308s back here.
-    const response = await page.goto(`/api/site/${digest}`);
+    const response = await page.goto(`${siteRoot()}/site/${digest}`);
 
     await expect(page).toHaveURL(CANONICAL_URL);
     expect(new URL(page.url()).pathname).toBe(url);

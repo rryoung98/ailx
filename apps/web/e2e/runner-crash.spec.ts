@@ -8,6 +8,7 @@ import {
   storedLog,
   test,
 } from "./fixtures";
+import { REQUIRES_SERVICE, hasExamService } from "./service";
 
 /**
  * Runner crash recovery (FRONTEND.md §6.4.6).
@@ -18,6 +19,11 @@ import {
  * is about pixels: the candidate gets a way forward, and the fault is not
  * charged to their time budget.
  */
+
+// Every test here SEEDS through the exam service, so the whole file skips with a
+// stated reason when there is none. Measurement specs are unaffected: they take
+// no seeding fixture and must keep running with no backend (FRONTEND.md §6.7.3).
+test.skip(!hasExamService(), REQUIRES_SERVICE);
 
 test("a crashed runner offers recovery and stops charging the candidate", async ({
   page,

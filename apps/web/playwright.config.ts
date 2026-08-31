@@ -1,7 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { hasExamService, serviceOrigin } from "./e2e/service";
 
 /**
  * E2E suite (FRONTEND.md §6.3–6.5). NOT part of `pnpm -r test`: it needs a
@@ -9,24 +7,34 @@ import { join } from "node:path";
  * fast and dependency-free.
  *
  * Two ways to run:
- *  - default: Playwright boots the PRODUCTION server build itself
- *    (`next build && next start` with AILX_BACKEND=1) — the CI gate, and the
- *    only configuration in which the redirect/CSP behaviour is reproducible.
+ *  - default: Playwright boots the PRODUCTION frontend build itself
+ *    (`next build && next start`) — the CI gate, and the only configuration in
+ *    which the redirect/CSP behaviour is reproducible.
  *  - `AILX_E2E_BASE_URL=…`: run the same specs against an already-running
  *    deployment (staging smoke). No server is booted.
  *
- * Both need a Postgres `DATABASE_URL`; nothing here ever hardcodes one.
+ * BOTH need a running EXAM SERVICE at `AILX_E2E_API_BASE`, because this app no
+ * longer has API routes of its own: it is a frontend, and `services/api` in
+ * the private repo is the backend (docs/ARCHITECTURE.md §10.1). The service
+ * owns the database, the auth mode and the T1 snapshot store, so none of
+ * `DATABASE_URL`, `AILX_AUTH` or `AILX_SNAPSHOT_DIR` is set here any more —
+ * setting them would describe a server this config does not start.
+ *
+ * `AILX_BACKEND=1` stays, and now means only what its name says for a
+ * frontend: put `page.api.tsx` into `pageExtensions` so the seven
+ * database-reading pages exist at all. See next.config.mjs.
  */
 const port = Number(process.env.AILX_E2E_PORT ?? 3210);
 const externalBaseUrl = process.env.AILX_E2E_BASE_URL;
 const baseURL = externalBaseUrl ?? `http://127.0.0.1:${port}`;
 
 /**
- * Disposable local Postgres — never staging, never a shared database (see
- * e2e/README.md for the one-command bootstrap). Not a secret, and not a
- * credential to commit: it is the documented default for local runs only.
+ * The service, if there is one. NOT a hard failure and NOT a default: a
+ * default would either seed nothing (localhost) or seed STAGING, and a hard
+ * failure would stop the measurement specs, which need no backend at all.
+ * Seeded specs skip themselves with a reason instead (e2e/service.ts).
  */
-const databaseUrl = process.env.DATABASE_URL ?? "postgres://ailx:ailx@localhost:55432/ailx_e2e";
+const apiBase = hasExamService() ? serviceOrigin() : undefined;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -64,22 +72,13 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           stdout: "pipe",
           env: {
+            // Only `page.api.tsx` page extensions; there are no API routes.
             AILX_BACKEND: "1",
             NEXT_PUBLIC_BASE_PATH: "",
-            AILX_AUTH: "dev",
-            // `next start` runs with NODE_ENV=production, where dev auth is
-            // refused by default (it is assert-only identity). This suite is
-            // a throw-away build over a throw-away database, so it opts in
-            // explicitly — nothing else may.
-            AILX_ALLOW_INSECURE_DEV_AUTH: "1",
-            DATABASE_URL: databaseUrl,
-            // The origin a browser really reaches: it is baked into the T1
-            // sandbox CSP allowlist and the canonicalising 308, so a wrong
-            // value is exactly the class of bug the site spec must catch.
-            AILX_PUBLIC_ORIGIN: baseURL,
-            // Per-run snapshot root: a stale snapshot must never make a
-            // serve test pass (or fail) for the previous run's reasons.
-            AILX_SNAPSHOT_DIR: mkdtempSync(join(tmpdir(), "ailx-e2e-snapshots-")),
+            // The seam, at BUILD time: `NEXT_PUBLIC_*` is inlined by the
+            // compiler, so the browser under test calls `<service>/v1/...`
+            // rather than an origin that answers nothing.
+            ...(apiBase === undefined ? {} : { NEXT_PUBLIC_AILX_API_BASE: apiBase }),
           },
         },
       }
