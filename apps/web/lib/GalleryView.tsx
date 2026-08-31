@@ -22,7 +22,7 @@
  */
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { GalleryListing, GalleryQuery } from "@ailx/backend";
+import type { GalleryListing, GalleryQuery } from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { PageError, PageLoading } from "./PageNotice";
 import { firstValueQuery, useService } from "./serviceFetch";

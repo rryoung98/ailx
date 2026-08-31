@@ -23,11 +23,17 @@ import {
   handleGetShare,
   publishShare,
   revokeShare,
-  type ShareRecord,
 } from "../src/share.js";
+import type { ShareRecord } from "@ailx/contract";
 import { handleReviewDecision, rejectSubmission } from "../src/gallery.js";
 import {
   COMMENT_BODY_MAX,
+  normalizeCommentBody,
+  parseCaseQuery,
+  type CandidateComment,
+  type ModerationComment,
+} from "@ailx/contract";
+import {
   addComment,
   candidateThread,
   getCase,
@@ -38,10 +44,6 @@ import {
   handleModerationComment,
   listCases,
   listComments,
-  normalizeCommentBody,
-  parseCaseQuery,
-  type CandidateComment,
-  type ModerationComment,
 } from "../src/moderation.js";
 import { attachSiteSnapshot, freshDb, scoredAttempt } from "./helpers.js";
 

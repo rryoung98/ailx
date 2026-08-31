@@ -9,7 +9,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { DEV_USER_HEADER } from "@ailx/backend";
+import { DEV_USER_HEADER } from "@ailx/contract";
 import {
   SERVICE_ERROR_COPY,
   firstValueQuery,

@@ -24,6 +24,15 @@ export const SITE_INDEX = "index.html";
 export const T1_SITE_RESPONSE_KIND = "t1-site-snapshot";
 
 /**
+ * Default repository name offered by the T1 GitHub export. Defined here
+ * (client-safe) rather than in `./t1/github.ts`, for the same reason as the
+ * response kind above: the browser pre-fills the field with it and the server
+ * falls back to it, and two spellings would show the candidate a name the
+ * server would not use. `./t1` re-exports it.
+ */
+export const DEFAULT_REPO_NAME = "my-ailx-site";
+
+/**
  * The file a snapshot request resolves to: directory-ish requests ("" or a
  * trailing slash) mean the directory index. The serve route redirects such
  * requests to the canonical form; the serve handler resolves them directly so

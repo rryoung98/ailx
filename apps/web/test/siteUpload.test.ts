@@ -5,7 +5,8 @@
  * through programmable fetch/storage doubles (persistence.test.ts pattern).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readZip, snapshotFromZip, T1_LIMITS } from "@ailx/backend/t1";
+import { readZip, snapshotFromZip } from "@ailx/backend/t1";
+import { T1_LIMITS } from "@ailx/contract";
 import {
   DIRECT_UPLOAD_MIN_BYTES,
   PLATFORM_TOO_LARGE_MESSAGE,

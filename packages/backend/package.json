@@ -20,6 +20,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ailx/contract": "workspace:*",
     "@ailx/core": "workspace:*",
     "@ailx/instrument": "workspace:*",
     "@ailx/report": "workspace:*",

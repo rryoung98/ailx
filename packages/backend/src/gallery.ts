@@ -24,96 +24,29 @@
  *     unlisted or refused share is never returned by anything here.
  */
 
-import { parseSharePayload, type SharePayload } from "@ailx/report";
+import { parseSharePayload } from "@ailx/report";
+import {
+  FORBIDDEN_RESULT,
+  GALLERY_MAX_PAGE_SIZE,
+  PLAYER_TYPE_CODE_RE,
+  REJECT_REASON_MAX,
+  REVIEW_DECISIONS,
+  UNAUTHORIZED_RESULT,
+  clampInt,
+  parseGalleryQuery,
+  publicEntry,
+  type ApiResult,
+  type GalleryEntry,
+  type GalleryFacet,
+  type GalleryListing,
+  type GalleryQuery,
+  type GallerySort,
+  type HeaderMap,
+} from "@ailx/contract";
 import type { Queryable, QueryResultRow } from "./db.js";
-import type { HeaderMap } from "./auth.js";
-import { UNAUTHORIZED_RESULT, type ApiContext, type ApiResult } from "./handlers.js";
+import { type ApiContext } from "./handlers.js";
 import { StoreError } from "./store.js";
 import { PUBLICLY_SERVED, approveShare } from "./share.js";
-
-// ---------------------------------------------------------------------------
-// Shape
-// ---------------------------------------------------------------------------
-
-/**
- * One card. `id` is the share row's uuid: an opaque handle with NO capability
- * attached (reads key on the token digest, and the reviewer routes check the
- * caller, not the id), needed so the reviewer queue and the browse grid share
- * one shape.
- */
-export interface GalleryEntry {
-  id: string;
-  /** Capability token of the LISTED share, so the tile links to its view. */
-  token: string;
-  /** ISO stamp the entry was listed at (approval), or submitted at (queue). */
-  at: string;
-  /**
-   * The share's own FROZEN payload, carried whole rather than re-copied field
-   * by field. A gallery tile and a share view must show the same thing, and a
-   * new opt-in section must not need a second allowlist here to appear.
-   */
-  payload: SharePayload;
-  /** Who listed it: "auto:card" for a derived card, a human ref otherwise. */
-  approvedBy: string | null;
-}
-
-/** Player-type facet, so the filter UI shows real counts and never a dead option. */
-export interface GalleryFacet {
-  code: string;
-  name: string;
-  count: number;
-}
-
-export interface GalleryQuery {
-  /** Player-type code filter, e.g. "MSVD". */
-  type: string | null;
-  sort: GallerySort;
-  /** Only entries that carry a built site. */
-  withSite: boolean;
-  limit: number;
-  offset: number;
-}
-
-export const GALLERY_SORTS = ["recent", "oldest", "type"] as const;
-export type GallerySort = (typeof GALLERY_SORTS)[number];
-
-export interface GalleryListing {
-  entries: GalleryEntry[];
-  total: number;
-  facets: GalleryFacet[];
-  query: GalleryQuery;
-}
-
-/** Player-type codes are four letters, one per axis (@ailx/report AXES). */
-export const PLAYER_TYPE_CODE_RE = /^[MP][ST][VA][DE]$/;
-
-export const GALLERY_PAGE_SIZE = 24;
-export const GALLERY_MAX_PAGE_SIZE = 48;
-
-const clampInt = (value: unknown, min: number, max: number, fallback: number): number => {
-  const n = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, Math.trunc(n)));
-};
-
-/**
- * Normalize untrusted query input ONCE — the page and any JSON caller share
- * this, so a hostile `limit=1e9`, a negative offset or an injected sort key
- * cannot exist past this function.
- */
-export function parseGalleryQuery(raw: Record<string, string | undefined> = {}): GalleryQuery {
-  const type = raw.type !== undefined && PLAYER_TYPE_CODE_RE.test(raw.type) ? raw.type : null;
-  const sort = (GALLERY_SORTS as readonly string[]).includes(raw.sort ?? "")
-    ? (raw.sort as GallerySort)
-    : "recent";
-  return {
-    type,
-    sort,
-    withSite: raw.site === "1",
-    limit: clampInt(raw.limit, 1, GALLERY_MAX_PAGE_SIZE, GALLERY_PAGE_SIZE),
-    offset: clampInt(raw.offset, 0, Number.MAX_SAFE_INTEGER, 0),
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Reads
@@ -246,9 +179,6 @@ export async function listSubmissions(db: Queryable, limit = GALLERY_MAX_PAGE_SI
     .filter((e): e is GalleryEntry => e !== null);
 }
 
-/** Longest refusal reason stored. Long enough to be useful, not a document. */
-export const REJECT_REASON_MAX = 500;
-
 /**
  * REVIEWER action: refuse a submission, ON THE RECORD.
  *
@@ -287,19 +217,6 @@ export async function rejectSubmission(
 // Handlers
 // ---------------------------------------------------------------------------
 
-/**
- * GET /gallery data — public, unauthenticated, no per-person field in it.
- * `approvedBy` names the human who approved the listing, which is a fact for
- * the moderation dashboard and nobody else, so it is dropped here rather than
- * left to a renderer to omit.
- */
-export type PublicGalleryEntry = Omit<GalleryEntry, "approvedBy">;
-
-export function publicEntry(entry: GalleryEntry): PublicGalleryEntry {
-  const { approvedBy: _approvedBy, ...rest } = entry;
-  return rest;
-}
-
 export async function handleListGallery(
   ctx: ApiContext,
   raw: Record<string, string | undefined> = {},
@@ -319,9 +236,6 @@ export async function handleReviewQueue(
     body: { submissions: await listSubmissions(ctx.db) },
   }));
 }
-
-export const REVIEW_DECISIONS = ["approve", "reject"] as const;
-export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
 
 /**
  * Reviewer-only: decide one submission. The reviewer reference is the
@@ -415,11 +329,6 @@ export function isReviewer(
   if (typeof authRef !== "string" || authRef === "") return false;
   return reviewerRefs(env).has(authRef);
 }
-
-export const FORBIDDEN_RESULT: ApiResult = {
-  status: 403,
-  body: { error: { code: "forbidden", message: "reviewer access required" } },
-};
 
 /**
  * Auth + allowlist, server-side, for every reviewer surface. Note the order:

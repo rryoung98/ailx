@@ -15,7 +15,7 @@
  *
  * There is deliberately no "Open in v0" button: see V0_NOTE below.
  */
-import { DEFAULT_REPO_NAME } from "@ailx/backend";
+import { DEFAULT_REPO_NAME } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
 import { isServerMode } from "./mode";

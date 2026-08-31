@@ -19,7 +19,7 @@ import { withParticipant } from "../handlers.js";
 import { appendResponse, getAttempt, type AppendResult } from "../store.js";
 import type { Queryable } from "../db.js";
 import type { HeaderMap } from "../auth.js";
-import { T1_SITE_RESPONSE_KIND, canonicalSitePath, siteUrlPath } from "../site-url.js";
+import { T1_SITE_RESPONSE_KIND, canonicalSitePath, siteUrlPath } from "@ailx/contract";
 import { SnapshotError, type SnapshotErrorCode } from "./errors.js";
 import { SNAPSHOT_DIGEST_RE, snapshotFromZip } from "./snapshot.js";
 import type { SnapshotStore } from "./storage.js";

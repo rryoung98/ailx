@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { DEFAULT_REPO_NAME } from "@ailx/backend";
+import { DEFAULT_REPO_NAME } from "@ailx/contract";
 import {
   DEFAULT_EXPORT_REPO_NAME,
   V0_NOTE,

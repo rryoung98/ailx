@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { DEV_USER_HEADER, FORBIDDEN_RESULT, type ModerationCaseDetail, type ModerationComment } from "@ailx/backend";
+import { DEV_USER_HEADER, FORBIDDEN_RESULT, type ModerationCaseDetail, type ModerationComment } from "@ailx/contract";
 import { sharePayloadFrom } from "@ailx/report";
 import {
   installMemoryStorage,

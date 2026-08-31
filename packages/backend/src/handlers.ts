@@ -6,6 +6,7 @@
  */
 
 import type { TrackId } from "@ailx/session";
+import { UNAUTHORIZED_RESULT, type ApiResult } from "@ailx/contract";
 import type { Instrument, RedactedItem } from "@ailx/instrument";
 import type { Queryable } from "./db.js";
 import type { AuthProvider, HeaderMap } from "./auth.js";
@@ -22,6 +23,14 @@ import {
   type InstrumentRef,
   type TranscriptVerb,
 } from "./store.js";
+
+/**
+ * Re-exported so a server call site keeps ONE import. Both are defined in
+ * @ailx/contract: the envelope and the frozen 401 body are what an adapter
+ * that authenticates BEFORE the handler runs (apps/web `apiRoute` must know
+ * the caller before it buffers a body) has to reproduce byte for byte.
+ */
+export { UNAUTHORIZED_RESULT, type ApiResult };
 
 /** Instrument an attempt is created against when the client names none. */
 export const DEFAULT_INSTRUMENT: InstrumentRef = {
@@ -45,11 +54,6 @@ export interface ApiContext {
   instrument?: Instrument;
 }
 
-export interface ApiResult {
-  status: number;
-  body: Record<string, unknown>;
-}
-
 const STATUS_BY_CODE = {
   bad_request: 400,
   not_found: 404,
@@ -63,18 +67,19 @@ function errorResult(code: keyof typeof STATUS_BY_CODE | "unauthorized", message
 }
 
 /**
- * The single 401 body. Adapters that authenticate BEFORE the handler runs
- * (apps/web `apiRoute` must know the caller before it buffers a body) reuse
- * it, so a pre-handler rejection is byte-identical to a handler one.
+ * Auth + participant projection + StoreError mapping — shared with ./t1/.
+ *
+ * Generic in the SUCCESS type only: every rejection this wrapper can produce
+ * is an ApiResult (401, or a mapped StoreError), so a handler that answers
+ * with something else — the T1 export answers with ZIP bytes — still gets its
+ * failures in the one shape every adapter already knows how to serialize.
+ * `T` defaults to ApiResult, so the JSON handlers below are unchanged.
  */
-export const UNAUTHORIZED_RESULT: ApiResult = errorResult("unauthorized", "authentication required");
-
-/** Auth + participant projection + StoreError mapping — shared with ./t1/. */
-export async function withParticipant(
+export async function withParticipant<T = ApiResult>(
   ctx: ApiContext,
   headers: HeaderMap,
-  fn: (participantId: string) => Promise<ApiResult>,
-): Promise<ApiResult> {
+  fn: (participantId: string) => Promise<T | ApiResult>,
+): Promise<T | ApiResult> {
   const identity = await ctx.auth.verify(headers);
   if (identity === null) return UNAUTHORIZED_RESULT;
   try {

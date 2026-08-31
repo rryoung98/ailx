@@ -22,6 +22,11 @@
  */
 import { project, type SequencedEntry } from "@ailx/session";
 import {
+  siteUrlPath,
+  type CredentialRecord,
+  type OwnerCredential,
+} from "@ailx/contract";
+import {
   CREDENTIAL_CODE_RE,
   buildCredentialClaim,
   candidateComposite,
@@ -30,16 +35,12 @@ import {
   linkedInCertification,
   parseCredentialClaim,
   verifyUrlPath,
-  type CredentialClaim,
-  type CredentialState,
-  type LinkedInCertification,
 } from "@ailx/report";
 import type { Queryable, QueryResultRow } from "./db.js";
 import type { HeaderMap } from "./auth.js";
 import { withParticipant, type ApiContext, type ApiResult } from "./handlers.js";
 import { StoreError, getAttempt } from "./store.js";
 import { attemptSiteDigest } from "./share.js";
-import { siteUrlPath } from "./site-url.js";
 
 /** Bytes drawn per code — one per character of the four four-char groups. */
 export const CREDENTIAL_CODE_BYTES = 16;
@@ -59,11 +60,6 @@ export function newCredentialCode(instrumentVersion: string): string {
   const bytes = new Uint8Array(CREDENTIAL_CODE_BYTES);
   globalThis.crypto.getRandomValues(bytes);
   return formatCredentialCode(instrumentVersion, bytes);
-}
-
-export interface CredentialRecord extends CredentialState {
-  id: string;
-  claim: CredentialClaim;
 }
 
 const iso = (v: unknown): string | null =>
@@ -213,12 +209,6 @@ export async function resolveCredential(
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
-
-/** What the OWNER is shown: the record, plus the metadata they must paste. */
-export interface OwnerCredential extends CredentialRecord {
-  verifyPath: string;
-  linkedIn: LinkedInCertification;
-}
 
 /**
  * The owner's view. `origin` is the public origin the app resolved; the

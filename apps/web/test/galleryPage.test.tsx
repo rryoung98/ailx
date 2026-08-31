@@ -12,7 +12,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { parseGalleryQuery, type GalleryEntry, type GalleryListing } from "@ailx/backend";
+import { parseGalleryQuery, type GalleryEntry, type GalleryListing } from "@ailx/contract";
 import { ALL_SHARE_SECTIONS, sharePayloadFrom, type SharePayload } from "@ailx/report";
 import {
   renderClient,

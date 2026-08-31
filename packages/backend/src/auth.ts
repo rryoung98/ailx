@@ -6,13 +6,15 @@
  * providers can never collide.
  */
 
+import { DEV_USER_COOKIE, DEV_USER_HEADER, type HeaderMap } from "@ailx/contract";
+
+/** Re-exported so a server call site keeps ONE import. Defined in @ailx/contract. */
+export { DEV_USER_COOKIE, DEV_USER_HEADER, type HeaderMap };
+
 export interface AuthContext {
   /** Provider-scoped stable identity, stored in participants.auth_ref. */
   authRef: string;
 }
-
-/** Lower-cased header map — framework-agnostic (Fetch Headers, node, tests). */
-export type HeaderMap = Readonly<Record<string, string | undefined>>;
 
 export interface AuthProvider {
   readonly name: string;
@@ -20,20 +22,6 @@ export interface AuthProvider {
   verify(headers: HeaderMap): Promise<AuthContext | null>;
 }
 
-export const DEV_USER_HEADER = "x-ailx-dev-user";
-
-/**
- * Cookie twin of `DEV_USER_HEADER`, carrying the SAME asserted id. A header
- * can only ride on a `fetch()` the app itself makes; a server-rendered PAGE
- * is reached by an ordinary document navigation, which carries cookies and
- * nothing else. Without this, `/progress` could never know who the browser
- * is and told every visitor "we do not know who you are".
- *
- * This is a dev-auth convenience, not a session: it is still asserted, never
- * proven, and it is only ever read by `DevAuthProvider`. Clerk remains the
- * real answer anywhere real participants can reach (see docs/DEPLOY.md).
- */
-export const DEV_USER_COOKIE = "ailx_dev_user";
 const DEV_USER_RE = /^[A-Za-z0-9_.@-]{1,64}$/;
 
 /** One value out of a raw `Cookie:` header. Unknown/duplicate names ignored. */

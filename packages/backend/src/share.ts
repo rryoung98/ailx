@@ -35,8 +35,17 @@ import type { Queryable, QueryResultRow } from "./db.js";
 import type { HeaderMap } from "./auth.js";
 import { withParticipant, type ApiContext, type ApiResult } from "./handlers.js";
 import { StoreError, getAttempt } from "./store.js";
-import { T1_SITE_RESPONSE_KIND, siteUrlPath } from "./site-url.js";
-import { SHARE_TOKEN_BYTES, SHARE_TOKEN_RE, type ShareStatus } from "./share-url.js";
+import {
+  SHARE_TOKEN_BYTES,
+  SHARE_TOKEN_RE,
+  T1_SITE_RESPONSE_KIND,
+  needsHumanApproval,
+  siteUrlPath,
+  type OwnerShare,
+  type PublishResult,
+  type ShareRecord,
+  type ShareStatus,
+} from "@ailx/contract";
 
 // ---------------------------------------------------------------------------
 // Token
@@ -63,33 +72,6 @@ export function newShareToken(): string {
 // ---------------------------------------------------------------------------
 // Records
 // ---------------------------------------------------------------------------
-
-export interface ShareRecord {
-  id: string;
-  status: ShareStatus;
-  /**
-   * The capability token. Returned to the OWNER (so they can re-copy their
-   * link) and carried on PUBLISHED gallery entries (which their owner chose
-   * to make public); never on the anonymous `/api/share/:token` read.
-   */
-  token: string;
-  /** Who approved publication: "auto:card", a human approver ref, or null. */
-  approvedBy: string | null;
-  /** True when a HUMAN must approve before this may be publicly listed. */
-  needsHumanApproval: boolean;
-  createdAt: string;
-  revokedAt: string | null;
-  submittedAt: string | null;
-  approvedAt: string | null;
-  /** The named human who refused publication, or null. */
-  rejectedBy: string | null;
-  rejectedAt: string | null;
-  /** Why it was refused, shown verbatim to the candidate. */
-  rejectReason: string | null;
-  /** Anonymous view count (day-granular rows; no visitor identity exists). */
-  views: number;
-  payload: SharePayload;
-}
 
 const iso = (v: unknown): string | null => (v == null ? null : new Date(v as string | Date).toISOString());
 
@@ -312,30 +294,6 @@ export async function resolveShare(
 export const AUTO_APPROVER = "auto:card";
 
 /**
- * Does entering the PUBLIC gallery need a human?
- *
- * Derived from the STORED payload — never from a request field, so no client
- * can talk its way past the gate:
- *  - a player-type card is a derived figure over four aggregate numbers, with
- *    no candidate-authored bytes in it: auto-publish;
- *  - a share carrying the candidate's built SITE hosts arbitrary user HTML on
- *    our origin, which is exactly what spec §12's approval-required gallery
- *    rule exists for: a human approves it or it stays unpublished;
- *  - a share carrying the candidate's own NOTE puts authored text on a public
- *    wall. It is escaped and length-capped, so it is not an XSS question — it
- *    is a moderation question, and the same human answers it.
- */
-export function needsHumanApproval(payload: { site: string | null; note?: string | null }): boolean {
-  return payload.site !== null || (payload.note ?? null) !== null;
-}
-
-export interface PublishResult {
-  status: ShareStatus;
-  /** True when the caller must now wait for a human approver. */
-  awaitingApproval: boolean;
-}
-
-/**
  * Candidate action: put this share into the public gallery queue. A card is
  * published in the same statement it is submitted; a share with a site stops
  * at `submitted` and no candidate-reachable path can move it further.
@@ -430,8 +388,6 @@ export async function handleCreateShare(
  * it (docs/SHARING.md §7.3). Redacting in the shape rather than in the
  * renderer means a future page cannot re-leak it by accident.
  */
-export type OwnerShare = Omit<ShareRecord, "approvedBy" | "rejectedBy">;
-
 export function ownerShareView(share: ShareRecord): OwnerShare {
   const { approvedBy: _approvedBy, rejectedBy: _rejectedBy, ...rest } = share;
   return rest;

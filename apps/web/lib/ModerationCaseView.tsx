@@ -17,7 +17,7 @@
  */
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import type { ModerationCaseDetail } from "@ailx/backend";
+import type { ModerationCaseDetail } from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { ModeratorThread } from "./Moderation";
 import { PageError, PageLoading } from "./PageNotice";

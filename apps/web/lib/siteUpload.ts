@@ -3,7 +3,7 @@
  *
  * In server mode the submitted T1 artifact (a single self-contained HTML
  * document) is packaged as a store-only ZIP and uploaded, yielding a live,
- * sandboxed, content-addressed URL (see siteUrlPath in @ailx/backend). The ZIP writer is
+ * sandboxed, content-addressed URL (see siteUrlPath in @ailx/contract). The ZIP writer is
  * deliberately deterministic (store method, zeroed timestamps): the same
  * document always produces the same bytes, so the same digest — which makes
  * accidental resubmits idempotent replays server-side instead of 409s.
@@ -14,7 +14,7 @@
 import { writeStoredZip, type ZipFile } from "@ailx/core";
 import { isServerMode } from "./mode";
 import type { StorageLike } from "@ailx/session";
-import { canonicalSitePath, siteUrlPath } from "@ailx/backend";
+import { canonicalSitePath, siteUrlPath } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import {
   browserApiOptions,

@@ -15,7 +15,7 @@ import {
   type T1ApiContext,
 } from "../src/t1/handlers.js";
 import { MemorySnapshotStore } from "../src/t1/storage.js";
-import { canonicalSitePath, siteUrlPath } from "../src/site-url.js";
+import { siteUrlPath } from "@ailx/contract";
 import { snapshotFromZip } from "../src/t1/snapshot.js";
 import { freshDb, openAttempt } from "./helpers.js";
 import { buildZip, siteZip } from "./t1-fixtures.js";
@@ -325,32 +325,6 @@ describe("one-submission-per-attempt is a DB constraint", () => {
     expect(raced.status).toBe(200);
     expect((raced.body.submission as Record<string, unknown>).created).toBe(false);
     expect(await siteRows(attemptId)).toHaveLength(1);
-  });
-});
-
-describe("site URL convention", () => {
-  const DIGEST = `sha256:${"a".repeat(64)}`;
-
-  it("canonicalises only directory-ish paths", () => {
-    expect(canonicalSitePath("")).toBe("index.html");
-    expect(canonicalSitePath("/")).toBe("/index.html");
-    expect(canonicalSitePath("sub/")).toBe("sub/index.html");
-    expect(canonicalSitePath("index.html")).toBe("index.html");
-    expect(canonicalSitePath("sub/index.html")).toBe("sub/index.html");
-    expect(canonicalSitePath("assets/app.js")).toBe("assets/app.js");
-  });
-
-  it("is a fixed point — canonicalising twice cannot start a redirect loop", () => {
-    for (const p of ["", "/", "sub/", "index.html", "assets/app.js"]) {
-      const once = canonicalSitePath(p);
-      expect(canonicalSitePath(once)).toBe(once);
-    }
-  });
-
-  it("builds the canonical live URL, honouring a basePath-prefixed API root", () => {
-    expect(siteUrlPath(DIGEST)).toBe(`/api/site/${DIGEST}/index.html`);
-    expect(siteUrlPath(DIGEST, "/ailx/api")).toBe(`/ailx/api/site/${DIGEST}/index.html`);
-    expect(siteUrlPath(DIGEST).endsWith("/")).toBe(false);
   });
 });
 

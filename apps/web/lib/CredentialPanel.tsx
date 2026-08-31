@@ -20,7 +20,7 @@
  * and this component renders nothing (FRONTEND.md §2.3.4).
  */
 import { useCallback, useEffect, useState } from "react";
-import type { OwnerCredential } from "@ailx/backend";
+import type { OwnerCredential } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import { CREDENTIAL_LIMITS, linkedInAddUrl } from "@ailx/report";
 import { basePath, isServerMode } from "./mode";

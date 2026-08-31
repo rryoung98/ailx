@@ -12,7 +12,7 @@
  */
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { REJECT_REASON_MAX } from "@ailx/backend";
+import { REJECT_REASON_MAX } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import { apiBase } from "./mode";
 

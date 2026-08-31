@@ -12,16 +12,13 @@
 
 import { createHash } from "node:crypto";
 import { canonicalJson } from "@ailx/core";
+import { T1_LIMITS } from "@ailx/contract";
 import { SnapshotError } from "./errors.js";
 import { readZip } from "./zip.js";
 
-/** Spec §12 caps. */
-export const T1_LIMITS = {
-  maxTotalBytes: 25 * 1024 * 1024,
-  maxFiles: 500,
-  maxFileBytes: 10 * 1024 * 1024,
-  maxPathLength: 512,
-} as const;
+/** Spec §12 caps. Defined in @ailx/contract (the browser enforces the same
+ * numbers before it uploads); re-exported so `./t1` keeps one spelling. */
+export { T1_LIMITS };
 
 /**
  * Extension allowlist AND the content type served for each — one table so the

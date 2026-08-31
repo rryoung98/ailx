@@ -9,7 +9,8 @@
  * only ever read by DevAuthProvider (Clerk remains the real answer).
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import { DEV_USER_COOKIE, DevAuthProvider } from "@ailx/backend";
+import { DevAuthProvider } from "@ailx/backend";
+import { DEV_USER_COOKIE } from "@ailx/contract";
 import { DEV_USER_KEY, clearDevUser, devUser } from "../lib/persistence";
 
 /** This vitest/jsdom combo exposes no storage (see

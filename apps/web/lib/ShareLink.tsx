@@ -19,7 +19,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/backend";
+import { needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import {
   DEFAULT_SHARE_SECTIONS,

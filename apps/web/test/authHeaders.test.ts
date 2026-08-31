@@ -7,7 +7,8 @@
  * §10.2): the switch has to be atomic, so the half that does not need a
  * provider ships first, dormant, with its edge cases already pinned.
  */
-import { DEV_USER_COOKIE, DEV_USER_HEADER, DevAuthProvider } from "@ailx/backend";
+import { DevAuthProvider } from "@ailx/backend";
+import { DEV_USER_COOKIE, DEV_USER_HEADER } from "@ailx/contract";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   DEV_USER_KEY,

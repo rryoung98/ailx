@@ -26,6 +26,9 @@ importers:
       '@ailx/backend':
         specifier: workspace:*
         version: link:../../packages/backend
+      '@ailx/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
       '@ailx/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -102,6 +105,9 @@ importers:
 
   packages/backend:
     dependencies:
+      '@ailx/contract':
+        specifier: workspace:*
+        version: link:../contract
       '@ailx/core':
         specifier: workspace:*
         version: link:../core
@@ -139,6 +145,22 @@ importers:
       yaml:
         specifier: ^2.6.0
         version: 2.9.0
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)
+
+  packages/contract:
+    dependencies:
+      '@ailx/report':
+        specifier: workspace:*
+        version: link:../report
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

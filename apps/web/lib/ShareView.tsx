@@ -19,7 +19,7 @@
  */
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { shareUrlPath } from "@ailx/backend";
+import { shareUrlPath } from "@ailx/contract";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "./CharacterPortrait";

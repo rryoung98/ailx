@@ -29,7 +29,7 @@
  * is the candidate's, the marking is not.
  */
 
-import { DEFAULT_REPO_NAME, siteUrlPath } from "../site-url.js";
+import { DEFAULT_REPO_NAME, siteUrlPath } from "@ailx/contract";
 import type { SnapshotFile } from "./snapshot.js";
 
 /** The single OAuth scope this feature asks for. See the module note. */

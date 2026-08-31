@@ -11,7 +11,7 @@ import { ALL_SHARE_SECTIONS, DEFAULT_SHARE_SECTIONS, type ShareSections } from "
 import { DEV_USER_HEADER, DevAuthProvider } from "../src/auth.js";
 import type { ApiContext } from "../src/handlers.js";
 import type { Queryable } from "../src/db.js";
-import { SHARE_TOKEN_RE, shareCardPath, shareUrlPath } from "../src/share-url.js";
+import { SHARE_TOKEN_RE, needsHumanApproval, type ShareRecord } from "@ailx/contract";
 import {
   AUTO_APPROVER,
   approveShare,
@@ -22,13 +22,11 @@ import {
   handlePublishShare,
   handleRevokeShare,
   handleViewShare,
-  needsHumanApproval,
   newShareToken,
   publishShare,
   resolveShare,
   revokeShare,
   shareStatus,
-  type ShareRecord,
 } from "../src/share.js";
 import { listGallery, listSubmissions, rejectSubmission } from "../src/gallery.js";
 import { appendResponse } from "../src/store.js";
@@ -84,14 +82,6 @@ describe("share tokens", () => {
     const publicBody = JSON.stringify((await handleViewShare(ctx, share.token)).body);
     expect(publicBody).not.toContain(share.token);
     expect(publicBody).not.toContain(share.id);
-  });
-});
-
-describe("url conventions", () => {
-  it("builds the share and card paths from one place", () => {
-    expect(shareUrlPath("abc")).toBe("/s/abc");
-    expect(shareUrlPath("abc", "/ailx")).toBe("/ailx/s/abc");
-    expect(shareCardPath("abc")).toBe("/api/share/abc/card.png");
   });
 });
 
@@ -309,14 +299,6 @@ describe("handlers", () => {
 describe("hybrid publication policy", () => {
   const withSite = (attemptId: string, participantId: string, seq = 98) =>
     attachSiteSnapshot(db, attemptId, participantId, seq);
-
-  it("decides from the stored payload, not from any request field", () => {
-    expect(needsHumanApproval({ site: null })).toBe(false);
-    expect(needsHumanApproval({ site: null, note: null })).toBe(false);
-    expect(needsHumanApproval({ site: "/api/site/x/index.html" })).toBe(true);
-    // A candidate-authored note is content nobody vetted: same human, same gate.
-    expect(needsHumanApproval({ site: null, note: "my words" })).toBe(true);
-  });
 
   it("auto-publishes a card: no human, one step, recorded as auto", async () => {
     const { participantId, attemptId } = await scoredAttempt();

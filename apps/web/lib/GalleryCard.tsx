@@ -11,8 +11,8 @@
  * the view serves the same payload the tile shows, and revoking kills both.
  */
 import Link from "next/link";
-import type { GalleryEntry } from "@ailx/backend";
-import { shareUrlPath } from "@ailx/backend";
+import type { GalleryEntry } from "@ailx/contract";
+import { shareUrlPath } from "@ailx/contract";
 import { shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait } from "./CharacterPortrait";

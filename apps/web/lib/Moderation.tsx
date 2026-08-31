@@ -23,7 +23,7 @@ import {
   type CandidateComment,
   type CandidateThread as Thread,
   type ModerationComment,
-} from "@ailx/backend";
+} from "@ailx/contract";
 import { apiBase, isServerMode } from "./mode";
 import { authHeaders } from "./authHeaders";
 import { browserApiOptions, getServerAttemptId } from "./persistence";

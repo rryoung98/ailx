@@ -27,7 +27,7 @@
  */
 import Link from "next/link";
 import { notFound, useSearchParams } from "next/navigation";
-import { CASE_LANES, type CaseLane, type CaseListing, type ModerationCase } from "@ailx/backend";
+import { CASE_LANES, type CaseLane, type CaseListing, type ModerationCase } from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { PageError, PageLoading } from "./PageNotice";
 import { ReviewActions } from "./ReviewActions";

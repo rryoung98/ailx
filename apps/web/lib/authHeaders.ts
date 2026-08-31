@@ -19,7 +19,7 @@
  * weaken that: this module only ever ADDS a header, and the cookie is only
  * ever overwritten from localStorage, never read back into it.
  */
-import { DEV_USER_COOKIE, DEV_USER_HEADER } from "@ailx/backend";
+import { DEV_USER_COOKIE, DEV_USER_HEADER } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 
 export const DEV_USER_KEY = "ailx:dev-user";

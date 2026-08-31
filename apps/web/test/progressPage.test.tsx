@@ -24,7 +24,7 @@ import {
   type SittingPoint,
 } from "@ailx/report";
 import { TRACK_IDS, type TrackRawScores } from "@ailx/session";
-import { DEV_USER_HEADER } from "@ailx/backend";
+import { DEV_USER_HEADER } from "@ailx/contract";
 import {
   installMemoryStorage,
   renderClient,

@@ -15,7 +15,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { FORBIDDEN_RESULT, DEV_USER_HEADER, parseCaseQuery, type CaseListing, type ModerationCase } from "@ailx/backend";
+import { FORBIDDEN_RESULT, DEV_USER_HEADER, parseCaseQuery, type CaseListing, type ModerationCase } from "@ailx/contract";
 import { sharePayloadFrom } from "@ailx/report";
 import {
   installMemoryStorage,

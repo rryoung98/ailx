@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { SITE_INDEX, siteUrlPath } from "@ailx/backend";
+import { SITE_INDEX, siteUrlPath } from "@ailx/contract";
 import { BlobSnapshotStore, FsSnapshotStore, snapshotFromZip } from "@ailx/backend/t1";
 import { buildSiteZip } from "../lib/siteUpload";
 import {
@@ -81,6 +81,50 @@ describe("route registration", () => {
     expect(src).toContain('searchParams.get("seq")');
     expect(src).toContain("x-ailx-client-ts");
     expect(src).toContain("getSnapshotStore()");
+  });
+
+  /**
+   * The export routes are the offboarding ramp (docs/FUTURE-TRACKS.md). They
+   * must go through `apiRoute` like every other authenticated route: it
+   * authenticates BEFORE anything else happens, so a stranger cannot make the
+   * server read a snapshot or spend our GitHub rate limit. The export route
+   * answers with bytes, which is why `apiRoute` accepts a raw Response.
+   */
+  it("export routes authenticate through apiRoute and take one storage seam", () => {
+    for (const rel of [
+      "attempts/[id]/site/export",
+      "attempts/[id]/site/github",
+      "attempts/[id]/site/github/start",
+    ]) {
+      const src = routeSource(rel);
+      expect(src, rel).toContain("apiRoute(");
+      expect(src, rel).toContain("getSnapshotStore()");
+      expect(src, rel).not.toContain("withApiContext");
+    }
+    const exportSrc = routeSource("attempts/[id]/site/export");
+    expect(exportSrc).toContain("handleExportSite");
+    // Headers are the backend's, so both hosts serve the download identically.
+    expect(exportSrc).toContain("siteExportHeaders");
+  });
+
+  /**
+   * The README's live link names THIS deployment. A caller-supplied origin
+   * would end up in a file pushed to the candidate's public repository.
+   */
+  it("github route resolves the public origin server-side", () => {
+    const src = routeSource("attempts/[id]/site/github");
+    expect(src).toContain("handleGithubExport");
+    expect(src).toContain("requestOrigin(req)");
+    // Spread FIRST, override after: a `publicOrigin` in the body cannot win.
+    expect(src.indexOf("...(typeof body")).toBeLessThan(src.lastIndexOf("publicOrigin"));
+    expect(routeSource("attempts/[id]/site/github/start")).toContain("handleGithubExportStart");
+  });
+
+  /** The one GitHub credential is read where every other env var is read. */
+  it("github routes take the client id from githubClientId(process.env)", () => {
+    for (const rel of ["attempts/[id]/site/github", "attempts/[id]/site/github/start"]) {
+      expect(routeSource(rel), rel).toContain("githubClientId(process.env)");
+    }
   });
 });
 

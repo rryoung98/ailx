@@ -16,6 +16,10 @@ import {
   FORBIDDEN_RESULT,
   GALLERY_MAX_PAGE_SIZE,
   GALLERY_PAGE_SIZE,
+  REJECT_REASON_MAX,
+  parseGalleryQuery,
+} from "@ailx/contract";
+import {
   galleryFacets,
   handleListGallery,
   handleReviewDecision,
@@ -23,8 +27,6 @@ import {
   isReviewer,
   listGallery,
   listSubmissions,
-  REJECT_REASON_MAX,
-  parseGalleryQuery,
   rejectSubmission,
   reviewerRefs,
 } from "../src/gallery.js";
@@ -35,8 +37,8 @@ import {
   publishShare,
   resolveShare,
   revokeShare,
-  type ShareRecord,
 } from "../src/share.js";
+import type { ShareRecord } from "@ailx/contract";
 import { DEFAULT_SHARE_SECTIONS } from "@ailx/report";
 import { attachSiteSnapshot, freshDb, scoredAttempt } from "./helpers.js";
 
