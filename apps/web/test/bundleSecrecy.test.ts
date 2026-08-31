@@ -184,10 +184,21 @@ interface OperationalCriterion {
   description?: string;
 }
 
+/**
+ * A band anchor: the prose that tells a marker what "distinction" looks like.
+ * `buildSnapshot(..., { public: true })` drops the whole array, because an
+ * anchor is the mark scheme written out — read four of them and you know what
+ * to write. Guarded here for the same reason the criterion `description` is.
+ */
+interface OperationalBandAnchor {
+  band: string;
+  anchor?: string;
+}
+
 interface OperationalTrack {
   trackId: string;
   config: Record<string, unknown>;
-  rubric?: { criteria?: OperationalCriterion[] };
+  rubric?: { criteria?: OperationalCriterion[]; band_anchors?: OperationalBandAnchor[] };
   prompts?: OperationalPrompt[];
 }
 
@@ -195,7 +206,12 @@ interface OperationalSnapshot {
   instrument: { tracks: OperationalTrack[] };
 }
 
-/** Judged tracks. T2 is keyed content and is covered by the bank scan above. */
+/**
+ * Tracks whose PROMPTS and dealt form are marking material. T2's answer key is
+ * the keyed item, covered by the bank scan above, and T2 publishes no judge
+ * prompt — but its RUBRIC marking detail is withheld exactly like theirs, so
+ * the rubric scan below deliberately runs over every track.
+ */
 const JUDGED_TRACKS = ["t1-creative-build", "t3-reasoning", "t4-generative"];
 
 /** Lines that survive the bundle's escaping and are long enough to be unique. */
@@ -235,6 +251,19 @@ interface Needle {
 function markingNeedles(snap: OperationalSnapshot): Needle[] {
   const out: Needle[] = [];
   for (const track of snap.instrument.tracks) {
+    // Rubric MARKING detail, for EVERY track — the public view strips it from
+    // all four, so all four are guarded. The points allocation is published
+    // (spec §14); the per-criterion description is how a judge is told to
+    // mark, and a band anchor is that mark scheme spelled out per grade.
+    for (const c of track.rubric?.criteria ?? []) {
+      const value = pickNeedle(c.description ?? "", [c.description ?? ""]);
+      if (value !== undefined) out.push({ label: `${track.trackId} rubric ${c.id}`, value });
+    }
+    for (const a of track.rubric?.band_anchors ?? []) {
+      const value = pickNeedle(a.anchor ?? "", [a.anchor ?? ""]);
+      if (value !== undefined) out.push({ label: `${track.trackId} band ${a.band}`, value });
+    }
+
     if (!JUDGED_TRACKS.includes(track.trackId)) continue;
 
     // (a) judge prompts, every locale.
@@ -242,13 +271,6 @@ function markingNeedles(snap: OperationalSnapshot): Needle[] {
     for (const prompt of track.prompts ?? []) {
       const value = pickNeedle(prompt.content, bodies);
       if (value !== undefined) out.push({ label: `${track.trackId} ${prompt.filename}`, value });
-    }
-
-    // Rubric MARKING detail. The points allocation is published (spec §14);
-    // the per-criterion description is how a judge is told to mark.
-    for (const c of track.rubric?.criteria ?? []) {
-      const value = pickNeedle(c.description ?? "", [c.description ?? ""]);
-      if (value !== undefined) out.push({ label: `${track.trackId} rubric ${c.id}`, value });
     }
 
     // (b) operational T3 planted errors: the claim IS the key, the truth is
@@ -386,6 +408,31 @@ describe("no operational answer key reaches a built client bundle", () => {
       expect(prompts.length).toBeGreaterThanOrEqual(9);
       const labels = new Set(MARKING_NEEDLES.map((n) => n.label));
       for (const p of prompts) expect(labels.has(p), `no needle for ${p}`).toBe(true);
+    });
+
+    it("covers every rubric description and band anchor, in every track", () => {
+      // The public view strips both from all four tracks. A needle set that
+      // silently missed one would let the next regression ship.
+      const labels = new Set(MARKING_NEEDLES.map((n) => n.label));
+      let described = 0;
+      let anchored = 0;
+      for (const track of OPERATIONAL.instrument.tracks) {
+        for (const c of track.rubric?.criteria ?? []) {
+          if ((c.description ?? "").length < MIN_NEEDLE_CHARS) continue;
+          described += 1;
+          expect(labels.has(`${track.trackId} rubric ${c.id}`), `no needle for ${c.id}`).toBe(true);
+        }
+        for (const a of track.rubric?.band_anchors ?? []) {
+          if ((a.anchor ?? "").length < MIN_NEEDLE_CHARS) continue;
+          anchored += 1;
+          expect(labels.has(`${track.trackId} band ${a.band}`), `no needle for ${a.band}`).toBe(
+            true,
+          );
+        }
+      }
+      // 4 tracks x 3-4 criteria, and 4 bands on each of the four rubrics.
+      expect(described).toBeGreaterThanOrEqual(15);
+      expect(anchored).toBeGreaterThanOrEqual(16);
     });
 
     it("every needle survives the bundle's escaping", () => {
