@@ -64,6 +64,44 @@ applies here — we measure the run, we do not become the runtime.
   validated, stored, hosted, recomputable.
 - The gap is trajectory capture and verification, not artifact handling.
 
+## Candidates, ranked — and why eval design leads
+
+A 2026-08-30 sweep of what this audience actually does with AI turned up three tasks the
+four tracks do not reach. Ranked by what it would cost to close them.
+
+**1. Injection detection — a T2 item family, not a track, and cheap.** The authored corpus
+already has a `message-hostility` family, but every one of its items is phishing aimed at
+a PERSON: fake bank alert, CEO wire request, credential harvest. No item asks whether a
+document was written to deceive the MODEL the candidate is about to hand it to. That is
+the skill this audience needs, and the evidence is concrete: a study of roughly 200,000
+real resumes found hidden injections in about 1% of them, and more than 90% of the hidden
+content was DATA injection (false facts that change what the model concludes) rather than
+prompt injection (instructions that change what it does). Those are two item families, not
+one. Authoring them needs no new runner, no new scorer and no new track.
+
+**2. Where the check belongs — a T3 rubric dimension, not a track.** T3 already seeds
+`fabricated-citation` and `wrong-calculation` errors, and measures an individual catching
+a planted one. Deloitte Australia returned part of a $290,000 fee for a client report
+whose citations and quotes were fabricated by an Azure OpenAI agent; the reported root
+cause was not one missed citation but the ABSENCE of a two-person check on citation claims
+and of a structured review step for numerical assertions. Nobody is currently measured on
+where a verification checkpoint belongs in a workflow. That is a rubric dimension.
+
+**3. Eval design — the leading fifth-track candidate for 2027, ahead of the long-horizon
+agentic run above.** `docs/POSITIONING.md` names eval-harness discipline as the
+differentiator, and AILX tests no version of it: writing the scenarios before the agent is
+useful, covering the production range and its edges, watching pass rate the way latency is
+watched, catching what broke when something else was fixed. It leads the agentic run for
+one reason — hard problem 2 (proving the agent ran as claimed) does not apply. A harness is
+an ARTEFACT: submitted and inspected, like a T1 submission.
+
+Its own hard problem, stated up front: **scoring a harness properly means RUNNING it, and
+spec §12 forbids running candidate code on our infrastructure.** T1 escapes this because a
+static ZIP is never executed; an eval harness is meaningful only when executed. Solve that
+before scheduling the track — by scoring the harness by inspection against a rubric, or by
+running it against a fixed model stub inside the same sandbox discipline `score()` already
+has, or not at all.
+
 ## Cadence: challenges are researched and updated quarterly
 
 The four tracks are not a fixed structure. Every quarter, research feeds an update to the
