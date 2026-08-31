@@ -9,8 +9,8 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 - `packages/report/` — pure scoring-adjacent derivation: composite, insights, calibration, export tiers, demo judging, track metadata
 - `packages/tracks/` — t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
 - `packages/session/` — event-sourced session engine
-- `instruments/2026.1/` — content-as-data: manifest, rubrics, judge prompts, item banks (84 operational T2 items)
-- `instruments/demo-2026.1/` — PUBLIC released-practice tier for the static demo: 20 T2 items whose keys/rationales are published on purpose, no score of record. Rubrics/prompts are symlinks into `2026.1/`; regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`
+- `instruments/demo-2026.1/` — the ONLY instrument in this repo. PUBLIC released-practice tier for the static demo: 20 T2 items whose keys/rationales are published on purpose, no score of record. Self-contained and REDACTED — `manifest.yaml` sets `redacted: true`, and the content-tools loader refuses the package if a rubric `description`, a `band_anchors` block or a `prompts/` directory ever appears. Regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`
+- The OPERATIONAL tier (`instruments/2026.1`: 84 keyed T2 items, T1/T3/T4 judge prompts, rubric marking detail, the T1/T3/T4 `form.json` files) lives in the PRIVATE backend repo and must never be added here. `packages/content-tools/test/public-tree.test.ts` fails the build if it comes back
 - `instruments/characters/2026.1/` — the sixteen player-type characters (art direction, prompts, vetting ledger); assets ship in `apps/web/public/characters/`
 - `db/schema.sql` — Postgres schema (append-only responses; scores superseded, never updated)
 - `services/` — openrouter-proxy
@@ -79,6 +79,13 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
   injects it when a Blob store is linked). `AILX_SNAPSHOT_BLOB_PREFIX`
   (default `t1`) namespaces one bucket across deployments.
 - `AILX_SNAPSHOT_DIR` — T1 snapshot filesystem root for `fs` (default `<cwd>/.ailx-snapshots`).
+- `AILX_GITHUB_CLIENT_ID` — GitHub OAuth **app client id** for the T1 artifact export
+  ("Put it on GitHub"). Device flow, so there is NO client secret to hold and no redirect
+  URI to register; the id is public by design, as it is for a CLI. The one scope requested
+  is `public_repo` — enough to create a public repository and push to it, and nothing at
+  all over private repositories. Unset (the default) the GitHub and Vercel rungs answer
+  501 and the export panel offers Download only. See `docs/FUTURE-TRACKS.md`
+  "The offboarding ramp".
 - `NEXT_PUBLIC_AILX_API_BASE` — the exam service's absolute origin (Cloud Run). Set it and
   the BROWSER calls that service (`<origin>/v1/...`) instead of this app's own `/api`
   routes; unset, nothing changes and the static export still needs no server. Read in
@@ -107,7 +114,7 @@ Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Pla
 - Any score ever issued is byte-identically recomputable from stored inputs.
 - `score()` is pure — no I/O, clock, or randomness (CI-enforced sandbox).
 - Item banks are content-addressed; edits create new items, never mutations.
-- The audit digest content-addresses `score()` SOURCE at build time (`instruments/2026.1/snapshot.json` `scorers[]`); regenerate with `pnpm --filter @ailx/content-tools run snapshot:2026.1`.
+- The audit digest content-addresses `score()` SOURCE at build time (`instruments/demo-2026.1/snapshot.json` `scorers[]`); regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`. The digests are tier-independent — they hash `score()` source, which is the same in both repos.
 - `responses` and `transcripts` are append-only; re-scores are inserts linked by `superseded_by`.
 
 ## Code quality and engineering philosophy
