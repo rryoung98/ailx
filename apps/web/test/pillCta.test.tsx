@@ -76,13 +76,13 @@ const pill = () => host.querySelector("a.pill-cta, button.pill-cta") as HTMLElem
 
 describe("PillCTA clearance", () => {
   it("is visible and reachable in the middle of a long page", () => {
-    act(() => root!.render(createElement(PillCTA, { href: "/exam" }, "Play")));
+    act(() => root!.render(createElement(PillCTA, { href: "/exam", children: "Play" })));
     expect(pill().className).not.toContain("pill-cta-cleared");
     expect(pill().getAttribute("aria-hidden")).toBeNull();
   });
 
   it("clears a marked control at desktop width, not only on a phone", () => {
-    act(() => root!.render(createElement(PillCTA, { href: "/exam" }, "Play")));
+    act(() => root!.render(createElement(PillCTA, { href: "/exam", children: "Play" })));
     fire(marked, true);
     expect(pill().className).toContain("pill-cta-cleared");
     // One class, no inline twin: `.pill-cta-cleared` is styled at every
@@ -94,7 +94,7 @@ describe("PillCTA clearance", () => {
   });
 
   it("clears at the end of the page, where the layout footer is", () => {
-    act(() => root!.render(createElement(PillCTA, { href: "/exam" }, "Play")));
+    act(() => root!.render(createElement(PillCTA, { href: "/exam", children: "Play" })));
     scrollTo(60);
     expect(pill().className).toContain("pill-cta-cleared");
     scrollTo(3000);
@@ -102,7 +102,7 @@ describe("PillCTA clearance", () => {
   });
 
   it("leaves no hidden tab stop or announced link behind", () => {
-    act(() => root!.render(createElement(PillCTA, { href: "/exam" }, "Play")));
+    act(() => root!.render(createElement(PillCTA, { href: "/exam", children: "Play" })));
     scrollTo(60);
     expect(pill().getAttribute("aria-hidden")).toBe("true");
     expect(pill().getAttribute("tabindex")).toBe("-1");
@@ -119,14 +119,14 @@ describe("PillCTA clearance", () => {
     }));
     vi.stubGlobal("matchMedia", reduce);
     Object.defineProperty(window, "matchMedia", { configurable: true, value: reduce });
-    act(() => root!.render(createElement(PillCTA, { onClick: () => {} }, "Play")));
+    act(() => root!.render(createElement(PillCTA, { onClick: () => {}, children: "Play" })));
     scrollTo(60);
     expect(pill().className).toContain("pill-cta-cleared");
     expect(pill().getAttribute("style")).toBeNull();
   });
 
   it("works as a button too, and keeps aria-disabled independent of clearing", () => {
-    act(() => root!.render(createElement(PillCTA, { onClick: () => {}, disabled: true }, "Play")));
+    act(() => root!.render(createElement(PillCTA, { onClick: () => {}, disabled: true, children: "Play" })));
     expect(pill().tagName).toBe("BUTTON");
     expect(pill().getAttribute("aria-disabled")).toBe("true");
     scrollTo(60);

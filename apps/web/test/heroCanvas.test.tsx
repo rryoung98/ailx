@@ -28,6 +28,16 @@ function stubCtx() {
   } as unknown as CanvasRenderingContext2D;
 }
 
+/**
+ * Hand the component a 2D context. `getContext` is overloaded (2d, webgl,
+ * webgpu, ...) and TypeScript resolves a spy against the LAST overload, so a
+ * CanvasRenderingContext2D is rejected as "not a GPUCanvasContext". Cast once
+ * here rather than at each of the call sites.
+ */
+function stubGetContext(ctx: CanvasRenderingContext2D) {
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx as never);
+}
+
 function stubMatchMedia(matches: boolean) {
   window.matchMedia = vi.fn().mockReturnValue({
     matches,
@@ -75,7 +85,7 @@ describe("HeroCanvas", () => {
 
   it("REGRESSION: never schedules an animation frame under prefers-reduced-motion", () => {
     const ctx = stubCtx();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    stubGetContext(ctx);
     stubMatchMedia(true);
     mount();
     expect(rafSpy).not.toHaveBeenCalled();
@@ -85,7 +95,7 @@ describe("HeroCanvas", () => {
 
   it("animates when motion is allowed, and cancels on unmount", () => {
     const ctx = stubCtx();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    stubGetContext(ctx);
     stubMatchMedia(false);
     mount();
     expect(rafSpy).toHaveBeenCalled();
@@ -97,7 +107,7 @@ describe("HeroCanvas", () => {
 
   it("pauses when the canvas leaves the viewport (IntersectionObserver)", () => {
     const ctx = stubCtx();
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx);
+    stubGetContext(ctx);
     stubMatchMedia(false);
     let ioCallback: IntersectionObserverCallback = () => {};
     const disconnect = vi.fn();
