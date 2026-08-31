@@ -22,7 +22,7 @@ export interface SnapshotOptions {
   tracksRoot?: string;
   /**
    * Build a snapshot a BROWSER may hold: drops every item's `provenance`
-   * record.
+   * record, every judge PROMPT, and the rubric's marking detail.
    *
    * The released-practice tier publishes its keys on purpose, but provenance
    * is a different kind of byte: it records how an item was made, with which
@@ -31,8 +31,18 @@ export interface SnapshotOptions {
    * a bank the candidate is not supposed to be able to enumerate
    * (docs/ARCHITECTURE.md §4). Nothing in the browser reads it.
    *
-   * The operational snapshot keeps provenance: it never leaves the server, and
-   * provenance is audit material.
+   * The judge prompts and the rubric's per-criterion `description` /
+   * `band_anchors` are the same problem for the JUDGED tracks (T1, T3, T4)
+   * that a key is for T2: they are how a submission is marked. The released
+   * tier publishes item keys on purpose; it has never published a marking
+   * scheme, and until now it shipped all three judge prompts in en/ja/ko to
+   * every visitor's devtools (`apps/web/test/bundleSecrecy.test.ts`). What
+   * stays is the PUBLISHED allocation — criterion id, name, points,
+   * scored_by, judged — plus `rubricVersion`, which is computed on load and so
+   * still content-addresses the prompts it no longer carries.
+   *
+   * The operational snapshot keeps all of it: it never leaves the server, and
+   * it is audit material.
    */
   public?: boolean;
 }
@@ -46,27 +56,38 @@ export function buildSnapshot(
   const snap: InstrumentSnapshot = {
     format: "ailx-instrument-snapshot@1",
     generated_by: "@ailx/content-tools build-snapshot",
-    instrument: options.public === true ? withoutProvenance(instrument) : instrument,
+    instrument: options.public === true ? publicView(instrument) : instrument,
   };
   if (options.tracksRoot) snap.scorers = scorerRecordsIn(options.tracksRoot);
   return snap;
 }
 
-/** Strip `provenance` from every bank item, leaving the rest byte-identical. */
-function withoutProvenance(instrument: InstrumentPackage): InstrumentPackage {
+/**
+ * Everything a browser may hold, and nothing else: bank items without
+ * `provenance`, no judge prompt bodies, and a rubric reduced to its published
+ * points allocation. Everything not named here is byte-identical.
+ */
+function publicView(instrument: InstrumentPackage): InstrumentPackage {
   return {
     ...instrument,
-    tracks: instrument.tracks.map((track) =>
-      track.bank === undefined
-        ? track
+    tracks: instrument.tracks.map((track) => ({
+      ...track,
+      // The array, not just the content: a filename is a pointer to the prompt.
+      prompts: [],
+      rubric: {
+        ...track.rubric,
+        criteria: track.rubric.criteria.map(({ description: _marking, ...rest }) => rest),
+        band_anchors: undefined,
+      },
+      ...(track.bank === undefined
+        ? {}
         : {
-            ...track,
             bank: {
               ...track.bank,
               items: track.bank.items.map(({ provenance: _dropped, ...rest }) => rest),
             },
-          },
-    ),
+          }),
+    })),
   };
 }
 

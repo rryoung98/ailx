@@ -245,7 +245,42 @@ describe("instruments/demo-2026.1 — released-practice tier", () => {
     for (const item of bankItems) expect(item.provenance, item.id).toBeDefined();
   });
 
-  it("is a DROP-IN snapshot: only the manifest and the t2 bank differ", () => {
+  it("carries NO judge prompt and no rubric marking detail — a public snapshot is not a mark scheme", () => {
+    // The judged tracks (T1/T3/T4) keep their answer key in the judge PROMPT
+    // and in the per-criterion `description`; the released tier publishes item
+    // KEYS on purpose and has never published either. Both shipped to the
+    // browser until apps/web/test/bundleSecrecy.test.ts grew a needle for them.
+    const demo = buildSnapshot(DEMO_DIR, { tracksRoot: TRACKS, public: true });
+    for (const track of demo.instrument.tracks) {
+      expect(track.prompts, track.trackId).toEqual([]);
+      expect(track.rubric.band_anchors, track.trackId).toBeUndefined();
+      for (const c of track.rubric.criteria) {
+        expect(c.description, `${track.trackId} ${c.id}`).toBeUndefined();
+        // The PUBLISHED allocation survives: a candidate may know the points.
+        expect(c.points, `${track.trackId} ${c.id}`).toBeGreaterThan(0);
+        expect(c.name.length, `${track.trackId} ${c.id}`).toBeGreaterThan(0);
+      }
+      // rubric_version still content-addresses the prompts it no longer
+      // carries: it is computed on load, before the strip (spec §14).
+      expect(track.rubricVersion, track.trackId).toMatch(/^[0-9a-f]{64}$/);
+    }
+  });
+
+  it("keeps prompts and marking detail when NOT built public", () => {
+    const op = buildSnapshot(DIR, { tracksRoot: TRACKS });
+    const judged = op.instrument.tracks.filter((t) => t.trackId !== "t2-discrimination");
+    expect(judged.length).toBe(3);
+    for (const track of judged) {
+      expect(track.prompts.length, track.trackId).toBeGreaterThanOrEqual(3);
+      for (const p of track.prompts) expect(p.content.length, p.filename).toBeGreaterThan(100);
+      expect(track.rubric.band_anchors?.length, track.trackId).toBe(4);
+      for (const c of track.rubric.criteria) {
+        expect(c.description?.length, `${track.trackId} ${c.id}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("is a DROP-IN snapshot: only the manifest, the t2 bank and the withheld marking material differ", () => {
     const a = buildSnapshot(DIR, { tracksRoot: TRACKS });
     const b = buildSnapshot(DEMO_DIR, { tracksRoot: TRACKS, public: true });
     expect(b.format).toBe(a.format);
@@ -256,15 +291,24 @@ describe("instruments/demo-2026.1 — released-practice tier", () => {
       expect(tb.plugin).toBe(ta.plugin);
       expect(tb.config).toEqual(ta.config);          // incl. t2 blocks[].exposure_seconds
       expect(tb.rubricVersion).toBe(ta.rubricVersion); // rubric/prompt bytes are SHARED (symlinks)
-      expect(tb.rubric).toEqual(ta.rubric);
-      expect(tb.prompts).toEqual(ta.prompts);
+      // Same criteria, same points, same order — only the marking prose is gone.
+      expect(tb.rubric.criteria).toEqual(
+        ta.rubric.criteria.map(({ description: _marking, ...published }) => published),
+      );
+      expect(tb.rubric.track).toBe(ta.rubric.track);
+      expect(tb.rubric.total_points).toBe(ta.rubric.total_points);
     }
-    // ...and the only content difference is the t2 bank.
+    // ...and the only remaining content difference is the t2 bank.
     const strip = (s: typeof a) => ({
       ...s,
       instrument: {
         manifest: null,
-        tracks: s.instrument.tracks.map((t) => ({ ...t, bank: t.bank ? "<bank>" : undefined })),
+        tracks: s.instrument.tracks.map((t) => ({
+          ...t,
+          bank: t.bank ? "<bank>" : undefined,
+          prompts: "<prompts>",
+          rubric: "<rubric>",
+        })),
       },
     });
     expect(strip(b)).toEqual(strip(a));

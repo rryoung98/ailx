@@ -5,7 +5,7 @@ import { itemId, canonicalJson, rubricVersion } from "@ailx/core";
 import { createHash } from "node:crypto";
 import type {
   InstrumentManifest, InstrumentPackage, InstrumentTrack, ItemBank,
-  BankItem, JudgePrompt, Rubric, TrackConfigFile, Locale,
+  BankItem, BandAnchor, JudgePrompt, Rubric, TrackConfigFile, Locale,
 } from "./types.js";
 
 export class InstrumentValidationError extends Error {
@@ -82,7 +82,7 @@ export function parseRubric(raw: string, path: string): Rubric {
   }
   const bandIds = band_anchors.map((b) => b.band);
   for (const b of BANDS) {
-    if (!bandIds.includes(b as Rubric["band_anchors"][number]["band"])) {
+    if (!bandIds.includes(b as BandAnchor["band"])) {
       fail(path, `band_anchors missing band '${b}'`);
     }
   }

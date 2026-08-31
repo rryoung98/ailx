@@ -277,8 +277,18 @@ export function t2AnswerKeys(locale: string = "en"): Record<string, number> {
 }
 
 /**
- * T3 demo scenario (mirrors the t3 package's validated fixture). Kept
- * code-side by design — NO content-package changes — with its canonical
+ * T3 RELEASED-PRACTICE SCENARIO — published on purpose, exactly like the
+ * released item keys in `instruments/demo-2026.1`. Its planted errors are
+ * practice material, not an answer key: no score of record is issued from it,
+ * and `apps/web/test/bundleSecrecy.test.ts` takes its T3 needles from the
+ * OPERATIONAL instrument so this scenario cannot make the guard self-trip.
+ *
+ * The OPERATIONAL scenario is the opposite: which surfaced claim is planted,
+ * every plant's `truth`, and the operational brief/sourceExcerpt never reach a
+ * browser — the exam service serves the transcript with plants UNMARKED and
+ * grades detection server-side (docs/ARCHITECTURE.md §4).
+ *
+ * Kept code-side by design — NO content-package changes — with its canonical
  * hash pinned as T3_SCENARIO_SHA256 and asserted by tests.
  */
 export const T3_SCENARIO = {

@@ -23,7 +23,12 @@ export interface RubricCriterion {
   points: number;
   scored_by: string;
   judged: boolean;
-  description: string;
+  /**
+   * How a judge is told to mark this criterion. Required on disk; ABSENT from
+   * a `public: true` snapshot — the POINTS allocation is published, the
+   * marking scheme is not.
+   */
+  description?: string;
 }
 
 export interface BandAnchor {
@@ -36,7 +41,8 @@ export interface Rubric {
   track: string;
   total_points: number;
   criteria: RubricCriterion[];
-  band_anchors: BandAnchor[];
+  /** Band prose. Required on disk; ABSENT from a `public: true` snapshot. */
+  band_anchors?: BandAnchor[];
 }
 
 export interface TrackConfigFile {
@@ -81,6 +87,12 @@ export interface InstrumentTrack {
   plugin: string;
   config: Record<string, unknown>;
   rubric: Rubric;
+  /**
+   * Judge prompts. EMPTY in a `public: true` snapshot: a judge prompt is the
+   * marking scheme of a judged track. `rubricVersion` still hashes them,
+   * because it is computed on load, before the strip — the content address
+   * survives, the text does not.
+   */
   prompts: JudgePrompt[];
   /** hash(rubric.yaml + prompts) — spec: prompts are content. */
   rubricVersion: string;
