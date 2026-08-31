@@ -35,6 +35,10 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
   const id = req<string>(doc, "id", path);
   const version = String(req<unknown>(doc, "version", path));
   const notice = doc.notice === undefined ? undefined : String(doc.notice);
+  const redacted = doc.redacted === undefined ? undefined : doc.redacted;
+  if (redacted !== undefined && typeof redacted !== "boolean") {
+    fail(path, "'redacted' must be a boolean");
+  }
   const effective_from = String(req<unknown>(doc, "effective_from", path));
   const locales = req<Locale[]>(doc, "locales", path);
   const tracks = req<string[]>(doc, "tracks", path);
@@ -42,7 +46,10 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
   for (const l of locales) {
     if (!LOCALES.includes(l)) fail(path, `unknown locale '${l}'`);
   }
-  return { id, version, ...(notice ? { notice } : {}), effective_from, locales, tracks };
+  return {
+    id, version, ...(notice ? { notice } : {}), ...(redacted === true ? { redacted: true } : {}),
+    effective_from, locales, tracks,
+  };
 }
 
 export function parseTrackConfig(raw: string, path: string): TrackConfigFile {
@@ -57,7 +64,16 @@ export function parseTrackConfig(raw: string, path: string): TrackConfigFile {
   return { plugin, config };
 }
 
-export function parseRubric(raw: string, path: string): Rubric {
+/**
+ * A rubric, in one of its two on-disk shapes.
+ *
+ * `redacted` inverts the marking-material rules instead of merely relaxing
+ * them. An operational rubric MUST carry a `description` on every criterion
+ * and four `band_anchors`; a redacted one MUST carry neither. Both halves are
+ * an error, so a published tier cannot drift back into shipping a mark scheme
+ * by having someone paste the operational file over it.
+ */
+export function parseRubric(raw: string, path: string, redacted = false): Rubric {
   const doc = parse(raw) as Record<string, unknown>;
   if (typeof doc !== "object" || doc === null) fail(path, "not a YAML mapping");
   const track = req<string>(doc, "track", path);
@@ -67,8 +83,12 @@ export function parseRubric(raw: string, path: string): Rubric {
   let sum = 0;
   const seen = new Set<string>();
   for (const c of criteria) {
-    for (const k of ["id", "name", "points", "scored_by", "description"] as const) {
+    const fields = ["id", "name", "points", "scored_by"] as const;
+    for (const k of redacted ? fields : ([...fields, "description"] as const)) {
       if ((c as unknown as Record<string, unknown>)[k] === undefined) fail(path, `criterion missing '${k}'`);
+    }
+    if (redacted && c.description !== undefined) {
+      fail(path, `criterion '${String(c.id)}' carries a 'description' in a redacted package`);
     }
     if (typeof c.judged !== "boolean") fail(path, `criterion '${c.id}' missing boolean 'judged'`);
     if (seen.has(c.id)) fail(path, `duplicate criterion id '${c.id}'`);
@@ -76,6 +96,10 @@ export function parseRubric(raw: string, path: string): Rubric {
     sum += c.points;
   }
   if (sum !== total) fail(path, `criteria points sum to ${sum}, expected total_points ${total}`);
+  if (redacted) {
+    if (doc.band_anchors !== undefined) fail(path, "redacted package carries 'band_anchors'");
+    return { track, total_points: total, criteria };
+  }
   const band_anchors = req<Rubric["band_anchors"]>(doc, "band_anchors", path);
   if (!Array.isArray(band_anchors) || band_anchors.length !== 4) {
     fail(path, "band_anchors must list exactly 4 bands");
@@ -154,32 +178,43 @@ export function loadBank(dir: string): ItemBank {
   return { items, sha256: digest };
 }
 
-/** rubric_version = hash(rubric.yaml + prompts, sorted by filename) — spec §14. */
+/**
+ * rubric_version = hash(rubric.yaml + prompts, sorted by filename) — spec §14.
+ *
+ * A REDACTED package has no prompts and a shorter rubric.yaml, so it addresses
+ * a different document and gets a different version. That is the content
+ * address working, not drifting: see instruments/demo-2026.1/README.md
+ * "Why the rubricVersion values moved".
+ */
 export function computeRubricVersion(rubricRaw: string, prompts: ReadonlyArray<JudgePrompt>): string {
   const parts = [rubricRaw, ...[...prompts].sort((a, b) => a.filename.localeCompare(b.filename)).map((p) => p.content)];
   return rubricVersion(parts);
 }
 
-export function loadTrack(instrumentDir: string, trackId: string): InstrumentTrack {
+export function loadTrack(instrumentDir: string, trackId: string, redacted = false): InstrumentTrack {
   const dir = join(instrumentDir, "tracks", trackId);
   if (!existsSync(dir)) fail(dir, `track directory missing for '${trackId}'`);
   const trackRaw = readFileSync(join(dir, "track.yaml"), "utf8");
   const { plugin, config } = parseTrackConfig(trackRaw, join(dir, "track.yaml"));
   const rubricRaw = readFileSync(join(dir, "rubric.yaml"), "utf8");
-  const rubric = parseRubric(rubricRaw, join(dir, "rubric.yaml"));
+  const rubric = parseRubric(rubricRaw, join(dir, "rubric.yaml"), redacted);
   if (rubric.track !== trackId) {
     fail(join(dir, "rubric.yaml"), `rubric.track '${rubric.track}' does not match directory '${trackId}'`);
   }
   const prompts: JudgePrompt[] = [];
   const promptsDir = join(dir, "prompts");
   if (existsSync(promptsDir)) {
+    // A redacted package must not even have the directory: a judge prompt is
+    // the mark scheme of a judged track, and the whole point of the tier is
+    // that those bytes are not here to leak.
+    if (redacted) fail(promptsDir, "redacted package carries judge prompts");
     for (const f of readdirSync(promptsDir).sort()) {
       if (!f.endsWith(".md")) continue;
       prompts.push(parsePrompt(readFileSync(join(promptsDir, f), "utf8"), join(promptsDir, f)));
     }
   }
   const judgedCriteria = rubric.criteria.filter((c) => c.judged);
-  if (judgedCriteria.length > 0 && prompts.length === 0) {
+  if (!redacted && judgedCriteria.length > 0 && prompts.length === 0) {
     fail(dir, `track has judged criteria (${judgedCriteria.map((c) => c.id).join(", ")}) but no judge prompts`);
   }
   let bank: ItemBank | undefined;
@@ -194,6 +229,6 @@ export function loadTrack(instrumentDir: string, trackId: string): InstrumentTra
 export function loadInstrument(instrumentDir: string): InstrumentPackage {
   const manifestPath = join(instrumentDir, "manifest.yaml");
   const manifest = parseManifest(readFileSync(manifestPath, "utf8"), manifestPath);
-  const tracks = manifest.tracks.map((t) => loadTrack(instrumentDir, t));
+  const tracks = manifest.tracks.map((t) => loadTrack(instrumentDir, t, manifest.redacted === true));
   return { manifest, tracks };
 }

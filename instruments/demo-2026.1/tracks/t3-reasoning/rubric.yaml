@@ -1,4 +1,4 @@
-# T2 · Authenticity Discrimination — REDACTED published allocation (spec §14).
+# T3 · AI-Assisted Reasoning — REDACTED published allocation (spec §14).
 #
 # RELEASED-PRACTICE TIER. This file publishes the POINTS allocation and
 # nothing else. The per-criterion `description` and the `band_anchors` are
@@ -7,21 +7,26 @@
 # `manifest.yaml` sets `redacted: true`, and the loader REFUSES this tier
 # if a description, a band anchor or a prompts/ directory ever comes back.
 # See ../../README.md.
-track: t2-discrimination
+track: t3-reasoning
 total_points: 100
 criteria:
-  - id: sensitivity
-    name: Sensitivity (d′)
-    points: 60
-    scored_by: arithmetic
-    judged: false
-  - id: calibration
-    name: Calibration
+  - id: planted-error-detection
+    name: Planted-error detection (RSR)
     points: 25
     scored_by: arithmetic
     judged: false
-  - id: provenance-reasoning
-    name: Provenance reasoning
-    points: 15
-    scored_by: keyed-selection
+  - id: analysis-quality
+    name: Analysis quality
+    points: 45
+    scored_by: jury
+    judged: true
+  - id: process-quality
+    name: Process quality
+    points: 20
+    scored_by: transcript-analysis
+    judged: false
+  - id: appropriate-reliance
+    name: Appropriate reliance (RAIR)
+    points: 10
+    scored_by: arithmetic
     judged: false

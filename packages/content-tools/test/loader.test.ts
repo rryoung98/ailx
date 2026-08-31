@@ -10,7 +10,42 @@ import {
 import { hashBank } from "../src/bank.js";
 import { canonicalJson, itemId } from "@ailx/core";
 
-const INSTRUMENT_DIR = fileURLToPath(new URL("../../../instruments/2026.1", import.meta.url));
+/**
+ * The only instrument in this repo is the REDACTED released tier. The failure
+ * modes below are properties of an unredacted (operational-shaped) package, so
+ * they are exercised against a copy with its redaction undone rather than
+ * against content that is no longer here — see
+ * `test/instrument-demo-2026.1.test.ts` for the same technique and why.
+ */
+const INSTRUMENT_DIR = fileURLToPath(new URL("../../../instruments/demo-2026.1", import.meta.url));
+
+function unredactedCopy(): string {
+  const dir = mkdtempSync(join(tmpdir(), "ailx-"));
+  cpSync(INSTRUMENT_DIR, dir, { recursive: true });
+  const manifest = join(dir, "manifest.yaml");
+  writeFileSync(manifest, readFileSync(manifest, "utf8").replace("redacted: true\n", ""));
+  for (const track of ["t1-creative-build", "t2-discrimination", "t3-reasoning", "t4-generative"]) {
+    const rubric = join(dir, "tracks", track, "rubric.yaml");
+    writeFileSync(
+      rubric,
+      readFileSync(rubric, "utf8").replace(/^(    judged: (?:true|false))$/gm, "$1\n    description: marking prose") +
+        ["band_anchors:",
+          "  - { band: distinction, min_scaled: 70, anchor: x }",
+          "  - { band: merit, min_scaled: 61, anchor: x }",
+          "  - { band: pass, min_scaled: 50, anchor: x }",
+          "  - { band: participation, min_scaled: 0, anchor: x }",
+          ""].join("\n"),
+    );
+    const prompts = join(dir, "tracks", track, "prompts");
+    if (track === "t2-discrimination") continue; // no model in the loop
+    mkdirSync(prompts);
+    writeFileSync(
+      join(prompts, "screening.en.md"),
+      "---\nlocale: en\ntranslation_provenance: source\n---\nJudge it.\n",
+    );
+  }
+  return dir;
+}
 
 const GOOD_RUBRIC = `
 track: t9-demo
@@ -115,22 +150,26 @@ describe("parseBankLine", () => {
 });
 
 describe("loadInstrument failure modes", () => {
+  it("loads the unredacted fixture as it stands (or the negatives prove nothing)", () => {
+    const dir = unredactedCopy();
+    const pkg = loadInstrument(dir);
+    expect(pkg.manifest.redacted).toBeUndefined();
+    expect(pkg.tracks.find((t) => t.trackId === "t3-reasoning")!.prompts).toHaveLength(1);
+    rmSync(dir, { recursive: true, force: true });
+  });
   it("fails when bank.sha256 disagrees with bank.jsonl", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ailx-"));
-    cpSync(INSTRUMENT_DIR, dir, { recursive: true });
+    const dir = unredactedCopy();
     const shaPath = join(dir, "tracks/t2-discrimination/items/bank.sha256");
     writeFileSync(shaPath, "0".repeat(64) + "  bank.jsonl\n");
     expect(() => loadInstrument(dir)).toThrow(/bank.sha256 mismatch/);
   });
   it("fails when a judged track loses its prompts", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ailx-"));
-    cpSync(INSTRUMENT_DIR, dir, { recursive: true });
+    const dir = unredactedCopy();
     rmSync(join(dir, "tracks/t3-reasoning/prompts"), { recursive: true });
     expect(() => loadInstrument(dir)).toThrow(/judged criteria .* but no judge prompts/);
   });
   it("fails when a listed track directory is missing", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ailx-"));
-    cpSync(INSTRUMENT_DIR, dir, { recursive: true });
+    const dir = unredactedCopy();
     const manifest = readFileSync(join(dir, "manifest.yaml"), "utf8");
     writeFileSync(join(dir, "manifest.yaml"), manifest + "  - t5-missing\n");
     expect(() => loadInstrument(dir)).toThrow(/track directory missing/);

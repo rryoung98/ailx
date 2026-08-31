@@ -12,12 +12,28 @@
  * static export handed every participant the marking scheme. The bank has
  * since been split: 20 items became the PUBLIC released-practice tier
  * (instruments/demo-2026.1, keys published on purpose, and the only bank a
- * browser may hold), and the remaining 84 operational items are served only
- * through the server-only `@ailx/instrument`.
+ * browser may hold), and the remaining 84 operational items moved out of this
+ * repository altogether, into the private backend repo.
  *
- * The secret is read from the OPERATIONAL bank at test time rather than
- * hardcoded here: a test that pins one leaked string only guards that string,
- * and a new item written tomorrow would leak unwatched.
+ * WHICH CHANGES HOW THIS GUARD IS WRITTEN. It used to read its needles from
+ * the operational instrument at test time — the right way round while that
+ * instrument was here, because a hardcoded needle only guards one string. The
+ * needles are gone with it, so the scan is now stated as an ALLOWANCE instead
+ * of a blacklist, which is strictly stronger:
+ *
+ *   1. every `"key":"ai"` must be attributable to a released item (unchanged);
+ *   2. every T2 item id in the bundle must BE a released item id — the 104-item
+ *      leak fails this with 84 unaccounted ids, and so does any future bank;
+ *   3. nothing SHAPED like a mark scheme may appear at all: a non-empty
+ *      `prompts` array, a `band_anchors` block, a judge prompt's front matter,
+ *      or a rubric criterion that carries a `description`.
+ *
+ * The exact-secret scan is kept and still runs wherever the secrets exist: set
+ * `AILX_OPERATIONAL_SNAPSHOT` to a checkout of the private instrument (CI in
+ * that repo does) and every judge prompt, criterion description, band anchor,
+ * T3 plant and T4 brief becomes a needle again. The extractor that does it is
+ * proved against a synthetic snapshot below, unconditionally, so it cannot rot
+ * while unused.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
@@ -25,25 +41,18 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { T3_SCENARIO } from "../lib/instrument";
 
-const BANK = fileURLToPath(
-  new URL(
-    "../../../instruments/2026.1/tracks/t2-discrimination/items/bank.jsonl",
-    import.meta.url,
-  ),
-);
-
 /**
- * The OPERATIONAL instrument, read at test time. Every needle below comes from
- * it, never from a literal in this file: a test that pins one leaked string
- * only guards that string, and tomorrow's judge prompt would leak unwatched.
+ * The OPERATIONAL instrument, if this checkout can see one. Unset in this
+ * repository — that is the point of moving it — and set by the private repo's
+ * CI to the path of its `instruments/2026.1/snapshot.json`. Every needle in
+ * the exact-secret scan comes from it, never from a literal in this file: a
+ * test that pins one leaked string only guards that string.
  *
  * It is also the reason the demo does not self-trip. The released-practice
  * tier publishes item keys on purpose, and `apps/web/lib/instrument.ts`
  * publishes the T3 practice scenario on purpose; neither may supply a needle.
  */
-const OPERATIONAL_SNAPSHOT = fileURLToPath(
-  new URL("../../../instruments/2026.1/snapshot.json", import.meta.url),
-);
+const OPERATIONAL_SNAPSHOT = process.env.AILX_OPERATIONAL_SNAPSHOT;
 
 /**
  * Both build modes, and only the assets a BROWSER can fetch. `.next/server/**`
@@ -102,21 +111,16 @@ interface Item {
   rationale: string;
 }
 
-const items: Item[] = readFileSync(BANK, "utf8")
-  .split("\n")
-  .filter((line) => line.trim().length > 0)
-  .map((line) => JSON.parse(line) as Item);
-
 /** JSON.stringify minus its quotes: the bundle stores the escaped form. */
 function jsonEscaped(value: string): string {
   return JSON.stringify(value).slice(1, -1);
 }
 
 /**
- * What must never appear. The id is the content address a client could use to
- * look an answer up; the rationale prefix is the answer spelled out in prose.
- * 60 chars is long enough to be unique to one item and short enough to survive
- * a minifier's line handling.
+ * What must never appear, given an operational bank to read it from. The id is
+ * the content address a client could use to look an answer up; the rationale
+ * prefix is the answer spelled out in prose. 60 chars is long enough to be
+ * unique to one item and short enough to survive a minifier's line handling.
  */
 function needles(item: Item): { label: string; value: string }[] {
   const prefix = item.rationale.slice(0, 60);
@@ -149,11 +153,48 @@ const DEMO_BANK = fileURLToPath(
     import.meta.url,
   ),
 );
-const RELEASED_AI_KEYS = readFileSync(DEMO_BANK, "utf8")
+const released: Item[] = readFileSync(DEMO_BANK, "utf8")
   .split("\n")
   .filter((line) => line.trim().length > 0)
-  .filter((line) => (JSON.parse(line) as { key: string }).key === "ai").length;
+  .map((line) => JSON.parse(line) as Item & { key: string });
+const RELEASED_IDS = new Set(released.map((i) => i.id));
+const RELEASED_AI_KEYS = released.filter((i) => (i as { key: string }).key === "ai").length;
 const KEY_BUDGET = RELEASED_AI_KEYS * 2;
+
+/**
+ * Every content-addressed item id in the bundle, in either of the two shapes
+ * the snapshot takes there: raw JSON in a chunk, and the DOUBLE-escaped JSON
+ * of a flight payload. Stripping backslashes collapses both into one haystack,
+ * which is also why the structural probes below can be written once.
+ */
+const ITEM_ID = /"id":"([0-9a-f]{64})"/g;
+function bundledItemIds(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const m of text.replace(/\\/g, "").matchAll(ITEM_ID)) out.add(m[1]);
+  return out;
+}
+
+/**
+ * A mark scheme, by SHAPE rather than by secret — the guard that survives the
+ * operational instrument not being in this repo. Each probe is a literal
+ * substring of the JSON a leak would produce:
+ *
+ *  - `"prompts":[{` — the array is empty in a public snapshot, always.
+ *  - `"band_anchors"` / `"min_scaled"` — the band prose, stripped wholesale.
+ *  - `translation_provenance` — a judge prompt's front matter, so a prompt
+ *    smuggled in as a plain string is caught too.
+ *  - `,"description"` right after a criterion's `scored_by`/`judged` pair: the
+ *    published allocation ends at `judged`, and anything after it is marking
+ *    detail. Written as the two orderings a criterion object can serialise in.
+ */
+const MARK_SCHEME_SHAPES: ReadonlyArray<{ label: string; value: string }> = [
+  { label: "non-empty judge prompt array", value: '"prompts":[{' },
+  { label: "rubric band anchors", value: '"band_anchors"' },
+  { label: "band anchor threshold", value: '"min_scaled"' },
+  { label: "judge prompt front matter", value: "translation_provenance" },
+  { label: "criterion description (judged)", value: '"judged":true,"description"' },
+  { label: "criterion description (unjudged)", value: '"judged":false,"description"' },
+];
 
 /**
  * MARKING MATERIAL — the second half of the answer key.
@@ -309,10 +350,18 @@ function markingNeedles(snap: OperationalSnapshot): Needle[] {
   return out;
 }
 
-const OPERATIONAL = JSON.parse(
-  readFileSync(OPERATIONAL_SNAPSHOT, "utf8"),
-) as OperationalSnapshot;
-const MARKING_NEEDLES = markingNeedles(OPERATIONAL);
+const OPERATIONAL: OperationalSnapshot | undefined =
+  OPERATIONAL_SNAPSHOT === undefined
+    ? undefined
+    : (JSON.parse(readFileSync(OPERATIONAL_SNAPSHOT, "utf8")) as OperationalSnapshot);
+const MARKING_NEEDLES = OPERATIONAL === undefined ? [] : markingNeedles(OPERATIONAL);
+const OPERATIONAL_ITEMS: Item[] =
+  process.env.AILX_OPERATIONAL_BANK === undefined
+    ? []
+    : readFileSync(process.env.AILX_OPERATIONAL_BANK, "utf8")
+        .split("\n")
+        .filter((line) => line.trim().length > 0)
+        .map((line) => JSON.parse(line) as Item);
 
 const countOf = (haystack: string, needle: string): number =>
   haystack.split(needle).length - 1;
@@ -321,21 +370,18 @@ const present = MODES.filter((mode) => existsSync(mode.dir));
 
 describe("no operational answer key reaches a built client bundle", () => {
   it("the released tier is small enough to be a budget, not a loophole", () => {
-    // If the "released" tier ever grew to bank size, the key budget would stop
+    // If the "released" tier ever grew to exam size, the key budget would stop
     // constraining anything. It is a practice form, and it must stay one.
+    // 20 items against the 104 authored: a quarter of the corpus is the line.
     expect(RELEASED_AI_KEYS).toBeGreaterThan(0);
-    expect(RELEASED_AI_KEYS).toBeLessThan(items.length / 4);
+    expect(released.length).toBeLessThan(104 / 4);
   });
 
-  it("has a bank to compare against (guards against a silent path bug)", () => {
-    // 84 operational items after the released-practice tier was split out
-    // (instruments/demo-2026.1). The floor guards a silent path bug, not a
-    // bank size, so it tracks "most of the bank", not an exact count.
-    expect(items.length).toBeGreaterThan(50);
-    for (const item of items) {
+  it("has a released bank to compare against (guards against a silent path bug)", () => {
+    expect(released.length).toBe(20);
+    expect(RELEASED_IDS.size).toBe(released.length);
+    for (const item of released) {
       expect(item.id).toMatch(/^[0-9a-f]{64}$/);
-      // Shortest rationale in the bank today is 43 chars; anything much
-      // shorter would stop being a distinctive needle.
       expect(item.rationale.length, item.id).toBeGreaterThan(30);
     }
   });
@@ -368,9 +414,36 @@ describe("no operational answer key reaches a built client bundle", () => {
         ).toBeLessThanOrEqual(KEY_BUDGET);
       });
 
+      it("ships no T2 item the released tier cannot account for", () => {
+        // The allowance, not a blacklist. Every content-addressed item id in
+        // the bundle must be one of the twenty published on purpose; the
+        // original leak put 104 there, and 84 of them would fail here without
+        // this repo holding a single byte of the operational bank.
+        const bundled = [...bundledItemIds(corpus.text)];
+        const foreign = bundled.filter((id) => !RELEASED_IDS.has(id));
+        expect(
+          foreign.slice(0, 10).map((id) => `${id.slice(0, 12)}…`),
+          `${foreign.length} unaccounted item ids under ${mode.dir}`,
+        ).toEqual([]);
+        // ...and the released ones really are there, or the scan is looking at
+        // the wrong bytes and would pass on anything.
+        expect(bundled.length, `no item id at all under ${mode.dir}`).toBeGreaterThan(0);
+      });
+
+      it("ships nothing shaped like a mark scheme", () => {
+        const flat = corpus.text.replace(/\\/g, "");
+        const offenders = MARK_SCHEME_SHAPES.filter((s) => flat.includes(s.value)).map(
+          (s) => s.label,
+        );
+        expect(offenders, `mark-scheme shapes under ${mode.dir}`).toEqual([]);
+      });
+
       it("ships no operational item id or rationale", () => {
+        // Only bites where an operational bank is readable (the private repo's
+        // CI, via AILX_OPERATIONAL_BANK). Where it is not, the allowance scan
+        // above is the guard, and it covers strictly more.
         const offenders: string[] = [];
-        for (const item of items) {
+        for (const item of OPERATIONAL_ITEMS) {
           for (const needle of needles(item)) {
             if (corpus.text.includes(needle.value)) {
               offenders.push(`${item.id.slice(0, 12)}… ${needle.label}`);
@@ -398,9 +471,15 @@ describe("no operational answer key reaches a built client bundle", () => {
     });
   }
 
-  describe("the needles themselves", () => {
+  /**
+   * The exact-secret half. It runs only where an operational instrument is
+   * readable — nowhere in this repository, by design — so it is a
+   * describe.skipIf rather than a silent no-op: a skipped test says so in the
+   * report, and the structural scan above is what guards this repo.
+   */
+  describe.skipIf(OPERATIONAL === undefined)("the needles themselves", () => {
     it("covers every judge prompt in the operational instrument", () => {
-      const prompts = OPERATIONAL.instrument.tracks
+      const prompts = OPERATIONAL!.instrument.tracks
         .filter((t) => JUDGED_TRACKS.includes(t.trackId))
         .flatMap((t) => (t.prompts ?? []).map((p) => `${t.trackId} ${p.filename}`));
       // 3 judged tracks x en/ja/ko today. A track that lost its prompts would
@@ -416,7 +495,7 @@ describe("no operational answer key reaches a built client bundle", () => {
       const labels = new Set(MARKING_NEEDLES.map((n) => n.label));
       let described = 0;
       let anchored = 0;
-      for (const track of OPERATIONAL.instrument.tracks) {
+      for (const track of OPERATIONAL!.instrument.tracks) {
         for (const c of track.rubric?.criteria ?? []) {
           if ((c.description ?? "").length < MIN_NEEDLE_CHARS) continue;
           described += 1;
@@ -446,6 +525,23 @@ describe("no operational answer key reaches a built client bundle", () => {
       }
     });
 
+    it("takes nothing from the released-practice tier, so the demo cannot self-trip", () => {
+      // instruments/demo-2026.1 publishes item keys on purpose, and
+      // apps/web/lib/instrument.ts publishes T3_SCENARIO as the released
+      // PRACTICE scenario. Both are meant to be in the bundle; if a needle
+      // came from either, this guard would fail on a correct build forever.
+      const published = JSON.stringify(T3_SCENARIO) + readFileSync(DEMO_BANK, "utf8");
+      for (const n of MARKING_NEEDLES) {
+        expect(published.includes(n.value), `${n.label} is published practice content`).toBe(false);
+      }
+    });
+  });
+
+  /**
+   * Unconditional, because the extractor must not rot while it is unused, and
+   * because the shape probes must be proved to bite.
+   */
+  describe("the guard machinery itself", () => {
     it("extracts T3 plants and the T4 brief when the instrument carries them", () => {
       // The operational T3 scenario and T4 brief live with the exam service,
       // not in this public repo, so prove the EXTRACTOR rather than trusting
@@ -491,15 +587,69 @@ describe("no operational answer key reaches a built client bundle", () => {
       ]);
     });
 
-    it("takes nothing from the released-practice tier, so the demo cannot self-trip", () => {
-      // instruments/demo-2026.1 publishes item keys on purpose, and
-      // apps/web/lib/instrument.ts publishes T3_SCENARIO as the released
-      // PRACTICE scenario. Both are meant to be in the bundle; if a needle
-      // came from either, this guard would fail on a correct build forever.
-      const published = JSON.stringify(T3_SCENARIO) + readFileSync(DEMO_BANK, "utf8");
-      for (const n of MARKING_NEEDLES) {
-        expect(published.includes(n.value), `${n.label} is published practice content`).toBe(false);
+    /**
+     * The pre-78e3cef snapshot, in miniature: a judge prompt, a band anchor
+     * and a criterion description. Every shape probe must fire on it, in BOTH
+     * the raw and the double-escaped form a Next bundle stores. If one stopped
+     * firing, the guard would go quiet exactly when it was needed.
+     */
+    const leaked = JSON.stringify({
+      instrument: {
+        tracks: [
+          {
+            trackId: "t3-reasoning",
+            prompts: [
+              {
+                locale: "en",
+                filename: "screening.en.md",
+                content: "---\nlocale: en\ntranslation_provenance: source\n---\nJudge it.\n",
+              },
+            ],
+            rubric: {
+              criteria: [
+                { id: "analysis-quality", name: "Analysis quality", points: 45, scored_by: "jury", judged: true, description: "how to mark it" },
+                { id: "process-quality", name: "Process quality", points: 20, scored_by: "arithmetic", judged: false, description: "how to mark it" },
+              ],
+              band_anchors: [{ band: "distinction", min_scaled: 70, anchor: "what good looks like" }],
+            },
+          },
+        ],
+      },
+    });
+
+    it("every mark-scheme shape fires on a snapshot that carries one", () => {
+      for (const form of [leaked, JSON.stringify(leaked)]) {
+        const flat = form.replace(/\\/g, "");
+        for (const shape of MARK_SCHEME_SHAPES) {
+          expect(flat.includes(shape.value), `${shape.label} missed`).toBe(true);
+        }
       }
+    });
+
+    it("no mark-scheme shape fires on the snapshot the browser really gets", () => {
+      // The committed public snapshot. A probe that also matched this would
+      // fail every correct build forever, which is the other way to lose a guard.
+      const publicSnapshot = readFileSync(
+        fileURLToPath(new URL("../../../instruments/demo-2026.1/snapshot.json", import.meta.url)),
+        "utf8",
+      );
+      for (const form of [publicSnapshot, JSON.stringify(publicSnapshot)]) {
+        const flat = form.replace(/\\/g, "");
+        for (const shape of MARK_SCHEME_SHAPES) {
+          expect(flat.includes(shape.value), `${shape.label} self-trips`).toBe(false);
+        }
+      }
+    });
+
+    it("the id allowance catches a foreign item in either escaping", () => {
+      const foreign = "f".repeat(64);
+      const one = released[0].id;
+      for (const form of [`"id":"${one}" "id":"${foreign}"`, JSON.stringify(`"id":"${foreign}"`)]) {
+        const bundled = bundledItemIds(form);
+        expect([...bundled].filter((id) => !RELEASED_IDS.has(id))).toEqual([foreign]);
+      }
+      // ...and does not fire on a released id.
+      expect([...bundledItemIds(`"id":"${one}"`)].filter((id) => !RELEASED_IDS.has(id))).toEqual([]);
     });
   });
 });

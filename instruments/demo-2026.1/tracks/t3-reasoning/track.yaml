@@ -1,0 +1,16 @@
+# T3 · AI-Assisted Reasoning — spec §T3
+plugin: "instrumented-assistant@2"
+config:
+  session_minutes: 90
+  analysis_word_target: 1200
+  source_document_pages: [50, 70]     # long, dense, unfamiliar, non-searchable
+  transcript_recorded: true           # prompts, revisions, latencies, regenerations
+  seeded_errors:                      # known-incorrect outputs at predetermined points
+    kinds: [misattributed-figure, false-causal-claim, fabricated-citation, wrong-calculation]
+    count_per_form: 4
+  reliance_constructs: [RSR, RAIR]    # objective, model-free
+  jury:
+    kind: heterogeneous-three-model   # three models from three families
+    calibration: human-labelled-set   # ~200 examples; locked rubric + evidence anchoring
+    human_adjudication: top-and-bottom-deciles
+  rubric_anchor: "AI Assessment Scale Level 3-4"

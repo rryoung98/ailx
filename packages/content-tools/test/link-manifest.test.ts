@@ -10,8 +10,11 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** Both tiers commit their own manifest: operational and released-practice. */
-const TIERS = ["2026.1", "demo-2026.1"] as const;
+/**
+ * One tier commits a manifest in this repo: the released-practice tier. The
+ * operational tier's manifest moved to the private backend repo with its bank.
+ */
+const TIERS = ["demo-2026.1"] as const;
 
 describe.each(TIERS)("provenance link-check manifest (%s)", (tier) => {
   const ITEMS = fileURLToPath(

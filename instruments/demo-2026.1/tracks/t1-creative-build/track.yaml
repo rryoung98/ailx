@@ -1,0 +1,34 @@
+# T1 · Creative Build — spec §T1
+plugin: "artifact-hosting@2"
+config:
+  window_hours: 48
+  submission: static-zip          # no build step runs on our infrastructure (§12)
+  prompt_log_required: true
+  rationale_word_limit: 200
+  viewports:                      # responsive gate checked at three viewports
+    - { id: mobile,  width: 390,  height: 844 }
+    - { id: tablet,  width: 820,  height: 1180 }
+    - { id: desktop, width: 1440, height: 900 }
+  gates:
+    - renders-without-console-error
+    - responsive-three-viewports
+    - wcag-aa-contrast
+    - semantic-landmarks
+    - keyboard-navigable
+    - performance-budget
+    - brief-elements-present
+  comparative_judgement:
+    question: "Which of these two would you rather put your own name on?"
+    comparisons_per_item: 24
+    comparisons_per_rater: 12
+    pairing: balanced-incomplete-block   # NOT adaptive (Bramley SSR-on-noise result)
+    model: bayesian-bradley-terry
+    tie_parameter: true
+    style_covariates: [word_count, image_count, palette_size, dom_depth, animation_presence]
+  screening_judge:
+    role: objective-gates-only          # never emits a number called "quality"
+    output: structured-json
+    ensemble_samples: 3
+    aggregation: median
+    injection_detector_pass: true
+    human_adjudication: top-decile-or-sample-spread-gt-2

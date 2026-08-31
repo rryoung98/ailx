@@ -5,10 +5,24 @@
  * The first suite is the one that matters. The scored item bank is the
  * instrument; a practised item is a dead item, and there is no way to undo
  * the leak. So the separation is asserted HERE, at the content-selection
- * layer, against the real bank file on disk — not trusted to a convention.
+ * layer, against real bank files on disk — not trusted to a convention.
+ *
+ * WHERE EACH HALF LIVES NOW. The 84 OPERATIONAL items moved to the private
+ * backend repo, which runs its own copy of this suite against them: id, text
+ * and rationale disjointness are asserted there, over the bank that is the
+ * exam. This copy asserts the two halves that only exist here:
+ *
+ *  - the same disjointness against the RELEASED tier (instruments/demo-2026.1)
+ *    — published keys are still burnt items, and practice must not reuse one;
+ *  - the IMAGE guarantee, by CONTENT HASH, against the WHOLE shipped
+ *    `apps/web/public/t2-media` pool. That pool still serves both tiers, so
+ *    hashing the directory rather than a bank's `src` list covers the
+ *    operational deck's pictures too — a stronger check than the old one, and
+ *    the only place in either repo where both sets of bytes exist.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { runPure } from "@ailx/core";
@@ -30,9 +44,10 @@ import {
 } from "../src/practice.js";
 
 const BANK_PATH = new URL(
-  "../../../instruments/2026.1/tracks/t2-discrimination/items/bank.jsonl",
+  "../../../instruments/demo-2026.1/tracks/t2-discrimination/items/bank.jsonl",
   import.meta.url,
 );
+const T2_MEDIA = fileURLToPath(new URL("../../../apps/web/public/t2-media", import.meta.url));
 
 interface ScoredItem {
   id: string;
@@ -58,6 +73,8 @@ function contentWords(text: string): Set<string> {
 
 describe("practice never touches the scored item bank", () => {
   it("reads a non-trivial scored bank (guards against an empty-file pass)", () => {
+    // The released tier: 20 items. The operational 84 are asserted against in
+    // the private repo's copy of this file (see the header).
     expect(scored.length).toBeGreaterThan(10);
   });
 
@@ -115,19 +132,25 @@ describe("practice never touches the scored item bank", () => {
     // matters is the sha256 of the bytes actually shipped. Serving the same
     // picture in practice and in the scored deck would burn the scored item
     // even though every string in this repo stayed different.
+    //
+    // Hashed over the WHOLE t2-media pool, not over one bank's `src` list: the
+    // pool serves the operational deck too, and its bank is no longer in this
+    // repo to enumerate. The directory is the superset, so this is the
+    // stronger check — and it is the only place either repo holds both sets
+    // of bytes.
+    const digest = (path: string): string =>
+      createHash("sha256").update(readFileSync(path)).digest("hex");
+
     const scoredSrcs = new Set(
       scored.map((i) => i.material?.src ?? "").filter((s) => s.length > 0),
     );
     expect(scoredSrcs.size).toBeGreaterThan(0);
-    const digest = (path: string): string =>
-      createHash("sha256").update(readFileSync(path)).digest("hex");
-
     const scoredHashes = new Map<string, string>();
-    for (const src of scoredSrcs) {
-      const file = new URL(`../../../apps/web/public/${src}`, import.meta.url);
-      scoredHashes.set(digest(fileURLToPath(file)), src);
+    for (const file of readdirSync(T2_MEDIA)) {
+      scoredHashes.set(digest(join(T2_MEDIA, file)), `t2-media/${file}`);
     }
-    expect(scoredHashes.size).toBeGreaterThan(0);
+    // The pool is bigger than the released tier's own references.
+    expect(scoredHashes.size).toBeGreaterThan(scoredSrcs.size);
 
     for (const item of PRACTICE_BANK) {
       expect(scoredSrcs.has(item.material.src), item.id).toBe(false);

@@ -5,11 +5,15 @@
  * the bundler emitted, so a minifier bump moved it with no source change.
  * It now returns the build-time content address of the score() source closure
  * carried in the committed snapshot, which a third party can re-derive from a
- * git checkout with `pnpm --filter @ailx/content-tools run snapshot:2026.1`.
+ * git checkout with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`.
+ *
+ * Read from the released tier, which is the only instrument in this repo. The
+ * digests are tier-independent by construction: `scorers[]` content-addresses
+ * `score()` SOURCE in packages/tracks, and no tier owns that source.
  */
 import { describe, expect, it } from "vitest";
 import { TRACK_IDS } from "@ailx/session";
-import SNAPSHOT from "../../../instruments/2026.1/snapshot.json";
+import SNAPSHOT from "../../../instruments/demo-2026.1/snapshot.json";
 import { scoringDigest } from "../lib/registry";
 
 const scorers = (SNAPSHOT as { scorers?: Array<{ trackId: string; digest: string; sources: Array<{ path: string }> }> }).scorers;

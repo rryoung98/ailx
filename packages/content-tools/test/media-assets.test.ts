@@ -9,12 +9,15 @@ import { loadBank } from "../src/loader.js";
  * stay within the 200 KB asset budget; every shipped asset must be referenced.
  */
 const REPO = resolve(__dirname, "..", "..", "..");
-const TRACK_DIR = join(REPO, "instruments", "2026.1", "tracks", "t2-discrimination");
 /**
- * The shipped t2-media pool serves BOTH tiers since the released-practice
- * split: 84 operational items in instruments/2026.1 and 20 published items in
- * instruments/demo-2026.1 (docs/ARCHITECTURE.md §10 step 1). Asset coverage
- * is a property of the union — either half alone under-references the pool.
+ * The shipped t2-media pool serves BOTH tiers, but only one of them is in this
+ * repository: the operational bank moved to the private backend repo, and the
+ * media BYTES stayed here because the browser has to fetch them (the custody
+ * gap the private README states plainly). So the pool is a superset of what
+ * this bank references, and "every shipped asset is referenced" can only be
+ * checked where both trees exist — nowhere, today. What is still checked here
+ * is every property of an asset that does not need the other bank: the naming
+ * rule, the 200 KB budget, and the released deck's own references.
  */
 const DEMO_TRACK_DIR = join(REPO, "instruments", "demo-2026.1", "tracks", "t2-discrimination");
 const PUBLIC_DIR = join(REPO, "apps", "web", "public");
@@ -23,7 +26,7 @@ const MEDIA_DIR = join(PUBLIC_DIR, "t2-media");
 interface ImageMaterial { kind: string; src?: string; alt?: string }
 
 describe("t2 media assets", () => {
-  const items = [...loadBank(TRACK_DIR).items, ...loadBank(DEMO_TRACK_DIR).items];
+  const items = loadBank(DEMO_TRACK_DIR).items;
   const imageItems = items.filter(
     (i) => (i.material as unknown as ImageMaterial).kind === "image",
   );
@@ -31,8 +34,10 @@ describe("t2 media assets", () => {
   it("has a balanced real-vs-AI image deck (>= 8 per side)", () => {
     const real = imageItems.filter((i) => i.key === "real");
     const ai = imageItems.filter((i) => i.key === "ai");
-    expect(real.length).toBeGreaterThanOrEqual(8);
-    expect(ai.length).toBeGreaterThanOrEqual(8);
+    // 4 per side in the released tier. Balance is what d' needs; the floor
+    // only guards a silent path bug.
+    expect(real.length).toBeGreaterThanOrEqual(4);
+    expect(ai.length).toBeGreaterThanOrEqual(4);
     expect(real.length).toBe(ai.length);
   });
 
@@ -49,10 +54,9 @@ describe("t2 media assets", () => {
     }
   });
 
-  it("every shipped t2-media asset is referenced by exactly one bank item per locale", () => {
+  it("references each asset at most once per locale, and only assets the en deck ships", () => {
     // Media files are locale-neutral: ja/ko stem-variant items may reuse an
-    // en item's asset, but within one locale each asset appears at most once,
-    // and every shipped asset is referenced by the en deck.
+    // en item's asset, but within one locale each asset appears at most once.
     const byLocale = new Map<string, string[]>();
     for (const i of imageItems) {
       const src = (i.material as unknown as ImageMaterial).src?.replace("t2-media/", "") ?? "";
@@ -63,13 +67,29 @@ describe("t2 media assets", () => {
     for (const [locale, refs] of byLocale) {
       expect(new Set(refs).size, `duplicate media reference within locale ${locale}`).toBe(refs.length);
     }
-    const shipped = readdirSync(MEDIA_DIR).filter((f) => f.endsWith(".jpg"));
-    expect(shipped.sort()).toEqual([...(byLocale.get("en") ?? [])].sort());
-    // Non-en locales may only reuse assets the en deck ships.
-    const enSet = new Set(byLocale.get("en") ?? []);
+    const shipped = new Set(readdirSync(MEDIA_DIR).filter((f) => f.endsWith(".jpg")));
+    // Subset, not equality: the pool also serves the operational bank, which
+    // is not in this repository (see the header).
+    for (const src of byLocale.get("en") ?? []) {
+      expect(shipped.has(src), `en deck references unshipped asset ${src}`).toBe(true);
+    }
+    // A ja/ko item may reuse the asset of an en item that is NOT in this tier:
+    // the released/operational partition cut the corpus by item, not by asset.
+    // So the rule that survives here is "a shipped asset", not "an en asset".
     for (const [locale, refs] of byLocale) {
       if (locale === "en") continue;
-      for (const r of refs) expect(enSet.has(r), `${locale} references non-en asset ${r}`).toBe(true);
+      for (const r of refs) expect(shipped.has(r), `${locale} references unshipped asset ${r}`).toBe(true);
+    }
+  });
+
+  it("every shipped t2-media asset obeys the naming rule and the 200 KB budget", () => {
+    // The half of asset hygiene that needs no bank at all — and the half that
+    // still covers the ~36 pool files the operational deck references.
+    const shipped = readdirSync(MEDIA_DIR);
+    expect(shipped.length).toBeGreaterThan(imageItems.length);
+    for (const f of shipped) {
+      expect(f, "unexpected file in the t2-media pool").toMatch(/^[0-9a-f]{12}\.jpg$/);
+      expect(statSync(join(MEDIA_DIR, f)).size, `${f} exceeds 200 KB budget`).toBeLessThanOrEqual(200_000);
     }
   });
 

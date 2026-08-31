@@ -5,14 +5,21 @@
 # GitHub Pages demo can run a real T2 deck WITHOUT the operational bank.
 # It issues NO SCORE OF RECORD.
 #
-# GENERATED/DERIVED — see README.md. Everything except manifest.yaml and
-# tracks/t2-discrimination/items/ is a symlink into ../2026.1.
+# `redacted: true` is the other half of that bargain and it is ENFORCED, not
+# documented: the loader refuses this package if any rubric.yaml grows a
+# criterion `description` or a `band_anchors` block, or if any track grows a
+# `prompts/` directory. Keys are published here; a MARK SCHEME never is.
+# Every file below is its own bytes — this tier no longer symlinks into an
+# operational instrument, because there is no operational instrument in this
+# repository to link to. See README.md.
 id: ailx-demo-practice
 version: "demo-2026.1"
+redacted: true
 notice: >-
   Public released-practice tier. Answer keys, rationales and provenance are
-  published on purpose; this instrument issues no score of record. The
-  operational 2026.1 bank is not part of this package.
+  published on purpose; this instrument issues no score of record. It carries
+  no judge prompt and no rubric marking detail. The operational 2026.1 bank is
+  not part of this package and is not in this repository.
 effective_from: 2026-01-01
 locales: [en, ja, ko]
 tracks:

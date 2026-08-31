@@ -184,9 +184,65 @@ describe("audit facts survive the move", () => {
   });
 
   it("the demo tier carries the SAME scorer digests — the code did not change", () => {
+    // `scorers[]` content-addresses score() SOURCE in packages/tracks, which no
+    // tier owns, so this stays true across the released/operational split.
     for (const trackId of ["t1", "t2", "t3", "t4"] as const) {
       expect(demo.scoringDigest(trackId)).toBe(operational.scoringDigest(trackId));
-      expect(demo.rubricVersion(trackId)).toBe(operational.rubricVersion(trackId));
+    }
+  });
+
+  it("the demo tier carries its OWN rubric version — it is a redaction, not a copy", () => {
+    // These two used to be asserted EQUAL. They were equal only because the
+    // released tier symlinked its rubrics and prompts into the operational
+    // package, so the two hashed the same bytes: the assertion was about the
+    // packaging, not about the instrument. The released tier is public and now
+    // carries a REDACTED rubric — the published allocation, no per-criterion
+    // `description`, no `band_anchors`, no judge prompts — so
+    // `rubricVersion = hash(rubric.yaml + prompts)` addresses a different
+    // document and must differ. Claiming the operational version would be a
+    // statement about a marking scheme this tier does not use.
+    for (const trackId of ["t1", "t2", "t3", "t4"] as const) {
+      expect(demo.rubricVersion(trackId)).toMatch(/^[0-9a-f]{64}$/);
+      expect(demo.rubricVersion(trackId)).not.toBe(operational.rubricVersion(trackId));
+    }
+  });
+
+  it("the demo rubric is a REDACTION of the operational one, criterion for criterion", () => {
+    // What replaces the equality above: same allocation, no marking material.
+    // The cross-tier half of this claim is asserted where both tiers exist.
+    // `Snapshot` models what this PACKAGE reads (bank, config, versions); the
+    // rubric block is the content-tools shape, so it is typed locally here.
+    interface RubricSnapshot {
+      instrument: {
+        tracks: Array<{
+          trackId: string;
+          prompts: unknown[];
+          rubric: {
+            track: string;
+            total_points: number;
+            criteria: Array<Record<string, unknown>>;
+            band_anchors?: unknown;
+          };
+        }>;
+      };
+    }
+    const opSnap = JSON.parse(readFileSync(OPERATIONAL_SNAPSHOT, "utf8")) as RubricSnapshot;
+    const demoSnap = JSON.parse(readFileSync(DEMO_SNAPSHOT, "utf8")) as RubricSnapshot;
+    const published = (c: Record<string, unknown>) => {
+      const { description: _marking, ...rest } = c;
+      return rest;
+    };
+    expect(demoSnap.instrument.tracks.length).toBe(opSnap.instrument.tracks.length);
+    for (const [i, dt] of demoSnap.instrument.tracks.entries()) {
+      const ot = opSnap.instrument.tracks[i];
+      expect(dt.trackId).toBe(ot.trackId);
+      expect(dt.rubric.track).toBe(ot.rubric.track);
+      expect(dt.rubric.total_points).toBe(ot.rubric.total_points);
+      expect(dt.rubric.criteria).toEqual(ot.rubric.criteria.map(published));
+      // ...and the demo side carries none of the withheld halves.
+      expect(dt.rubric.band_anchors, dt.trackId).toBeUndefined();
+      for (const c of dt.rubric.criteria) expect(c.description, dt.trackId).toBeUndefined();
+      expect(dt.prompts, dt.trackId).toEqual([]);
     }
   });
 

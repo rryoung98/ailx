@@ -16,17 +16,16 @@ import { describe, it, expect } from "vitest";
 import { fileURLToPath } from "node:url";
 import { loadInstrument } from "../src/loader.js";
 
-const DIR = fileURLToPath(new URL("../../../instruments/2026.1", import.meta.url));
 const DEMO_DIR = fileURLToPath(new URL("../../../instruments/demo-2026.1", import.meta.url));
 const t2Bank = (dir: string) =>
   loadInstrument(dir).tracks.find((t) => t.trackId === "t2-discrimination")!.bank!;
 /**
- * Legitimacy is a property of every authored item, wherever it now lives:
- * 84 operational (instruments/2026.1) + 20 published (instruments/demo-2026.1)
- * after the released-practice split (docs/ARCHITECTURE.md §10 step 1).
- * Publishing an item's key does NOT lower its sourcing bar.
+ * Legitimacy is a property of every authored item, and publishing an item's
+ * key does NOT lower its sourcing bar — so the released tier is held to the
+ * same standard as the exam. The other 84 authored items are in the private
+ * backend repo now, and this gate runs over them there, not here.
  */
-const bank = { items: [...t2Bank(DIR).items, ...t2Bank(DEMO_DIR).items] };
+const bank = { items: [...t2Bank(DEMO_DIR).items] };
 
 interface Prov {
   method?: string;
@@ -47,7 +46,9 @@ const prov = (i: (typeof bank.items)[number]) => (i.provenance ?? {}) as Prov;
 describe("bank content legitimacy", () => {
   it("image-provenance items are real media only (mock SVG scenes retired)", () => {
     const images = bank.items.filter((i) => i.type === "image-provenance");
-    expect(images.length).toBeGreaterThanOrEqual(44);
+    // 8 image-provenance items in the released tier (4 en + 2 ja + 2 ko). The
+    // operational deck's ~44 are checked in the private repo.
+    expect(images.length).toBeGreaterThanOrEqual(8);
     for (const i of images) {
       expect((i.material as { kind?: string }).kind).toBe("image");
       const p = prov(i);
@@ -96,7 +97,7 @@ describe("bank content legitimacy", () => {
 
   it("ja/ko items mark machine translation as unreviewed, prominently", () => {
     const jako = bank.items.filter((i) => i.locale === "ja" || i.locale === "ko");
-    expect(jako.length).toBeGreaterThanOrEqual(16); // >= 8 playable items per locale
+    expect(jako.length).toBeGreaterThanOrEqual(10); // 5 released items per locale
     for (const i of jako) {
       const p = prov(i);
       if (p.translation_provenance !== "source") {

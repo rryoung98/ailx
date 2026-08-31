@@ -1,0 +1,32 @@
+# T4 · Generative Direction — REDACTED published allocation (spec §14).
+#
+# RELEASED-PRACTICE TIER. This file publishes the POINTS allocation and
+# nothing else. The per-criterion `description` and the `band_anchors` are
+# the mark scheme, and they live only in the private operational
+# instrument, next to the judge prompts this tier does not carry either.
+# `manifest.yaml` sets `redacted: true`, and the loader REFUSES this tier
+# if a description, a band anchor or a prompts/ directory ever comes back.
+# See ../../README.md.
+track: t4-generative
+total_points: 100
+criteria:
+  - id: brief-compliance
+    name: Brief compliance & communicative accuracy
+    points: 30
+    scored_by: blind-panel-agreement
+    judged: false
+  - id: comparative-merit
+    name: Comparative merit
+    points: 40
+    scored_by: pairwise-human
+    judged: false
+  - id: direction-craft
+    name: Direction & craft evidence
+    points: 20
+    scored_by: judge
+    judged: true
+  - id: provenance-disclosure
+    name: Provenance & disclosure hygiene
+    points: 10
+    scored_by: gates
+    judged: false

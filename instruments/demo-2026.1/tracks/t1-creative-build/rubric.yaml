@@ -1,0 +1,32 @@
+# T1 · Creative Build — REDACTED published allocation (spec §14).
+#
+# RELEASED-PRACTICE TIER. This file publishes the POINTS allocation and
+# nothing else. The per-criterion `description` and the `band_anchors` are
+# the mark scheme, and they live only in the private operational
+# instrument, next to the judge prompts this tier does not carry either.
+# `manifest.yaml` sets `redacted: true`, and the loader REFUSES this tier
+# if a description, a band anchor or a prompts/ directory ever comes back.
+# See ../../README.md.
+track: t1-creative-build
+total_points: 100
+criteria:
+  - id: functional-gates
+    name: Functional & accessibility gates
+    points: 30
+    scored_by: gates
+    judged: false
+  - id: comparative-merit
+    name: Comparative visual merit
+    points: 40
+    scored_by: pairwise-human
+    judged: false
+  - id: technical-ambition
+    name: Technical ambition
+    points: 20
+    scored_by: detector-plus-judge
+    judged: true
+  - id: design-rationale
+    name: Design rationale
+    points: 10
+    scored_by: judge
+    judged: true

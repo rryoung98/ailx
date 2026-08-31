@@ -6,6 +6,14 @@ export interface InstrumentManifest {
   id: string;
   version: string;
   /**
+   * This package is a REDACTED public view of an instrument: it carries the
+   * published points allocation and no marking material at all. The loader
+   * REFUSES a redacted package that carries a criterion `description`, a
+   * `band_anchors` block or a `prompts/` directory, so the released tier
+   * cannot quietly re-acquire a mark scheme (`instruments/demo-2026.1`).
+   */
+  redacted?: boolean;
+  /**
    * Optional one-paragraph statement of what this package IS, carried into
    * the snapshot so a tier cannot be mistaken for another once it is JSON.
    * The released-practice tier uses it to say its keys are public on purpose

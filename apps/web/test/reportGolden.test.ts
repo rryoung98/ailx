@@ -77,9 +77,29 @@ describe("report golden", () => {
    * `insights.verificationEvents` reads claims rather than clicks. No
    * SCORE component moved for this sample: T3 still records one verified
    * claim and one challenged claim.
+   *
+   * It MOVED a third time when the released-practice tier stopped symlinking
+   * its rubrics into the operational instrument. That instrument is not in
+   * this repository any more, and dereferencing the links would have copied
+   * the judge prompts and the rubric marking detail into the public tree. The
+   * public rubric.yaml files are therefore REDACTED copies — a different
+   * document, so `rubricVersion = hash(rubric.yaml + prompts)` addresses
+   * different bytes (instruments/demo-2026.1/README.md "Why the rubricVersion
+   * values moved").
+   *
+   * EXACTLY EIGHT leaves of this object changed, and all eight are a
+   * `rubricVersion` string: four in `research.trackVersions[]` and four in
+   * `participant.tracks[]`. No composite, no track raw, no insight, no
+   * narrative, no player type, no calibration bin and no export field moved —
+   * the derivation was diffed leaf by leaf against the previous snapshot to
+   * establish that before this line was touched. Byte-identical
+   * recomputability of any score of record is untouched for the same reason:
+   * scores of record are cut against the OPERATIONAL instrument, whose
+   * rubric.yaml and prompts did not change (its four versions are still
+   * 572c74c9…, 4bb83e18…, c223b246…, 0b6fe323…), and this tier issues none.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("4a11cde467f4107a38eea6e241c6c63d60b4d96e52ae8db11973a08965c168dc");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("808e34c730d423dbf4eedb0880f08df296686404ef67ef6a8c0169c830c82e79");
   });
 
   it("is stable across repeated derivation", () => {
