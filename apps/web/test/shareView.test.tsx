@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
+// @vitest-environment-options { "url": "https://ailx.example/" }
 /**
  * The share VIEW is what a stranger sees, so these tests assert two separate
  * things: that the social preview exists at all (no preview, no loop), and
  * that the page shows the allowlisted payload and NOTHING else — no items,
  * no answers, no identity.
+ *
+ * The page reads `GET /share/<token>` over HTTP now instead of calling the
+ * handler in-process, so it also has to prove that it stays ANONYMOUS (the
+ * token is the whole capability), that a withdrawn token still 404s, and that
+ * an outage is not dressed as a revocation.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { createElement } from "react";
 import {
   ALL_SHARE_SECTIONS,
   SHARE_NETWORKS,
@@ -15,6 +21,12 @@ import {
   shareText,
 } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
+import {
+  renderClient,
+  renderClientPending,
+  stubFailingFetch,
+  stubHangingFetch,
+} from "./helpers/clientPage";
 
 const payload = sharePayloadFrom(
   { t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 },
@@ -51,48 +63,50 @@ const view = {
 };
 
 let result: { status: number; body: Record<string, unknown> };
-const counted: boolean[] = [];
+const urls: string[] = [];
+const identity: Array<Record<string, string>> = [];
 
-vi.mock("../lib/server/api", () => ({
-  withApiContext: async (fn: (ctx: unknown) => Promise<unknown>) => fn({ db: {} }),
-  pageOrigin: async () => "https://ailx.example",
-}));
-vi.mock("@ailx/backend", async () => {
-  const actual = await vi.importActual<Record<string, unknown>>("@ailx/backend");
-  return {
-    ...actual,
-    handleViewShare: async (_ctx: unknown, _token: string, count = false) => {
-      counted.push(count);
-      return result;
-    },
-  };
-});
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ host: "ailx.example" }),
 }));
 const notFound = vi.fn(() => {
   throw new Error("NEXT_NOT_FOUND");
 });
-vi.mock("next/navigation", () => ({ notFound }));
-
-const { default: SharePage, generateMetadata } = await import("../app/s/[token]/page.api");
-
 const TOKEN = "b".repeat(43);
+vi.mock("next/navigation", () => ({ notFound, useParams: () => ({ token: "b".repeat(43) }) }));
+
+const { ShareView } = await import("../lib/ShareView");
+const { generateMetadata } = await import("../app/s/[token]/page.api");
+
 const params = { params: Promise.resolve({ token: TOKEN }) };
+
+function stubShareService(): void {
+  vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+    urls.push(String(url));
+    identity.push((init?.headers ?? {}) as Record<string, string>);
+    return new Response(JSON.stringify(result.body), { status: result.status });
+  });
+}
 
 beforeEach(() => {
   // These pages exist only in the hosted build, whose basePath is "" — the
   // unit-test fallback would otherwise prefix "/ailx" onto every served path
   // through lib/mode.ts (see siteHref).
   vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
-  counted.length = 0;
-  result = { status: 200, body: { share: view } };
   vi.stubEnv("AILX_PUBLIC_ORIGIN", "https://ailx.example");
+  urls.length = 0;
+  identity.length = 0;
+  notFound.mockClear();
+  result = { status: 200, body: { share: view } };
+  stubShareService();
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 async function markup(): Promise<string> {
-  return renderToStaticMarkup(await SharePage({ params: Promise.resolve({ token: TOKEN }) }));
+  return renderClient(createElement(ShareView));
 }
 
 describe("share view metadata", () => {
@@ -108,14 +122,19 @@ describe("share view metadata", () => {
     expect((meta.twitter as { images: string[] }).images[0]).toContain("card.png");
   });
 
+  it("reads the share from the service, absolutely — a server fetch has no origin", async () => {
+    await generateMetadata(params);
+    expect(urls[0]).toBe(`https://ailx.example/api/share/${TOKEN}`);
+  });
+
   it("is noindex — an unlisted capability URL must never be a search hit", async () => {
     const meta = await generateMetadata(params);
     expect(meta.robots).toMatchObject({ index: false, follow: false });
   });
 
-  it("does not count a view for a scraper fetching metadata", async () => {
+  it("sends no identity: a scraper is anonymous and stays anonymous", async () => {
     await generateMetadata(params);
-    expect(counted).toEqual([false]);
+    expect(identity[0]?.["x-ailx-dev-user"]).toBeUndefined();
   });
 
   it("degrades to a plain noindex title for an unknown or revoked token", async () => {
@@ -124,6 +143,43 @@ describe("share view metadata", () => {
     expect(meta.title).toContain("not found");
     expect(meta.robots).toMatchObject({ index: false });
     expect(meta.openGraph).toBeUndefined();
+  });
+
+  it("degrades the same way when the service cannot be reached at all", async () => {
+    stubFailingFetch();
+    const meta = await generateMetadata(params);
+    expect(meta.title).toContain("not found");
+    expect(meta.openGraph).toBeUndefined();
+  });
+});
+
+describe("reading the share", () => {
+  it("asks the seam for /share/<token> and sends no identity", async () => {
+    await markup();
+    expect(urls[0]).toMatch(new RegExp(`/api/share/${TOKEN}$`));
+    expect(identity[0]["x-ailx-dev-user"]).toBeUndefined();
+    expect(identity[0].authorization).toBeUndefined();
+  });
+
+  it("waits visibly rather than flashing an empty card", async () => {
+    stubHangingFetch();
+    const html = await renderClientPending(createElement(ShareView));
+    expect(html).toContain("Loading");
+    expect(html).not.toContain("ptype-letter");
+  });
+
+  it("does NOT claim the link was revoked when the service is unreachable", async () => {
+    stubFailingFetch();
+    const html = await markup();
+    expect(html).toContain("could not reach the AILX service");
+    expect(notFound).not.toHaveBeenCalled();
+  });
+
+  it("shows the view count the SERVER reports, and never asserts one", async () => {
+    // Counting a view is the store's job and always was; the page only ever
+    // renders the number it was given. It cannot inflate it from here.
+    result = { status: 200, body: { share: { ...view, views: 41 } } };
+    expect(await markup()).toContain("41 views");
   });
 });
 
@@ -158,9 +214,10 @@ describe("share view page", () => {
     expect(html).not.toContain("__NEXT_DATA__");
   });
 
-  it("counts exactly one anonymous view per render", async () => {
+  it("stays anonymous: the render sends no identity and no cookie of ours", async () => {
     await markup();
-    expect(counted).toEqual([true]);
+    expect(identity[0]["x-ailx-dev-user"]).toBeUndefined();
+    expect(identity[0].cookie).toBeUndefined();
   });
 
   it("404s a revoked or unknown token instead of rendering an empty card", async () => {

@@ -443,6 +443,33 @@ Until then the two hosts share one Neon database, so a request answered by eithe
 same rows — a duplicate host, not a second truth. That is tolerable for exactly as long as
 step 1 takes.
 
+**Step 2 is done: the seven server-rendered pages now fetch.** `/progress`, `/world`,
+`/gallery`, `/review`, `/review/[id]`, `/s/[token]` and `/verify/[code]` no longer import
+`lib/server/api.ts` or an `@ailx/backend` handler. Each keeps its `page.api.tsx` NAME —
+that extension is the only thing keeping a database-backed page out of the static export,
+and it never obliged the file to be server-only — but the file is now a shell that exports
+`metadata` around a client component in `apps/web/lib/`. All seven go through ONE module,
+`apps/web/lib/serviceFetch.ts`, so the URL always comes from `apiBase()`, a non-200 keeps
+its status, and a thrown fetch becomes a sentence instead of a blank page. **Identity is
+now a header, everywhere.** The `ailx_dev_user` cookie is `SameSite=Lax`, so the moment the
+seam names another origin it is not sent at all; the three identity-carrying pages —
+`/progress`, `/review`, `/review/[id]` — pass `identified: true` and send
+`x-ailx-dev-user` (or the Clerk bearer) from `lib/authHeaders.ts`. `/world`, `/gallery`,
+`/s/[token]` and `/verify/[code]` send nothing, because a public wall, a capability link
+and a public credential must not depend on who is asking. Two consequences worth stating:
+`generateMetadata` for `/s/[token]` and `/verify/[code]` still runs on the SERVER and does
+its own read (a scraper never runs client code, and no read means no Open Graph card), for
+which `lib/server/page.ts` makes `apiBase()` absolute; and the `/s/[token]` page no longer
+COUNTS a view, because neither `GET /api/share/:token` nor `GET /v1/share/:token` counts
+one — the figure it renders is still the store's, never the page's.
+
+Four of the seven have no `/api` twin on this host: `/progress`, `/world`, `/gallery` and
+`/review` call `/progress`, `/aggregates`, `/gallery` and `/moderation/cases`, which exist
+under `/v1` in `services/api` but were never Next route handlers. With the seam unset those
+four pages therefore render their honest "we could not reach the AILX service" state rather
+than data. That is correct for the direction of travel — step 3 deletes `app/api/**`
+anyway — but it means those pages need `NEXT_PUBLIC_AILX_API_BASE` set to work at all.
+
 ### 10.2 Clerk: why the switch must be ATOMIC, and the recipe
 
 `AILX_AUTH` has no default and dev auth is asserted, never proven, so staging must not stay
