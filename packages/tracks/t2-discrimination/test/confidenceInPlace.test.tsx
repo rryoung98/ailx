@@ -189,15 +189,25 @@ describe("the confidence step occupies the card's own frame", () => {
 });
 
 describe("nothing is scrolled into view any more", () => {
-  it("never calls scrollIntoView through a whole item", () => {
+  it("never yanks the page: any scroll request is block:\"nearest\", which no-ops when visible", () => {
+    // jsdom has no layout, so the OUTCOME (scroll position unchanged) is only
+    // provable in a real browser — apps/web/e2e measures window.scrollY across
+    // the transition at 390x844 and 1440x700. What is provable HERE is the
+    // mechanism: the deck may ask to reveal the panel when the viewport is too
+    // short for DECK_MIN_H, but it must never ask with "start"/"center", which
+    // are the options that move a page that was already fine.
     mount();
     startDeck();
     answer();
-    expect(scrollIntoView).not.toHaveBeenCalled();
+    for (const call of scrollIntoView.mock.calls) {
+      expect(call[0]).toMatchObject({ block: "nearest" });
+    }
     setConfidence(80);
     act(() => lockIn().click());
     expect(container.textContent).toContain("Item 2 / 2");
-    expect(scrollIntoView).not.toHaveBeenCalled();
+    for (const call of scrollIntoView.mock.calls) {
+      expect(call[0]).toMatchObject({ block: "nearest" });
+    }
   });
 
   it("leaves the window scroll position exactly where the candidate left it", () => {

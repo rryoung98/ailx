@@ -197,6 +197,20 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
     }
     focusInSheetRef.current = true;
     sliderRef.current?.focus(NO_SCROLL);
+    /**
+     * Last resort, and only when the deck could not be made to fit.
+     *
+     * SwipeDeck sizes the frame so that card, panel and answer buttons share
+     * one screen, and then nothing here scrolls. But the fit has a floor
+     * (DECK_MIN_H): on a short viewport with the tallest option list, the
+     * buttons the candidate just pressed can sit below the fold, which means
+     * the panel that replaces the card is now ABOVE it — the candidate is
+     * moving a slider they cannot see. `block: "nearest"` scrolls the least
+     * that makes it visible, so when the panel is already on screen (the
+     * normal case, every viewport that fits) it does nothing at all and the
+     * no-scroll property is untouched.
+     */
+    sheetRef.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [choice]);
 
   /** Focusable controls inside the sheet, in DOM order. */
