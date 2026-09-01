@@ -402,12 +402,52 @@ bottom of any AI-fluency distribution. **Excluding them biases the national mean
 bias is in the direction that flatters the number.** We must say that, because a critic will, and
 saying it first costs nothing.
 
+**The numbers, per country, because a regional average hides the whole problem.**
+
+- **US:** 96% of adults use the internet (2025), but only **78% have home broadband**, and **16% are
+  "smartphone-dependent"** — a smartphone and no home broadband. The gradient is the point:
+  smartphone-dependence runs **27% among adults with high school or less** against 6% among college
+  graduates, and **34% in the lowest income band** against 4% in the highest. **VERIFIED** (Pew,
+  *Internet/Broadband Fact Sheet*, Nov 2025, from NPORS 2025, n = 5,022, address-based so non-users
+  can respond).
+- **EU:** 94% used the internet in the last three months; 4% did not use it at all in a year. The
+  never-used share ranges from **under 1% (Denmark, Netherlands, Luxembourg) to about 10% (Croatia,
+  Portugal, Greece)** — a tenfold spread. **VERIFIED** (Eurostat, 2025 ICT survey, ages 16–74).
+  **A single "EU" coverage figure is meaningless; state it per country.**
+- **Japan:** individual internet use exceeds 90% in every age band from 13 to 69, and roughly 90% of
+  each band from 20–59 uses a smartphone to access it. **VERIFIED** (MIC *Communications Usage
+  Trend Survey* 2023, n = 33,009). The 70+ rates are in a chart we could not read cleanly —
+  **UNVERIFIED, do not quote them.**
+- **UK, Korea: GAP.** Ofcom's *Adults' Media Use and Attitudes* and Korea NIA's Digital Divide
+  Survey are the right sources and neither was read. Get the numbers before publishing a coverage
+  rate for those countries.
+- **Global context:** ITU reports **2.2 billion people remain offline**. **VERIFIED** (*Facts and
+  Figures 2025*).
+
+**Read the US block twice, because it reframes the problem.** For AILX, "no internet" is a ~4%
+issue and **"no real computer" is a ~16% issue**, concentrated exactly in the low-income,
+low-education groups whose AI literacy is the policy question. **Non-coverage and the device effect
+of §6 are the same problem wearing two hats**, and a desktop-locked population form converts part of
+the device problem into a coverage problem. That trade must be made explicitly and reported, not
+absorbed.
+
+**How big is the bias?** Bounded below by (share excluded) × (their expected deficit). At 4%
+excluded with a 1.0 SD deficit, that is **0.04 SD of upward bias — comparable to the entire sampling
+half-width at n = 1,500 (±0.064 SD)**. Add the smartphone-dependent group and it is larger than the
+sampling error, not smaller. Publish the arithmetic.
+
 Mitigations, from strongest to weakest:
 
-1. **Buy the vendor's offline provision.** Established probability panels recruit offline households
-   and supply a device and connection so they can participate (this is standard practice for
-   AmeriSpeak, KnowledgePanel and LISS — see §8). This converts most of the coverage gap into a
-   cost line. It does not close it for people who decline a device.
+1. **Buy the vendor's offline provision — but check what it actually is.** Ipsos KnowledgePanel
+   supplies "a web-enabled device such as a tablet and free internet service" to adults recruited
+   from households without internet access, explicitly to keep a single mode and avoid mode effects.
+   **VERIFIED.** NORC AmeriSpeak reports that **13% of recruited households are non-internet** and
+   serves them **by telephone** — a second *mode*, not a device. **VERIFIED.** For a survey that is
+   a fine answer; **for a performance assessment it is not one at all, because AILX cannot be
+   administered over the phone.** This makes device provision a hard vendor-selection criterion, not
+   a preference. Typically 1–5% of a fielded sample arrives through provided equipment or a
+   non-web mode — small for a national mean, and decisive for the bottom of a digital-skill
+   distribution, which is exactly the tail we are trying to measure.
 2. **Quantify the residual and publish it.** Report the size of the non-internet-using adult
    population from official sources (ITU; national statistical offices; Japan MIC's Communications
    Usage Trend Survey; Korea's NIA digital-divide series; Eurostat; Ofcom), and report what fraction
