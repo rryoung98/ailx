@@ -988,8 +988,10 @@ methodologist can take apart in an afternoon.
    population is a declared, quantified, sensitivity-bounded exclusion (§7).
 8. Weighting: propensity cells → raking to national-frame margins including internet-use frequency →
    penalised trimming targeting deff < 2 → Fay-BRR replicate weights (§9).
-9. The NRBA is published in the same bundle as the estimate, always, with the break-off bound, and
-   "no notable bias" is a banned phrase (§10).
+9. The NRBA is published in the same bundle as the estimate, always, with the break-off bound, the
+   EVO figure, and the Track A vs panel residual-selection-bias measure. "No notable bias" is a
+   banned phrase (§10). Paradata on every invited panellist is captured at field time, because it
+   is the only information we will ever have about non-respondents.
 10. Track A publications carry the §11 hedging block verbatim, and never use "national" or
     "representative".
 11. A frozen trend form is fielded from wave 1, and headline trends are reported only on it (§12).
