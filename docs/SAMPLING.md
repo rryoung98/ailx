@@ -680,3 +680,96 @@ before we cite it by number.**
 > variance code, and the version of the estimator used. Kreiner and Christensen's re-analysis of
 > PISA was only possible because the data was public; publishing microdata converts an attack
 > surface into a credibility asset.
+
+---
+
+## 11. What we may honestly say, at each stage
+
+This is the section that will be used most and read least carefully, so the language is written out
+in full rather than described. The moment credibility is spent or kept is the first publication that
+happens **before** a panel exists — which is the stage we are at now.
+
+### Stage 0 — calibration cohort (today; n ≈ 45, summit)
+
+**May say:** item difficulty and discrimination estimates; that the instrument spreads a capable
+cohort; qualitative findings; that this is a calibration and item-development cohort, as the spec
+already states.
+**May not say:** anything with a population noun in it. No percentile against "people", no band
+described as a standard.
+
+### Stage 1 — convenience sample at scale (Track A, thousands of sittings, no panel)
+
+This is the dangerous stage, because the n gets big enough to feel like evidence.
+
+**The rule: a Track A finding may describe the people who took it, and may describe items,
+behaviour and relationships. It may never describe a country, a population, or "adults".**
+
+Safe forms:
+
+- ✅ "Among 12,400 people who chose to take AILX, 8% correctly identified all five synthetic
+   images." — a statement about takers.
+- ✅ "Confidence was uncorrelated with accuracy (r = .04) in this cohort." — a *relationship*, which
+   is far more robust to selection than a mean, and is where the good Track A findings live.
+- ✅ "Item 2026.1-T2-014 has a difficulty of −0.8 logits and discriminates well." — an item property.
+- ❌ "8% of adults can spot AI-generated images."
+- ❌ "Japanese users scored 12 points below US users." — this is two convenience samples with
+   different recruitment channels, and the difference is a channel effect until proven otherwise.
+- ❌ "AILX finds AI literacy is low." — no population, no verb tense that implies one.
+
+**The exact hedging block**, to be attached to any Track A publication, verbatim, above the finding
+and not below it:
+
+> **How this sample was collected, and what it cannot tell you.**
+> These results come from the AILX open cohort: N people who found AILX and chose to take it. This
+> is a **self-selected convenience sample**, not a representative sample of any population. People
+> who take an AI-literacy exam voluntarily are, on average, more interested in AI, younger, more
+> educated and more online than the population they were drawn from, and everyone in this sample
+> uses the internet by construction. We do not know the size or direction of the resulting bias,
+> and we cannot estimate it from these data. **No figure here is a national or population estimate,
+> and any number in this document that is compared across countries is comparing recruitment
+> channels as much as people.** For context, the OECD's PIAAC — an in-home, interviewer-administered,
+> incentive-paid probability survey — achieved a 27.8% response rate in the United States; getting a
+> population estimate is hard even when it is the whole point of the design, and it was not the
+> design here. AILX will publish population estimates only from its probability-panel track, with
+> weights, replicate standard errors and a non-response bias analysis attached. Until then, treat
+> everything here as a description of AILX's users.
+
+Two words we do not use about Track A, in any language, ever: **"national"** and
+**"representative"**. And one framing we do not use: a headline number with a country flag next to
+it.
+
+**On the "N is large" temptation:** the correct internal response to "but we have 200,000
+respondents now" is §1. Write it on the wall.
+
+### Stage 2 — first panel wave, one or two countries
+
+**May say:** "Estimated mean AI-literacy score for internet-using adults aged 18–65 in [country],
+2026: X (95% CI a–b), from a probability panel of n, weighted to [margins] from [frame], overall
+response rate R%, with the non-response bias analysis published alongside."
+**May not say:** anything comparative that we lack a second country for, and no trend — a first wave
+has nothing to trend against.
+**Must say, in the headline release, not the annex:** target population is internet-using adults;
+the excluded offline population and its estimated size; the response rate; the direction of the
+likely residual bias.
+
+### Stage 3 — multi-country, multi-wave
+
+**May say:** country comparisons **as overlapping bands, never as ranks** (§4.3); trends with the
+linking-error term included in the interval; subgroup breakdowns above the §4.5 floors.
+**May not say:** that a change between years is a change in the population, unless the frozen
+trend form (§12) supports it. On a re-versioned instrument, the alternative explanation is always
+the instrument.
+
+### The precedent to copy, and the one to avoid
+
+**Copy: the TIAA Institute–GFLEC Personal Finance (P-Fin) Index.** A private sponsor buys a
+28-item knowledge test on **Ipsos KnowledgePanel** (n = 3,602), publishes it annually for a decade
+as an "index" or "barometer", and also releases an open short form anyone can take. **VERIFIED.**
+That is exactly the AILX shape: probability panel for the statistic, open instrument for reach, and
+the two never confused. It is also proof that a private organisation can buy probability panel time
+and publish a credible national knowledge statistic — the thing being proposed here is not novel.
+
+**Avoid: the FINRA National Financial Capability Study's presentation**, which fields an opt-in
+quota sample and quotes the margin of error a probability sample "would have". **VERIFIED.** That
+sentence is the single most quotable methodological error available to us, and we should never write
+its equivalent. If we do not have a probability sample, we quote no margin of error at all.
