@@ -30,13 +30,17 @@ Precision here matters more than ambition, because the first thing a serious rev
 
 What must *not* be claimed is that no performance-based human AI-literacy instrument exists. Two do — **GLAT** (20 items, 2PL IRT, α = 0.80) and **AICOS** (51 items, 3PL IRT, n = 514) — and a third, SAIL4ALL, has been validated on 1,500+ respondents across three samples. A systematic review counts three "performance-based" scales against thirteen self-report ones.
 
-The catch, and the opening, is terminological. In that literature "performance-based" means *objective and keyed* — multiple-choice or true/false — as opposed to self-report. It does not mean authentic task performance. Nobody is scoring a person actually building something, actually being deceived or not deceived, actually directing a model, against a rubric, at scale. That is the space AILX occupies.
+The catch, and the opening, is terminological. In that literature "performance-based" means *objective and keyed* — multiple-choice or true/false — as opposed to self-report. It does not mean authentic task performance. Nobody is scoring a person actually building something, actually being deceived or not deceived, actually directing a model, against a rubric, at scale. That is the space AILX occupies **today**.
+
+> **Which qualifier is the moat, and which one expires**
+>
+> "Authentic task performance, not multiple choice" is a true description of the field as it stands and a **weak long-run differentiator**. The first draft of the OECD's PISA 2029 Media & AI Literacy (MAIL) assessment framework recommends that **about half of assessment time go to "analyse and evaluate" and "create" processes** — OECD is going performance-based on this construct, with sampling frames and policy consumers AILX will never match. What OECD does not have, and has no plan to acquire, is **adults** (MAIL tests 15-year-olds) and **cadence** (PISA fields on a three-year cycle, first data 2029; AILX re-cuts annually). Lead with adults and annual cadence. Treat performance-based as a description, not as the defence.
 
 ### Four supporting facts worth memorising
 
 - **Self-report does not work.** A 2026 LAK study found low correlation between self-reported and objectively measured AI literacy, with systematic over- and under-estimators. In the GLAT validation, objective score predicted AI-assisted task performance (β = 0.220, p = .040) while self-reported ChatGPT proficiency predicted nothing (p = .118).
 - **No existing instrument is cross-culturally validated.** The *npj Science of Learning* review states plainly that none of the sixteen scales has been tested for cross-cultural validity. A trilateral cohort is therefore not a nice-to-have framing — it is the single strongest methodological differentiator available.
-- **The construct is moving.** The OECD–EC *AILit* framework was finalised 18 June 2026 with 4 domains and 19 competences; PISA 2029 will field a separate Media & AI Literacy domain. Both are aimed at primary and secondary school. Adults are unserved.
+- **The construct is moving, and the OECD is moving into it.** The OECD–EC *AILit* framework was finalised 18 June 2026 with 4 domains and 19 competences; PISA 2029 will field a separate Media & AI Literacy domain, and its draft framework is performance-based rather than multiple-choice. Both are aimed at primary and secondary school, on a three-year cycle. **Adults, measured annually, are unserved — that is the moat, not the item format.**
 - **Humans are worse at detection than they believe.** In a 2,000-person study, 0.1% correctly classified every item, and confidence stayed above 60% regardless of correctness. Overconfidence, not accuracy, is likely to be AILX's most quotable finding.
 
 ### What a pitch meeting should take away
@@ -45,12 +49,12 @@ AILX gives a government a defensible number for a population it currently cannot
 
 ## 02 · The gap being filled
 
-Frameworks are abundant. Instruments are scarce. Instruments that measure adults, across cultures, on real tasks, and that are governed as a benchmark rather than published once as a validation study — those do not exist.
+Frameworks are abundant. Instruments are scarce. Instruments that measure **adults**, **every year**, across cultures, on real tasks, and that are governed as a benchmark rather than published once as a validation study — those do not exist. Read the table by population and cadence columns first: that is where the gap is. The format column is where the gap is closing.
 
 | Effort                   | Type                   | Population              | Format                                  | Status                             |
 |--------------------------|------------------------|-------------------------|-----------------------------------------|------------------------------------|
 | **OECD–EC AILit**        | Framework              | Primary / secondary     | 4 domains, 19 competences, 3 levels     | Final 18 Jun 2026 — no instrument  |
-| **PISA 2029 MAIL**       | Framework → assessment | 15-year-olds            | 3 dimensions, 5 competencies            | Framework draft 2026, fielded 2029 |
+| **PISA 2029 MAIL**       | Framework → assessment | 15-year-olds            | Performance-based; draft allocates ~half of assessment time to analyse/evaluate and create | Framework draft 2026, fielded 2029 |
 | **UNESCO AI Competency** | Framework ×2           | Students / teachers     | 4–5 dimensions, 3 progression levels    | Published Aug 2024 — no instrument |
 | **ETS K–12 AI literacy** | Framework (ECD)        | K–12                    | 3 areas, 3 task-design principles       | Nov 2025 — no instrument           |
 | **EU DigComp 3.0**       | Framework              | General                 | 5 areas, 21 competences, AI transversal | Dec 2025 — supersedes 2.2          |

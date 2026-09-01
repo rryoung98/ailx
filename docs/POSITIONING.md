@@ -23,6 +23,14 @@ false as a market claim and true at the measurement layer:
 
 Incumbents certify *familiarity*. AILX examines *capability*. Different category.
 
+**Which qualifier is the moat.** Not "performance-based, not multiple choice". The first
+draft of OECD's PISA 2029 Media & AI Literacy (MAIL) framework recommends that about half
+of assessment time go to "analyse and evaluate" and "create" — the OECD is going
+performance-based on this construct, with 80+ countries of sampling frame behind it. The
+durable differentiators are the other two qualifiers: **adults** (MAIL tests 15-year-olds)
+and **annual cadence** (PISA runs a three-year cycle, first MAIL data 2029). Lead with
+those. Performance-based is a description of the instrument, not a defence of it.
+
 ## Why certifications structurally cannot cover the frontier
 
 Certifications test declarative knowledge frozen at authoring time. Frontier practice
@@ -55,13 +63,19 @@ neutrality vacuum it cannot fill itself.
 
 Competitive risks, in order:
 
-1. **ETS** — psychometric infrastructure, Futurenav Adapt AI (June 2025), already
+1. **OECD / PISA 2029 MAIL** — the biggest strategic threat to any "index of AI proficiency"
+   claim: sampling frames, an 80+ country footprint, the policy consumers, and a
+   performance-based draft framework. Mitigant is structural, not competitive: it tests
+   15-year-olds on a three-year cycle. AILX owns adults and annual cadence, or it owns
+   nothing. Treat the MAIL expert group as future partners for the adult segment, not as a
+   position to attack.
+2. **ETS** — psychometric infrastructure, Futurenav Adapt AI (June 2025), already
    OpenAI's psychometrics partner. Mitigant: ETS was already disrupted by the exact
    playbook AILX runs (Duolingo English Test vs TOEFL: $65, 1 hour, gamified funnel);
    its metabolism is years-per-item-cycle, AILX's must be months.
-2. **CodeSignal** — simulation-based AI assessments, 13M+ evaluations, but B2B hiring
+3. **CodeSignal** — simulation-based AI assessments, 13M+ evaluations, but B2B hiring
    tool with no public credential or norming.
-3. **Workera** — enterprise AI-readiness scores (Andrew Ng), quiz-leaning, B2B only.
+4. **Workera** — enterprise AI-readiness scores (Andrew Ng), quiz-leaning, B2B only.
 
 Proof the components work: HackTheBox CPTS (consumer-priced hands-on exams at 4.3M-member
 scale), Duolingo English Test (cheap normed exam accepted by every Ivy), Lakera Gandalf

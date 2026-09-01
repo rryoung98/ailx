@@ -184,6 +184,8 @@ One diagnostic report. Four track scores, then the three things nobody has ever 
 
 “So the claim is narrow and I will say it precisely: the first cross-nationally normed, annually re-versioned, task-performance-based AI literacy examination for adults. Every word there is doing work.”
 
+“And if you are about to say PISA — yes. PISA 2029 fields Media and AI Literacy, and its draft framework puts about half the assessment time on analyse, evaluate and create. It is performance-based too. It tests fifteen-year-olds, once every three years, starting 2029. We test adults, every year. That is the part nobody else is building.”
+
 **Objection 2 — “You are using AI to grade AI literacy”**
 
 “No two tracks are scored the same way, deliberately. Track two is arithmetic on response data. Thirty-five points of track three are arithmetic on behaviour. Aesthetics go to humans.”
