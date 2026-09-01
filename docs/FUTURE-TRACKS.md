@@ -119,11 +119,12 @@ four tracks do not reach. Ranked by what it would cost to close them.
 already has a `message-hostility` family, but every one of its items is phishing aimed at
 a PERSON: fake bank alert, CEO wire request, credential harvest. No item asks whether a
 document was written to deceive the MODEL the candidate is about to hand it to. That is
-the skill this audience needs, and the evidence is concrete: a study of roughly 200,000
-real resumes found hidden injections in about 1% of them, and more than 90% of the hidden
-content was DATA injection (false facts that change what the model concludes) rather than
-prompt injection (instructions that change what it does). Those are two item families, not
-one. Authoring them needs no new runner, no new scorer and no new track.
+the skill this audience needs. There is a published measurement of hidden injections in
+real resumes at scale behind this proposal, and the numbers that were quoted here carried
+no citation, so they have been removed rather than left standing: name the study, with its
+sample and its design, before any figure goes back in. The design point survives without
+them — DATA injection (false facts that change what the model concludes) and PROMPT
+injection (instructions that change what it does) are two item families, not one. Authoring them needs no new runner, no new scorer and no new track.
 
 **2. Where the check belongs — a T3 rubric dimension, not a track.** T3 already seeds
 `fabricated-citation` and `wrong-calculation` errors, and measures an individual catching
