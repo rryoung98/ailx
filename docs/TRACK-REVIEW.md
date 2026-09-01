@@ -657,3 +657,85 @@ removing 80 points of judge-resolved scoring.
 discarded); raise T3's planted errors from 4 to 8–12; add the time-pressure condition; stop clamping
 T2's d′ at zero and move points onto criterion and calibration; build Bradley–Terry, or stop claiming
 it.
+
+
+---
+
+## 9. Addendum — what was implemented, 2026-09-01
+
+This section records what the restructure actually did, and where the code disagreed with the
+analysis above. Written after the change landed, not before.
+
+### 9.1 The shape that shipped
+
+| | Points | Composite weight | Change |
+|---|---|---|---|
+| T1 Creative Build | **160** | .40 | prompt log SCORED (25 pts, model-free); r = 24 → 30 |
+| T2 Synthetic-Media Discrimination | **80** | .20 | criterion scored (15 pts); pure-d′ 60 → 25; floor spike removed; renamed |
+| T3 Calibrated Reliance | **160** | .40 | two-tailed reliance index; 3 → 8 planted errors; model-free 35/100 → 115/160 |
+| T4 Generative Direction | **0** | 0 | unscored showcase; runner and gallery stay |
+
+Total still 400. Model-free measurement went from 159 of 400 to **220 of 400**.
+
+### 9.2 Four things the analysis above got wrong or left out
+
+**(a) The judge-exposure number was 241, not 225.** §6 counted T4's judge-resolved points as 80
+(brief-fit 30 + comparative 40 + provenance 10). It missed that `craft` is a blend: 50% steering
+efficiency read from stored per-DRAFT judge values and 30% direction-note judgment are also
+judge-resolved, so T4 was 96 of 100, not 80. Only `craft.quota` — 4 points — was model-free. The
+true implemented exposure was **241 of 400**. Recount before quoting.
+
+**(b) Cutting T4 under equal weighting would have PROMOTED T2, not demoted it.** This is the
+single most important thing this document missed, and it is easy to miss because it hides between
+two true statements. The composite is built from **z-scores**, not raw points, and §04's weights
+were four equal quarters. Drop T4, keep "equal weighting", and T2 goes from a quarter of the
+composite to a **third** — the exact opposite of the demotion §2.7 recommends. Point allocation
+alone cannot demote a track. The weights had to move too, and they now follow the declared points
+(T1 .40, T2 .20, T3 .40).
+
+**(c) The evidence base does not support the reliance construct — it is silent on it.** A
+citation-level check of `/tmp/ailx-research-01a04bca/` found **no definitions of RSR or RAIR, no
+origin papers, no published index or scoring scheme for calibrated reliance, no two-tailed
+treatment of reliance in the literature, and no evidence on verification behaviour under time
+pressure or cost.** §7.2 and §7.3 above read as though that evidence exists. It does not, in this
+base. The two-tailed index shipped anyway, because the design argument stands on its own — it is
+behavioural, keyless, symmetric and immune to demand characteristics — but it ships **marked as
+AILX's own construction with no external validity evidence**, in the scorer's module comment and
+in spec §T3. The same check found no corroboration for the QWK 0.708–0.712 figure the spec quotes
+for a calibrated jury; what the base contains is one small study (n = 67) with a low,
+non-significant result. Those 45 points are marked unimplemented for more reasons than one.
+
+Two other citation corrections: Verhavert's bands are SSR .70 at ~13 comparisons, .80 at 19–20,
+.90 at **26–37** — so r = 30 is inside the .90 band, as §3.3 says. Diel et al. is k = 137 across
+56 papers with pooled accuracy 55.54% [48.87, 62.10].
+
+**(d) The evidence cuts against cutting T4 in one place, and it is worth naming.** PISA 2029's
+Media & AI Literacy framework gives roughly half its test time to *create* alongside analyse and
+evaluate. Cutting a generative track moves AILX away from that balance. The answer is that T1 is a
+create track, it is now the flagship, and it has an external criterion — AILX did not stop
+measuring creation, it stopped measuring it twice — but the tension is real and the spec states it.
+Similarly, §2.1's case for demoting d′ is partly contradicted by Diel's own reading that *accuracy*
+is confounded with criterion, which is the original argument for scoring d′ at all. d′ keeps 25
+points and a renamed construct rather than being dropped.
+
+### 9.3 Two design decisions this document did not anticipate
+
+**The d′ floor is now a declared constant, and where it sits changes every score.** §2.7 says
+"do not clamp at zero for reporting". Not clamping needs a bottom, and the bottom is a policy
+choice: sensitivity scales from `D_PRIME_FLOOR = −1.0`, roughly "systematically calling real
+content synthetic and synthetic content real". Moving that floor moves the whole distribution, so
+it is declared, tested, and configurable per form rather than hidden in a clamp.
+
+**Scoring the criterion opened a hole that silence could walk through.** A candidate who answers
+nothing misses every signal item *and* false-alarms every noise item; the two probits cancel and c
+lands at ~0 — an unbiased-looking criterion earned by not playing. The declared missing-response
+rule (already used for calibration) now gates the criterion as well. A test pins it shut.
+
+### 9.4 What is still not built
+
+Bradley–Terry (60 points), T1's accessibility and functional gates (40 points), and T3's calibrated
+three-family jury (45 points) — **145 points of specified measurement that does not exist**. All
+three are now marked `implemented: false` in `packages/core/src/allocation.ts`, listed in spec §04,
+and flagged inline at each score allocation. `packages/core/test/spec-allocation.test.ts` fails the
+build if the spec and the allocation table stop agreeing, which is the guard whose absence let the
+original §04 claim go wrong by a factor of five.

@@ -14,6 +14,13 @@
  * `name@version` from the package manifest, not by their file bytes. Editing
  * a dependency in place without a version bump is therefore not caught. That
  * is a deliberate scope line: workspace packages are versioned artifacts.
+ *
+ * That boundary got teeth in 2026.1. The SCORE ALLOCATION now lives in
+ * `@ailx/core` (`allocation.ts`) and every track's `score()` reads its weights
+ * from there, so a re-weighting can change what a score means WITHOUT
+ * touching a byte inside a track package. `@ailx/core` was bumped to 0.1.0
+ * with the restructure, and it has to be bumped again with the next one, or
+ * the audit digest will keep addressing an allocation that has moved.
  */
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -75,6 +82,61 @@ function resolveSource(fromFile: string, spec: string): string | null {
 
 export class ScorerSourceError extends Error {}
 
+/**
+ * How a non-relative import is identified in the digest.
+ *
+ * A registry dependency is `name@range`, which is what the manifest pins.
+ * A WORKSPACE dependency (`workspace:*`) is not pinned by anything: the range
+ * never changes, so `@ailx/core@workspace:*` addresses whatever that package
+ * happens to contain today. That was survivable while `@ailx/core` held only
+ * the plugin interface. It is not survivable now that it holds the SCORE
+ * ALLOCATION, because a re-weighting changes what every score means without
+ * touching a byte inside a track package.
+ *
+ * So a workspace dependency is recorded at its RESOLVED VERSION, read from
+ * the dependency's own manifest. The stated policy — workspace packages are
+ * versioned artifacts — only holds if the digest records the version rather
+ * than the range.
+ */
+export function externalId(
+  packageDir: string,
+  range: string | undefined,
+  spec: string,
+): string {
+  if (range === undefined) return spec;
+  if (!range.startsWith("workspace:")) return `${spec}@${range}`;
+  const resolved = workspaceVersion(packageDir, spec);
+  if (resolved === null) {
+    throw new ScorerSourceError(
+      `${packageDir}: workspace dependency '${spec}' has no resolvable package.json version`,
+    );
+  }
+  return `${spec}@${resolved}`;
+}
+
+/**
+ * Version from a workspace dependency's own manifest, or null.
+ *
+ * The dependency is reached through the package manager's own link
+ * (`<pkg>/node_modules/<spec>`), walking up so a hoisted layout works too.
+ * That is the same path the compiler resolves, so the version recorded is the
+ * version that was actually built against.
+ */
+function workspaceVersion(packageDir: string, spec: string): string | null {
+  let dir = resolve(packageDir);
+  for (let depth = 0; depth < 8; depth++) {
+    const p = join(dir, "node_modules", ...spec.split("/"), "package.json");
+    if (existsSync(p)) {
+      const m = JSON.parse(readFileSync(p, "utf8")) as { name?: string; version?: string };
+      if (m.name === spec && typeof m.version === "string") return m.version;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 /** Content-address one track package's score() closure. */
 export function scorerRecord(packageDir: string): ScorerRecord {
   const pkgPath = join(packageDir, "package.json");
@@ -108,8 +170,7 @@ export function scorerRecord(packageDir: string): ScorerRecord {
         }
         queue.push(next);
       } else {
-        const range = pkg.dependencies?.[spec];
-        externals.add(range ? `${spec}@${range}` : spec);
+        externals.add(externalId(packageDir, pkg.dependencies?.[spec], spec));
       }
     }
   }

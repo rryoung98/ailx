@@ -13,6 +13,13 @@ import { scorerRecord, scorerRecords, scorerRecordsIn, ScorerSourceError } from 
 
 const TRACKS = fileURLToPath(new URL("../../tracks", import.meta.url));
 
+/** Fake a package-manager link so a workspace dep resolves to a version. */
+function linkWorkspaceDep(dir: string, spec: string, version: string): void {
+  const target = join(dir, "node_modules", ...spec.split("/"));
+  mkdirSync(target, { recursive: true });
+  writeFileSync(join(target, "package.json"), JSON.stringify({ name: spec, version }));
+}
+
 /** A throwaway track package: package.json + the source files given. */
 function fixture(files: Record<string, string>, ailx: unknown = { trackId: "t9", scoringEntry: "src/plugin.ts" }): string {
   // `null` means "omit the ailx block" — `undefined` would silently take the default.
@@ -74,12 +81,57 @@ describe("scorerRecord", () => {
     expect(scorerRecord(dir).digest).not.toBe(a.digest);
   });
 
-  it("records external dependencies at their declared range", () => {
-    const r = scorerRecord(fixture({
+  it("records a registry dependency at its declared range", () => {
+    const dir = fixture({
+      "src/plugin.ts": `import { z } from "zod";\nimport { scoreT9 } from "./score.js";\nexport const plugin = { z, scoreT9 };\n`,
+      "src/score.ts": SCORE,
+    });
+    const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as Record<string, unknown>;
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ ...pkg, dependencies: { zod: "^3.1.0" } }));
+    expect(scorerRecord(dir).externals).toEqual(["zod@^3.1.0"]);
+  });
+
+  /**
+   * A workspace range never changes, so `@ailx/core@workspace:*` used to
+   * address whatever that package happened to contain. It now holds the SCORE
+   * ALLOCATION, so a re-weighting could have changed what every score means
+   * without moving a single digest. The record pins the RESOLVED version.
+   */
+  it("records a workspace dependency at its RESOLVED version, not its range", () => {
+    const dir = fixture({
       "src/plugin.ts": `import { sha256Hex } from "@ailx/core";\nimport { scoreT9 } from "./score.js";\nexport const plugin = { sha256Hex, scoreT9 };\n`,
       "src/score.ts": SCORE,
-    }));
-    expect(r.externals).toEqual(["@ailx/core@workspace:*"]);
+    });
+    linkWorkspaceDep(dir, "@ailx/core", "9.9.9");
+    expect(scorerRecord(dir).externals).toEqual(["@ailx/core@9.9.9"]);
+  });
+
+  it("moves the digest when a workspace dependency's version moves", () => {
+    const mk = (version: string) => {
+      const dir = fixture({
+        "src/plugin.ts": `import { sha256Hex } from "@ailx/core";\nimport { scoreT9 } from "./score.js";\nexport const plugin = { sha256Hex, scoreT9 };\n`,
+        "src/score.ts": SCORE,
+      });
+      linkWorkspaceDep(dir, "@ailx/core", version);
+      return scorerRecord(dir).digest;
+    };
+    expect(mk("0.1.0")).not.toBe(mk("0.2.0"));
+  });
+
+  it("refuses a workspace dependency it cannot resolve, rather than guessing", () => {
+    const dir = fixture({
+      "src/plugin.ts": `import { sha256Hex } from "@ailx/core";\nexport const plugin = { sha256Hex };\n`,
+    });
+    expect(() => scorerRecord(dir)).toThrow(/no resolvable package.json version/);
+  });
+
+  it("pins the real tracks to the real @ailx/core version", () => {
+    const core = JSON.parse(
+      readFileSync(join(TRACKS, "..", "core", "package.json"), "utf8"),
+    ) as { version: string };
+    for (const r of scorerRecordsIn(TRACKS)) {
+      expect(r.externals, r.trackId).toContain(`@ailx/core@${core.version}`);
+    }
   });
 
   it("resolves extensionless and index specifiers", () => {

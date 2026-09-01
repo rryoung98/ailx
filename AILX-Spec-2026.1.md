@@ -104,7 +104,7 @@ NIST AI 800-2 asks benchmark authors to say which kind of claim they are making.
 
 ## 04 · Instrument overview
 
-Four tracks, 100 points each, scored by different mechanisms on purpose — so that no single failure mode in judging can compromise the whole examination.
+Four tracks and 400 points, scored by different mechanisms on purpose — so that no single failure mode in judging can compromise the whole examination. **The points are not spread evenly, and that is the 2026.1 decision.** T1 and T3 carry 160 each, T2 carries 80, and T4 issues none: it is run, recorded and published as an unscored showcase. `docs/TRACK-REVIEW.md` is the analysis behind that; the allocation itself lives in `packages/core/src/allocation.ts`, as data, in one place.
 
 - **T1 — Creative Build** (160 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
 - **T2 — Synthetic-Media Discrimination** (80 pts, 50 min). 120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture.
@@ -126,49 +126,57 @@ Four tracks, 100 points each, scored by different mechanisms on purpose — so t
 
 > **Design principle: no track is scored the same way as any other**
 >
-> T2 is scored by arithmetic on response data with no model in the loop at all. T3's most heavily weighted component is a planted-error detection rate — also model-free. T1 and T4 route the subjective portion to *human* comparative judgement, with vision models confined to objectively checkable gates. The property this buys is that a discovered flaw in one scoring *mechanism* cannot compromise the whole examination.
+> T2 is scored by arithmetic on response data with no model in the loop at all — sensitivity, criterion, calibration and provenance, all of it. T3's two most heavily weighted components are a planted-error detection rate and a deliberate-adoption rate — also model-free. T1 routes its subjective portion to *human* comparative judgement, keeps a vision model on objectively checkable gates, and scores its prompt log by arithmetic. The property this buys is that a discovered flaw in one scoring *mechanism* cannot compromise the whole examination.
 >
-> **That principle previously carried a number here — "at most 40–45 points out of 400" — and the number was wrong in both directions. It is stated correctly below and it is now derived from the code rather than asserted in prose.**
+> **This principle used to carry a number here — "at most 40–45 points out of 400" — and the number was false in both directions: 101 designed, 241 implemented. It is now derived from the code, checked by a test, and stated in full below.**
 
 #### How the 400 points are actually resolved
 
-Two numbers, because two different failures are worth bounding separately. *Designed* is the mechanism each component is supposed to use. *Implemented* is what `score()` reads today.
+Two numbers, because two different failures are worth bounding separately. *Designed* is the mechanism each component is supposed to use. *Implemented* is what `score()` reads today. Both columns are **derived from `packages/core/src/allocation.ts`, the table the scorers themselves read**, and `packages/core/test/spec-allocation.test.ts` fails the build if this section and that table stop agreeing. The previous version of this paragraph was a number typed in prose, and it was wrong by a factor of five.
 
 | Mechanism | Designed | Implemented (2026.1) |
 |---|---|---|
-| Model-free arithmetic on stored response/transcript data | 159 | 159 |
-| Machine-checkable gates (vision model finds evidence; the finding is checkable) | 30 | 0 |
-| Blinded human pairwise comparison (Bradley–Terry) | 80 | 0 |
-| Blind human viewer panel (T4 brief compliance) | 30 | 0 |
-| LLM jury against a locked rubric | 101 | **241** |
+| Model-free arithmetic on stored response/transcript data | 220 | 220 |
+| Machine-checkable gates (a vision model finds evidence; the finding is checkable) | 40 | 0 |
+| Blinded human pairwise comparison (Bradley–Terry) | 60 | 0 |
+| LLM jury against a locked rubric | 80 | 180 |
 
-Per track, the designed split is: **T1** 30 gate + 40 human-CJ + 30 LLM jury; **T2** 100 model-free; **T3** 55 model-free + 45 LLM jury; **T4** 40 human-CJ + 30 blind-human-viewer panel + 26 LLM jury + 4 model-free.
+Per track: **T1** 40 gate + 60 human-CJ + 35 LLM jury + 25 model-free = 160. **T2** 80 model-free. **T3** 115 model-free + 45 LLM jury = 160. **T4** issues no points.
 
-So the honest statement of the safety property, as designed, is: **a discovered flaw in LLM-as-judge methodology damages at most 101 of 400 points, and at most 45 within any single track.** Not 40–45 overall. The 40–45 figure described T3's analysis component alone and was never the instrument-wide exposure.
+So the safety property, stated as a number that is true:
 
-The implemented column is worse, and the gap is not a rounding error. `score()` cannot tell a stored human comparison from a stored model judgment — both arrive as a `Judgment` row — so every component that has no measurement code behind it resolves, today, through the same stored-judge path. **241 of 400 points currently resolve through stored judge values.** The four causes are listed in "What is not implemented" immediately below, and §18 carries the sequencing.
+> **A discovered flaw in LLM-as-judge methodology damages at most 80 of 400 points — a fifth of the instrument — and at most 45 within any single track. A majority of the instrument, 220 of 400, is arithmetic on stored response data with no model and no rater in the loop at all.**
+
+That is the restructure's real justification, and it is worth saying what moved. Before it, the designed exposure was 101 points and the *implemented* exposure was **241 of 400**, because `score()` cannot tell a stored human comparison from a stored model judgment — both arrive as a `Judgment` row — so every component with no measurement code behind it resolved through the judge path. Cutting T4 removed 96 of those. Scoring T2's criterion, T1's prompt log and T3's two reliance tails added 61 points of model-free measurement that did not exist.
+
+The implemented column is still worse than the designed one, and it will be until the work in "What is not implemented" lands. **180 of 400 points currently resolve through stored judge values.** That number is in this document on purpose.
 
 #### What is not implemented — read this before quoting a score
 
-Four measurements this document specifies do not exist in code. A stub that returns a number is not the measurement, and marking it here is cheaper than discovering it in an audit.
+Three measurements this document specifies do not exist in code, covering **145 points**. A stub that returns a number is not the measurement, and marking it here is cheaper than discovering it in an audit.
 
-| Missing | Points affected | What runs instead |
+| Missing | Points | What runs instead |
 |---|---|---|
-| **Bradley–Terry** — the model behind every comparative point in T1 and T4 | 80 | Nothing fits it. The stage id `pairwise-comparative` enqueues to a `human-cj` queue that no fit consumes; in the public demo the dimension is filled by a sha256-seeded stand-in over string length. |
-| **T1's functional & accessibility gates** — contrast, viewports, landmarks, keyboard, performance budget, required brief elements | 30 | No check exists. `requiredElements` is displayed to the candidate and never verified. The dimension is a stored judgment median. |
-| **T3's heterogeneous three-model jury**, calibrated against ~200 human-labelled examples per rubric per language | 45 | One stub returning three seeded samples that band on answer length. The calibration set does not exist, and the QWK 0.708–0.712 result this component's defence rests on is conditional on it. |
-| **T4's blind-viewer brief-compliance panel** — the one objective thing in T4, and the reason its humanness was argued for at length | 30 | `plugin.ts` routes `judge-t4-brief-fit` to the `judge` queue, i.e. to a model. |
+| **Bradley–Terry** — the model behind T1's comparative merit | 60 | Nothing fits it. The stage id `pairwise-comparative` enqueues to a `human-cj` queue that no fit consumes; in the public demo the dimension is filled by a sha256-seeded stand-in over string length. |
+| **T1's functional & accessibility gates** — contrast, viewports, landmarks, keyboard, performance budget, required brief elements | 40 | No check exists. `requiredElements` is displayed to the candidate and never verified. The dimension is a stored judgment median. |
+| **T3's heterogeneous three-model jury**, calibrated against ~200 human-labelled examples per rubric per language | 45 | One stub returning three seeded samples that band on answer length. The calibration set does not exist. |
 
-Until each of those lands, the affected points are a **band with a stated error, not a measurement**. §16's export tiers carry the flag; a report that omits it is a report we would have to withdraw.
+Two of those three were the whole of T4's remaining defence as well, which is part of why T4 is now a showcase.
+
+Until each lands, the affected points are a **band with a stated error, not a measurement**. Every component carries an `implemented` flag in the allocation table; §16's export tiers carry it too. A report that omits it is a report we would have to withdraw.
+
+> **On the jury evidence, stated against our own case.** The QWK 0.708–0.712 figure this document quotes for a calibrated, evidence-anchored jury is not corroborated anywhere in the research base assembled for the 2026.1 review; what that base contains is a single small study (n = 67) with a low, non-significant result, plus quantified position bias and a self-preference finding (73.5%, rising above 90% after 500 fine-tuning examples). The 45 points are marked unimplemented above for a reason, and the calibration set is a precondition, not a formality.
 
 ### Composite scoring
 
 Track raw scores are **not** summed. Summing raw scores implicitly weights each track by its standard deviation, which is almost never the intended weighting. Instead:
 
-1.  Each track's raw score is converted to a within-cohort **z-score**.
-2.  Z-scores are equally weighted and summed (equal weighting is a deliberate policy choice, restated annually, not an accident of item counts).
+1.  Each **scored** track's raw score is converted to a within-cohort **z-score**. T4 is a showcase and has no z-column at all.
+2.  Z-scores are weighted **in proportion to the declared point allocation** — T1 .40, T2 .20, T3 .40 — and summed. This is a deliberate policy choice, restated annually, not an accident of item counts.
+
+    > **Why not equal weighting any more.** It was four equal quarters, and equal weighting was defended here as deliberate. It cannot survive the restructure unexamined, for a reason that is easy to miss: because the composite is built from z-scores rather than raw points, dropping T4 while keeping "equal weighting" would have raised T2 from a quarter of the composite to a **third** — promoting the track the point allocation had just demoted. Weighting by declared points makes the two statements agree instead of contradicting each other.
 3.  The composite is put through a **normalised area transformation** — rank → percentile → inverse-normal → rescale to mean 50, SD 15 — and reported on a 0–100 scale, truncated at the bounds.
-4.  Every report also carries the four track scores, the percentile, and the performance band.
+4.  Every report also carries the three scored track scores, the T4 showcase index marked as such, the percentile, and the performance band.
 
 The normalised transformation *forces* a normal distribution rather than hoping for one. At n = 45 an empirically normal raw distribution is unlikely, and a plain linear transform will push extreme scores outside 0–100. This is disclosed openly in every export: the composite is normalised, and raw-distribution shape is preserved separately in the data.
 
@@ -178,8 +186,8 @@ Year 1 bands are **norm-referenced with fixed quotas**, following the Internatio
 
 | Band              | Quota (Year 1) | Composite | Meaning                                                               |
 |-------------------|----------------|-----------|-----------------------------------------------------------------------|
-| **Distinction**   | top 1⁄12       | ≥ 70      | Operates at the frontier of current practice on all four capabilities |
-| **Merit**         | next 1⁄6       | 61–69     | Strong across three of four tracks                                    |
+| **Distinction**   | top 1⁄12       | ≥ 70      | Operates at the frontier of current practice on all three scored capabilities |
+| **Merit**         | next 1⁄6       | 61–69     | Strong across two of the three scored tracks                          |
 | **Pass**          | next 1⁄4       | 50–60     | Functional applied literacy with identified gaps                      |
 | **Participation** | remainder      | \< 50     | Completed the examination; diagnostic report issued                   |
 
@@ -787,7 +795,7 @@ Not from points and badges bolted onto a test. From four things the exam already
 
 ### The diagnostic report is the real reward
 
-Everyone gets one, regardless of band, and it should be the artefact people screenshot. It carries the four track scores, the percentile, the band — and then the things nobody else can tell them:
+Everyone gets one, regardless of band, and it should be the artefact people screenshot. It carries the three scored track scores, the T4 showcase index marked as such, the percentile, the band — and then the things nobody else can tell them:
 
 - **Their response criterion.** "You lean toward calling things authentic. On the items you got wrong, 71% were synthetic media you accepted as real." Almost nobody knows this about themselves, and it is directly actionable.
 - **Their calibration curve.** Confidence plotted against accuracy, with the diagonal drawn. Overconfidence is visible in one glance and is the most common finding.
