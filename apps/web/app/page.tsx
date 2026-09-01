@@ -4,10 +4,11 @@ import { HeroCanvas } from "../lib/HeroCanvas";
 import { PillCTA } from "../lib/PillCTA";
 import { PracticeDrill } from "../lib/PracticeDrill";
 import { Reveal } from "../lib/Reveal";
+import { CharacterPortrait } from "../lib/CharacterPortrait";
 import { CampusJourney } from "../lib/track3d/CampusJourney";
 import { TrackBands } from "../lib/track3d/TrackBands";
 import { assetUrl, isServerMode } from "../lib/mode";
-import { PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
+import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
 
 /**
  * Decorative paper artifacts drifting at different scroll rates behind the
@@ -153,6 +154,45 @@ function ShowcaseRow({
         <span className="showcase-cards">{cards}</span>
       </Link>
     </Reveal>
+  );
+}
+
+/**
+ * The cast: the sixteen player-type characters a finished run can land on.
+ *
+ * This is the IDENTITY step of the front door, and the card built from it is
+ * the thing people actually put in a feed, so the page SHOWS the faces
+ * instead of describing them. The copy is deliberately small: the type is a
+ * playful reading of what the run recorded (`packages/report/playerType.ts`
+ * says so in its first line), never a score, a rank or a norm — there is no
+ * judged number to rank anybody by.
+ *
+ * Every face prints its four-letter code as TEXT beside it, so the row still
+ * says something with images off and in a screen reader; the portrait's own
+ * alt describes the drawing (lib/CharacterPortrait.tsx).
+ */
+function CastStrip() {
+  return (
+    <section className="container cast" aria-label="The sixteen player types">
+      <Reveal as="div" className="cast-copy">
+        <h2 className="cast-title">
+          A full run ends on one of <span className="script-accent">sixteen</span> characters.
+        </h2>
+        <p className="cast-line">
+          Four axes, one per track, read from what you did. It is for fun, never a grade, and the
+          card is the part people share.
+        </p>
+        <p className="cast-more" data-pill-clear=""><Link href="/report">See a sample card →</Link></p>
+      </Reveal>
+      <ul className="cast-row" data-pill-clear="">
+        {CHARACTER_CAST.map((c) => (
+          <li key={c.code} className="cast-tile">
+            <CharacterPortrait code={c.code} size={72} className="cast-face" />
+            <span className="mono cast-code">{c.code}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -315,6 +355,10 @@ export default function Home() {
           </Reveal>
         </ol>
       </section>
+
+      {/* The identity payoff, between the funnel and the proof: the funnel's
+          last step promises a card worth keeping, so the faces come next. */}
+      <CastStrip />
 
       {/* Zero-style proof showcase: two split rows (serif header + script
           accent + hand note on the left; pastoral panel with floating white

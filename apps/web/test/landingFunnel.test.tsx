@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { PRACTICE_BANK, PRACTICE_OPTIONS } from "@ailx/report";
+import { CHARACTER_CAST, PRACTICE_BANK, PRACTICE_OPTIONS } from "@ailx/report";
 import Home from "../app/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -176,6 +176,53 @@ describe("nothing on the front door implies a score", () => {
   it("says plainly that the credential is not a grade", async () => {
     const h = await render();
     expect(h.textContent).toContain("never a grade");
+  });
+});
+
+/**
+ * The identity payoff. The card the sixteen characters belong to is the most
+ * shareable thing the product makes, so the front door shows the faces; what
+ * it must never do is turn a playful reading into a verdict.
+ *
+ * jsdom answers "is the right thing rendered, with text beside every
+ * picture"; whether the row fits a phone without scrolling sideways is a
+ * layout question and lives in apps/web/e2e/visual.spec.ts.
+ */
+describe("the sixteen characters are on the front door", () => {
+  it("draws the whole cast, each face with its code as text", async () => {
+    const h = await render();
+    const tiles = [...h.querySelectorAll(".cast .cast-tile")];
+    expect(tiles).toHaveLength(CHARACTER_CAST.length);
+    expect(CHARACTER_CAST.length).toBe(16);
+    expect(tiles.map((t) => t.querySelector(".cast-code")!.textContent)).toEqual(
+      CHARACTER_CAST.map((c) => c.code),
+    );
+    for (const [i, tile] of tiles.entries()) {
+      const img = tile.querySelector("img")!;
+      expect(img.getAttribute("src")).toContain(CHARACTER_CAST[i].src);
+      // The picture is never the only carrier: alt describes the drawing.
+      expect(img.getAttribute("alt")).toBe(CHARACTER_CAST[i].alt);
+    }
+  });
+
+  it("sends the visitor to the sample card, and never to the graded run", async () => {
+    const h = await render();
+    const cast = h.querySelector("section.cast")!;
+    const links = [...cast.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    expect(links).toEqual(["/report"]);
+  });
+
+  it("calls the type fun, not a grade", async () => {
+    const h = await render();
+    const text = h.querySelector("section.cast")!.textContent!;
+    expect(text).toContain("for fun, never a grade");
+    // No verdict vocabulary: the same ban the rest of the page lives under.
+    expect(text).not.toMatch(/rank|score|percentile|better than/i);
+  });
+
+  it("clears the fixed pill, which would otherwise print across the faces", async () => {
+    const h = await render();
+    expect(h.querySelector(".cast .cast-row")!.hasAttribute("data-pill-clear")).toBe(true);
   });
 });
 

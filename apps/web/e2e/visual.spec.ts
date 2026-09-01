@@ -464,6 +464,51 @@ test.describe("landing hero · 390x844 phone", () => {
   });
 });
 
+test.describe("landing cast strip · 390x844 phone", () => {
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true, contextOptions: { reducedMotion: "reduce" } });
+
+  /**
+   * The sixteen faces are the identity payoff, and sixteen fixed-width tiles
+   * next to a text column is exactly the shape that pushes a page sideways.
+   * jsdom counts the tiles and reads their codes; only a layout engine can
+   * say whether the row wrapped, whether a face is whole, and whether the
+   * fixed bottom pill paints across them.
+   */
+  test("the cast row wraps instead of pushing the page sideways", async ({ page }) => {
+    await page.goto("/");
+    const row = page.locator(".cast .cast-row");
+    await settleAndSee(page, row, "the cast row");
+    await expectNoHorizontalOverflow(page, "the landing page (cast strip)");
+    await expectNoInnerScroll(row, "the cast row");
+  });
+
+  test("every face is whole, and the pill does not print over the last row", async ({ page }) => {
+    await page.goto("/");
+    const tiles = page.locator(".cast .cast-tile");
+    await expect(tiles).toHaveCount(16);
+    // First and last only: the contract is "the row is not clipped at either
+    // end", and measuring all sixteen buys nothing but minutes.
+    for (const [tile, name] of [
+      [tiles.first(), "the first character tile"],
+      [tiles.last(), "the last character tile"],
+    ] as const) {
+      await settleAndSee(page, tile, name);
+      await eventually(() => expectNotOccluded(tile, name));
+    }
+  });
+
+  test("the sample-card link is reachable and nothing paints over it", async ({ page }) => {
+    await page.goto("/");
+    const link = page.locator(".cast .cast-more a");
+    await settleAndSee(page, link, "the sample card link");
+    // NOT expectTapTarget: this is a quiet in-body text link, the same shape
+    // as the funnel's "Practise the tells" links, and holding it to 44x44
+    // would be a rule this page does not follow anywhere else. What it must
+    // be is whole and unpainted-over, which is what is asserted.
+    await eventually(() => expectNotOccluded(link, "the sample card link"));
+  });
+});
+
 test.describe("landing hero · desktop", () => {
   // NOT reduced motion, and wide: the paper artifacts are `display: none`
   // both under `prefers-reduced-motion: reduce` and under 700px, so a phone

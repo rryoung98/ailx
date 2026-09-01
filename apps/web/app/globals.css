@@ -1080,6 +1080,36 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
 .wyg-more { margin: 0.6rem 0 0; font-size: 0.95rem; }
 .wyg-footnotes { margin-top: 2.75rem; max-width: 44rem; }
 
+/* ---- the cast: sixteen player-type characters ------------------------- */
+/* Copy on the left, faces on the right; one column on a narrow screen so
+   the row never has to scroll sideways. The tiles WRAP rather than scroll:
+   a horizontally scrolling strip hides half the cast behind a gesture
+   nobody is told about, and the whole point of this block is that the
+   sixteen are visible. */
+.cast {
+  margin-top: 1rem; padding-bottom: 5.5rem;
+  display: grid; grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem); align-items: center;
+}
+@media (max-width: 860px) { .cast { grid-template-columns: 1fr; } }
+.cast-title {
+  margin: 0 0 0.45rem; font-family: var(--serif); font-weight: 520;
+  font-size: clamp(1.5rem, 2.8vw, 2rem); letter-spacing: -0.015em;
+  line-height: 1.2; text-wrap: balance;
+}
+.cast-line { margin: 0; color: var(--muted); font-size: 1rem; line-height: 1.55; max-width: 26rem; }
+.cast-more { margin: 0.6rem 0 0; font-size: 0.95rem; }
+.cast-row {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: clamp(0.55rem, 1.4vw, 1rem);
+}
+.cast-tile { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.cast-face {
+  border-radius: 12px; background: var(--card); border: 1px solid var(--border-strong);
+  box-shadow: 0 4px 12px rgba(26, 26, 26, 0.07); object-fit: cover;
+}
+.cast-code { font-size: 0.62rem; letter-spacing: 0.06em; color: var(--faint); }
+
 /* ---- campus map journey (Zero map-pan move) --------------------------- */
 /* Base + reduced motion: the journey is display:none; the static
    alternating .track-bands-fallback section renders instead. Supporting
