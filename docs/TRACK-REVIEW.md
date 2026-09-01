@@ -180,3 +180,216 @@ than later.
    before the practice surface ships, or the population trend will track practice uptake.
 
 ---
+
+## 3. T1 · Creative Build
+
+### 3.1 Construct validity
+
+T1 is the cleanest construct in the instrument, for a reason that is easy to undersell: **it has an
+external standard.** The site renders or it does not; contrast ratios are met or they are not; the
+required brief elements are present or absent. Thirty of its hundred points are not a judgement at
+all, and the spec is right that the aesthetic 40 must go to blinded human pairwise comparison rather
+than a VLM (VAB: 26.5% vs 68.9%; the LAION-Aesthetics audit scoring the Met's non-Western
+collections at zero is on its own sufficient).
+
+The honest weakness is different from T2's. T1 does not risk measuring the wrong thing; it risks
+measuring **prior web-development experience** wearing AI's clothes. A candidate who has shipped
+HTML for ten years will beat a candidate who has not, with the same model. The spec's answer is that
+AI assistance is "unrestricted and expected" and that the prompt log is a required artefact — but
+the prompt log currently earns zero points (`score.ts`: the process signal is "DIAGNOSTIC ONLY (F8),
+reported in raw, never added to any point component"; all 10 rationale points come from a judged
+coherence dimension). So the one piece of evidence that separates *directing a model well* from
+*already knowing how to build a website* is collected and then discarded. That is the single
+highest-value cheap fix in this document.
+
+### 3.2 Engagement
+
+T1 is the track that travels. Not because it is fun in the moment — 48 hours of building is work —
+but because it produces **an artefact with the candidate's name on it, hosted at a URL, that they
+would send to someone anyway.** The offboarding ramp already built (`docs/FUTURE-TRACKS.md`:
+download, GitHub, Vercel) makes the output leave the platform intact. Nothing else in AILX creates a
+thing a person wants to keep. T2 produces a score screenshot; T1 produces a portfolio piece.
+
+The peer-judging session is also, quietly, the most engaging 40 minutes in the design: people like
+looking at other people's work and choosing, and "which would you rather put your own name on" is a
+question people answer willingly for free.
+
+### 3.3 Scoring cost — and the counter-intuitive result
+
+Comparative judgement scales far better than the raw comparison counts suggest, and the arithmetic
+should be stated because it changes the decision.
+
+Verhavert et al. (2019, meta-analysis of 49 CJ assessments) put **SSR .90 at 26–37 comparisons per
+representation**. Total comparisons = N × r ÷ 2, because each comparison informs two artefacts. If
+the raters are the candidates themselves, comparisons **per rater** = r ÷ 2 — *independent of N*.
+
+| Cohort | r per artefact | Total comparisons | Comparisons per candidate-rater | Rater time |
+|---|---|---|---|---|
+| N = 45 (spec) | 24 | 540 | 12 | ~15 min |
+| N = 500 | 30 | 7,500 | 15 | ~19 min |
+| N = 50,000 | 30 | 750,000 | 15 | ~19 min |
+
+Estimates: ~75 s per forced-choice pair. The result is that **T1's judging cost per candidate is
+flat in N.** This is the strongest practical argument for keeping T1 at scale, and it is the
+opposite of what people assume about human-judged tasks.
+
+Three caveats, all real. (a) The spec's r = 24 buys SSR ≈ .85, not .90 — Verhavert's .90 band starts
+at 26. Raise r to 30 and the per-rater burden goes from 12 pairs to 15. (b) Bramley (2015) shows
+adaptive pairing inflates SSR — up to **0.89 on pure noise** with a true SD of zero. The spec already
+mandates non-adaptive pairing; that decision must never be traded for efficiency. (c) Reliability
+.90 supports **bands**, not ranks. At N = 50,000, telling someone they are 12,043rd is not supported
+by the measurement, and the report must not imply it.
+
+The cost that does *not* scale is **rater turnout**. At N = 45 in one room on D+1, everyone judges.
+Asynchronously at N = 50,000, judging is a second visit, and non-response among raters — not
+comparison volume — is what breaks the design.
+
+### 3.4 Burn rate
+
+The slowest-burning track in the instrument. A brief ("build a personal site for this audience") does
+not have an answer key to leak. What ages is the *difficulty*: as models get better at one-shot site
+generation, the brief stops discriminating and the score compresses upward. That is a **ceiling**
+problem arriving on a model-release cadence, not an item-security problem.
+
+Cadence: **annual brief re-issue is enough for security; the discriminating difficulty needs a
+yearly review against the current frontier.** Cheap — one brief, three languages, no bank. Compare
+with T2's 120 items per form per quarter per language.
+
+### 3.5 What a psychometrician attacks first
+
+The Bradley–Terry reporting discipline (CIs on score differences only, because the Fisher information
+matrix is singular under shift — the spec has this right), then rater collusion and self-exclusion,
+then the style covariates: partialling out "word count, image count, palette size, DOM depth" is a
+modelling choice that can be argued either way, and any covariate set is contestable. Then the big
+one: **is aesthetic merit a construct with a true value at all**, or is a Bradley–Terry fit just a
+formal average of taste? The spec's UI-Bench framing ("would you rather put your own name on it")
+is the best available answer and should be stated as the construct, not as the wording.
+
+### 3.6 Short-form viability
+
+**Poor — and `docs/SAMPLING.md` §5 already names T1 as the problem.** The untimed build window does
+not fit a matrix block; the recommended fallback is a 30-minute reduced-scope build given to a random
+third of the panel, with option (b) — exclude T1 from the national composite — as the declared
+fallback. There is a harder constraint the sampling doc does not spell out: **the 40 comparative
+points need a rater pool, and panellists will not come back to judge each other.** So even a
+completed panel T1 block yields at most the 30 gate points plus rationale, i.e. a different
+measurement from the one candidates sit. T1's contribution to the population statistic is therefore
+partial at best.
+
+### 3.7 Recommendation — KEEP, and promote
+
+1. **Make T1 the flagship.** It is the thing people show other people. Product-wise, it is the
+   track that justifies the credential.
+2. **Score the prompt log.** Move at least 10 points onto the process signal that `score.ts` already
+   computes and throws away. Without it, T1 partly rewards prior web skill.
+3. **Raise r to 30** so the reported reliability is honestly in the .90 band, and keep non-adaptive
+   pairing permanently.
+4. **Accept that T1 is a Track-A instrument.** Plan the national composite on T2–T4 with T1 stated
+   as excluded, and report the T1-in / T1-out contrast as the sensitivity analysis §9 requires.
+
+---
+
+## 4. T3 · AI-Assisted Reasoning
+
+### 4.1 Construct validity — the strongest in the instrument
+
+T3 is the only track that measures **behaviour in the presence of a model** rather than a perception
+or an artefact. The planted-error mechanism is the design's best idea: an assistant seeded with a
+misattributed figure, a false causal claim, a fabricated citation and a wrong calculation, and the
+score is whether the candidate caught them. That is a direct measurement with no judge in it, and
+`packages/tracks/t3-reasoning/src/scoring.ts` implements it as such — 25 points RSR, 10 points RAIR,
+20 points process quality from the transcript, all model-free; 45 points routed to a stored jury.
+
+The implementation is more careful than the spec. RAIR requires *deliberation before acceptance*: a
+claim must have been challenged, or checked against the source after it surfaced, before its
+acceptance earns full credit; a blind instant accept of correct advice earns half, because "the
+candidate happened to be right, but exhibited the same behaviour that swallows planted errors."
+That is a genuine measurement insight and it is in the code, not the spec.
+
+T3's construct also has the best external warrant. The Microsoft/CMU study of 319 knowledge workers
+found generative AI shifts critical thinking toward **verification, integration and stewardship** —
+which is exactly what the process component scores — and that higher confidence in the AI goes with
+less critical thinking. RSR/RAIR come with a survey literature. Nothing in T2's evidence base is
+this aligned.
+
+The weakness: **45 of 100 points are an LLM jury**, and the evidence for that is conditional. Naive
+LLM essay scoring runs at QWK < 0.30 against a human ceiling of 0.72. The locked-rubric,
+evidence-anchored, distribution-calibrated version reaches QWK 0.708–0.712 — **but requires ~200
+human-labelled calibration examples**, per rubric, per language. Until those exist, the 45 points
+are not the measurement the spec describes. Also: three models from three families is the adopted
+design, but the demo path (`packages/report/src/judging.ts::judgeT3`) returns three *seeded samples
+of one stub*, and the stub's score is essentially a length band. Heterogeneity is a plan, not a fact.
+
+### 4.2 Engagement
+
+The weakest of the four, honestly. Ninety minutes with a 50–70 page document and a 1,200-word write-up
+is an exam, and it feels like one. Nobody shares their T3 essay.
+
+But it has one asset nothing else has: **the reveal.** Telling a candidate afterwards "the assistant
+lied to you four times; you caught two, and here is where" is a genuinely arresting experience, and
+`packages/tracks/t3-reasoning/src/reveal.ts` exists to do it. That is the shareable object — not the
+essay, the *catch rate*. "I caught 3 of 4 planted errors" is a better share card than any T2 score
+because it is a story about the person, not a quiz result.
+
+A short, playable version of exactly this — a 5-minute assistant conversation with one planted
+error — is a better viral product than the T2 swipe deck and burns much slower.
+
+### 4.3 Scoring cost
+
+| Cohort | Model-free 35 pts | Jury 45 pts (3 models over ~1,200 words + transcript) | Human adjudication as specified |
+|---|---|---|---|
+| N = 500 | $0 | ≈ $0.10–0.20 each → **$50–100** | top+bottom decile = 100 reads |
+| N = 50,000 | $0 | **$5,000–10,000** | **10,000 reads — not feasible** |
+
+Estimates. The jury cost is fine at both scales. The part that does not scale is the spec's
+"top and bottom deciles human-adjudicated": 20% of a 50,000 cohort is 10,000 expert reads. That rule
+must become **a fixed audit sample plus appeals**, decided now, or it becomes a rule that is quietly
+broken later — which is worse than changing it openly.
+
+### 4.4 Burn rate
+
+Moderate, and burning in an unusual direction. The primary source can be rotated cheaply. The
+**planted errors** are the consumable: once "watch out for the fabricated citation about X" is public,
+that item is dead. But the *error families* — fabricated citation, wrong calculation, false causal
+claim, misattributed figure — are stable, so re-versioning means new instances of known families
+rather than new families. That is the cheapest possible refresh.
+
+The direction the spec has not planned for: **as models hallucinate less, planting errors becomes
+less naturalistic**, and a candidate who trusts a 2028 model may be behaving correctly. T3's
+difficulty calibration has to track model reliability, and the score has to be interpreted against a
+declared base rate of planted errors. State the planted-error density in every report, the way
+exposure time is declared for T2.
+
+### 4.5 What a psychometrician attacks first
+
+The 45-point jury, immediately, and rightly — no accredited human certification currently admits LLM
+scoring as a score of record. Then RSR reliability: **4 planted errors is a 4-item subtest carrying
+25 points.** A 4-item test cannot have decent reliability; a candidate who catches 2 of 4 versus 3 of
+4 differs by 6.25 points on essentially a coin flip. **This is T3's most fixable and most serious
+defect: raise the planted-error count to 8–12.** Then the transcript-derived process score, which is
+a set of hand-chosen behavioural counts with no published validity evidence — report it, defend it as
+descriptive, do not oversell it.
+
+### 4.6 Short-form viability
+
+**Better than it looks, if the essay is dropped.** A 20-minute assisted-reasoning block over a short
+source with 4–6 planted errors, scored on RSR/RAIR and transcript behaviour alone, is a self-contained
+matrix block with no rater, no judge, no artefact and no window — 35 of the 100 points survive
+compression intact and they are the model-free ones. The 45-point analysis component cannot compress
+(you cannot write 1,200 defensible words in a matrix block) and should be dropped from the panel form
+rather than shrunk, with the linking done on the RSR/RAIR anchor items.
+
+That is a strong result: **the most defensible component of the most defensible track is also the one
+that survives the population short form.**
+
+### 4.7 Recommendation — KEEP, and make it the centre
+
+1. **Raise the planted-error count to 8–12** and report catch rate with a confidence interval.
+2. **Move weight from the jury to the model-free components** — the current 35/100 model-free should
+   be 50/100 or more. This also reduces the exposure the §04 design principle is built to bound.
+3. **Do not ship the 45-point jury until the ~200-example human-labelled calibration set exists**,
+   per language. Until then, report analysis quality as a band with a stated error, not as points.
+4. **Build the short T3 as the panel block and as the viral product.** One planted error, five
+   minutes, a reveal at the end.
+
+---
