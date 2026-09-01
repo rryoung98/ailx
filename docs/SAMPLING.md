@@ -307,25 +307,61 @@ different ability to run a model and a document side by side in T3. If device pr
 device is correlated with age, income and country, then a national comparison partly measures
 handset mix. This is a real threat and not a hypothetical one.
 
-**Where the comparators stand.** PIAAC is administered on an interviewer-supplied laptop; PISA and
-ICILS run on school computers. **The gold-standard adult and youth assessments all fix the device.**
-That is a deliberate choice, and it means there is no established adjustment method to copy —
-because nobody in this lineage has had to make one. (Confidence: high on PIAAC being laptop-based
-and interviewer-administered; the precise device specification per country is **UNVERIFIED**.)
+**Where the comparators stand.** PIAAC Cycle 1 was interviewer-administered on a laptop with a
+paper fallback; **Cycle 2 moved to exclusive use of study-supplied tablets** in the United States,
+still with an interviewer present in the home, and NCES lists that device change as one of four
+reasons Cycle 1 and Cycle 2 results "need to be made with caution" when compared. **VERIFIED.** PISA
+and ICILS run on school computers. **Every rigorous adult and youth assessment controls the device,
+and none of them is BYOD.** If AILX lets a respondent bring their own screen, it is doing something
+neither programme was willing to do, there is no established adjustment method to copy, and we must
+say so rather than assume it away.
+
+**The specific mechanism that should worry us most is timing.** Hassenstab et al. (2023,
+*Behavior Research Methods*) benchmarked 26 popular smartphones from under $100 to over $1,000 and
+found **total device latency — display plus touch — ranging from 35 ms to 140 ms**, warning that if
+unaccounted for it "could be misattributed as individual or group differences in response times".
+**VERIFIED.** Passell et al. (2021, same journal) found that, controlling for age, gender, education
+and performance on an **untimed** anchor test, mobile users — Android smartphone users in particular
+— were significantly slower on reaction-time tests. **VERIFIED.** A 105 ms device-driven spread that
+correlates with handset price, and therefore with income, is construct-irrelevant variance aimed
+squarely at poorer respondents.
+
+**Two design consequences follow immediately, and they cost nothing to adopt now:**
+
+- **No AILX population score may depend on response latency.** If speed enters a score, device is a
+  confound with a known magnitude and a known socioeconomic gradient. Timing data stays diagnostic.
+- **Carry an untimed, device-insensitive anchor block.** This is the trick Passell et al. used: an
+  untimed anchor separates "this person is less able" from "this device is slower", and it is the
+  only cheap way to identify a device effect without supplying the hardware.
 
 **Detection, in order of strength.**
 
-1. **Randomised device assignment inside the panel.** For a subsample of panellists who own both a
-   phone and a laptop, randomise the device of administration. This is the only design that
-   identifies a causal device effect rather than a device–person confound. It is cheap relative to
-   the wave (a few hundred cases) and it is the single most valuable methodological add-on in this
-   document. **Recommendation: build it into wave 1, not wave 2.**
-2. **Item-level DIF by device.** Screen every item for differential functioning between phone and
-   desktop administration, conditioning on ability. Items with large device DIF — expect T2 image
-   comparison to be the worst — are either dropped from the population form or fielded device-locked.
-3. **Observational adjustment as a fallback.** Propensity-matched or regression adjustment on
-   observed device use. This is weak: device choice is not random, and adjusting on observables
-   cannot rule out the confound. It belongs in a sensitivity analysis, never in the headline.
+1. **Within-person crossover** (the Antoun, Couper & Conrad 2017 design: the same respondents
+   complete the instrument on both a smartphone and a PC, in randomised order, n = 1,390 in a
+   probability panel — **VERIFIED as a design; its effect sizes are UNVERIFIED here because the
+   full text was not accessible**). Randomised device *assignment* is stronger still but requires
+   supplying the hardware, which is PIAAC's model and not ours. **The crossover is the realistic
+   gold standard for AILX**: it costs one substudy inside the panel wave, a few hundred cases, and
+   it is the single most valuable methodological add-on in this document. **Recommendation: build
+   it into wave 1, not wave 2.**
+2. **Item-level DIF by device.** Fit the IRT model with device as a grouping variable and test
+   uniform and non-uniform DIF item by item. The items that break are predictable: wide stimuli,
+   side-by-side comparison (T2's whole design), drag-and-drop, long text entry (T3). **This is the
+   cheapest high-value analysis available to us, because it needs no new data collection at all —
+   only the device string already in the Track A logs.** Run it now, before the panel exists.
+3. **Measurement invariance testing** across device groups. If scalar invariance holds, means are
+   comparable across devices; if only metric invariance holds, relationships may be compared and
+   means may not. This is the test that decides between "adjust" and "declare".
+4. **Observational adjustment as a fallback.** Propensity-matched or regression adjustment on
+   observed device use, ideally with an untimed anchor as a covariate. Weak: device choice is not
+   random, and adjusting on observables cannot rule out the confound. Sensitivity analysis only,
+   never the headline.
+
+**One thing we never do: rake or post-stratify on device to "correct" a device effect.** Weighting
+fixes composition, not measurement. If the device changes what is being measured, a device raking
+margin cannot repair it and will silently push the bias into whatever device correlates with —
+income, education, age. This is a tempting, cheap-looking mistake and it must be named as forbidden
+here so nobody discovers it independently later.
 
 **What we do with what we find.**
 
@@ -339,6 +375,11 @@ and interviewer-administered; the precise device specification per country is **
   it a **construct/administration limit**: AILX measures AI fluency *as exercised on a full-size
   computing device*, that is written into the construct definition (spec §03), and every published
   figure carries it. Declaring a limit is cheap. Discovering it after publication is not.
+
+**Publish the device effect next to the sampling error.** At n = 1,500 and deff 1.6, the sampling
+half-width is ±0.064 SD (§4). **So any device effect above roughly 0.06 SD is a larger error term
+than our entire sampling error**, and printing the two numbers side by side is the whole argument
+for taking device seriously rather than treating it as a UX detail.
 
 **Design decision now, before the data:** the population form is **device-locked to desktop/laptop
 by default**, with the randomised experiment run to test whether that lock is necessary. It is far
