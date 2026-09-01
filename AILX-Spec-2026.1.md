@@ -138,7 +138,8 @@ Two numbers, because two different failures are worth bounding separately. *Desi
 |---|---|---|
 | Model-free arithmetic on stored response/transcript data | 159 | 159 |
 | Machine-checkable gates (vision model finds evidence; the finding is checkable) | 30 | 0 |
-| Blinded human pairwise comparison (Bradley–Terry) | 110 | 0 |
+| Blinded human pairwise comparison (Bradley–Terry) | 80 | 0 |
+| Blind human viewer panel (T4 brief compliance) | 30 | 0 |
 | LLM jury against a locked rubric | 101 | **241** |
 
 Per track, the designed split is: **T1** 30 gate + 40 human-CJ + 30 LLM jury; **T2** 100 model-free; **T3** 55 model-free + 45 LLM jury; **T4** 40 human-CJ + 30 blind-human-viewer panel + 26 LLM jury + 4 model-free.
