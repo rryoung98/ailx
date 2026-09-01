@@ -577,3 +577,106 @@ is published with the margin list, the frame source and vintage, the realised CV
 deff, and the estimate recomputed under at least one alternative weighting scheme. If the headline
 moves materially under a defensible alternative scheme, that instability is the finding, and it goes
 in the release.
+
+---
+
+## 10. Non-response bias analysis: published first, unprompted
+
+### 10.1 Why this section exists
+
+PISA 2018 required an 85% school response rate. England reached 72% and Northern Ireland 66%,
+which triggered mandatory non-response bias analyses. Those analyses were **not published**. John
+Jerrim obtained them by **Freedom of Information request** and found that schools with historically
+lower achievement were less likely to respond, while the official texts had said only that the
+results "supported the case that no notable bias would result". **VERIFIED.**
+
+The bias was real but survivable. The *appearance of concealment* was not: it converted a technical
+limitation into a story about hiding, and it is the reason "unpublished non-response analysis" sits
+third on the list of things that get an index dismissed — above the bias itself.
+
+**AILX's commitment: the NRBA is published in the same release as the estimate, on the same day, in
+the same bundle, before anyone asks for it.** Not on request, not in an appendix issued later, not
+"available to researchers". §3's rule S7 makes this structural: the release artefact does not build
+without the NRBA file present.
+
+This is cheap to promise and cheap to keep, and it buys the one thing a young private instrument
+cannot buy any other way — the presumption of good faith. We should also state the response rate in
+the headline release, not only in the technical annex, and we should state PIAAC's 27.8% next to it,
+because the honest comparison is the argument.
+
+### 10.2 When it is triggered
+
+- **Always.** OECD's PIAAC Technical Standards require a non-response bias analysis for every
+  country and an *extended* NRBA below a 70% response rate. **VERIFIED.** AILX will never be above
+  70%, so treat the extended form as the only form.
+- **Per country, per wave.** No pooling, no "we did this last year".
+- **Track A too, in a reduced form.** The convenience cohort gets a published *self-selection*
+  analysis — who plays, compared to what population benchmark — precisely because Track A is the
+  thing most likely to be misread as a population. Publishing how unrepresentative it is, in
+  numbers, is the most effective protection the number has.
+
+### 10.3 The published NRBA template
+
+The structure below follows what the NCES and OECD standards require of federal surveys
+(level-of-effort analysis, frame comparison, benchmark comparison, response-propensity modelling,
+and bias estimates before and after weighting). **Confidence: the components are standard and
+appear across NCES/OECD non-response guidance; the exact clause numbering of NCES Statistical
+Standard 4-4-A is UNVERIFIED here and should be checked against the current NCES standards document
+before we cite it by number.**
+
+> **AILX Wave N Non-Response Bias Analysis — [Country]**
+>
+> **1. Design and disposition.** Frame, sampling method, and the full AAPOR disposition table:
+> sampled, ineligible, refused, non-contact, broke off, completed background questionnaire,
+> completed assessment. Response rates computed to **AAPOR RR3**, reported separately as (a) panel
+> recruitment rate, (b) panel profile/retention rate, (c) study response rate, (d) **assessment
+> completion rate**, and (e) the **cumulative response rate**, which is the product and is the only
+> honest headline figure. State PIAAC's 27.8% alongside it for calibration.
+>
+> **2. Level-of-effort analysis.** Estimates recomputed by number of contact attempts and by days
+> to response. If the mean drifts monotonically with effort, late respondents resemble
+> non-respondents, and the drift is an estimate of the direction of the remaining bias. Report the
+> drift with its CI, and report what the estimate would be under a linear extrapolation to the
+> non-respondents.
+>
+> **3. Frame comparison.** Respondents versus the full drawn sample on every variable known for
+> both (all panel profile variables — age, sex, education, region, income, device, internet use).
+> Report standardised differences, not p-values, and flag any |d| > 0.1.
+>
+> **4. Benchmark comparison.** The weighted realised sample against official population benchmarks
+> on variables *not* used as raking margins. Margins used for raking match by construction and
+> prove nothing; only the unused variables are evidence. Name in advance which variables are held
+> out for this purpose.
+>
+> **5. Response-propensity model and R-indicators.** A model of P(respond | covariates); the
+> distribution of estimated propensities; the R-indicator and the coefficient of variation of the
+> propensities, as a summary of how far the realised sample is from representative. Report the
+> partial R-indicators to show *which* variables drive the imbalance.
+>
+> **6. Estimated bias before and after weighting.** For every headline estimate and every reported
+> subgroup: the unweighted estimate, the weighted estimate, the change, and the change expressed as
+> a fraction of the standard error. Weighting that moves an estimate by more than its own SE is a
+> warning, not a reassurance.
+>
+> **7. The break-off analysis, which is specific to an assessment.** People who start the
+> assessment and abandon it are not missing at random: the panel evidence says test burden shows up
+> as test *avoidance* rather than refusal, and that low performers are the ones who leave
+> (Kleinert, Christoph & Ruland 2019 — **VERIFIED**). Report the partial-response scores of
+> break-off cases and a bounded estimate of the national mean under the assumption that break-offs
+> would have scored at the 10th, 25th and 50th percentile of completers. **This bound, not the
+> point estimate, is the honest range.**
+>
+> **8. Coverage.** The size of the non-internet-using adult population from official sources, the
+> share of the realised sample recruited through the vendor's offline provision, and the §7
+> sensitivity bound.
+>
+> **9. Conclusion, stated as a direction and a magnitude, never as an all-clear.** The required
+> form is: "the estimate is likely biased [upward/downward] by approximately X points, and the
+> range consistent with our analyses is [a, b]". The phrase "no notable bias would result" is
+> banned from AILX releases — it is the exact sentence the PISA England analyses used, and it is
+> what the FOI was needed to check.
+>
+> **10. Microdata and replication.** Location of the public microdata file, the weighting and
+> variance code, and the version of the estimator used. Kreiner and Christensen's re-analysis of
+> PISA was only possible because the data was public; publishing microdata converts an attack
+> surface into a credibility asset.
