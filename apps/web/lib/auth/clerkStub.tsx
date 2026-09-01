@@ -23,19 +23,7 @@ export function useAuth(): { isSignedIn: boolean; getToken: () => Promise<string
   return { isSignedIn: false, getToken: async () => null };
 }
 
-/**
- * BOTH halves render nothing. `SignedOut` returning its children would put a
- * "Sign in" link into the static export, where `/sign-in` does not exist — a
- * 404 is a worse answer than no link.
- */
-export function SignedIn(_: { children?: ReactNode }): ReactNode {
-  return null;
-}
-
-export function SignedOut(_: { children?: ReactNode }): ReactNode {
-  return null;
-}
-
+/** Never reached: `AuthNav` only renders where Clerk is mounted. */
 export function UserButton(): ReactNode {
   return null;
 }

@@ -227,6 +227,17 @@ function sources(dir: string, out: string[] = []): string[] {
 const appAndLib = sources(join(webDir, "lib")).concat(sources(join(webDir, "app")));
 const CLERK_IMPORT = /(?:from|import|require)\s*\(?\s*["']@clerk\/[^"']*["']/;
 
+/** Every name `lib/auth/*` imports from @clerk/nextjs, read from the source. */
+function clerkImports(): string[] {
+  const wanted = new Set<string>();
+  for (const file of appAndLib.filter((f) => relative(webDir, f).startsWith(join("lib", "auth")))) {
+    const m = /import\s*\{([^}]*)\}\s*from\s*["']@clerk\/nextjs["']/.exec(readFileSync(file, "utf8"));
+    if (m) for (const name of m[1].split(",")) if (name.trim()) wanted.add(name.trim());
+  }
+  if (wanted.size === 0) throw new Error("no @clerk/nextjs imports found — the scan is broken");
+  return [...wanted];
+}
+
 describe("one place imports the SDK, one place reads the key", () => {
   it("sees the files it is judging (guards against a silent glob bug)", () => {
     expect(appAndLib.length).toBeGreaterThan(20);
@@ -265,15 +276,30 @@ describe("one place imports the SDK, one place reads the key", () => {
     // The export build resolves @clerk/nextjs to the stub, so a name added to
     // an import here and not there is a broken GitHub Pages build — found at
     // deploy time, not now, unless this test holds the pair together.
-    const wanted = new Set<string>();
-    for (const file of appAndLib.filter((f) => relative(webDir, f).startsWith(join("lib", "auth")))) {
-      const src = readFileSync(file, "utf8");
-      const m = /import\s*\{([^}]*)\}\s*from\s*["']@clerk\/nextjs["']/.exec(src);
-      if (m) for (const name of m[1].split(",")) if (name.trim()) wanted.add(name.trim());
-    }
-    expect(wanted.size).toBeGreaterThan(0);
     const stub = await import("../lib/auth/clerkStub");
-    for (const name of wanted) expect(Object.keys(stub), name).toContain(name);
+    for (const name of clerkImports()) expect(Object.keys(stub), name).toContain(name);
+  });
+
+  it("imports no component Clerk Core 3 removed", async () => {
+    // @clerk/nextjs v7 still EXPORTS SignedIn/SignedOut/Protect — as functions
+    // that throw "not available in @clerk/nextjs Core 3" the moment they
+    // render. So an export-name check proves nothing; the only honest question
+    // is what the real package does when you call the thing. It cost a failed
+    // hosted build to learn, and it is one grep away from happening again the
+    // next time somebody pastes a Clerk snippet written for Core 2.
+    const real = (await vi.importActual("@clerk/nextjs")) as Record<string, unknown>;
+    const removed: string[] = [];
+    for (const name of clerkImports()) {
+      const value = real[name];
+      expect(value, `@clerk/nextjs no longer exports ${name}`).toBeDefined();
+      if (typeof value !== "function") continue;
+      try {
+        (value as (p: unknown) => unknown)({});
+      } catch (e) {
+        if (/is not available in @clerk\/nextjs/.test(String(e))) removed.push(name);
+      }
+    }
+    expect(removed, `removed in Core 3: ${removed.join(", ")}`).toEqual([]);
   });
 
   it("the sign-in surface exists only in the hosted build, by name", () => {
