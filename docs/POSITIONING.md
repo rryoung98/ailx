@@ -61,15 +61,48 @@ maps nearly one-to-one onto AILX's four tracks: a natural endorser, not a compet
 OpenAI's certification push *legitimizes the category* while creating the exact
 neutrality vacuum it cannot fill itself.
 
-Competitive risks, in order:
+## OECD is a resource, not a competitor
 
-1. **OECD / PISA 2029 MAIL** — the biggest strategic threat to any "index of AI proficiency"
-   claim: sampling frames, an 80+ country footprint, the policy consumers, and a
-   performance-based draft framework. Mitigant is structural, not competitive: it tests
-   15-year-olds on a three-year cycle. AILX owns adults and annual cadence, or it owns
-   nothing. Treat the MAIL expert group as future partners for the adult segment, not as a
-   position to attack.
-2. **ETS** — psychometric infrastructure, Futurenav Adapt AI (June 2025), already
+An earlier draft of this document called PISA 2029 MAIL "the biggest strategic threat".
+That was a category error, and it is worth stating plainly because it changes who we
+treat as a rival and who we treat as a source.
+
+**PISA, PIAAC and ICILS ship reports.** They do not ship a product or a service. No
+individual sits PISA to receive anything: PISA returns no individual scores at all, by
+design. There is no credential, no consumer surface, no continuous availability, and no
+mechanism by which a person can choose to be measured. OECD produces a national
+statistic on a multi-year cycle for ministries. That is a different object from an
+examination an adult can sit on a Tuesday and carry the result of.
+
+So OECD cannot take our users, because it has none. What it has is precisely what we
+lack, and can borrow:
+
+- **Methodology we should copy rather than reinvent** — probability sampling frames,
+  weighting, trend items linked by IRT onto a common metric with an explicit
+  linking-error term, and published non-response analysis. Our sampling gap is the most
+  dangerous thing on our roadmap; PISA and PIAAC have already made and documented the
+  mistakes.
+- **Construct legitimacy.** OECD-EC *AILit* (finalised 18 June 2026, 4 domains, 19
+  competences) and the MAIL draft framework are becoming the reference definition of
+  this construct. Alignment is an asset. Being legibly compatible with the definition
+  everyone else uses is how a young instrument avoids looking idiosyncratic.
+- **People.** Stuart Elliott (OECD, AI capability indicators) and Julian Fraillon
+  (IEA/ICILS) are advisors to court, not opponents to out-manoeuvre.
+
+**The residual risks are real but different from competition:**
+
+1. **Definitional capture.** If AILit/MAIL becomes the standard vocabulary and our
+   construct is incompatible with it, we look non-serious to exactly the policy audience
+   we need. Mitigant: map our four tracks onto the AILit competences explicitly and
+   publish the mapping.
+2. **The "we already have PISA" objection**, which a ministry will raise. The answer is
+   short and true: PISA measures 15-year-olds every three years and returns no
+   individual result. It cannot tell a government what its *workforce* can do this year,
+   and it cannot give a person anything to carry.
+
+## Competitive risks — the entities that actually ship something
+
+1. **ETS** — psychometric infrastructure, Futurenav Adapt AI (June 2025), already
    OpenAI's psychometrics partner. Mitigant: ETS was already disrupted by the exact
    playbook AILX runs (Duolingo English Test vs TOEFL: $65, 1 hour, gamified funnel);
    its metabolism is years-per-item-cycle, AILX's must be months.
