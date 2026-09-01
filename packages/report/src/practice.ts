@@ -36,8 +36,10 @@
  * Commons, asking T2's own question — "is this a photograph or an AI-generated
  * image?". Every item carries its licence and attribution as data, and every
  * item carries a one-line TELL naming the artefact actually visible in that
- * picture, because the tell is the intervention: being shown the thing you
- * looked straight past is what moves detection.
+ * picture. The tell is the whole content of the round — being shown the thing
+ * you looked straight past. Whether that transfers to anything is unmeasured
+ * and, on the evidence in PRACTICE_EFFICACY_NOTE, doubtful; the round is here
+ * because people enjoy it.
  *
  * The corpus is real but SMALL, and its families are not equally deep — see
  * `docs/PROGRESSION.md` §2.2 for exactly which side is thin and why. The page

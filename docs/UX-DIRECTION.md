@@ -38,7 +38,9 @@ immediate feedback, satisfying transitions, a shareable identity.
    published effect is between-subjects and did not move non-specialists' sensitivity
    (spec §13).
 2. **Small units.** Five minutes is a complete, satisfying session.
-3. **Visible progress.** You can see yourself getting better; the trend is the reward.
+3. **Visible progress.** You can see what you did — days, rounds, cards; the record is the
+   reward. Not "see yourself getting better": /progress cannot tell a better eye from a
+   readier trigger finger, and says so (`PRACTICE_ACCURACY_CAVEAT`).
 4. **Streaks with kindness.** Motivating, not punishing. Protect the best-streak.
 5. **Identity, not rank.** The player-type card is our owl: something people share because
    it says who they are. Prefer identity and self-comparison over leaderboards ranking

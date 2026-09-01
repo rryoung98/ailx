@@ -1,6 +1,6 @@
 # PROGRESSION.md — practice, streaks and the personal progress page
 
-The reason to come back, and the felt sense of getting better. Spec §13
+The reason to come back, and the record of having come back. Spec §13
 ("Experience design") is the source; `AGENTS.md` and `FRONTEND.md` are the
 contracts. Where they disagree with this file, they win.
 
