@@ -524,3 +524,136 @@ As implemented, T1 (100), T4 (80) and T3 (45) all resolve through stored judge v
 points, not 45. The principle is sound and worth restoring; it is not currently true.
 
 ---
+
+## 7. What is missing
+
+`docs/FUTURE-TRACKS.md` already ranks three additions and, importantly, already reaches the right
+structural conclusion twice: injection detection is **a T2 item family, not a track**; verification
+checkpoint placement is **a T3 rubric dimension, not a track**; eval design leads the fifth-track
+candidates because a harness is an artefact and needs no run-verification. Nothing below re-proposes
+those. The three candidates the parent task names are judged here on measurement grounds only.
+
+### 7.1 Delegation and orchestration judgement — REJECT as a track, ADOPT as a T3 dimension
+
+*The construct:* knowing what to hand to a model, how to specify it, and how to decompose a job
+across several calls or agents.
+
+*Why it is measurable:* it has an outcome criterion. A delegation decision is right or wrong in a way
+an aesthetic judgement is not — the delegated subtask either came back usable or it did not. The
+evidence is already collected: T3's transcript records decomposition and prompt iteration, and its
+process component (20 pts) nominally scores exactly this.
+
+*Why it fails as a track:* **the answer key has a six-month half-life, and it is model-specific.**
+"Do not ask a model to do arithmetic" was correct in 2023 and wrong once tools arrived. "Decompose
+long tasks into steps" is being eaten by long-horizon agents. An item keyed to a delegation boundary
+is keyed to one model's current capability frontier — so the track would re-version faster than T2,
+whose items at least stay wrong-in-a-stable-way. Worse, cross-year comparability dies: a candidate
+who delegates more in 2028 than in 2026 may be *more* skilled, not less, and the scale cannot tell.
+
+*Verdict:* real construct, unstable key. It belongs where its instability is bounded — as a scored
+dimension of T3's process component, reported descriptively against a stated model and date, not as
+a hundred-point track claiming a stable trait.
+
+### 7.2 Verification behaviour under time pressure — ADOPT, and it is the cheapest thing on this list
+
+*The construct:* not "do you know you should check", which everyone answers correctly, but **do you
+check when checking costs you something.**
+
+*Why it is measurable, well:* verification is an **observable event with a timestamp**, not a
+judgement. `scoring.ts` already counts distinct claims checked against the primary source
+(`verificationCount`, requiring the turn to name the claim it checked — a nicely strict definition).
+The construct is a *rate under a manipulated cost*, and rates have better psychometric properties
+than judgements: no rater, no key, no rubric, no language dependence, no cultural loading.
+
+*What is missing is only the manipulation.* Today T3 gives 90 minutes and counts verifications. The
+measurement people actually want is the **slope**: verification rate at 90 minutes versus at 30, or
+under a visible countdown, or with a stated word target the candidate cannot hit if they verify
+everything. Within-subject, randomised, cheap — it is a condition flag on an existing track, not new
+code, and it produces a genuinely novel published finding (nobody has this number).
+
+*The attack to pre-empt:* observing verification changes it. Candidates who know the transcript is
+scored will verify performatively. Mitigate by scoring *discriminating* verification — did they check
+the claims that were wrong — which the planted-error design already makes possible, and which
+performative checking cannot fake.
+
+*Verdict:* adopt for v2026.1 as a T3 condition. Highest ratio of measurement value to build cost in
+this document.
+
+### 7.3 Knowing when NOT to use AI — the strongest missing construct, and the hardest to score
+
+*The claim first:* this is the highest-value unmeasured construct in the field. Every existing
+instrument, AILX included, measures competence *conditional on using AI*. None measures whether the
+person should have opened the model at all. The failure mode it detects is the most economically
+consequential one in real organisations — reflexive delegation of judgement — and the Deloitte
+Australia case in `docs/FUTURE-TRACKS.md` is precisely that failure, not a prompting failure.
+
+*The three measurement objections, stated honestly:*
+
+1. **There is no defensible answer key.** "Should you use AI for this?" is normative and contested.
+   A ministry reviewer will ask who decided, and the honest answer is "we did". Any keyed
+   should-not-use item is a values claim wearing a psychometric coat.
+2. **Demand characteristics destroy the self-report version.** On an exam called *the AI Literacy
+   Examination*, a candidate asked whether they would use AI learns within two items that the
+   sophisticated answer is "not here, and I would verify". Situational-judgement items on this
+   construct measure test-wiseness. This objection alone kills the obvious design.
+3. **Under-use is a failure too, and the scale is two-tailed.** A person who refuses AI on a task
+   where it would have helped is also failing. A one-directional "abstained = correct" key would
+   score Luddism as literacy.
+
+*The design that survives all three:* do not ask; **make abstention cost something and measure
+behaviour.** Give a task where the assistant is genuinely available, where using it is *slower or
+worse* on some subtasks and *faster or better* on others, and measure the candidate's realised
+allocation against the outcome they achieved. The key is then not a normative claim but an empirical
+one — did their use of the model make their answer better — which is objective, two-tailed by
+construction, and immune to demand characteristics because it is inferred from what they did under
+time pressure, not what they said.
+
+This is measurable **and it is nearly free**, because T3's seeded assistant already creates the
+asymmetry: on planted-error claims, using the assistant is actively harmful. RSR is, read this way,
+already a partial measure of appropriate non-reliance. What is missing is the *positive* half —
+tasks where the assistant is right and faster, so over-abstention is penalised — and RAIR is exactly
+that. **AILX has accidentally built two-thirds of the best available measure of knowing when not to
+use AI, and calls it "appropriate reliance" worth 10 points.**
+
+*Verdict:* adopt, by promoting RSR/RAIR from 35 points inside T3 to the **named construct of the
+track**, adding an explicit no-assistance-is-better subtask, and reporting a two-tailed reliance
+index (over-reliance / calibrated / under-reliance) rather than a single number. Do not build it as a
+fifth track: as a track it needs an answer key it cannot have; as a behavioural measure inside T3 it
+needs no key at all.
+
+---
+
+## 8. What this adds up to
+
+**The instrument's centre of gravity is in the wrong place.** T2 has the most engaging surface, the
+cheapest scoring, and the weakest construct claim — and, because it is the only track that
+compresses into a 45–60 minute matrix block, it would dominate the ministry-facing number by
+default. T3 has the strongest construct, the only objective un-gameable measurement, the slowest
+burn, and it is the track nobody would choose to play. The design work is to move weight from the
+first to the second without losing the surface that makes people arrive.
+
+**The single track to keep, if forced to one: T3.** With the changes above — more planted errors,
+model-free weight raised, a time-pressure condition, and the reliance index reported two-tailed — it
+measures the thing the field cares about, it survives the panel short form, its content ages
+gracefully, and a psychometrician's first attack (the LLM jury) can be answered by shrinking the
+jury's weight rather than defending it.
+
+**The proposed shape.**
+
+| | Scored instrument | Play surface | Population short form |
+|---|---|---|---|
+| T1 Creative Build | **150 pts** — flagship, prompt log scored, r = 30 | artefact + gallery | excluded, stated |
+| T2 Discrimination | **100 pts** — d′ *and* criterion, calibration weighted up | the swipe deck, disjoint pool | core block |
+| T3 Reasoning | **150 pts** — 8–12 plants, reliance index, timed condition | 5-minute "the assistant lied" | RSR/RAIR block, essay dropped |
+| T4 Generative | **cut** | gallery challenge, unscored | — |
+
+**What to cut: T4.** It duplicates T1's construct and machinery, costs the most per candidate, has a
+governance model (human approval of every asset) that does not survive scale, cannot be compressed
+for the panel, and its one distinctive measurement — did the work communicate what it was meant to —
+is better collected as a T3 rubric dimension. Cutting it also restores the §04 design principle by
+removing 80 points of judge-resolved scoring.
+
+**What to change first, in cost order:** score T1's prompt log (already computed, currently
+discarded); raise T3's planted errors from 4 to 8–12; add the time-pressure condition; stop clamping
+T2's d′ at zero and move points onto criterion and calibration; build Bradley–Terry, or stop claiming
+it.
