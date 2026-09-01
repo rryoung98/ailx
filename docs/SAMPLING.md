@@ -277,3 +277,90 @@ So Track B fields a **panel short form**:
 anchor block of common items appearing in both, scaled together, with the linking error reported.
 Without that, the national statistic and the individual credential are on two different scales that
 merely look alike, which is a trap we would fall into silently.
+
+---
+
+## 6. Mode and device effects
+
+A person doing an authentic AI task on a phone is plausibly doing a different task from a person
+doing it on a laptop: different keyboard, different screen area for comparing two images in T2,
+different ability to run a model and a document side by side in T3. If device predicts score, and
+device is correlated with age, income and country, then a national comparison partly measures
+handset mix. This is a real threat and not a hypothetical one.
+
+**Where the comparators stand.** PIAAC is administered on an interviewer-supplied laptop; PISA and
+ICILS run on school computers. **The gold-standard adult and youth assessments all fix the device.**
+That is a deliberate choice, and it means there is no established adjustment method to copy —
+because nobody in this lineage has had to make one. (Confidence: high on PIAAC being laptop-based
+and interviewer-administered; the precise device specification per country is **UNVERIFIED**.)
+
+**Detection, in order of strength.**
+
+1. **Randomised device assignment inside the panel.** For a subsample of panellists who own both a
+   phone and a laptop, randomise the device of administration. This is the only design that
+   identifies a causal device effect rather than a device–person confound. It is cheap relative to
+   the wave (a few hundred cases) and it is the single most valuable methodological add-on in this
+   document. **Recommendation: build it into wave 1, not wave 2.**
+2. **Item-level DIF by device.** Screen every item for differential functioning between phone and
+   desktop administration, conditioning on ability. Items with large device DIF — expect T2 image
+   comparison to be the worst — are either dropped from the population form or fielded device-locked.
+3. **Observational adjustment as a fallback.** Propensity-matched or regression adjustment on
+   observed device use. This is weak: device choice is not random, and adjusting on observables
+   cannot rule out the confound. It belongs in a sensitivity analysis, never in the headline.
+
+**What we do with what we find.**
+
+- If the randomised experiment shows a device effect **below ~0.1 SD**, we report it and do not
+  adjust; we state that device was not fixed and the estimated effect is within our reporting
+  precision.
+- If it is **0.1–0.3 SD**, we device-lock the population form: the panel short form is administered
+  on desktop/laptop only, with the panel vendor providing equipment where needed, and mobile-only
+  households become a documented coverage gap with an estimated size (see §7).
+- If it is **above 0.3 SD**, or if it is item-specific in a way that does not scale away, we declare
+  it a **construct/administration limit**: AILX measures AI fluency *as exercised on a full-size
+  computing device*, that is written into the construct definition (spec §03), and every published
+  figure carries it. Declaring a limit is cheap. Discovering it after publication is not.
+
+**Design decision now, before the data:** the population form is **device-locked to desktop/laptop
+by default**, with the randomised experiment run to test whether that lock is necessary. It is far
+easier to relax a lock later than to explain a mixed-mode statistic afterwards. Track A stays
+device-open, because Track A's job is reach and item calibration, and its device mix is one of the
+things we should measure and publish about it.
+
+---
+
+## 7. Coverage: the offline population, said plainly
+
+**AILX is delivered on the web. Adults who do not use the internet cannot sit it. Therefore no AILX
+figure describes them, and every AILX population figure is an estimate for the online adult
+population of a country, not for its adult population.**
+
+That sentence, or one like it, goes in the release, above the fold, not in a technical annex. It is
+particularly awkward for us because the excluded group is not random with respect to the construct:
+the offline population is on average older, poorer and less educated, and is almost certainly at the
+bottom of any AI-fluency distribution. **Excluding them biases the national mean upward, and the
+bias is in the direction that flatters the number.** We must say that, because a critic will, and
+saying it first costs nothing.
+
+Mitigations, from strongest to weakest:
+
+1. **Buy the vendor's offline provision.** Established probability panels recruit offline households
+   and supply a device and connection so they can participate (this is standard practice for
+   AmeriSpeak, KnowledgePanel and LISS — see §8). This converts most of the coverage gap into a
+   cost line. It does not close it for people who decline a device.
+2. **Quantify the residual and publish it.** Report the size of the non-internet-using adult
+   population from official sources (ITU; national statistical offices; Japan MIC's Communications
+   Usage Trend Survey; Korea's NIA digital-divide series; Eurostat; Ofcom), and report what fraction
+   of our realised sample came through the vendor's offline provision.
+3. **Bound the bias.** Publish a sensitivity analysis: what the national mean becomes if the
+   non-covered population scored at the 5th, 10th and 25th percentile of the covered distribution.
+   This turns an unmeasured group into an explicit interval, and it is honest arithmetic rather than
+   a claim.
+4. **Do not** attempt to weight the offline population in. Calibrating web-sample weights to a total
+   population that includes people who could never have been sampled is coverage error laundered as
+   a weight. It produces a number that looks national and is not.
+
+**Declared limit:** AILX 2026 reports on **adults aged 18–65 who use the internet**. The target
+population is written that way in every release, the exclusion rate against the full adult
+population is published per country, and any drift toward describing it as "adults" is a
+correction-worthy error, not a rounding of language.
