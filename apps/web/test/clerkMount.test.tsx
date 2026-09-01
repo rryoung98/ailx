@@ -25,8 +25,7 @@ const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** The Clerk session this render sees. Reassigned per case. */
 let session = {
-  isLoaded: true,
-  isSignedIn: false,
+  isSignedIn: undefined as boolean | undefined,
   getToken: (async () => null) as () => Promise<string | null>,
 };
 
@@ -72,7 +71,7 @@ function unmountBridge(): void {
 beforeEach(() => {
   storage.map.clear();
   setAuthTokenSource(null);
-  session = { isLoaded: true, isSignedIn: false, getToken: async () => null };
+  session = { isSignedIn: false, getToken: async () => null };
 });
 
 afterEach(() => {
@@ -83,7 +82,7 @@ afterEach(() => {
 
 describe("ClerkTokenBridge registers the session with the header seam", () => {
   it("a signed-in user's token rides every call as a bearer header", async () => {
-    session = { isLoaded: true, isSignedIn: true, getToken: async () => "jwt-abc" };
+    session = { isSignedIn: true, getToken: async () => "jwt-abc" };
     mountBridge();
     expect(hasAuthTokenSource()).toBe(true);
     expect(await authHeaders(storage)).toEqual({ authorization: "Bearer jwt-abc" });
@@ -93,33 +92,34 @@ describe("ClerkTokenBridge registers the session with the header seam", () => {
     // Clerk's getToken() refreshes a short-lived JWT. Registering its RESULT
     // instead of the function would pin an expiring token for the session.
     const tokens = ["jwt-1", "jwt-2"];
-    session = { isLoaded: true, isSignedIn: true, getToken: async () => tokens.shift() ?? null };
+    session = { isSignedIn: true, getToken: async () => tokens.shift() ?? null };
     mountBridge();
     expect(await authHeaders(storage)).toEqual({ authorization: "Bearer jwt-1" });
     expect(await authHeaders(storage)).toEqual({ authorization: "Bearer jwt-2" });
   });
 
   it("registers nothing while Clerk is still loading", async () => {
-    // isSignedIn is false before load for a user who IS signed in; a token
-    // source registered then would be right only by accident.
-    session = { isLoaded: false, isSignedIn: false, getToken: async () => "jwt-abc" };
+    // Clerk reports `isSignedIn: undefined` until it has loaded, and a user who
+    // IS signed in looks exactly like a stranger until then. Registering on
+    // anything but a literal true would be right only by accident.
+    session = { isSignedIn: undefined, getToken: async () => "jwt-abc" };
     mountBridge();
     expect(hasAuthTokenSource()).toBe(false);
     expect(Object.keys(await authHeaders(storage))).toEqual([DEV_USER_HEADER]);
   });
 
   it("registers on sign-in and unregisters again on sign-out", async () => {
-    session = { isLoaded: true, isSignedIn: true, getToken: async () => "jwt-abc" };
+    session = { isSignedIn: true, getToken: async () => "jwt-abc" };
     mountBridge();
     expect(hasAuthTokenSource()).toBe(true);
-    session = { isLoaded: true, isSignedIn: false, getToken: async () => null };
+    session = { isSignedIn: false, getToken: async () => null };
     act(() => root!.render(createElement(ClerkTokenBridge)));
     expect(hasAuthTokenSource()).toBe(false);
     expect(Object.keys(await authHeaders(storage))).toEqual([DEV_USER_HEADER]);
   });
 
   it("unregisters when it unmounts, so no stale session outlives the tree", () => {
-    session = { isLoaded: true, isSignedIn: true, getToken: async () => "jwt-abc" };
+    session = { isSignedIn: true, getToken: async () => "jwt-abc" };
     mountBridge();
     expect(hasAuthTokenSource()).toBe(true);
     unmountBridge();
@@ -129,7 +129,7 @@ describe("ClerkTokenBridge registers the session with the header seam", () => {
 
 describe("a broken token never kills the run", () => {
   it("falls back to the dev id when the session yields no token", async () => {
-    session = { isLoaded: true, isSignedIn: true, getToken: async () => null };
+    session = { isSignedIn: true, getToken: async () => null };
     mountBridge();
     const h = await authHeaders(storage);
     expect(Object.keys(h)).toEqual([DEV_USER_HEADER]);
@@ -137,14 +137,13 @@ describe("a broken token never kills the run", () => {
   });
 
   it("falls back on an empty token rather than sending `Bearer `", async () => {
-    session = { isLoaded: true, isSignedIn: true, getToken: async () => "" };
+    session = { isSignedIn: true, getToken: async () => "" };
     mountBridge();
     expect(Object.keys(await authHeaders(storage))).toEqual([DEV_USER_HEADER]);
   });
 
   it("falls back when the refresh throws", async () => {
     session = {
-      isLoaded: true,
       isSignedIn: true,
       getToken: async () => {
         throw new Error("network");

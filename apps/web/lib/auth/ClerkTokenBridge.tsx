@@ -19,16 +19,18 @@ import { useAuth } from "@clerk/nextjs";
 import { setAuthTokenSource } from "../authHeaders";
 
 export function ClerkTokenBridge(): null {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   useEffect(() => {
-    // Before Clerk has loaded, `isSignedIn` is false for a user who IS signed
-    // in; registering then would be right by accident, so wait for the truth.
-    if (!isLoaded || !isSignedIn) {
+    // `isSignedIn` is UNDEFINED until Clerk has loaded, and that is the whole
+    // loading guard: only a literal true is a session. There is no separate
+    // `isLoaded` check because it could never disagree — a mutation test
+    // proved it dead rather than defensive.
+    if (isSignedIn !== true) {
       setAuthTokenSource(null);
       return;
     }
     setAuthTokenSource(() => getToken());
     return () => setAuthTokenSource(null);
-  }, [isLoaded, isSignedIn, getToken]);
+  }, [isSignedIn, getToken]);
   return null;
 }
