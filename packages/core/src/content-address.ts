@@ -1,4 +1,5 @@
 import { canonicalJson, sha256Bytes, sha256Hex } from "./hash.js";
+import type { Judgment } from "./plugin.js";
 
 /**
  * Content addressing — spec §14. Canonical JSON lives in ./hash.js (the
@@ -8,6 +9,23 @@ import { canonicalJson, sha256Bytes, sha256Hex } from "./hash.js";
  */
 export function itemId(item: unknown): string {
   return sha256Hex(canonicalJson(item));
+}
+
+/**
+ * judgment_id = sha256(canonical_json(judgment)) — the same rule as itemId,
+ * applied to a STORED JUDGE OUTPUT.
+ *
+ * An LLM judge does not repeat itself, even at temperature 0, so a judgment is
+ * evidence that was COLLECTED once and must then be treated exactly like an
+ * item: addressed, immutable, and re-judged only by writing a new row. This is
+ * the check an auditor runs. Recompute the ids over the stored judgments; if
+ * they match the ones recorded against the score, score() is obliged to return
+ * the same number, byte for byte. If they do not match, the judgments were
+ * mutated and the score of record is void — which is a different and much
+ * louder failure than a judge that drifted.
+ */
+export function judgmentId(judgment: Judgment): string {
+  return sha256Hex(canonicalJson(judgment));
 }
 
 /** rubric_version = hash(rubric + prompts). Changing a prompt is a version bump. */
