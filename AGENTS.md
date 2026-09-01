@@ -54,7 +54,7 @@ somebody makes in front of a reviewer.
 - `vitest run` inside a package is the way to debug one package.
 - `pnpm test:reap` — kill vitest workers orphaned by an interrupted run (reparented to pid 1, each still holding its heap). The capped pool and the per-file PGlite close make this rare rather than routine.
 - `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm test`. It boots the frontend itself but needs a RUNNING EXAM SERVICE: set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). There is no default, on purpose: guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
-- Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page".
+- Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page". `rm -rf apps/web/.next` between the two as well: a build over the OTHER mode's leftover output failed twice on 2026-09-01, once with a prerender "Cannot read properties of undefined (reading 'call')" and once with a missing `next-font-manifest.json`. Neither error names the real cause.
 - Never run `next dev` in `apps/web` while anyone is testing: it leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps exactly that directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
 - The e2e suite always boots its own server. `AILX_E2E_REUSE_SERVER=1` reuses whatever is already on the port for a fast inner loop — and then YOU own what is on that port. It is opt-in because a next-server orphaned by a dead agent once held 3210 for a day and the suite silently tested it, green.
 
@@ -104,6 +104,14 @@ the exam service — see the PRIVATE repo's README §3. If you find yourself wan
   the build if a second module reads it. Unset, the app has no backend and the pages that need
   one say so honestly. Cross-origin the `ailx_dev_user` cookie is NOT sent — identity rides the
   header from `apps/web/lib/authHeaders.ts`. See docs/ARCHITECTURE.md §10.1.
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — Clerk's publishable key. Publishable BY DESIGN (it is
+  baked into the client bundle) but it still goes in env, not the tree: see `apps/web/.env.example`.
+  Read in exactly ONE place, `apps/web/lib/mode.ts` (`isClerkEnabled()`), and by Clerk's own SDK.
+  Mounting needs BOTH this key and `AILX_BACKEND=1`, so a hosted deploy without it keeps working on
+  the asserted dev identity, and the static export never mounts a provider at all — `next.config.mjs`
+  even resolves `@clerk/nextjs` to a stub there, so the Pages bundle carries no auth SDK.
+  There is deliberately no `CLERK_SECRET_KEY` here: this app verifies no token. It sends the JWT to
+  the exam service, which is the only thing that checks it. See docs/ARCHITECTURE.md §10.2.
 - `NEXT_PUBLIC_BASE_PATH` — GitHub Pages subpath prefix.
 - `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`. Used by
   `generateMetadata` for absolute Open Graph URLs. Must be a bare absolute http(s) origin.

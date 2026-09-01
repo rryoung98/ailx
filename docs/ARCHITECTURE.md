@@ -498,7 +498,7 @@ The remaining steps, in order:
    `setAuthTokenSource(null)` on sign-out.
 4. A `/sign-in` route, and whatever the run flow does when a candidate is anonymous.
 5. Vercel (project `ailx-staging`, Production): add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-   (publishable by design) and `CLERK_SECRET_KEY` if any server page verifies.
+   (publishable by design). NOT `CLERK_SECRET_KEY` — see "what steps 1-4 decided" below.
 6. Cloud Run: repo variable `AILX_AUTH=clerk`; the deploy workflow then mounts
    `CLERK_SECRET_KEY=ailx-clerk-secret-key:latest` on its own
    (`.github/workflows/deploy.yml`). Drop `AILX_ALLOW_INSECURE_DEV_AUTH`.
@@ -520,6 +520,35 @@ The Clerk instance is a DEVELOPMENT instance repurposed from another product, wh
 for staging and NOT fine for real candidates: dev instances have relaxed limits and a
 separate user pool, so a production Clerk instance is a prerequisite for the first real
 sitting.
+
+**Steps 1-4 are done (2026-09-01), and four things they decided.**
+
+- *Nothing changes until a key exists.* `isClerkEnabled()` (`apps/web/lib/mode.ts`, the only
+  reader of the variable) needs BOTH `AILX_BACKEND=1` and a publishable key. Without one no
+  provider mounts, `authHeaders()` sends the asserted dev id, and the app is exactly what it
+  was. Unsetting the key IS the frontend rollback, so the flip stays reversible in both
+  directions.
+- *The static export resolves a stub, not the SDK.* `app/layout.tsx` is ONE file for both
+  builds, so the import of `@clerk/nextjs` sits in both graphs — and an import is enough to
+  bundle it, whether or not the provider ever renders. `next.config.mjs` therefore aliases the
+  package to `lib/auth/clerkStub.tsx` in the export build. `lib/authHeaders.ts` stays SDK-free
+  as promised; the only modules that touch Clerk are `lib/auth/*` and the two sign-in pages,
+  and a test pins that list.
+- *No middleware, and no `CLERK_SECRET_KEY` in this repo.* This app verifies no token: Clerk
+  runs in the BROWSER, the bridge hands `getToken()` to the header seam, and the exam service
+  is the only thing that checks the JWT. `clerkMiddleware()` exists to make `auth()` work in a
+  server component, which nothing here does — adding it would put a Clerk secret and a second
+  auth surface into a repository whose own guard bans `@clerk/backend`.
+- *Sign-in is a link, never a gate.* `/sign-in` and `/sign-up` are `page.api.tsx`, hosted-only
+  by name, and nothing redirects to them. The game plays anonymously on the dev identity; an
+  account buys a sitting that can be scored on the record and progress that outlives one
+  browser. Forcing an account in front of `/practice` would trade the on-ramp for a signup.
+
+One trap, paid for in a failed build: `@clerk/nextjs` v7 is Clerk **Core 3**, which REMOVED
+`<SignedIn>`, `<SignedOut>` and `<Protect>` — it still exports them, as functions that throw
+the moment they render, so every Core 2 snippet on the internet compiles here and dies during
+prerender. Conditional UI asks `useAuth()`. `test/clerkMount.test.tsx` calls each imported
+name against the real package and fails on that error message.
 
 ### 10.3 Step 3, and the three things it could not simply delete (2026-08-31)
 
