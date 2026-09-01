@@ -13,7 +13,7 @@ import { assetUrl, footerModeCopy, isServerMode } from "../lib/mode";
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
   description:
-    "Four playable tracks — build, detect, reason, direct. 400 raw points, audit-grade scoring, built to the AILX 2026.1 specification. Live demo build.",
+    "Four playable tracks — build, detect, reason, direct. 400 raw points, and every score recomputable from what you did. Built to the AILX 2026.1 specification. Live demo build.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
