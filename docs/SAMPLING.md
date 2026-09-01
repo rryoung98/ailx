@@ -364,3 +364,98 @@ Mitigations, from strongest to weakest:
 population is written that way in every release, the exclusion rate against the full adult
 population is published per country, and any drift toward describing it as "adults" is a
 correction-worthy error, not a rounding of language.
+
+---
+
+## 8. Who can actually field this, and what it costs
+
+### 8.1 The vendor map
+
+"Probability panel" is a term the market abuses. The test is whether a person can *join* — if they
+can volunteer, it is an opt-in access panel and the price difference is telling you the truth about
+the product.
+
+| Country | True probability options | Notes |
+|---|---|---|
+| **US** | **NORC AmeriSpeak** (NORC National Frame area probability + USPS address frame, in-person non-response follow-up); **Ipsos KnowledgePanel** (ABS, no self-enrolment); **SSRS Opinion Panel** (ABS from the USPS Delivery Sequence File + RDD cell supplement); **USC Understanding America Study** (academic, ABS, published price list) | Pew's American Trends Panel is ABS probability but is in-house and not sold. **VERIFIED** |
+| **UK** | **Ipsos KnowledgePanel UK** (random unclustered ABS, launched Aug 2020, >25,000 panellists, tablets + data supplied to digitally excluded households); NatCen Opinion Panel | **VERIFIED** |
+| **EU** | Ipsos KnowledgePanel now runs in FR, DE, IT, ES, NL, SE, PL, HR. Academic register-based panels: **LISS** (NL), **GESIS Panel** and **GIP** (DE), **ELIPSS** (FR), Swedish and Norwegian Citizen Panels | The academic panels are research infrastructures with access committees, not vendors — access is by application and the cost model is different. **VERIFIED** |
+| **Japan** | **No commercial probability online panel found.** Rakuten Insight, Macromill, Intage, Cross Marketing are opt-in access panels | The Japanese practice for probability general-population data is **ABS push-to-web mail** using a housing/resident-register address frame. A published example (Ome City, 2024) reports **RR3 = 19.2%**, comparable to Asahi Shimbun's national ABS push-to-web. **VERIFIED** |
+| **Korea** | **No live commercial probability panel.** KAMOS (area-stratified address sampling) stopped adding members after 2019 for budget reasons; the live probability route is an **RDD-with-follow-up-texting** panel (~10,471 members as of Feb 2023). Embrain, Macromill Embrain, Hankook Research access panels are opt-in | **VERIFIED** for KAMOS/RDD; the opt-in status of the commercial panels is asserted from the absence of any probability claim on their methodology pages — **UNVERIFIED at source level** |
+
+**Consequence for AILX's trilateral (en/ja/ko) framing:** the US and UK can be bought off the shelf.
+**Japan and Korea require commissioning a fresh probability sample, not renting panel time** — ABS
+push-to-web in Japan, RDD phone-to-web recruitment in Korea. That is more expensive, slower, and
+needs a local fieldwork partner. It is also the difference between a cross-national norm and three
+convenience samples wearing country labels, which is exactly the PISA-China failure mode
+(a technically legal, politically fatal sampling frame) in miniature.
+
+**Why pay for probability at all.** Pew's 2023 methods study compared sample types against 28
+benchmarks: opt-in samples averaged **5.8 points of absolute error**, probability panels **2.6
+points** — roughly twice the error, and worse in the young and low-education subgroups that matter
+most here. **VERIFIED.**
+
+### 8.2 Cost per complete
+
+The only vendor with a published rate card for a long instrument is the **USC Understanding America
+Study**: **$3.00 per respondent per minute** for the first 500 respondents, **$2.50/min** after,
+plus a **$2,000 handling fee**; about a third of that is respondent incentive; panellists are paid
+$20 per 30 minutes. **VERIFIED** (UAS brochure, 2024). Their own worked example: 1,000 respondents
+× 15 minutes = $43,250.
+
+Applying that published rate to AILX-shaped lengths (arithmetic on a verified rate, so
+**VERIFIED-derived**, but UAS states the basic rate assumes a "relatively straightforward" survey
+and quotes complex instrument programming separately — an assessment is complex, so treat these as
+**floors**):
+
+| Design | Cost | Per complete |
+|---|---|---|
+| 1,000 × 30 min | $84,500 | ~$85 |
+| 1,000 × 45 min | $125,750 | ~$126 |
+| 2,000 × 45 min | $238,250 | ~$119 |
+
+AmeriSpeak, KnowledgePanel and SSRS publish **no per-complete rate card** for custom work
+(AmeriSpeak publishes Omnibus pricing only: $1,000 per question for questions 1–5, $850 for 6–10,
+$750 thereafter, minimum three questions — **VERIFIED**, and not usable for an assessment).
+
+Planning figures, marked clearly: **ESTIMATE, market judgement, must be replaced by real quotes
+before any budget is committed.**
+
+- US probability panel, 10–20 min: **$25–$60 per complete**.
+- US probability panel, 30–45 min general population: **$75–$200+ per complete**.
+- Fresh ABS or RDD recruitment with no existing panel (i.e. **Japan and Korea**):
+  **$150–$500+ per complete**.
+- Incentive alone for a 30–45 minute *effortful, scored* task: **$25–$50** in the US, roughly
+  1.5–2× the plain-survey rate for the same minutes, because an assessment feels like work and
+  returns a judgement the respondent may not want. PIAAC's anchor: the US paid **$100** per
+  completed assessment plus **$5 unconditional** with the mailed screener, for a ~105-minute
+  in-home assessment, and still got 28% overall. **VERIFIED.**
+
+### 8.3 Burden: the finding that should change the design
+
+Length does not mainly cost you refusals. It costs you the *low scorers*, which biases the national
+mean upward — in the same direction as the coverage bias in §7, so the two errors compound rather
+than cancel.
+
+- Web-survey dropout before completion: **31.8% at 10 minutes, 43.2% at 20, 53.2% at 30**, with
+  about 30% of all dropouts occurring in the first four pages. **VERIFIED** (Statistics Sweden;
+  the underlying reference is Galesic & Bosnjak, *POQ* 73(2), 2009).
+- Test-specific: Kleinert, Christoph & Ruland (*Sociological Methods & Research*, 2019) ran a split
+  design in the German NEPS adult panel — two competency tests versus one. The longer-test group
+  was **not** more likely to refuse the interview, but **was** significantly more likely to use
+  **test-avoidance strategies** (skipping or abandoning the test while staying in the survey), and
+  **low test performance itself predicted dropping out of later waves**. **VERIFIED.**
+- Splitting a long instrument into modules is not a free fix: Peytchev et al. (*JSSAM*, 2019) found
+  modularisation **increased** total non-response, though disproportionate incentive allocation
+  toward the first module helped. **VERIFIED.**
+
+**Three design consequences, adopted:**
+
+1. **Report an assessment-completion rate separately from the survey response rate**, and compute
+   both to AAPOR definitions. A panel that answers the background questionnaire and abandons the
+   tasks is a non-response we would otherwise hide inside a completion percentage.
+2. **Pay for the assessment, not for the click.** Incentive weighted toward completion of the
+   scored blocks, with the schedule published.
+3. **Treat break-off as informative, not missing at random.** Break-off cases enter the NRBA as a
+   named group with their partial performance data, because the evidence says they are
+   disproportionately low scorers.
