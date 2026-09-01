@@ -152,7 +152,12 @@ export default function Methodology() {
         </ul>
         <p>
           <code>score()</code> being <strong>pure</strong> is the load-bearing constraint: no network, no clock, no randomness. Model calls happen in pipeline stages whose outputs are stored as inputs;
-          <code> score()</code> then consumes stored judgments and returns a number. CI enforces purity by running <code>score()</code> in a sandbox where{" "}
+          <code> score()</code> then consumes stored judgments and returns a number. This is worth
+          stating precisely, because an LLM judge does <em>not</em> repeat itself even at
+          temperature&nbsp;0: a judgment is evidence collected once, stored immutably and
+          content-addressed, and the guarantee is that <strong>re-scoring reproduces, not that
+          re-judging does</strong>. Asking the judge the same question twice may give two answers;
+          asking the scorer the same question twice may not. CI enforces purity by running <code>score()</code> in a sandbox where{" "}
           <code>fetch</code>, <code>Date.now</code> and <code>Math.random</code> Throw, with golden fixtures per track failing the build on any drift. Re-scores are inserts linked by <code>superseded_by</code>, so no history is lost; the stored model manifest can prove in 2029 which model version produced a 2026 certificate.</p>
         <p className="faint small">
           This showcase build exercises the same contracts client-side: the purity

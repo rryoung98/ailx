@@ -209,6 +209,11 @@ Consequences we accept, stated plainly:
   inside the CI purity sandbox, imported by whichever runtime needs it. Byte-identical
   recomputability rests on purity + stored inputs + the `scorers[]` source digest — never on
   *where* the function runs. What changes is who is allowed to **issue** a score row.
+- For T3/T4 the judge's output is one of those **stored inputs**, because an LLM judge is not
+  reproducible even at temperature 0 (spec §14). Judging collects evidence once, in a
+  pipeline stage; the row is immutable and content-addressed; `score()` replays it. Re-scoring
+  reproduces, re-judging does not, and the honest pair is published rather than the strong
+  half alone.
 - Screenshot leakage is not solved by any of this. Only three-tier rotation and a withheld
   anchor block (spec §09) address a candidate photographing items. Custody stops bulk
   extraction; it does not stop a camera.

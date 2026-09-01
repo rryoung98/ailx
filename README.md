@@ -43,7 +43,7 @@ both repos need stops matching this one, with **this repo as the source of truth
 
 ## Core invariants (from the spec)
 
-- **Any score, ever issued, is byte-identically recomputable from stored inputs.**
+- **Any score, ever issued, is byte-identically recomputable from stored inputs.** A judge's output *is* one of those stored inputs: LLM judges do not repeat themselves, even at temperature 0, so judging collects evidence once and `score()` replays it. Re-scoring is reproducible; re-judging is not, and we say so.
 - `score()` is pure — no I/O, no clock, no randomness. Enforced in CI by a sandbox where `fetch`, `Date.now`, and `Math.random` throw.
 - Item banks are content-addressed: `item_id = sha256(canonical_json(item))`. Edits create new items, never mutations.
 - Judge prompts are content, hashed into `rubric_version`.

@@ -113,7 +113,7 @@ the exam service — see the PRIVATE repo's README §3. If you find yourself wan
   shared demo model.
 
 ## Core invariants (never violate)
-- Any score ever issued is byte-identically recomputable from stored inputs.
+- Any score ever issued is byte-identically recomputable from stored inputs. **A judge's output IS a stored input** — an LLM judge is not reproducible even at temperature 0, so T3/T4 judging is an evidence-COLLECTION step whose result is persisted and content-addressed (`judgmentId`, `packages/core`), and `score()` replays it. Say both halves: **re-scoring is reproducible, re-judging is not.** Never put a model call on the recompute path.
 - `score()` is pure — no I/O, clock, or randomness (CI-enforced sandbox).
 - Item banks are content-addressed; edits create new items, never mutations.
 - The audit digest content-addresses `score()` SOURCE at build time (`instruments/demo-2026.1/snapshot.json` `scorers[]`); regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`. The digests are tier-independent — they hash `score()` source, which is the same in both repos.
