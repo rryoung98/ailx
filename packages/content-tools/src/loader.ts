@@ -79,7 +79,17 @@ export function parseRubric(raw: string, path: string, redacted = false): Rubric
   const track = req<string>(doc, "track", path);
   const total = req<number>(doc, "total_points", path);
   const criteria = req<Rubric["criteria"]>(doc, "criteria", path);
-  if (!Array.isArray(criteria) || criteria.length === 0) fail(path, "criteria must be a non-empty list");
+  if (!Array.isArray(criteria)) fail(path, "criteria must be a list");
+  // A SHOWCASE track publishes no criteria, and it is the only thing that
+  // may: total_points 0 and criteria [] is the declared shape for a track
+  // that is run and recorded but issues no points (spec §04, T4). Any other
+  // empty list is a rubric somebody forgot to write.
+  if (criteria.length === 0 && total !== 0) {
+    fail(path, "criteria must be a non-empty list unless total_points is 0");
+  }
+  if (criteria.length > 0 && total === 0) {
+    fail(path, "total_points 0 must publish no criteria");
+  }
   let sum = 0;
   const seen = new Set<string>();
   for (const c of criteria) {

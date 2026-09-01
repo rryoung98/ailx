@@ -21,13 +21,14 @@ import { createRoot, type Root } from "react-dom/client";
 import type { TrackEvent } from "@ailx/core";
 import { Runner } from "../src/Runner.js";
 import { items } from "./fixtures.js";
+import { T2_DEFAULT_WEIGHTS } from "../src/types.js";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 /** Two binary items, so "the last item" is two answers away. */
 const twoItemConfig = {
   items: items.filter((i) => i.options.length === 2).slice(0, 2),
-  weights: { sensitivity: 60, calibration: 25, provenance: 15 },
+  weights: T2_DEFAULT_WEIGHTS,
 };
 
 let container: HTMLElement;

@@ -1,5 +1,5 @@
 import { itemId } from "@ailx/core";
-import type { T2Config, T2Item } from "../src/types.js";
+import { T2_DEFAULT_WEIGHTS, type T2Config, type T2Item } from "../src/types.js";
 
 /**
  * Demo item bank — content-addressed per spec §14:
@@ -81,7 +81,7 @@ export const items: T2Item[] = [
 
 export const config: T2Config = {
   items,
-  weights: { sensitivity: 60, calibration: 25, provenance: 15 },
+  weights: T2_DEFAULT_WEIGHTS,
 };
 
 /** Perfect candidate: every call right, confidence 90 everywhere. */

@@ -1,8 +1,27 @@
 /**
- * T2 · Authenticity Discrimination — types.
+ * T2 · Synthetic-Media Discrimination — types.
  * Spec §T2: swipe/judgement deck over content-addressed items, confidence
  * as a second response, replay phase teaching rationale + provenance.
  */
+import { trackPoints, weightsFor } from "@ailx/core";
+
+/** The four scored components of T2. Keys match the allocation table. */
+export interface T2Weights {
+  /** Sensitivity, d′ — how well signal and noise are told apart. */
+  sensitivity: number;
+  /** Criterion placement, |c| — how far the decision threshold sits from unbiased. */
+  criterion: number;
+  /** Brier calibration over the confidence taps. */
+  calibration: number;
+  /** Difficulty-weighted accuracy on the untimed provenance block. */
+  provenance: number;
+}
+
+/** Score allocation, read from the ONE table in `@ailx/core`. */
+export const T2_DEFAULT_WEIGHTS: T2Weights = weightsFor<keyof T2Weights>("t2");
+
+/** Points a flawless T2 can earn. Derived, never typed twice. */
+export const T2_TOTAL_POINTS: number = trackPoints("t2");
 
 export type T2ItemType =
   | "media-image"
@@ -73,12 +92,12 @@ export function isRevealedT2Item(item: T2PresentedItem): item is T2Item {
  */
 export interface T2PresentationConfig {
   items: ReadonlyArray<T2PresentedItem>;
-  /** Score allocation, spec §T2 "Score allocation". Defaults 60/25/15. */
-  weights: {
-    sensitivity: number;
-    calibration: number;
-    provenance: number;
-  };
+  /**
+   * Score allocation, spec §T2 "Score allocation".
+   * Defaults come from the ONE allocation table in `@ailx/core`
+   * ({@link T2_DEFAULT_WEIGHTS}): 25 / 15 / 25 / 15 of 80 points.
+   */
+  weights: T2Weights;
   /**
    * d′ that earns full sensitivity points. Defaults to D_PRIME_CEILING
    * (3.0, spec §T2). Short demo decks pass the deck's ATTAINABLE corrected
@@ -86,6 +105,12 @@ export interface T2PresentationConfig {
    * small binary blocks, which would silently truncate the 0-100 scale.
    */
   dPrimeCeiling?: number;
+  /**
+   * Signed d′ that earns ZERO sensitivity points. Defaults to
+   * {@link D_PRIME_FLOOR} (−1.0). It is NEGATIVE on purpose — see the
+   * floor-spike note on {@link D_PRIME_FLOOR}.
+   */
+  dPrimeFloor?: number;
 }
 
 /**

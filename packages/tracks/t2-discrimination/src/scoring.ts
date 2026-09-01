@@ -2,24 +2,92 @@
  * T2 pure scoring. Spec §T2 "Score allocation" + "Why raw accuracy is not
  * the score". No I/O, no clock, no randomness.
  *
- *  - 60 pts sensitivity: d' = z(H) - z(F), log-linear corrected (+0.5 to
- *    every contingency cell, applied to EVERY candidate).
+ *  - 25 pts sensitivity: d' = z(H) - z(F), log-linear corrected (+0.5 to
+ *    every contingency cell, applied to EVERY candidate), scaled between a
+ *    declared FLOOR and a declared ceiling.
+ *  - 15 pts criterion placement: distance of c from an unbiased threshold.
  *  - 25 pts calibration: Brier score over the 0-100 confidence slider,
  *    computed over ANSWERED binary items only (F7). Lapsed/unanswered items
  *    are EXCLUDED from the Brier mean — silence is not a calibrated 50%
- *    forecast — and full calibration weight additionally requires answering
- *    at least 50% of the binary deck (linear below that; declared missing-
- *    response rule, reported in raw as 'calibrationCoverage'). A fully
- *    unanswered deck earns zero calibration points.
+ *    forecast.
  *  - 15 pts provenance reasoning: difficulty-weighted accuracy over the
  *    untimed provenance block.
  *
- * Raw accuracy and criterion c are reported as diagnostics only.
+ * WHAT CHANGED, AND WHY IT HAD TO
+ *
+ * 1. **The criterion is scored, and the pure-d' weight is cut from 60 to 25.**
+ *    The old allocation scored the part of this task that does not move and
+ *    discarded the part that does. Gray et al. (R. Soc. Open Sci. 2025,
+ *    N = 664) trained typical-ability participants to 51% accuracy at
+ *    d' = -0.066, t(69) = 1.092, p = 0.279 — indistinguishable from chance;
+ *    the authors read the gain as the removal of a below-chance BIAS. Kamali
+ *    et al. (2026, within-subject, N = 32) found the same shape: +9 points of
+ *    accuracy driven by +14.2 points on REAL images, i.e. criterion
+ *    correction. Diel et al.'s meta-analysis (56 papers, 86,155 participants)
+ *    puts pooled accuracy at 55.5% and pooled d' not significantly different
+ *    from chance. So c is where the instruction-sensitive variance lives, and
+ *    it used to be "reported as a diagnostic and does not enter the point
+ *    total" by design.
+ *
+ * 2. **The floor spike is gone.** `clamp01(d'/ceiling)` gave EXACTLY zero to
+ *    every candidate at or below chance. In a general-population panel that
+ *    is a large, identical-scored spike at the bottom: it cannot be
+ *    IRT-scaled, it cannot yield plausible values, and a national mean then
+ *    moves with the size of the spike rather than with ability. Sensitivity
+ *    is now scaled from a declared NEGATIVE floor, so a below-chance result
+ *    is a datum rather than a tie, and the signed d' stays in `raw` either
+ *    way.
+ *
+ * 3. **Coverage gates the criterion component too.** A candidate who answers
+ *    nothing misses every signal item AND false-alarms every noise item; the
+ *    two probits cancel and c lands near 0 — an unbiased-looking criterion
+ *    earned by not playing. `responseCoverage` (the declared missing-response
+ *    rule, previously used only for calibration) multiplies both.
+ *
+ * WHAT A T2 SCORE IS NOT. It is not a measure of AI literacy, and this file
+ * is where that stops being restated as if it were. The reliable variance in
+ * discrimination sensitivity is a mixture of a domain-general and
+ * training-RESISTANT perceptual aptitude, familiarity with the specific
+ * generators in this year's form, and how much the candidate happens to use
+ * AI at work. The construct is synthetic-media discrimination — sensitivity
+ * and criterion together.
+ *
+ * Raw accuracy is reported as a diagnostic only.
  */
 import type { T2Artifact, T2Config, T2Item, T2Response } from "./types.js";
+export { T2_DEFAULT_WEIGHTS, T2_TOTAL_POINTS } from "./types.js";
 
 /** d' beyond this is clamped when scaling to points. Declared constant. */
 export const D_PRIME_CEILING = 3.0;
+
+/**
+ * Signed d' at or below which sensitivity earns zero. Declared constant,
+ * NEGATIVE on purpose.
+ *
+ * The old scale started at chance (d' = 0), which handed an identical zero to
+ * everyone at or below it — and the population sits at chance. A floor spike
+ * of identical scores cannot be IRT-scaled and cannot yield plausible values,
+ * so the most-quoted output of the instrument would have measured the size of
+ * the spike. −1.0 is roughly "systematically worse than chance": a candidate
+ * there is calling real content synthetic and synthetic content real, which
+ * is a real and different result from being at chance, and it should not tie
+ * with it.
+ */
+export const D_PRIME_FLOOR = -1.0;
+
+/**
+ * |c| at or beyond which criterion points are exhausted. Declared constant.
+ * c = 0 is an unbiased threshold; |c| = 1 is a strong, systematic truth bias
+ * or synthetic bias — published human performance runs near a 67%/31%
+ * true-positive split, which is that order of magnitude.
+ */
+export const CRITERION_CEILING = 1.0;
+
+/**
+ * Fraction of the binary deck that must be answered for full weight on the
+ * components a non-response can fake. Declared missing-response rule.
+ */
+export const FULL_COVERAGE_FRACTION = 0.5;
 
 /**
  * Best corrected d′ a flawless run can reach on a deck with the given
@@ -66,19 +134,25 @@ export function probit(p: number): number {
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
 export interface T2Raw {
+  /** The four SCORED components, in points. */
   sensitivity: number;
+  criterion: number;
   calibration: number;
   provenance: number;
   /** Diagnostics — reported, never added to the point total. */
   dPrime: number;
-  criterion: number;
+  /** Signed c. Negative is a synthetic-calling bias, positive a truth bias. */
+  criterionC: number;
   accuracy: number;
   brier: number;
   weightedAccuracy: number;
   /** Answered (non-lapsed) binary items — the Brier population (F7). */
   answeredBinary: number;
-  /** Coverage multiplier on calibration: min(1, answeredFrac / 0.5). */
-  calibrationCoverage: number;
+  /**
+   * Coverage multiplier on the components a non-response could otherwise
+   * fake: min(1, answeredFrac / FULL_COVERAGE_FRACTION).
+   */
+  responseCoverage: number;
   hits: number;
   falseAlarms: number;
   nSignal: number;
@@ -125,9 +199,16 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
   const H = (hits + 0.5) / (nSignal + 1);
   const F = (falseAlarms + 0.5) / (nNoise + 1);
   const dPrime = nSignal > 0 && nNoise > 0 ? probit(H) - probit(F) : 0;
-  const criterion = nSignal > 0 && nNoise > 0 ? -(probit(H) + probit(F)) / 2 : 0;
+  const criterionC = nSignal > 0 && nNoise > 0 ? -(probit(H) + probit(F)) / 2 : 0;
+  const measurable = nSignal > 0 && nNoise > 0;
   const ceiling = cfg.dPrimeCeiling ?? D_PRIME_CEILING;
-  const sensitivity = cfg.weights.sensitivity * clamp01(dPrime / ceiling);
+  const floor = cfg.dPrimeFloor ?? D_PRIME_FLOOR;
+  // Scaled between a declared floor and a declared ceiling, so a below-chance
+  // result is a datum rather than a tie at zero (see D_PRIME_FLOOR).
+  const sensitivityUnit = measurable && ceiling > floor
+    ? clamp01((dPrime - floor) / (ceiling - floor))
+    : 0;
+  const sensitivity = cfg.weights.sensitivity * sensitivityUnit;
 
   // --- Calibration: Brier over ANSWERED confidence taps only (F7) -----------
   // Forecast f = 0.5 + confidence/200: a 0-confidence answer is a coin flip,
@@ -147,13 +228,29 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
   }
   const brier = answeredBinary > 0 ? brierSum / answeredBinary : 0;
   const accuracy = binary.length > 0 ? correctCount / binary.length : 0;
-  // Declared missing-response rule: full calibration weight requires
-  // answering >= 50% of the binary deck; linear credit below that.
+  // Declared missing-response rule: full weight requires answering >= 50% of
+  // the binary deck; linear credit below that. It gates BOTH calibration and
+  // criterion, because both are fakeable by silence.
   const answeredFrac = binary.length > 0 ? answeredBinary / binary.length : 0;
-  const calibrationCoverage = clamp01(answeredFrac / 0.5);
+  const responseCoverage = clamp01(answeredFrac / FULL_COVERAGE_FRACTION);
   // 0 Brier -> full points; 0.25 (pure guessing) -> half; >= 0.5 -> zero.
   const calibration =
-    cfg.weights.calibration * clamp01(1 - 2 * brier) * calibrationCoverage;
+    cfg.weights.calibration * clamp01(1 - 2 * brier) * responseCoverage;
+
+  // --- Criterion placement: how far the threshold sits from unbiased -------
+  // The component the evidence says instruction actually moves. Full points
+  // at c = 0; exhausted at |c| >= CRITERION_CEILING, in EITHER direction —
+  // calling everything synthetic is a different literacy failure from
+  // calling everything real, and both are failures.
+  //
+  // Coverage-gated, and that gate is load-bearing rather than defensive: a
+  // candidate who answers nothing misses every signal item and false-alarms
+  // every noise item, the two probits cancel, and c lands at ~0. Without the
+  // gate, silence would buy a perfect criterion score.
+  const criterionUnit = measurable
+    ? clamp01(1 - Math.abs(criterionC) / CRITERION_CEILING)
+    : 0;
+  const criterion = cfg.weights.criterion * criterionUnit * responseCoverage;
 
   // --- Provenance reasoning: difficulty-weighted accuracy -------------------
   let wSum = 0, wCorrect = 0;
@@ -168,18 +265,24 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
 
   const raw: T2Raw = {
     sensitivity: round3(sensitivity),
+    criterion: round3(criterion),
     calibration: round3(calibration),
     provenance: round3(provenance),
     dPrime: round3(dPrime),
-    criterion: round3(criterion),
+    criterionC: round3(criterionC),
     accuracy: round3(accuracy),
     brier: round3(brier),
     weightedAccuracy: round3(weightedAccuracy),
     answeredBinary,
-    calibrationCoverage: round3(calibrationCoverage),
+    responseCoverage: round3(responseCoverage),
     hits, falseAlarms, nSignal, nNoise,
   };
-  return { raw, scaled: round3(raw.sensitivity + raw.calibration + raw.provenance) };
+  return {
+    raw,
+    scaled: round3(
+      raw.sensitivity + raw.criterion + raw.calibration + raw.provenance,
+    ),
+  };
 }
 
 function round3(x: number): number {

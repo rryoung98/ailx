@@ -8,16 +8,16 @@
 # if a description, a band anchor or a prompts/ directory ever comes back.
 # See ../../README.md.
 track: t1-creative-build
-total_points: 100
+total_points: 160
 criteria:
   - id: functional-gates
     name: Functional & accessibility gates
-    points: 30
+    points: 40
     scored_by: gates
     judged: false
   - id: comparative-merit
     name: Comparative visual merit
-    points: 40
+    points: 60
     scored_by: pairwise-human
     judged: false
   - id: technical-ambition
@@ -27,6 +27,11 @@ criteria:
     judged: true
   - id: design-rationale
     name: Design rationale
-    points: 10
+    points: 15
     scored_by: judge
     judged: true
+  - id: process-signal
+    name: Prompt-log process signal
+    points: 25
+    scored_by: arithmetic
+    judged: false

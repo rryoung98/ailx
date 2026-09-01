@@ -1,4 +1,4 @@
-# T3 · AI-Assisted Reasoning — REDACTED published allocation (spec §14).
+# T3 · Calibrated Reliance — REDACTED published allocation (spec §14).
 #
 # RELEASED-PRACTICE TIER. This file publishes the POINTS allocation and
 # nothing else. The per-criterion `description` and the `band_anchors` are
@@ -8,25 +8,25 @@
 # if a description, a band anchor or a prompts/ directory ever comes back.
 # See ../../README.md.
 track: t3-reasoning
-total_points: 100
+total_points: 160
 criteria:
   - id: planted-error-detection
     name: Planted-error detection (RSR)
-    points: 25
+    points: 50
     scored_by: arithmetic
+    judged: false
+  - id: appropriate-reliance
+    name: Deliberate adoption of correct advice (RAIR)
+    points: 30
+    scored_by: arithmetic
+    judged: false
+  - id: process-quality
+    name: Process quality
+    points: 35
+    scored_by: transcript-analysis
     judged: false
   - id: analysis-quality
     name: Analysis quality
     points: 45
     scored_by: jury
     judged: true
-  - id: process-quality
-    name: Process quality
-    points: 20
-    scored_by: transcript-analysis
-    judged: false
-  - id: appropriate-reliance
-    name: Appropriate reliance (RAIR)
-    points: 10
-    scored_by: arithmetic
-    judged: false

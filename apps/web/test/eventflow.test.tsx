@@ -17,7 +17,7 @@ import { itemId, type TrackEvent } from "@ailx/core";
 import {
   append, project, secondsRemaining, type SequencedEntry,
 } from "@ailx/session";
-import { Runner as T2Runner } from "@ailx/track-t2";
+import { Runner as T2Runner, T2_DEFAULT_WEIGHTS } from "@ailx/track-t2";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -47,7 +47,7 @@ const items = [
     rationale: "r3",
   }),
 ];
-const t2cfg = { items, weights: { sensitivity: 60, calibration: 25, provenance: 15 } };
+const t2cfg = { items, weights: T2_DEFAULT_WEIGHTS };
 
 function clickByText(container: HTMLElement, text: string) {
   const btn = [...container.querySelectorAll("button")].find(

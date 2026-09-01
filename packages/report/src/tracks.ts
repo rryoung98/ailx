@@ -1,10 +1,12 @@
+import { SCORE_ALLOCATION, trackPoints, type ComponentAllocation } from "@ailx/core";
 import { SPEC_BUDGETS_SECONDS, type TrackId } from "@ailx/session";
 
-export interface TrackComponentMeta {
-  key: string;
-  label: string;
-  points: number;
-}
+/**
+ * The component list a report renders IS the allocation table — points,
+ * labels and all. It used to be a hand-kept copy, which is how the report
+ * came to print a component breakdown the scorer had stopped using.
+ */
+export type TrackComponentMeta = ComponentAllocation;
 
 export interface TrackMeta {
   id: TrackId;
@@ -12,7 +14,10 @@ export interface TrackMeta {
   pluginId: string;
   name: string;
   packageName: string;   // '@ailx/track-t1' — built by parallel workers
-  points: 100;
+  /** Derived from the allocation table. 0 for an unscored showcase track. */
+  points: number;
+  /** False for a SHOWCASE track: run and recorded, but issuing no points. */
+  scored: boolean;
   specBudgetSeconds: number;
   /** Compressed budget for the static demo sitting. */
   demoBudgetSeconds: number;
@@ -25,53 +30,39 @@ export interface TrackMeta {
 export const TRACK_META: Record<TrackId, TrackMeta> = {
   t1: {
     id: "t1", code: "T1", pluginId: "artifact-hosting@2", name: "Creative Build",
-    packageName: "@ailx/track-t1", points: 100,
+    packageName: "@ailx/track-t1", points: trackPoints("t1"), scored: SCORE_ALLOCATION.t1.scored,
     hype: "T1 — you direct, it renders. Ship a site you'd put your name on.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t1, demoBudgetSeconds: 10 * 60,
     brief:
       "Build a personal site that communicates who you are and what you work on, to a stated audience. AI assistance is unrestricted and expected — the prompt log is a required submission artifact, not a confession.",
-    components: [
-      { key: "gates", label: "Functional & accessibility gates", points: 30 },
-      { key: "comparative", label: "Comparative visual merit", points: 40 },
-      { key: "ambition", label: "Technical ambition", points: 20 },
-      { key: "rationale", label: "Design rationale", points: 10 },
-    ],
+    components: SCORE_ALLOCATION.t1.components,
   },
   t2: {
-    id: "t2", code: "T2", pluginId: "swipe-deck@2", name: "Authenticity Discrimination",
-    packageName: "@ailx/track-t2", points: 100,
+    id: "t2", code: "T2", pluginId: "swipe-deck@2", name: "Synthetic-Media Discrimination",
+    packageName: "@ailx/track-t2", points: trackPoints("t2"), scored: SCORE_ALLOCATION.t2.scored,
     hype: "T2 — can you spot the fakes?",
     // 5 min for the 6-item demo deck: the forced-exposure floor is ~62 s, so
     // a diligent full-exposure run stays well clear of the fast-submission
     // insight threshold (< 25% of budget).
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t2, demoBudgetSeconds: 5 * 60,
     brief:
-      "120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture. Sensitivity (d′) is the score, not raw accuracy — percent correct confounds sensitivity with response criterion.",
-    components: [
-      { key: "dprime", label: "Sensitivity (d′)", points: 60 },
-      { key: "calibration", label: "Calibration (Brier)", points: 25 },
-      { key: "provenance", label: "Provenance reasoning", points: 15 },
-    ],
+      "120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture. The construct is synthetic-media discrimination — sensitivity (d′) AND criterion (c) together — not AI literacy: the evidence says training moves where a person puts their threshold, not how well they can tell the two apart.",
+    components: SCORE_ALLOCATION.t2.components,
   },
   t3: {
     id: "t3", code: "T3", pluginId: "instrumented-assistant@2", name: "AI-Assisted Reasoning",
-    packageName: "@ailx/track-t3", points: 100,
+    packageName: "@ailx/track-t3", points: trackPoints("t3"), scored: SCORE_ALLOCATION.t3.scored,
     // Three, not two: the shipped config plants three errors and the reveal
     // lists all three (apps/web/test/wiring.test.ts pins the count).
     hype: "T3 — the assistant plants three errors. Catch them.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t3, demoBudgetSeconds: 10 * 60,
     brief:
       "Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis. Thirty-five of the hundred points are model-free measurement of behaviour.",
-    components: [
-      { key: "rsr", label: "Planted-error detection (RSR)", points: 25 },
-      { key: "analysis", label: "Analysis quality", points: 45 },
-      { key: "process", label: "Process quality", points: 20 },
-      { key: "rair", label: "Appropriate reliance (RAIR)", points: 10 },
-    ],
+    components: SCORE_ALLOCATION.t3.components,
   },
   t4: {
     id: "t4", code: "T4", pluginId: "generative-studio@2", name: "Generative Direction",
-    packageName: "@ailx/track-t4", points: 100,
+    packageName: "@ailx/track-t4", points: trackPoints("t4"), scored: SCORE_ALLOCATION.t4.scored,
     // The hard quota is the DELIVERABLE quota — 3 finished images and 1
     // video (t4 `finalImageQuota` / `finalVideoQuota`). Drafts are unlimited,
     // so "six generations" both named the wrong number and described the
@@ -80,12 +71,7 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t4, demoBudgetSeconds: 8 * 60,
     brief:
       "Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts. Blind viewers are asked what the work communicates; the score is agreement with the brief's stated intent.",
-    components: [
-      { key: "brief", label: "Brief compliance & communicative accuracy", points: 30 },
-      { key: "comparative", label: "Comparative merit", points: 40 },
-      { key: "direction", label: "Direction & craft evidence", points: 20 },
-      { key: "provenance", label: "Provenance & disclosure hygiene", points: 10 },
-    ],
+    components: SCORE_ALLOCATION.t4.components,
   },
 };
 

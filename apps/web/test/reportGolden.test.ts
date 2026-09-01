@@ -87,6 +87,14 @@ describe("report golden", () => {
    * different bytes (instruments/demo-2026.1/README.md "Why the rubricVersion
    * values moved").
    *
+   * It is MOVING through the 2026.1 track restructure, once per track, and
+   * each move is a deliberate re-weighting recorded in its own commit: T1 to
+   * 160 points with the prompt log scored, T2 to 80 with the criterion scored
+   * and the d′ floor spike removed, T3 to 160 as calibrated reliance, T4 to an
+   * unscored showcase. Every track raw, the composite, the percentile, the
+   * band and both export tiers move with them, which is the point — the
+   * digest exists so that a re-weighting cannot land quietly.
+   *
    * EXACTLY EIGHT leaves of this object changed, and all eight are a
    * `rubricVersion` string: four in `research.trackVersions[]` and four in
    * `participant.tracks[]`. No composite, no track raw, no insight, no
@@ -99,7 +107,7 @@ describe("report golden", () => {
    * 572c74c9…, 4bb83e18…, c223b246…, 0b6fe323…), and this tier issues none.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("808e34c730d423dbf4eedb0880f08df296686404ef67ef6a8c0169c830c82e79");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("38a45702f27d383ab5355bc2ff50f69d3e093eb31619b56f9c79a166f8bb0872");
   });
 
   it("is stable across repeated derivation", () => {

@@ -733,8 +733,8 @@ export function Runner(props: TrackUIProps) {
             <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
               Worth {T1_WEIGHTS.rationale} of T1&rsquo;s {T1_TOTAL_POINTS} points,
               judged on how well it explains the artifact you built. You can
-              leave it blank and submit anyway — that component then scores
-              zero. About 200 words.
+              leave it blank and submit anyway — that component then scores zero.
+              About 200 words.
             </p>
             <textarea
               aria-label="Design rationale"

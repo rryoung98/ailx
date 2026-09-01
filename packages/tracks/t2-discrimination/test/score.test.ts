@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core";
 import { plugin, validateT2Config } from "../src/plugin.js";
 import { maxAttainableDPrime, probit, scoreT2 } from "../src/scoring.js";
+import { T2_DEFAULT_WEIGHTS, T2_TOTAL_POINTS } from "../src/types.js";
 import { config, items, mixedResponses, perfectResponses, truthBiasResponses } from "./fixtures.js";
 
 const score = (responses: typeof perfectResponses) =>
@@ -32,26 +33,40 @@ describe("T2 score()", () => {
     expect(score(mixedResponses)).toEqual(score(mixedResponses));
   });
 
-  it("perfect candidate maxes sensitivity and provenance; calibration near-max", () => {
+  it("perfect candidate maxes provenance; sensitivity is scaled floor-to-ceiling", () => {
     const s = score(perfectResponses);
     // Log-linear correction (+0.5 every cell, always) caps H at 0.9 and
     // floors F at 0.167 on this small bank: d' = z(.9) - z(.1667) = 2.249.
     expect(s.raw.dPrime).toBeCloseTo(2.249, 3);
-    expect(s.raw.sensitivity).toBeCloseTo(44.979, 3);
+    // 25 * (2.249 - (-1)) / (3 - (-1)) — the scale runs from the declared
+    // FLOOR, not from chance, so this deck's attainable d' is short of full.
+    expect(s.raw.sensitivity).toBeCloseTo(20.306, 3);
     expect(s.raw.provenance).toBe(15);
     // confidence 90 -> f = 0.95, all correct -> Brier 0.0025 -> 25 * 0.995
     expect(s.raw.calibration).toBeCloseTo(24.875, 3);
     expect(s.raw.accuracy).toBe(1);
   });
 
-  it("truth bias (call everything authentic) yields zero d-prime, not mid accuracy credit", () => {
+  it("pays full sensitivity for a perfect run once the ceiling matches the deck", () => {
+    const binary = items.filter((i) => i.type !== "provenance");
+    const nSignal = binary.filter((i) => i.signal === i.key).length;
+    const cfg = {
+      ...config,
+      dPrimeCeiling: maxAttainableDPrime(nSignal, binary.length - nSignal),
+    };
+    const s = runPure(() => scoreT2({ responses: perfectResponses }, cfg));
+    expect(s.raw.sensitivity).toBeCloseTo(config.weights.sensitivity, 6);
+  });
+
+  it("truth bias (call everything authentic) loses the criterion points, not just d'", () => {
     const s = score(truthBiasResponses);
     // Never says "signal": hits = 0 and falseAlarms = 0 -> both rates at the
-    // corrected floor -> d' <= 0 (slightly negative on an unbalanced bank),
-    // clamped to zero points. Criterion is reported as diagnostic.
+    // corrected floor -> d' <= 0 on an unbalanced bank.
     expect(s.raw.dPrime).toBeLessThanOrEqual(0);
-    expect(s.raw.sensitivity).toBe(0);
-    expect(s.raw.criterion).toBeGreaterThan(0); // conservative criterion
+    expect(s.raw.criterionC).toBeGreaterThan(0); // conservative criterion
+    // The scored consequence of a systematic bias now lands on the CRITERION
+    // component, which is the one the training evidence says moves.
+    expect(s.raw.criterion).toBeLessThan(config.weights.criterion / 2);
     // Confidently wrong on every signal item hurts Brier hard.
     expect(s.raw.calibration).toBeLessThan(10);
   });
@@ -99,7 +114,7 @@ describe("T2 score()", () => {
   it("F7 regression: a fully unanswered deck earns ZERO calibration credit", () => {
     const s = score([]);
     expect(s.raw.answeredBinary).toBe(0);
-    expect(s.raw.calibrationCoverage).toBe(0);
+    expect(s.raw.responseCoverage).toBe(0);
     expect(s.raw.calibration).toBe(0);
     // Lapse-only responses (choice -1) are equally unanswered.
     const lapses = items.map((i) => ({ itemId: i.id, choice: -1, confidence: 0, latencyMs: 0 }));
@@ -121,7 +136,7 @@ describe("T2 score()", () => {
     // (reported rounded to 3 decimals).
     expect(s.raw.brier).toBe(0.003);
     // Coverage is full (>= 50% answered), so no extra penalty beyond exclusion.
-    expect(s.raw.calibrationCoverage).toBe(1);
+    expect(s.raw.responseCoverage).toBe(1);
   });
 
   it("F7: answering under half the deck scales calibration weight linearly", () => {
@@ -138,7 +153,7 @@ describe("T2 score()", () => {
     const s = score(responses);
     const frac = 2 / binary.length;
     expect(frac).toBeLessThan(0.5);
-    expect(s.raw.calibrationCoverage).toBeCloseTo(frac / 0.5, 3);
+    expect(s.raw.responseCoverage).toBeCloseTo(frac / 0.5, 3);
     // Points = weight * (1 - 2*brier) * coverage, strictly below the
     // same-Brier full-coverage score.
     expect(s.raw.calibration).toBeCloseTo(25 * (1 - 2 * 0.0025) * (frac / 0.5), 3);
@@ -153,20 +168,153 @@ describe("T2 score()", () => {
           "answeredBinary": 6,
           "brier": 0.297,
           "calibration": 10.167,
-          "calibrationCoverage": 1,
-          "criterion": 0.484,
+          "criterion": 7.744,
+          "criterionC": 0.484,
           "dPrime": 0.967,
           "falseAlarms": 0,
           "hits": 2,
           "nNoise": 2,
           "nSignal": 4,
           "provenance": 8.182,
-          "sensitivity": 19.348,
+          "responseCoverage": 1,
+          "sensitivity": 12.296,
           "weightedAccuracy": 0.545,
         },
-        "scaled": 37.697,
+        "scaled": 38.389,
       }
     `);
+  });
+
+  /**
+   * The floor spike. `clamp01(d'/ceiling)` gave EXACTLY zero to everyone at
+   * or below chance, and the pooled population d' is not distinguishable from
+   * chance — so a probability panel piled up on one identical score. A spike
+   * of ties cannot be IRT-scaled and cannot yield plausible values.
+   */
+  describe("below-chance performance is a datum, not a tie at zero", () => {
+    const binary = items.filter((i) => i.type !== "provenance");
+    /** Answer every binary item; `wrongFrac` of them inverted. */
+    const withInversions = (n: number) =>
+      binary.map((i, idx) => ({
+        itemId: i.id,
+        choice: idx < n ? (i.key + 1) % 2 : i.key,
+        confidence: 50,
+        latencyMs: 500,
+      }));
+
+    it("separates chance from systematically-worse-than-chance", () => {
+      const atChance = score(withInversions(Math.floor(binary.length / 2)));
+      const worse = score(withInversions(binary.length));
+      expect(worse.raw.dPrime).toBeLessThan(atChance.raw.dPrime);
+      expect(worse.raw.sensitivity).toBeLessThan(atChance.raw.sensitivity);
+    });
+
+    it("keeps the signed d' in raw whatever the points do", () => {
+      const worse = score(withInversions(binary.length));
+      expect(worse.raw.dPrime).toBeLessThan(0);
+    });
+
+    it("still bottoms out at zero points at or below the declared floor", () => {
+      const cfg = { ...config, dPrimeFloor: 5, dPrimeCeiling: 6 };
+      const s = runPure(() => scoreT2({ responses: perfectResponses }, cfg));
+      expect(s.raw.sensitivity).toBe(0);
+    });
+
+    it("uses the declared floor, and where the floor sits changes every score", () => {
+      // The same d' sits higher on a scale whose bottom is further down.
+      // That is exactly why the floor is a DECLARED constant and not a
+      // convenience: it is a policy choice about what counts as the worst
+      // measurable performance, and it moves the whole distribution.
+      const shallow = runPure(() =>
+        scoreT2({ responses: mixedResponses }, { ...config, dPrimeFloor: -0.1 }),
+      );
+      const deep = runPure(() =>
+        scoreT2({ responses: mixedResponses }, { ...config, dPrimeFloor: -3 }),
+      );
+      expect(deep.raw.sensitivity).toBeGreaterThan(shallow.raw.sensitivity);
+    });
+  });
+
+  /**
+   * The criterion component — 15 points on the part of this task the
+   * evidence says instruction actually moves.
+   */
+  describe("criterion placement", () => {
+    const binary = items.filter((i) => i.type !== "provenance");
+
+    it("pays most at an unbiased threshold and less as |c| grows, either way", () => {
+      // Say "signal" on everything: a liberal criterion (c < 0).
+      const liberal = score(
+        binary.map((i) => ({
+          itemId: i.id,
+          choice: i.signal ?? 1,
+          confidence: 50,
+          latencyMs: 500,
+        })),
+      );
+      // Say "authentic" on everything: a conservative criterion (c > 0).
+      const conservative = score(truthBiasResponses);
+      expect(liberal.raw.criterionC).toBeLessThan(0);
+      expect(conservative.raw.criterionC).toBeGreaterThan(0);
+      // Both are biased, so both lose criterion points relative to the
+      // balanced mixed candidate.
+      const balanced = score(mixedResponses);
+      expect(liberal.raw.criterion).toBeLessThan(balanced.raw.criterion);
+      expect(conservative.raw.criterion).toBeLessThan(balanced.raw.criterion);
+    });
+
+    it("is symmetric: equal and opposite bias earns equal points", () => {
+      const at = (c: number) => (config.weights.criterion * (1 - Math.abs(c))) / 1;
+      expect(at(0.4)).toBeCloseTo(at(-0.4), 12);
+    });
+
+    it("pays ZERO for answering nothing, where the probits cancel to c ~ 0", () => {
+      // The hole this gate closes: a fully-lapsed deck misses every signal
+      // item AND false-alarms every noise item, so z(H) and z(F) cancel and
+      // the criterion looks perfectly unbiased. Silence must not buy it.
+      const s = score([]);
+      expect(Math.abs(s.raw.criterionC)).toBeLessThan(0.2);
+      expect(s.raw.responseCoverage).toBe(0);
+      expect(s.raw.criterion).toBe(0);
+    });
+
+    it("scales criterion by the same declared coverage rule as calibration", () => {
+      const answered = new Set(binary.slice(0, 2).map((i) => i.id));
+      const responses = binary.map((i) =>
+        answered.has(i.id)
+          ? { itemId: i.id, choice: i.key, confidence: 90, latencyMs: 500 }
+          : { itemId: i.id, choice: -1, confidence: 0, latencyMs: 0 },
+      );
+      const s = score(responses);
+      expect(s.raw.responseCoverage).toBeLessThan(1);
+      expect(s.raw.criterion).toBeCloseTo(
+        config.weights.criterion *
+          Math.max(0, 1 - Math.abs(s.raw.criterionC)) *
+          s.raw.responseCoverage,
+        1,
+      );
+    });
+  });
+
+  it("adds up to the declared 80-point total, and no more", () => {
+    const binary = items.filter((i) => i.type !== "profile");
+    expect(binary.length).toBeGreaterThan(0);
+    for (const responses of [perfectResponses, mixedResponses, truthBiasResponses, []]) {
+      const s = score(responses);
+      expect(s.scaled).toBeCloseTo(
+        s.raw.sensitivity + s.raw.criterion + s.raw.calibration + s.raw.provenance,
+        3,
+      );
+      expect(s.scaled).toBeLessThanOrEqual(T2_TOTAL_POINTS);
+      expect(s.scaled).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("draws its weights from the ONE allocation table", () => {
+    expect(T2_DEFAULT_WEIGHTS).toEqual({
+      sensitivity: 25, criterion: 15, calibration: 25, provenance: 15,
+    });
+    expect(T2_TOTAL_POINTS).toBe(80);
   });
 
   it("scoreT2 matches plugin.score", () => {

@@ -213,7 +213,7 @@ describe("the redacted loader refuses marking material coming back", () => {
     expect(
       withCopy((dir) => {
         const p = join(dir, RUBRIC);
-        writeFileSync(p, readFileSync(p, "utf8").replace("    points: 25\n", "    points: 26\n"));
+        writeFileSync(p, readFileSync(p, "utf8").replace("    points: 50\n", "    points: 51\n"));
       }),
     ).toThrow(InstrumentValidationError);
   });

@@ -18,6 +18,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadInstrument } from "../src/loader.js";
+import { SCORE_ALLOCATION, trackPoints, type AllocatedTrackId } from "@ailx/core";
+
+/** Short id (the allocation table's key) to package directory name. */
+const ALLOCATED_TRACKS: ReadonlyArray<readonly [AllocatedTrackId, string]> = [
+  ["t1", "t1-creative-build"],
+  ["t2", "t2-discrimination"],
+  ["t3", "t3-reasoning"],
+  ["t4", "t4-generative"],
+];
 import { hashBank } from "../src/bank.js";
 import { buildSnapshot } from "../src/snapshot.js";
 
@@ -41,29 +50,46 @@ describe("the released-practice instrument loads and validates", () => {
     expect(pkg.manifest.notice).toMatch(/no score of record/i);
     expect(pkg.manifest.redacted).toBe(true);
   });
-  it("every rubric totals 100 points", () => {
+  it("every rubric's declared total is the sum of its criteria", () => {
     for (const t of pkg.tracks) {
-      expect(t.rubric.total_points).toBe(100);
-      expect(t.rubric.criteria.reduce((s, c) => s + c.points, 0)).toBe(100);
+      expect(t.rubric.criteria.reduce((s, c) => s + c.points, 0), t.trackId)
+        .toBe(t.rubric.total_points);
     }
   });
-  it("score allocations match the spec section tables", () => {
-    // The published allocation survives redaction — that is the half of a
-    // rubric a candidate is entitled to know (spec §14).
-    const pts = (id: string) =>
-      Object.fromEntries(pkg.tracks.find((t) => t.trackId === id)!.rubric.criteria.map((c) => [c.id, c.points]));
-    expect(pts("t1-creative-build")).toEqual({
-      "functional-gates": 30, "comparative-merit": 40, "technical-ambition": 20, "design-rationale": 10,
-    });
-    expect(pts("t2-discrimination")).toEqual({
-      sensitivity: 60, calibration: 25, "provenance-reasoning": 15,
-    });
-    expect(pts("t3-reasoning")).toEqual({
-      "planted-error-detection": 25, "analysis-quality": 45, "process-quality": 20, "appropriate-reliance": 10,
-    });
-    expect(pts("t4-generative")).toEqual({
-      "brief-compliance": 30, "comparative-merit": 40, "direction-craft": 20, "provenance-disclosure": 10,
-    });
+
+  /**
+   * The published allocation survives redaction — that is the half of a
+   * rubric a candidate is entitled to know (spec §14). It is checked against
+   * `SCORE_ALLOCATION`, the table score() itself reads, rather than against a
+   * typed copy: a copy is how the rubric and the scorer came to disagree in
+   * the first place.
+   */
+  it("publishes exactly the allocation score() uses", () => {
+    expect(ALLOCATED_TRACKS.length).toBe(4);
+    for (const [short, long] of ALLOCATED_TRACKS) {
+      const alloc = SCORE_ALLOCATION[short];
+      const rubric = pkg.tracks.find((t) => t.trackId === long)!.rubric;
+      const sort = (rows: [string, number][]) =>
+        rows.slice().sort((a, b) => (a[0] < b[0] ? -1 : 1));
+      expect(
+        sort(rubric.criteria.map((c) => [c.id, c.points] as [string, number])),
+        long,
+      ).toEqual(sort(alloc.components.map((c) => [c.rubricId, c.points] as [string, number])));
+      expect(rubric.total_points, long).toBe(trackPoints(short));
+    }
+  });
+
+  it("marks a criterion judged exactly when its points route to an LLM jury", () => {
+    for (const [short, long] of ALLOCATED_TRACKS) {
+      const alloc = SCORE_ALLOCATION[short];
+      const rubric = pkg.tracks.find((t) => t.trackId === long)!.rubric;
+      for (const c of alloc.components) {
+        const published = rubric.criteria.find((r) => r.id === c.rubricId)!;
+        expect(published.judged, `${long} ${c.rubricId}`).toBe(
+          c.resolvedBy === "llm-judge",
+        );
+      }
+    }
   });
   it("carries no judge prompt and no marking detail, in any track", () => {
     for (const t of pkg.tracks) {
@@ -216,8 +242,12 @@ describe("buildSnapshot --public reduces an unredacted instrument", () => {
 
   it("keeps prompts, marking detail and provenance when NOT public", () => {
     const op = buildSnapshot(dir, { tracksRoot: TRACKS });
-    const judged = op.instrument.tracks.filter((t) => t.trackId !== "t2-discrimination");
-    expect(judged.length).toBe(3);
+    // The tracks that HAVE judged criteria — t2 is model-free by design and
+    // t4 is an unscored showcase with no criteria at all.
+    const judged = op.instrument.tracks.filter((t) =>
+      t.rubric.criteria.some((c) => c.judged),
+    );
+    expect(judged.map((t) => t.trackId)).toEqual(["t1-creative-build", "t3-reasoning"]);
     for (const track of judged) {
       expect(track.prompts.length, track.trackId).toBe(3);
       expect(track.rubric.band_anchors?.length, track.trackId).toBe(4);

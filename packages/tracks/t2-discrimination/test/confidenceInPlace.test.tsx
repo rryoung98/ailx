@@ -22,25 +22,26 @@ import { createRoot, type Root } from "react-dom/client";
 import type { TrackEvent } from "@ailx/core";
 import { Runner } from "../src/Runner.js";
 import { items } from "./fixtures.js";
+import { T2_DEFAULT_WEIGHTS } from "../src/types.js";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 /** Two binary IMAGE items — the judged stimulus is observable. */
 const imageConfig = {
   items: items.filter((i) => i.type === "media-image").slice(0, 2),
-  weights: { sensitivity: 60, calibration: 25, provenance: 15 },
+  weights: T2_DEFAULT_WEIGHTS,
 };
 
 /** A binary TEXT item, to prove the panel is frame-filling for every type. */
 const textConfig = {
   items: items.filter((i) => i.type === "message-email").slice(0, 2),
-  weights: { sensitivity: 60, calibration: 25, provenance: 15 },
+  weights: T2_DEFAULT_WEIGHTS,
 };
 
 /** Provenance items are answered by BUTTON: the card never flies off. */
 const provenanceConfig = {
   items: items.filter((i) => i.type === "provenance").slice(0, 2),
-  weights: { sensitivity: 60, calibration: 25, provenance: 15 },
+  weights: T2_DEFAULT_WEIGHTS,
 };
 
 let container: HTMLElement;

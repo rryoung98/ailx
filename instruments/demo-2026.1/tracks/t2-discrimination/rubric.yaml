@@ -1,4 +1,4 @@
-# T2 · Authenticity Discrimination — REDACTED published allocation (spec §14).
+# T2 · Synthetic-Media Discrimination — REDACTED published allocation (spec §14).
 #
 # RELEASED-PRACTICE TIER. This file publishes the POINTS allocation and
 # nothing else. The per-criterion `description` and the `band_anchors` are
@@ -8,11 +8,16 @@
 # if a description, a band anchor or a prompts/ directory ever comes back.
 # See ../../README.md.
 track: t2-discrimination
-total_points: 100
+total_points: 80
 criteria:
   - id: sensitivity
     name: Sensitivity (d′)
-    points: 60
+    points: 25
+    scored_by: arithmetic
+    judged: false
+  - id: criterion
+    name: Criterion placement (|c|)
+    points: 15
     scored_by: arithmetic
     judged: false
   - id: calibration

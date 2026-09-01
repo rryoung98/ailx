@@ -14,7 +14,8 @@ import type {
   T2PresentedItem,
   T2Session,
 } from "./types.js";
-import { scoreT2, type T2Raw } from "./scoring.js";
+import { D_PRIME_CEILING, D_PRIME_FLOOR, scoreT2, type T2Raw } from "./scoring.js";
+import { T2_DEFAULT_WEIGHTS } from "./types.js";
 
 export interface T2Score extends TrackScore {
   raw: Record<string, number>;
@@ -71,22 +72,33 @@ function validate(raw: unknown, secrets: boolean): T2PresentationConfig {
       fail(`items[${idx}].signal out of range`);
     }
   }
-  const w = (cfg.weights ?? { sensitivity: 60, calibration: 25, provenance: 15 }) as Record<string, unknown>;
-  for (const k of ["sensitivity", "calibration", "provenance"] as const) {
+  const w = (cfg.weights ?? T2_DEFAULT_WEIGHTS) as Record<string, unknown>;
+  for (const k of ["sensitivity", "criterion", "calibration", "provenance"] as const) {
     if (typeof w[k] !== "number" || (w[k] as number) < 0) fail(`weights.${k} must be a non-negative number`);
   }
   if (cfg.dPrimeCeiling !== undefined &&
       (typeof cfg.dPrimeCeiling !== "number" || !Number.isFinite(cfg.dPrimeCeiling) || cfg.dPrimeCeiling <= 0)) {
     fail("dPrimeCeiling must be a positive finite number when present");
   }
+  // The floor is NEGATIVE by design and must stay below the ceiling, or the
+  // sensitivity scale inverts silently.
+  if (cfg.dPrimeFloor !== undefined &&
+      (typeof cfg.dPrimeFloor !== "number" || !Number.isFinite(cfg.dPrimeFloor))) {
+    fail("dPrimeFloor must be a finite number when present");
+  }
+  const ceiling = (cfg.dPrimeCeiling as number | undefined) ?? D_PRIME_CEILING;
+  const floor = (cfg.dPrimeFloor as number | undefined) ?? D_PRIME_FLOOR;
+  if (floor >= ceiling) fail("dPrimeFloor must be below dPrimeCeiling");
   return {
     items: cfg.items as T2PresentedItem[],
     weights: {
       sensitivity: w.sensitivity as number,
+      criterion: w.criterion as number,
       calibration: w.calibration as number,
       provenance: w.provenance as number,
     },
     ...(cfg.dPrimeCeiling !== undefined ? { dPrimeCeiling: cfg.dPrimeCeiling as number } : {}),
+    ...(cfg.dPrimeFloor !== undefined ? { dPrimeFloor: cfg.dPrimeFloor as number } : {}),
   };
 }
 

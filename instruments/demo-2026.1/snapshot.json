@@ -81,19 +81,19 @@
         },
         "rubric": {
           "track": "t1-creative-build",
-          "total_points": 100,
+          "total_points": 160,
           "criteria": [
             {
               "id": "functional-gates",
               "name": "Functional & accessibility gates",
-              "points": 30,
+              "points": 40,
               "scored_by": "gates",
               "judged": false
             },
             {
               "id": "comparative-merit",
               "name": "Comparative visual merit",
-              "points": 40,
+              "points": 60,
               "scored_by": "pairwise-human",
               "judged": false
             },
@@ -107,14 +107,21 @@
             {
               "id": "design-rationale",
               "name": "Design rationale",
-              "points": 10,
+              "points": 15,
               "scored_by": "judge",
               "judged": true
+            },
+            {
+              "id": "process-signal",
+              "name": "Prompt-log process signal",
+              "points": 25,
+              "scored_by": "arithmetic",
+              "judged": false
             }
           ]
         },
         "prompts": [],
-        "rubricVersion": "2c7ee7e80d880fa1336b1cda06c6858e723e06af1419c456ebbe1fd23dd07642"
+        "rubricVersion": "81ff5ad77d2a639a1e65bba8ea466bbbf5791e416047784824b6079decd92af1"
       },
       {
         "trackId": "t2-discrimination",
@@ -183,12 +190,19 @@
         },
         "rubric": {
           "track": "t2-discrimination",
-          "total_points": 100,
+          "total_points": 80,
           "criteria": [
             {
               "id": "sensitivity",
               "name": "Sensitivity (d′)",
-              "points": 60,
+              "points": 25,
+              "scored_by": "arithmetic",
+              "judged": false
+            },
+            {
+              "id": "criterion",
+              "name": "Criterion placement (|c|)",
+              "points": 15,
               "scored_by": "arithmetic",
               "judged": false
             },
@@ -209,7 +223,7 @@
           ]
         },
         "prompts": [],
-        "rubricVersion": "320dcfcec8c839d400a2cd2fe89f626b1054af4990acca3fc7cc3ea8f023410c",
+        "rubricVersion": "05ff0d92280bfd146ca3f653beea334664dc7a6ba33fd74bc3ebd7ff12f9076f",
         "bank": {
           "items": [
             {
@@ -760,13 +774,27 @@
         },
         "rubric": {
           "track": "t3-reasoning",
-          "total_points": 100,
+          "total_points": 160,
           "criteria": [
             {
               "id": "planted-error-detection",
               "name": "Planted-error detection (RSR)",
-              "points": 25,
+              "points": 50,
               "scored_by": "arithmetic",
+              "judged": false
+            },
+            {
+              "id": "appropriate-reliance",
+              "name": "Deliberate adoption of correct advice (RAIR)",
+              "points": 30,
+              "scored_by": "arithmetic",
+              "judged": false
+            },
+            {
+              "id": "process-quality",
+              "name": "Process quality",
+              "points": 35,
+              "scored_by": "transcript-analysis",
               "judged": false
             },
             {
@@ -775,25 +803,11 @@
               "points": 45,
               "scored_by": "jury",
               "judged": true
-            },
-            {
-              "id": "process-quality",
-              "name": "Process quality",
-              "points": 20,
-              "scored_by": "transcript-analysis",
-              "judged": false
-            },
-            {
-              "id": "appropriate-reliance",
-              "name": "Appropriate reliance (RAIR)",
-              "points": 10,
-              "scored_by": "arithmetic",
-              "judged": false
             }
           ]
         },
         "prompts": [],
-        "rubricVersion": "b0d406af48ae06a3c53caa4d5001f7cb0d5bc000f5342d9a86d5f5f9a093edcd"
+        "rubricVersion": "e0bb0b7b8889fc8e00212a780c8a88a0ee1a8413e180f2287791423c2f557194"
       },
       {
         "trackId": "t4-generative",
@@ -844,40 +858,11 @@
         },
         "rubric": {
           "track": "t4-generative",
-          "total_points": 100,
-          "criteria": [
-            {
-              "id": "brief-compliance",
-              "name": "Brief compliance & communicative accuracy",
-              "points": 30,
-              "scored_by": "blind-panel-agreement",
-              "judged": false
-            },
-            {
-              "id": "comparative-merit",
-              "name": "Comparative merit",
-              "points": 40,
-              "scored_by": "pairwise-human",
-              "judged": false
-            },
-            {
-              "id": "direction-craft",
-              "name": "Direction & craft evidence",
-              "points": 20,
-              "scored_by": "judge",
-              "judged": true
-            },
-            {
-              "id": "provenance-disclosure",
-              "name": "Provenance & disclosure hygiene",
-              "points": 10,
-              "scored_by": "gates",
-              "judged": false
-            }
-          ]
+          "total_points": 0,
+          "criteria": []
         },
         "prompts": [],
-        "rubricVersion": "b417ebddfbbeb182bb514624d274ba6c0232cf49d1ee3071867704d2fbb989d3"
+        "rubricVersion": "638f903bce41fed2e3e5e1984cbf7570f096df299fc7c6b9edc64107b9811317"
       }
     ]
   },
@@ -893,17 +878,17 @@
         },
         {
           "path": "src/score.ts",
-          "sha256": "80fd630bb2a253f9acda95631c3ab9bab2c39182bace315fba0ce4330991e0ef"
+          "sha256": "cf66c6fc83c8123e7022e80b8c4ce44f89bc011f942388299e415d8b57c080bd"
         },
         {
           "path": "src/types.ts",
-          "sha256": "694f0d41e781281519558b39be44c960d17ef92a0f39c4cef7fb1b44c8cc7e9f"
+          "sha256": "886aa536f10d668b9597f28bdb1e6ca287705f4794586e24127b3135dbba31e7"
         }
       ],
       "externals": [
         "@ailx/core@workspace:*"
       ],
-      "digest": "57940e357b8dcd89a00078211d97f3660557699447440f8fc5e0c8fc500c1d1f"
+      "digest": "83e229ea120bea881a49e2d2620b13521335b610df18f14042d126e8830d2601"
     },
     {
       "trackId": "t2",
@@ -912,21 +897,21 @@
       "sources": [
         {
           "path": "src/plugin.ts",
-          "sha256": "a74f542139d74ab8e39049b38814b2bd5c859e0ccbcf2d6d7579df1114617707"
+          "sha256": "bdee4b063db5a3dfe9c5ed6b5de285270dbd65dc82f1676ca8196f5044eaf814"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "06fc8dc044793aa412b1e3bee6cd00922e0f84e1ada93bfa0751f02de774fd93"
+          "sha256": "f4ab81b0f0bf5b2e8fbede2b84f68007efbc1263de31ddadd56f0f0cf88040e4"
         },
         {
           "path": "src/types.ts",
-          "sha256": "f2a63664df4945d39a6c7602208bdda44794ff9fa438847101f427c7b0c6e171"
+          "sha256": "f7182b37d444f2c87851c22c5ccfdb5e2903d1cebc83c1ffe3f10c12724566c2"
         }
       ],
       "externals": [
         "@ailx/core@workspace:*"
       ],
-      "digest": "042d89d022bdfccf10e5641d6258a0695436c6cf885400e7b7000ab493cef30d"
+      "digest": "55751b80c522f5b577e25a62aa189464a263a2c9ccf54012957d41e517ff9e0f"
     },
     {
       "trackId": "t3",

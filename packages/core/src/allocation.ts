@@ -47,6 +47,13 @@ export const RESOLUTIONS: readonly Resolution[] = [
 export interface ComponentAllocation {
   /** Stable key. For judged components this is the judgment `dimension`. */
   readonly key: string;
+  /**
+   * `criteria[].id` in the instrument package's `rubric.yaml`. The published
+   * allocation a candidate is entitled to see is the same allocation score()
+   * uses, and `packages/content-tools/test/instrument-demo-2026.1.test.ts`
+   * checks the two against each other rather than against a typed copy.
+   */
+  readonly rubricId: string;
   readonly label: string;
   readonly points: number;
   readonly resolvedBy: Resolution;
@@ -88,6 +95,7 @@ const T1: TrackAllocation = {
   components: [
     {
       key: "functional",
+      rubricId: "functional-gates",
       label: "Functional & accessibility gates",
       points: 40,
       resolvedBy: "machine-gate",
@@ -98,6 +106,7 @@ const T1: TrackAllocation = {
     },
     {
       key: "comparative",
+      rubricId: "comparative-merit",
       label: "Comparative visual merit",
       points: 60,
       resolvedBy: "human-cj",
@@ -109,6 +118,7 @@ const T1: TrackAllocation = {
     },
     {
       key: "ambition",
+      rubricId: "technical-ambition",
       label: "Technical ambition",
       points: 20,
       resolvedBy: "llm-judge",
@@ -116,6 +126,7 @@ const T1: TrackAllocation = {
     },
     {
       key: "rationale",
+      rubricId: "design-rationale",
       label: "Design rationale",
       points: 15,
       resolvedBy: "llm-judge",
@@ -123,6 +134,7 @@ const T1: TrackAllocation = {
     },
     {
       key: "process",
+      rubricId: "process-signal",
       label: "Prompt-log process signal",
       points: 25,
       resolvedBy: "model-free",
@@ -149,6 +161,7 @@ const T2: TrackAllocation = {
   components: [
     {
       key: "sensitivity",
+      rubricId: "sensitivity",
       label: "Sensitivity (d')",
       points: 25,
       resolvedBy: "model-free",
@@ -156,6 +169,7 @@ const T2: TrackAllocation = {
     },
     {
       key: "criterion",
+      rubricId: "criterion",
       label: "Criterion placement (|c|)",
       points: 15,
       resolvedBy: "model-free",
@@ -163,6 +177,7 @@ const T2: TrackAllocation = {
     },
     {
       key: "calibration",
+      rubricId: "calibration",
       label: "Calibration (Brier)",
       points: 25,
       resolvedBy: "model-free",
@@ -170,6 +185,7 @@ const T2: TrackAllocation = {
     },
     {
       key: "provenance",
+      rubricId: "provenance-reasoning",
       label: "Provenance reasoning",
       points: 15,
       resolvedBy: "model-free",
@@ -196,6 +212,7 @@ const T3: TrackAllocation = {
   components: [
     {
       key: "rsr",
+      rubricId: "planted-error-detection",
       label: "Planted-error detection (RSR)",
       points: 50,
       resolvedBy: "model-free",
@@ -203,6 +220,7 @@ const T3: TrackAllocation = {
     },
     {
       key: "rair",
+      rubricId: "appropriate-reliance",
       label: "Deliberate adoption of correct advice (RAIR)",
       points: 30,
       resolvedBy: "model-free",
@@ -210,6 +228,7 @@ const T3: TrackAllocation = {
     },
     {
       key: "process",
+      rubricId: "process-quality",
       label: "Process quality",
       points: 35,
       resolvedBy: "model-free",
@@ -217,6 +236,7 @@ const T3: TrackAllocation = {
     },
     {
       key: "analysis",
+      rubricId: "analysis-quality",
       label: "Analysis quality",
       points: 45,
       resolvedBy: "llm-judge",
