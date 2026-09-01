@@ -7,6 +7,10 @@ contracts. Where they disagree with this file, they win.
 Section order: 1 Why · 2 Practice · 3 The streak rule · 4 Progression ·
 5 Where the code lives · 6 What is deliberately absent · 7 Known gaps.
 
+Whether the loop actually transfers is an open question with a design and no
+data: `docs/TRANSFER-STUDY.md` — pre/post *d′* on held-out generators, with the
+criterion reported separately so the two are never conflated again.
+
 ---
 
 ## 1. Why a second loop exists
@@ -17,15 +21,19 @@ streak built on sittings would be a streak nobody ever has.
 
 Spec §13 already names the repeatable unit: the T2 **Mastery** training round —
 five minutes on the durable artefact families with immediate right/wrong
-feedback on every card. The published precedent (Gray et al., *R. Soc. Open
-Sci.* 12:250921, 2025) put trained participants at 51% accuracy against 31%
-untrained, and trained super-recognisers at 64% against 41% — a
-**between-subjects** contrast on StyleGAN3 faces in which typical adults'
-sensitivity (*d′*) did not move; see spec §13 for the full caveat, and do not
-quote the numbers without it. What survives the caveat is the reason it is the
-loop: it is called "the most satisfying part of the whole experience because
-people can feel themselves getting better". Practice is the unit; the streak
-counts practice days; the progress page shows the trajectory.
+feedback on every card. It is the loop because people *enjoy* it, and for no
+other reason: **the loop is justified by engagement, never by efficacy.** The
+evidence for what this drill does — Gray et al. 2025 read with its
+between-subjects design, and Geissler et al.'s N = 1,200 trial in which
+gamified and feedback drilling did not beat control — is written once in spec
+§13 and once in code as `PRACTICE_EFFICACY_NOTE`. Import that constant; do not
+paraphrase it, and never quote the accuracy numbers without the design.
+Practice is the unit; the streak counts practice days; the progress page shows
+what you did, not that you improved.
+
+The honest position is therefore "we do not know", not "it works" and not "it
+does not". `docs/TRANSFER-STUDY.md` is the experiment that would settle it, and
+§3 of that file is the case for publishing the answer whichever way it lands.
 
 The governing rule from §13 is unchanged and enforced in code: **every game
 mechanic lives in onboarding, pacing, reveal or social layers. None of them
