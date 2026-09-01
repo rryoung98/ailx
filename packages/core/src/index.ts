@@ -1,3 +1,4 @@
+export * from "./allocation.js";
 export * from "./plugin.js";
 export * from "./hash.js";
 export * from "./content-address.js";
