@@ -1,10 +1,13 @@
 /**
  * Practice — the repeatable, UNSCORED training drill (spec §13 "Mastery").
  *
- * The spec's T2 training round moves typical participants from 31% to 51%
- * detection in about five minutes by drilling the DURABLE ARTEFACT FAMILIES
- * with immediate right/wrong feedback. This module is that drill's SELECTION
- * RULE and its grading. The content itself is data, not code: it is built by
+ * The spec's T2 training round drills the DURABLE ARTEFACT FAMILIES with
+ * immediate right/wrong feedback on every card. The published precedent
+ * (Gray et al., R. Soc. Open Sci. 12:250921, 2025) is a BETWEEN-SUBJECTS
+ * accuracy contrast on StyleGAN3 faces in which typical adults' sensitivity
+ * (d') did not move — see spec §13. Practice is therefore onboarding and a
+ * training device, never a claim about a candidate's d'. This module is that
+ * drill's SELECTION RULE and its grading. The content itself is data, not code: it is built by
  * `instruments/practice/2026.1/tools/build-practice-corpus.py` into
  * `corpus.json`, and emitted from there into `./practiceCorpus.ts`.
  *
@@ -188,6 +191,42 @@ export interface PracticeItem {
 
 /** Cards dealt per drill. Six is ~2-3 minutes, which is a session people repeat. */
 export const PRACTICE_DECK_SIZE = 6;
+
+/**
+ * THE EFFICACY DISCLAIMER, written once and rendered wherever practice is
+ * offered or its numbers are drawn. It is a CONSTANT, not page copy, because
+ * two surfaces (the drill's own page and /progress) both make a reader
+ * wonder whether the drill works, and a claim that drifts between them is
+ * how an unevidenced one gets back in.
+ *
+ * Why it says what it says — the evidence, not our preference:
+ *
+ *  - Gray, Davis, Bunce, Noyes & Ritchie, R. Soc. Open Sci. 12(11):250921
+ *    (2025). The 31%->51% figure this product used to quote is a BETWEEN-
+ *    GROUPS contrast across two different samples, not the same people
+ *    getting better. In that study trained typical-ability adults sat at
+ *    d' = -0.066, not distinguishable from chance (t69 = 1.092, p = 0.279).
+ *    Training removed a below-chance bias; it did not build discrimination.
+ *  - Geissler, Robertson & Feuerriegel, arXiv 2507.23492 (N = 1,200, five
+ *    arms, two-week follow-up). The GAMIFIED arm did not beat control
+ *    (p_adj = 0.310) and the FEEDBACK arm did not either (p_adj = 1.000) —
+ *    and at two weeks NO arm beat control. This drill is gamified practice
+ *    with immediate feedback: it is built out of the two arms that failed.
+ *  - Diel et al. (2024) meta-analysis, k = 137, N = 86,155: pooled d' is not
+ *    different from chance and raw accuracy in this literature is dominated
+ *    by CRITERION, not sensitivity. So "more right answers" is not "better
+ *    eyes" until the two are reported apart — docs/TRANSFER-STUDY.md.
+ *
+ * The engagement claims are untouched by all of this and stay: a streak is a
+ * true statement about days you practised.
+ */
+export const PRACTICE_EFFICACY_NOTE =
+  "We do not claim this makes you better at spotting AI images. The best-powered trial of "
+  + "practice like this one — gamified drilling, immediate feedback, 1,200 people — found no "
+  + "advantage over doing nothing, immediately or two weeks later, and the study behind our "
+  + "own artefact families never measured the same person improving. Play it because the tells "
+  + "are interesting. We are running the test that would settle it, and we will publish the "
+  + "answer whichever way it goes.";
 
 const BY_ID: ReadonlyMap<string, PracticeItem> = new Map(PRACTICE_BANK.map((i) => [i.id, i]));
 

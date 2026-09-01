@@ -17,10 +17,14 @@ streak built on sittings would be a streak nobody ever has.
 
 Spec §13 already names the repeatable unit: the T2 **Mastery** training round —
 five minutes on the durable artefact families with immediate right/wrong
-feedback on every card, which published work found moved typical participants
-from 31% to 51% detection and super-recognisers from 41% to 64%. It is called
-"the most satisfying part of the whole experience because people can feel
-themselves getting better". That is the loop. Practice is the unit; the streak
+feedback on every card. The published precedent (Gray et al., *R. Soc. Open
+Sci.* 12:250921, 2025) put trained participants at 51% accuracy against 31%
+untrained, and trained super-recognisers at 64% against 41% — a
+**between-subjects** contrast on StyleGAN3 faces in which typical adults'
+sensitivity (*d′*) did not move; see spec §13 for the full caveat, and do not
+quote the numbers without it. What survives the caveat is the reason it is the
+loop: it is called "the most satisfying part of the whole experience because
+people can feel themselves getting better". Practice is the unit; the streak
 counts practice days; the progress page shows the trajectory.
 
 The governing rule from §13 is unchanged and enforced in code: **every game
@@ -59,10 +63,10 @@ or an AI-generated image?"** — and every card ends with a one-line **tell**
 naming the artefact actually visible in that picture, or, for a photograph,
 naming the suspicious-looking feature and why it is genuine.
 
-The tell is the deliverable. The 31%→51% effect the spec cites comes from
-being shown the thing you looked straight past, not from the card count, so
-the tells are written per picture and the corpus test refuses a missing,
-duplicated or answer-restating one.
+The tell is the deliverable. Whatever the training effect the spec cites is
+worth, it came from being shown the thing you looked straight past, not from
+the card count — so the tells are written per picture and the corpus test
+refuses a missing, duplicated or answer-restating one.
 
 | Where it lives | What it is |
 |---|---|

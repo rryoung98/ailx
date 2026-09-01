@@ -33,8 +33,10 @@ immediate feedback, satisfying transitions, a shareable identity.
 ## What actually makes Duolingo work (copy these, not the cosmetics)
 
 1. **Immediate, specific feedback.** Right/wrong the instant you answer. The spec's own
-   T2 Mastery round already does this and measurably improves people in ~5 minutes — that
-   is the most fun thing in the product and it is already designed.
+   T2 Mastery round already does this — that is the most fun thing in the product and it
+   is already designed. Say it teaches the tells, never that it raises a score: the
+   published effect is between-subjects and did not move non-specialists' sensitivity
+   (spec §13).
 2. **Small units.** Five minutes is a complete, satisfying session.
 3. **Visible progress.** You can see yourself getting better; the trend is the reward.
 4. **Streaks with kindness.** Motivating, not punishing. Protect the best-streak.

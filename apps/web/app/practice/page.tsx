@@ -39,9 +39,11 @@ export default function PracticePage() {
         <PracticeDrill />
 
         <p className="muted" style={{ maxWidth: "58ch" }}>
-          Published work moved typical participants from 31% to 51% detection in about five
-          minutes of exactly this — being shown the thing you looked straight past is the
-          teaching.
+          Being shown the thing you looked straight past is the teaching. In the published study
+          this round is modelled on, five minutes of it separated groups by twenty points of
+          accuracy — different people in each group, on one family of AI-generated faces, and
+          without a measurable change in sensitivity for non-specialists. So: a good way to learn
+          the tells, not a promise about your score.
         </p>
 
         <section aria-labelledby="families">
