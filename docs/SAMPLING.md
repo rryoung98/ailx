@@ -459,3 +459,102 @@ than cancel.
 3. **Treat break-off as informative, not missing at random.** Break-off cases enter the NRBA as a
    named group with their partial performance data, because the evidence says they are
    disproportionately low scorers.
+
+---
+
+## 9. Weighting
+
+### 9.1 What the comparators actually do
+
+**US PIAAC Cycle 2** (NCES technical notes, **VERIFIED**): base weights from the inverse selection
+probability at four stages (PSU, secondary unit, dwelling unit, person) → stage-specific
+**non-response adjustment** using classification-tree cells → post-stratification → compositing →
+**raking** → **trimming**. The raking margins are **age, gender, race and ethnicity, educational
+attainment, country of birth (US / outside US), and place of residence**, calibrated to the
+**American Community Survey** (the state supplemental sample post-stratified to ACS 2022 1-year
+PUMS). Variance: **80 replicate weights, Fay's BRR with Fay factor 0.3**, with the entire weighting
+chain re-run inside every replicate. Note what is *not* a margin: household income, urbanicity,
+internet access.
+
+**NORC AmeriSpeak** (**VERIFIED**): panel-level raking to CPS + ACS + NHIS on age group, sex,
+education, race, ethnicity, **housing tenure**, **household phone status** (cell-only / dual /
+landline-only), age × sex, age × race-ethnicity, Census division; study-level raking to the March
+CPS supplement (ASEC). Trimming is a **penalised calibration**, not a percentile cut, and the
+selection rule is explicit: choose the penalty so that the **study design effect is below 2**, the
+MSE with trimming beats the MSE without, and the penalty stays as small as possible. **That "deff
+< 2" is the operational ceiling a leading probability panel imposes on itself, and it is the number
+to hold ourselves to.** AmeriSpeak also reports that **13% of recruited households have no internet**
+and that the panel over-represents low income before weighting (19.4% under $30k against a 14% CPS
+benchmark).
+
+**Ipsos KnowledgePanel** (**VERIFIED**): panel weights benchmarked to the March CPS on gender, age,
+race/ethnicity, education, Census region, **household income (7 bands)**, homeownership,
+**metropolitan area**, Hispanic origin and **language dominance**; those panel weights then serve as
+the **measure of size for a PPS draw**, which makes each study sample near-EPSEM before any
+study-level adjustment. Then non-response and coverage adjustment, **raking (iterative proportional
+fitting)**, trimming of extreme tails, rescale to n. KnowledgePanel supplies **a tablet and free
+internet to households recruited without internet access**, and says plainly that its reason is
+mode purity — a single mode of data collection avoids mode effects.
+
+**Pew ATP** (**VERIFIED**): two-stage **calibration**, with margins from the 2023 ACS
+(age, age × gender, education × gender, education × age, race/ethnicity × education, × gender,
+× age, nativity among Hispanic and Asian respondents, years in the US, census region × metropolitan
+status), plus volunteerism and voter registration from CPS supplements, and — directly relevant to
+us — **frequency of internet use**, sourced from NPORS, an address-based mail/web survey that
+*includes non-internet users*. Weights are trimmed at the 1st and 99th percentiles.
+
+### 9.2 Realised design effects
+
+Derived from Pew's published unweighted n and design-effect-inflated margins of error (inputs
+**VERIFIED**, the ratio arithmetic is **DERIVED**): total sample deff ≈ **1.20**; ages 18–29 ≈ 1.33;
+high-school-or-less ≈ 1.34; older and mid-education groups ≈ 1.14–1.26.
+
+**Planning range: deff 1.15–1.35 for a well-run general-population panel with no oversampling; 1.5–2.5
+if heavily oversampled, untrimmed, or raked on many conflicting margins; hold the operational
+ceiling at 2.0.** Kish: `deff_w = 1 + CV²(w)`, so deff 1.3 is CV(w) ≈ 0.55 and deff 2.0 is CV(w) ≈
+1.0. **A realised CV(w) above 1.0 is a weighting problem, not a sampling problem**, and it must be
+reported rather than trimmed away silently. The §4 precision table's planning value of 1.6 is
+therefore conservative relative to observed panel practice, which is the right direction to be
+wrong in.
+
+### 9.3 The AILX weighting scheme
+
+**Pipeline (copy the standard, do not invent):** design weight → response-propensity cell
+adjustment (classification tree or logistic propensity on frame and profile covariates) → **raking
+to national frame margins** → penalised trimming targeting deff < 2 → re-rake → replicate weights
+(Fay's BRR, 80 replicates, whole chain re-run per replicate).
+
+**Margins, per country, from the national statistical frame:**
+
+| Margin | Source | Status |
+|---|---|---|
+| Age group | census / ACS / LFS equivalent | required |
+| Sex | same | required |
+| Educational attainment | same | required — the strongest correlate of the construct |
+| Region (× metropolitan status) | same | required |
+| Race / ethnicity / nativity | where the country collects it (US yes; JP/KR effectively not) | country-dependent, stated per country |
+| **Frequency of internet use / device access** | a reference survey that covers non-users: NPORS (US), Ofcom (UK), MIC Communications Usage Trend Survey (JP), NIA digital-divide series (KR), Eurostat ICT household survey (EU) | **required for AILX specifically** |
+| Household income | CPS-style source | optional; it costs weight variance and PIAAC does not use it |
+
+The internet-use margin is the one departure from PIAAC's list, and it is deliberate: PIAAC does not
+need it because PIAAC is administered in person, and AILX is not. Weighting on internet-use
+frequency **within the covered (online) population** is legitimate and useful. Weighting to a total
+that includes people who could never have been sampled is not (§7).
+
+**Raking vs calibration vs propensity, and what each buys.** Raking (iterative proportional fitting)
+forces the weighted sample onto published *marginal* totals, which is why it dominates practice —
+statistical offices publish age × sex and education marginals and rarely the full joint. It does
+nothing about a variable you did not name, and it inflates weight variance when margins conflict.
+GREG calibration generalises it: it can use continuous auxiliaries and becomes regression-assisted,
+so it genuinely reduces variance when the auxiliary correlates with the outcome; AmeriSpeak's
+penalised distance function is calibration and trimming unified into one estimator. Propensity
+adjustment models the response (or panel-membership) probability using rich covariates that have no
+published population total, then hands off to raking to guarantee the published margins are hit
+exactly.
+
+**Recommendation: propensity-cell adjustment, then raking, then penalised trimming, with GREG
+calibration as a published sensitivity analysis rather than the headline estimator.** Every figure
+is published with the margin list, the frame source and vintage, the realised CV(w), the realised
+deff, and the estimate recomputed under at least one alternative weighting scheme. If the headline
+moves materially under a defensible alternative scheme, that instability is the finding, and it goes
+in the release.
