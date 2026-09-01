@@ -106,7 +106,7 @@ NIST AI 800-2 asks benchmark authors to say which kind of claim they are making.
 
 Four tracks, 100 points each, scored by different mechanisms on purpose — so that no single failure mode in judging can compromise the whole examination.
 
-- **T1 — Creative Build** (100 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
+- **T1 — Creative Build** (160 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
 - **T2 — Authenticity Discrimination** (100 pts, 50 min). 120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture.
 - **T3 — AI-Assisted Reasoning** (100 pts, 90 min). Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis.
 - **T4 — Generative Direction** (100 pts, 60 min). Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts.
@@ -195,10 +195,19 @@ Candidates receive a brief 48 hours before the summit: build a personal site tha
 
 ### Score allocation
 
-- **30 pts — Functional & accessibility gates.** *[Not implemented in 2026.1 — see §04 "What is not implemented". No contrast, viewport, landmark or keyboard check exists; the dimension is a stored judgment median.]* Renders without console error; responsive at three viewports; WCAG AA contrast on all text; semantic landmarks; keyboard-navigable; performance budget met; all required brief elements present
-- **40 pts — Comparative visual merit.** *[Not implemented in 2026.1 — Bradley–Terry exists nowhere in either repository. See §04.]* Blinded forced-choice pairwise comparison by the full cohort, fitted with Bradley–Terry, style covariates partialled out
+**160 points. T1 is the flagship track.**
+
+- **40 pts — Functional & accessibility gates.** *[Not implemented in 2026.1 — see §04 "What is not implemented". No contrast, viewport, landmark or keyboard check exists; the dimension is a stored judgment median.]* Renders without console error; responsive at three viewports; WCAG AA contrast on all text; semantic landmarks; keyboard-navigable; performance budget met; all required brief elements present
+- **60 pts — Comparative visual merit.** *[Not implemented in 2026.1 — Bradley–Terry exists nowhere in either repository. See §04.]* Blinded forced-choice pairwise comparison by the full cohort, fitted with Bradley–Terry, style covariates partialled out
 - **20 pts — Technical ambition.** WebGL / Three.js, canvas work, custom shaders, non-trivial interaction — detected objectively, then confirmed by judge as purposeful rather than decorative
-- **10 pts — Design rationale.** 200-word statement of intent plus prompt log; scored on the coherence between stated intent and delivered artefact
+- **15 pts — Design rationale.** 200-word statement of intent; scored on the coherence between stated intent and delivered artefact
+- **25 pts — Prompt-log process signal.** Distinct instructions to the assistant, and whether each was followed by a change to the artefact. Model-free: arithmetic on the stored log, no judge
+
+> **Why the prompt log is now worth points**
+>
+> It was collected, computed and thrown away. `score.ts` derived a process signal from the submitted log and reported it in `raw` as a diagnostic that no component consumed, which left T1 scoring an artefact and nothing else. An artefact-only score cannot separate *directing a model well* from *already knowing how to build a website*: a candidate who has shipped HTML for ten years beats one who has not, with the same model, and T1 reads the difference as literacy.
+>
+> Twenty-five of a hundred and sixty, deliberately. Process traces are corroborating evidence, not a criterion — reported convergent validity for stealth-assessment process measures against external criteria spans roughly r = .1–.6 — so the component can support a score and must never carry one. It is also the component most obviously open to gaming, so the measure is strict in two declared ways: prompts are counted **distinct** (trimmed, case-folded; a prompt with no stored text shares one key with every other such prompt), and a revision only closes a cycle when a new distinct prompt is open ahead of it in log order. Twenty presses of the same button is one prompt and one cycle.
 
 ### Why vision models do not produce the aesthetic score
 
@@ -228,7 +237,7 @@ The last row is the one that ends the argument for a trilateral instrument. The 
 The up/down vote becomes a **forced-choice pair**. The instinct behind up/down voting is right — put the judgement in human hands — but forcing a choice between two specific artefacts is what the measurement literature supports, and it is strictly more informative than an isolated thumb.
 
 - **Question wording:** a single decision-relevant question — *"Which of these two would you rather put your own name on?"* — not "which is prettier." UI-Bench's framing; it produces sharper judgements than an aesthetic abstraction.
-- **Volume:** 45 items × 45 raters. At *r* = 24 comparisons per item, total C = 540, which is only **12 comparisons per rater** — roughly 15 minutes. That comfortably exceeds the 10–20-per-script norm in the adaptive comparative judgement literature.
+- **Volume:** 45 items × 45 raters. At *r* = **30** comparisons per item, total C = 675, which is **15 comparisons per rater** — roughly 19 minutes at ~75 s per forced-choice pair. Verhavert et al.'s meta-analysis of 49 comparative-judgement assessments puts Scale Separation Reliability .70 at ~13 comparisons per representation, .80 at 19–20, and **.90 at 26–37**. The previous *r* = 24 sat below that band: it bought roughly .85 and was reported as if it bought .90. Note also what the arithmetic does at scale — each comparison informs two artefacts, so comparisons *per candidate-rater* are r ÷ 2, **independent of cohort size**. T1's judging cost per candidate is flat in N; what does not scale is rater turnout.
 - **Pairing:** randomised or balanced-incomplete-block. **Not adaptive.** Bramley's simulation produced Scale Separation Reliability up to 0.89 *on pure noise* under adaptive pairing, while non-adaptive methods correctly returned below 0.25. Adaptive pairing would make the instrument look more reliable than it is, which is the worst possible failure mode for a benchmark.
 - **Model:** Bayesian Bradley–Terry with an explicit tie / abstain parameter. Ties are not rare — Chatbot Arena runs at 20.4% — and unmodelled ties produce \>10% error.
 - **Style control:** measured page properties (word count, image count, palette size, DOM depth, animation presence) enter the fit as covariates, so the reported score is merit *controlled for surface style*.

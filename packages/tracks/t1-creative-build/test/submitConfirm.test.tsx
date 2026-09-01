@@ -10,6 +10,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Runner } from "../src/Runner.js";
 import { encodeT1Checkpoint } from "../src/checkpoint.js";
+import { T1_TOTAL_POINTS, T1_WEIGHTS } from "../src/types.js";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -170,7 +171,10 @@ describe("T1 design rationale is a step, not a second input", () => {
   it("states the honest, checkable cost of leaving it blank", () => {
     mount();
     click("Design rationale");
-    expect(host.textContent).toContain("10 of T1");
+    // Derived from the allocation table, so a re-weighting cannot leave a
+    // stale number on the screen in front of a candidate.
+    expect(host.textContent).toContain(`${T1_WEIGHTS.rationale} of T1`);
+    expect(host.textContent).toContain(`${T1_TOTAL_POINTS} points`);
     expect(host.textContent).toContain("scores zero");
   });
 

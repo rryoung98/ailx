@@ -25,7 +25,7 @@ import {
   PKCE_VERIFIER_STORAGE,
 } from "./sso.js";
 import { t1Plugin } from "./plugin.js";
-import type { PromptLogEntry } from "./types.js";
+import { T1_TOTAL_POINTS, T1_WEIGHTS, type PromptLogEntry } from "./types.js";
 
 const STARTER_HTML = `<!doctype html>
 <html lang="en">
@@ -725,14 +725,16 @@ export function Runner(props: TrackUIProps) {
             style={{ borderTop: "1px solid var(--border)", paddingTop: 8, display: "flex", flexDirection: "column", gap: 8 }}
           >
             <h2 style={h2}>Design rationale</h2>
-            {/* Honest, checkable numbers only: T1_WEIGHTS.rationale is 10 of
-                the track's 100 points, and the judge scores a blank
-                rationale at zero. Skipping is allowed and quiet — it is
-                just never presented as free. */}
+            {/* Honest, checkable numbers only — and READ from the allocation
+                table rather than typed here, because a hardcoded "10 of 100"
+                is exactly the kind of number that survives a re-weighting and
+                lies to the candidate. The judge scores a blank rationale at
+                zero; skipping is allowed and quiet, just never free. */}
             <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-              Worth 10 of T1&rsquo;s 100 points, judged on how well it explains the
-              artifact you built. You can leave it blank and submit anyway —
-              that component then scores zero. About 200 words.
+              Worth {T1_WEIGHTS.rationale} of T1&rsquo;s {T1_TOTAL_POINTS} points,
+              judged on how well it explains the artifact you built. You can
+              leave it blank and submit anyway — that component then scores
+              zero. About 200 words.
             </p>
             <textarea
               aria-label="Design rationale"

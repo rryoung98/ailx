@@ -3,7 +3,7 @@ import { runPure } from "@ailx/core";
 import type { Judgment, ScoreInputs } from "@ailx/core";
 import { scoreT1, medianForDimension, processSignal } from "../src/score.js";
 import { t1Plugin } from "../src/plugin.js";
-import type { T1Artifact } from "../src/types.js";
+import { T1_TOTAL_POINTS, T1_WEIGHTS, type T1Artifact } from "../src/types.js";
 
 const cfg = t1Plugin.validateConfig({});
 
@@ -41,16 +41,24 @@ const goldenInputs: ScoreInputs<T1Artifact> = {
 };
 
 describe("scoreT1 golden fixture", () => {
-  it("matches the spec allocation exactly (30/40/20/10)", () => {
+  it("matches the allocation table exactly (40/60/20/15/25)", () => {
     const s = runPure(() => scoreT1(goldenInputs, cfg));
     expect(s.raw).toEqual({
-      functional: 27,
-      comparative: 24.8,
-      ambition: 12,
-      rationale: 8, // ALL 10 rationale points from the judged dimension (F8)
-      "process.signal": 0.75, // diagnostic only — adds no points
+      functional: 36, // 40 × median(0.9, 0.8, 1.0)
+      comparative: 37.2, // 60 × 0.62
+      ambition: 12, // 20 × median(0.5, 0.7)
+      rationale: 12, // 15 × 0.8
+      process: 12.5, // 25 × 0.5 — MODEL-FREE, from the prompt log
+      "process.signal": 0.5, // 2 distinct prompts, 1 closed cycle
     });
-    expect(s.scaled).toBe(71.8);
+    expect(s.scaled).toBe(109.7);
+  });
+
+  it("draws its weights from the ONE allocation table, not a local copy", () => {
+    expect(T1_WEIGHTS).toEqual({
+      functional: 40, comparative: 60, ambition: 20, rationale: 15, process: 25,
+    });
+    expect(T1_TOTAL_POINTS).toBe(160);
   });
 
   it("is deterministic under runPure (no clock, no randomness, no fetch)", () => {
@@ -59,26 +67,54 @@ describe("scoreT1 golden fixture", () => {
     expect(a).toEqual(b);
   });
 
-  it("perfect judgments reach 100 regardless of prompt-log volume (F8)", () => {
+  it("reaches exactly 160 only with perfect judgments AND a worked prompt log", () => {
+    const workedLog: T1Artifact["promptLog"] = [
+      { kind: "prompted", prompt: "a", clientTs: "t" },
+      { kind: "revised", clientTs: "t" },
+      { kind: "prompted", prompt: "b", clientTs: "t" },
+      { kind: "revised", clientTs: "t" },
+      { kind: "prompted", prompt: "c", clientTs: "t" },
+      { kind: "revised", clientTs: "t" },
+    ];
+    const perfectJudgments = [
+      J("functional", 0, 1),
+      J("comparative", 0, 1),
+      J("ambition", 0, 1),
+      J("rationale", 0, 1),
+    ];
     const perfect: ScoreInputs<T1Artifact> = {
-      artifact: {
-        ...goldenArtifact,
-        promptLog: [
-          { kind: "prompted", prompt: "a", clientTs: "t" },
-          { kind: "revised", clientTs: "t" },
-          { kind: "prompted", prompt: "b", clientTs: "t" },
-          { kind: "revised", clientTs: "t" },
-        ],
-      },
-      judgments: [
-        J("functional", 0, 1),
-        J("comparative", 0, 1),
-        J("ambition", 0, 1),
-        J("rationale", 0, 1),
-      ],
+      artifact: { ...goldenArtifact, promptLog: workedLog },
+      judgments: perfectJudgments,
       rubricVersion: "test-rubric-v1",
     };
-    expect(runPure(() => scoreT1(perfect, cfg)).scaled).toBe(100);
+    expect(runPure(() => scoreT1(perfect, cfg)).scaled).toBe(160);
+
+    // Same artefact, no prompt log: the 25 process points are simply absent.
+    const noLog: ScoreInputs<T1Artifact> = {
+      artifact: { ...goldenArtifact, promptLog: [] },
+      judgments: perfectJudgments,
+      rubricVersion: "test-rubric-v1",
+    };
+    expect(runPure(() => scoreT1(noLog, cfg)).scaled).toBe(135);
+  });
+
+  it("caps the prompt log at its 25 points — process can never buy the artefact", () => {
+    const spam: ScoreInputs<T1Artifact> = {
+      artifact: {
+        html: "<p>x</p>",
+        selfReport: "",
+        promptLog: Array.from({ length: 200 }, (_, i) => [
+          { kind: "prompted" as const, prompt: `p${i}`, clientTs: "t" },
+          { kind: "revised" as const, clientTs: "t" },
+        ]).flat(),
+      },
+      judgments: [],
+      rubricVersion: "test-rubric-v1",
+    };
+    const s = runPure(() => scoreT1(spam, cfg));
+    expect(s.raw["process.signal"]).toBe(1);
+    expect(s.scaled).toBe(25);
+    expect(s.scaled).toBeLessThan(T1_TOTAL_POINTS / 2);
   });
 
   it("no judgments and empty log score 0", () => {
@@ -106,45 +142,64 @@ describe("medianForDimension", () => {
 });
 
 describe("processSignal", () => {
-  it("prompt-log activity alone earns ZERO points (F8 regression)", () => {
-    const busyLogNoJudgments: ScoreInputs<T1Artifact> = {
-      artifact: {
-        html: "<p>x</p>",
-        promptLog: [
-          { kind: "prompted", prompt: "a", clientTs: "t" },
-          { kind: "revised", clientTs: "t" },
-          { kind: "prompted", prompt: "b", clientTs: "t" },
-          { kind: "revised", clientTs: "t" },
-        ],
-        selfReport: "",
-      },
-      judgments: [],
-      rubricVersion: "test-rubric-v1",
-    };
-    const s = runPure(() => scoreT1(busyLogNoJudgments, cfg));
-    expect(s.scaled).toBe(0);
-    expect(s.raw["process.signal"]).toBe(1); // reported, not scored
+  const art = (promptLog: T1Artifact["promptLog"]): T1Artifact => ({
+    html: "", promptLog, selfReport: "",
   });
+  const P = (prompt?: string) => ({ kind: "prompted" as const, ...(prompt !== undefined ? { prompt } : {}), clientTs: "t" });
+  const REV = { kind: "revised" as const, clientTs: "t" };
+
   it("is 0 with an empty log", () => {
-    expect(processSignal({ html: "", promptLog: [], selfReport: "" })).toBe(0);
+    expect(processSignal(art([]))).toBe(0);
   });
-  it("gives half credit for prompting without revising", () => {
-    expect(
-      processSignal({
-        html: "",
-        promptLog: [
-          { kind: "prompted", prompt: "a", clientTs: "t" },
-          { kind: "prompted", prompt: "b", clientTs: "t" },
-        ],
-        selfReport: "",
-      }),
-    ).toBe(0.5);
+
+  it("is 0 when the artefact changed but nothing was ever prompted", () => {
+    // Revisions alone are hand-editing, which is exactly the prior web skill
+    // the component exists to distinguish FROM model direction.
+    expect(processSignal(art([REV, REV, REV]))).toBe(0);
   });
-  it("caps at 1 for sustained prompt→revise loops", () => {
-    const log = Array.from({ length: 6 }, (_, i) => ({
-      kind: (i % 2 === 0 ? "prompted" : "revised") as "prompted" | "revised",
-      clientTs: "t",
-    }));
-    expect(processSignal({ html: "", promptLog: log, selfReport: "" })).toBe(1);
+
+  it("gives breadth credit for distinct prompts with no revision", () => {
+    expect(processSignal(art([P("a"), P("b"), P("c")]))).toBe(0.5);
+  });
+
+  it("counts a prompt→revise cycle for closure credit", () => {
+    expect(processSignal(art([P("a"), REV]))).toBeCloseTo(0.5 / 3 + 0.5 / 3, 12);
+  });
+
+  it("reaches 1 at three distinct prompts each followed by a revision", () => {
+    expect(processSignal(art([P("a"), REV, P("b"), REV, P("c"), REV]))).toBe(1);
+  });
+
+  it("caps at 1 however long the log runs", () => {
+    const log = Array.from({ length: 40 }, (_, i) => (i % 2 === 0 ? P(`p${i}`) : REV));
+    expect(processSignal(art(log))).toBe(1);
+  });
+
+  /**
+   * The two anti-gaming rules. Both were free when the signal was a
+   * diagnostic; neither is free now that it is worth 25 points.
+   */
+  it("counts a repeated prompt ONCE, however many times it is sent", () => {
+    const spam = Array.from({ length: 20 }, (_, i) => (i % 2 === 0 ? P("same") : REV));
+    // One distinct prompt, one closed cycle — not ten of each.
+    expect(processSignal(art(spam))).toBeCloseTo(0.5 / 3 + 0.5 / 3, 12);
+  });
+
+  it("treats prompts with no recorded text as one prompt, not many", () => {
+    expect(processSignal(art([P(), P(), P()]))).toBeCloseTo(0.5 / 3, 12);
+  });
+
+  it("is case- and whitespace-insensitive when deciding distinctness", () => {
+    expect(processSignal(art([P("Ship it"), P("  ship IT  ")]))).toBeCloseTo(0.5 / 3, 12);
+  });
+
+  it("does not pay for revisions that no new prompt preceded", () => {
+    // Prompt once, then hand-edit nine times: one cycle, not nine.
+    const log = [P("a"), REV, REV, REV, REV, REV, REV, REV, REV, REV];
+    expect(processSignal(art(log))).toBeCloseTo(0.5 / 3 + 0.5 / 3, 12);
+  });
+
+  it("reads the log in order — revisions before any prompt close nothing", () => {
+    expect(processSignal(art([REV, REV, P("a"), P("b"), P("c")]))).toBe(0.5);
   });
 });
