@@ -2,12 +2,11 @@
  * Practice — the repeatable, UNSCORED training drill (spec §13 "Mastery").
  *
  * The spec's T2 training round drills the DURABLE ARTEFACT FAMILIES with
- * immediate right/wrong feedback on every card. The published precedent
- * (Gray et al., R. Soc. Open Sci. 12:250921, 2025) is a BETWEEN-SUBJECTS
- * accuracy contrast on StyleGAN3 faces in which typical adults' sensitivity
- * (d') did not move — see spec §13. Practice is therefore onboarding and a
- * training device, never a claim about a candidate's d'. This module is that
- * drill's SELECTION RULE and its grading. The content itself is data, not code: it is built by
+ * immediate right/wrong feedback on every card. What that is and is not
+ * evidenced to do is stated ONCE, below, in PRACTICE_EFFICACY_NOTE and its
+ * comment; spec §13 is that note's source. Do not restate the evidence here
+ * or on a page — import the constant. This module is that drill's SELECTION
+ * RULE and its grading. The content itself is data, not code: it is built by
  * `instruments/practice/2026.1/tools/build-practice-corpus.py` into
  * `corpus.json`, and emitted from there into `./practiceCorpus.ts`.
  *
