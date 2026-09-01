@@ -220,13 +220,16 @@ export const PRACTICE_DECK_SIZE = 6;
  * The engagement claims are untouched by all of this and stay: a streak is a
  * true statement about days you practised.
  */
+export const PRACTICE_EFFICACY_NOTE_SHORT =
+  "We do not claim it makes you better at spotting AI images.";
+
+/** The long form. Built from the short one so the two can never drift apart. */
 export const PRACTICE_EFFICACY_NOTE =
-  "We do not claim this makes you better at spotting AI images. The best-powered trial of "
-  + "practice like this one — gamified drilling, immediate feedback, 1,200 people — found no "
-  + "advantage over doing nothing, immediately or two weeks later, and the study behind our "
-  + "own artefact families never measured the same person improving. Play it because the tells "
-  + "are interesting. We are running the test that would settle it, and we will publish the "
-  + "answer whichever way it goes.";
+  `${PRACTICE_EFFICACY_NOTE_SHORT} The best-powered trial of practice like this one — gamified `
+  + "drilling, immediate feedback, 1,200 people — found no advantage over doing nothing, "
+  + "immediately or two weeks later, and the study behind our own artefact families never "
+  + "measured the same person improving. Play it because the tells are interesting. We are "
+  + "running the test that would settle it, and we will publish the answer whichever way it goes.";
 
 const BY_ID: ReadonlyMap<string, PracticeItem> = new Map(PRACTICE_BANK.map((i) => [i.id, i]));
 

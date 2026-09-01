@@ -33,7 +33,7 @@
  */
 import type { TrackId, TrackRawScores } from "@ailx/session";
 import { AXES, cohortMedians } from "./playerType.js";
-import { ARTEFACT_FAMILIES, FAMILY_META } from "./practice.js";
+import { ARTEFACT_FAMILIES, FAMILY_META, PRACTICE_EFFICACY_NOTE_SHORT } from "./practice.js";
 import { TRACK_META } from "./tracks.js";
 import type { ShareProcess, ShareProcessTrack } from "./share.js";
 
@@ -118,7 +118,13 @@ const ACTIONS: Record<TrackId, Omit<DiagnosisAction, "track">> = {
   t2: {
     label: "Drill the artefact families",
     href: "/practice",
-    detail: `A few minutes on ${FAMILY_NAMES} — immediate right/wrong on each call is what moves detection.`,
+    // NOT "immediate feedback is what moves detection". That is the exact
+    // intervention Geissler, Robertson & Feuerriegel (arXiv 2507.23492,
+    // N = 1,200) tested and could not distinguish from control (feedback arm
+    // p_adj = 1.000; gamified arm p_adj = 0.310). The action stays, because
+    // "nothing to do" is a useless diagnosis and the drill is free; the
+    // efficacy claim goes.
+    detail: `A few minutes on ${FAMILY_NAMES}: unscored cards, each one answered with the tell that was in the picture. ${PRACTICE_EFFICACY_NOTE_SHORT}`,
     drill: true,
   },
   t3: {

@@ -258,6 +258,37 @@ export const PROGRESS_BASIS =
   + "no judged result — the judging pipeline is not built yet, so a number implying one "
   + "would be a claim we cannot back.";
 
+/**
+ * What a movement in practice accuracy is, and — much more important — what
+ * it is not. Exported so /progress and its tests share ONE wording (DRY),
+ * like `PROGRESS_BASIS`.
+ *
+ * Two reasons a rising practice percentage is not an ability gain:
+ *
+ *  1. The practice corpus is SMALL and repeats. A rise is partly recognition
+ *     of pictures whose answer you have already been shown — memorisation of
+ *     the deck, which is why the transfer design in docs/TRANSFER-STUDY.md
+ *     measures HELD-OUT generators instead.
+ *  2. Accuracy conflates sensitivity with criterion. Gray et al. 2025 and the
+ *     Diel et al. (2024) meta-analysis (k = 137, N = 86,155) both find this
+ *     literature's accuracy movements are dominated by criterion shift, with
+ *     pooled d' indistinguishable from chance. Somebody who simply became
+ *     readier to say "AI" produces exactly the same rising percentage as
+ *     somebody whose eyes got better, and a product that calls both
+ *     "improvement" manufactures confidence it cannot back.
+ */
+export const PRACTICE_ACCURACY_CAVEAT =
+  "This is your hit rate on a small corpus you meet again and again, so part of any rise is "
+  + "recognising pictures you have already been given the answer to. It also cannot tell a "
+  + "better eye from a greater readiness to call something AI — both look the same in a "
+  + "percentage. Read it as a record of what you did here, not as your detection getting better.";
+
+/**
+ * A movement between two figures. The name is the WIRE name and is kept for
+ * the service contract; read it as "what changed", never as "what improved" —
+ * a negative delta is as legitimate an entry as a positive one, and
+ * `PRACTICE_ACCURACY_CAVEAT` governs how the practice subject may be shown.
+ */
 export interface Improvement {
   /** 'practice' or a track id. */
   subject: "practice" | TrackId;
