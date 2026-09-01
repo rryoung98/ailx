@@ -523,8 +523,8 @@ export default function ExamPage() {
           <div className="eyebrow">Demo run · AILX 2026.1</div>
           <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
           <p className="lede">
-            T1 to T4 in sequence, each on its own clock. You can pause between
-            moves, never mid-swipe. {eventLogCopy()}
+            T1 to T4 in order, each on its own clock. Pause between moves, never
+            mid-swipe. {eventLogCopy()}
           </p>
           <div style={{ textAlign: "right" }}><Annotation side="left">no accounts — just play</Annotation></div>
           {/* AI connection FIRST — users must see it before the Start pill
@@ -541,7 +541,8 @@ export default function ExamPage() {
           </ul>
           <Reveal as="section">
           <p className="small faint">
-            <span className="badge demo">demo</span> Deterministic scoring: the real track plugins score your stored artifact and judgments. The same play will always result in the same score.
+            <span className="badge demo">demo</span> Deterministic scoring: the real track
+            plugins score your stored artifacts and judgments. Same play, same score, forever.
           </p>
           </Reveal>
           <PillCTA

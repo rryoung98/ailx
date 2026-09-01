@@ -578,7 +578,8 @@ export default function ReportPage() {
           </button>
         </p>
         <p className="faint small">
-          De-identified, item-level audit-ready rubric versions and model manifests for every score (spec §16). Each is keyed to a hashed PID, never a name.
+          De-identified, item-level, audit-ready — rubric versions and model manifests on every
+          score (spec §16). Keyed to a hashed pid, never a name.
         </p>
         </Reveal>
       </div>
