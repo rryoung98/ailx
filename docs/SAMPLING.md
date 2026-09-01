@@ -946,8 +946,12 @@ methodologist can take apart in an afternoon.
 4. No country ranking. Overlapping bands only (§4.3).
 5. The panel fields a 45–60 minute matrix-sampled short form, not the 4h 20m sitting; the short form
    and the full sitting are linked by an anchor block with published linking error (§5).
-6. The population form is device-locked to desktop/laptop by default, with a randomised device
-   experiment in wave 1 to test whether the lock is necessary (§6).
+6. The population form is device-locked to desktop/laptop by default, with a within-person device
+   crossover substudy in wave 1 to test whether the lock is necessary (§6).
+6a. **No population score depends on response latency**, device DIF is run now on existing Track A
+   logs, an untimed anchor block is carried, and device is never used as a weighting margin (§6).
+6b. Device provision — a supplied tablet with connectivity, not a telephone fallback — is a hard
+   vendor-selection criterion, because a performance assessment cannot be administered by phone (§7).
 7. Target population is **internet-using adults 18–65**, stated in every release; the offline
    population is a declared, quantified, sensitivity-bounded exclusion (§7).
 8. Weighting: propensity cells → raking to national-frame margins including internet-use frequency →

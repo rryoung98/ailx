@@ -64,6 +64,15 @@ somebody makes in front of a reviewer.
   how it upgrades to a scored claim without reissuing, and why a revoked
   credential still resolves while a revoked share token 404s.
 
+## Sampling and the population statistic
+- `docs/SAMPLING.md` — the two-track design that separates the self-selected web
+  cohort (item calibration, individual credentials) from a bought probability
+  panel (the only source of a published population statistic): what may cross
+  between them, the schema-level firewall that stops the two being averaged,
+  minimum n and precision, weighting, coverage limits, device effects, the
+  non-response bias analysis we publish unprompted, the exact hedging language
+  for convenience-sample findings, and the cost of a first release.
+
 ## Frontend/backend separation
 - `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
   the exam: why content custody (a private, digest-pinned item bank plus a
