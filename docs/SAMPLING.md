@@ -178,14 +178,23 @@ is published, and both are larger than people expect:
 
 1. **Measurement error via plausible values.** A short matrix-sampled form gives each respondent a
    subset of items, so individual point estimates are biased for group statistics; the correct
-   treatment is multiple imputation (5–10 plausible values, Rubin's rules), which adds imputation
-   variance `(1 + 1/M)·B` on top of sampling variance `U`. ESTIMATE: **expect a 10–30% inflation of
-   the standard error** relative to the table above for a form of AILX's likely panel length.
-   Reporting a mean without this is the single easiest way to overstate precision, and it is the
-   thing a hostile methodologist checks first.
+   treatment is multiple imputation (current practice is 5–10 plausible values; PISA uses 10),
+   combined by Rubin's rules: total variance `V = U + (1 + 1/M)·B`, where `U` is the
+   replicate-based sampling variance and `B` the between-PV variance. PIAAC Cycle 2 computes `U`
+   from **80 Fay-BRR replicate weights (Fay factor 0.3)** and states outright that standard errors
+   for PV-based estimates "must account for both the sampling variance and the variance due to
+   imputation". **VERIFIED.** ESTIMATE for us: **expect a 10–30% inflation** of the standard error
+   in the table above, and proportionally more than PIAAC gets, because a short AILX panel form has
+   fewer items per person than PIAAC does. Two rules follow. **Quote the total SE, never the
+   sampling SE alone.** And **every background variable used for a subgroup breakdown must be in
+   the conditioning model** — if it is not, the PVs bias that contrast toward the null, which is
+   the classic secondary-variable error in NAEP and PIAAC analysis.
 2. **Linking error, for any year-over-year comparison.** Trend statements need an explicit
-   linking-error term added to the SE of the difference (PISA does this; we must too — see §9 on the
-   frozen trend form).
+   linking-error term added to the SE of the difference, and it does not shrink with sample size.
+   PIAAC Cycle 2's cross-cycle linking error is **3.27 for literacy and 2.95 for numeracy** on a
+   500-point scale — about 0.65% and 0.59% of the scale, i.e. roughly ±0.07 SD, larger than our
+   entire sampling error at n = 1,500. **VERIFIED.** For an instrument that re-versions *annually*,
+   this term is the dominant source of uncertainty in any trend claim, not a footnote (see §12).
 
 ### 4.3 Country comparison, which is the thing people will actually do
 
@@ -229,8 +238,18 @@ the whole risk.
 ### 4.5 Reporting floors
 
 - **Country headline:** ≥ 1,000 realised completes AND a completed NRBA. Below that: suppressed.
-- **Subgroup:** ≥ 100 unweighted cases in the cell AND a CI half-width ≤ 0.25 SD. Below that:
-  the cell is reported as "not estimable at this sample size", with the n shown.
+- **Subgroup:** ≥ 100 unweighted cases in the cell AND a CI half-width ≤ 0.25 SD, with the CI
+  printed on every subgroup figure. Below 62 cases the cell is suppressed outright. The 62 is
+  NAEP's rule, adopted rather than invented: NAEP reports a student-group result only at n ≥ 62,
+  a threshold derived from the sample size needed to detect an effect size of 0.5 with power 0.8
+  under an assumed design effect of 2, and it publishes nothing whose standard error rests on
+  fewer than five PSUs. **VERIFIED** (NCES, *NAEP Technical Documentation*). Note what that
+  threshold is: a *power* rule, not a precision rule — n = 62 at deff 2 still carries a ±0.35 SD
+  interval. Our ≥ 100 floor plus the printed CI is the precision half.
+- **Cross-tabulations** (age × education, the cell a labour ministry will ask for first) are not
+  published at n = 1,500 without deliberate oversampling: most cells land at 50–200 cases, i.e.
+  ±0.11 to ±0.35 SD. Report main effects on single margins; buy oversampling if a cross-tab is
+  part of the promise.
 - **Re-identification floor:** the existing `MIN_COHORT_SIZE = 10` still applies and is a floor on
   disclosure, not on statistical adequacy. The two floors are separate and both bind.
 
