@@ -1,3 +1,7 @@
 out/
 .vercel
 .env*
+
+# ...except the checked-in example, which holds no value and is the only
+# place the Clerk variables are documented next to the app that reads them.
+!.env.example

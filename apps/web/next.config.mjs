@@ -16,6 +16,8 @@
  * a page would either break the export or ship a dead route. One naming
  * convention, both file kinds.
  */
+import { fileURLToPath } from "node:url";
+
 const serverMode = process.env.AILX_BACKEND === "1";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? (serverMode ? "" : "/ailx");
 
@@ -45,13 +47,35 @@ const dropMissingRouteManifests = {
   "/api/**": ["**/*_client-reference-manifest.js"],
 };
 
+/**
+ * The static export must not carry an auth SDK it can never mount.
+ *
+ * `app/layout.tsx` is ONE file for both builds, so the import of
+ * `@clerk/nextjs` is in the graph of both — and an import is enough to bundle
+ * it, whether or not `isClerkEnabled()` ever renders the provider. Resolving
+ * the package to a tiny stub in the export build is the only way to keep the
+ * GitHub Pages bundle free of it without splitting the layout in two.
+ *
+ * The server build resolves the real package, obviously. `middleware.api.ts`
+ * and `app/sign-in/**\/page.api.tsx` are hosted-only by NAME (pageExtensions
+ * above), so nothing outside `lib/auth/*` needs the alias.
+ */
+const clerkStub = fileURLToPath(new URL("./lib/auth/clerkStub.tsx", import.meta.url));
+const stubClerk = {
+  webpack: (config) => {
+    config.resolve.alias = { ...config.resolve.alias, "@clerk/nextjs": clerkStub };
+    return config;
+  },
+  turbopack: { resolveAlias: { "@clerk/nextjs": "./lib/auth/clerkStub.tsx" } },
+};
+
 export default {
   ...(serverMode
     ? {
         pageExtensions: ["api.ts", "api.tsx", "js", "jsx", "ts", "tsx"],
         outputFileTracingExcludes: dropMissingRouteManifests,
       }
-    : { output: "export" }),
+    : { output: "export", ...stubClerk }),
   basePath,
   images: { unoptimized: true },
   env: {
