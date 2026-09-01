@@ -698,12 +698,18 @@ because the honest comparison is the argument.
 
 ### 10.3 The published NRBA template
 
-The structure below follows what the NCES and OECD standards require of federal surveys
-(level-of-effort analysis, frame comparison, benchmark comparison, response-propensity modelling,
-and bias estimates before and after weighting). **Confidence: the components are standard and
-appear across NCES/OECD non-response guidance; the exact clause numbering of NCES Statistical
-Standard 4-4-A is UNVERIFIED here and should be checked against the current NCES standards document
-before we cite it by number.**
+The structure below is not invented. It follows **NCES Statistical Standard 4-4**, which requires
+that *any* stage of data collection with a response rate below **85%** be evaluated for
+non-response bias **before the data or any analysis using it may be released**, using base weights,
+and which enumerates the required components: **4-4-2A** respondent/non-respondent comparison on
+frame variables, **4-4-2B** response-propensity modelling, **4-4-2C** comparison to known
+population characteristics from external sources, **4-4-2D** level-of-effort analysis, **4-4-2E**
+non-respondent follow-up, and **4-4-2F** bias summary measures — the **ratio of bias to standard
+error** and the **ratio of bias to the survey mean**, reported under base weights *and* "using the
+final weighted estimates" if weighting was used to reduce bias. **VERIFIED.** That last clause is
+the before-and-after-weighting requirement, it is not optional, and it is the part everyone skips.
+(R-indicators are the modern tool for 4-4-2B but are **not** named by NCES; cite Schouten, Cobben &
+Bethlehem for them, not NCES.)
 
 > **AILX Wave N Non-Response Bias Analysis — [Country]**
 >
@@ -756,6 +762,32 @@ before we cite it by number.**
 > range consistent with our analyses is [a, b]". The phrase "no notable bias would result" is
 > banned from AILX releases — it is the exact sentence the PISA England analyses used, and it is
 > what the FOI was needed to check.
+>
+> **9a. Explained Variation in Outcomes (EVO), the number that answers "your response rate is
+> terrible".** PIAAC reports **EVO ≈ RR + (1 − RR)·R²**, where RR is the response rate and R² comes
+> from regressing the proficiency score on the weighting variables. The US, at a **28%** response
+> rate, reported an **EVO of 56–59%**, interpreted as equivalent to a 56–59% response rate with no
+> weighting adjustments; the international criterion puts the **high-caution / moderate-caution
+> boundary at 50%**. **VERIFIED.** This is the single most transferable idea available to us: it
+> costs one regression, it converts an indefensible-sounding rate into a statement about how much
+> of the outcome our weighting variables actually explain, and it is a published OECD criterion
+> rather than our own invention. **Report EVO in every wave, and report it even when it is bad.**
+>
+> **9b. Level of effort, reported PIAAC-style with the trajectory, not a verdict.** PIAAC's own
+> reporting is the model to copy verbatim in form: first-attempt respondents (10% of respondents)
+> scored 12–14 points below the overall average; through the second attempt (37%), 5–6 points
+> below; by the fourth attempt (57% cumulatively), within 1 point. **VERIFIED.** Our analogue is
+> reminder wave and days-to-response, which is why **paradata on every invited panellist —
+> invitation wave, reminders, days to response, device, break-off point — must be captured at
+> field time. It is the only data we will ever have about our non-respondents.**
+>
+> **9c. Convenience-sample comparability, which is AILX-specific and has no precedent to copy.**
+> Standard NRBA templates assume one sample; we have two. With the panel as the reference, report
+> (a) the raw gap between the Track A mean and the panel mean in SD units, and (b) the gap
+> remaining after raking Track A to the same margins. **The residual is our direct estimate of the
+> selection bias that demographics cannot remove** — the number that says, in one figure, how wrong
+> a published Track A average would have been. Publishing it every wave is the strongest possible
+> defence of the §3 firewall, because it replaces an argument with a measurement.
 >
 > **10. Microdata and replication.** Location of the public microdata file, the weighting and
 > variance code, and the version of the estimator used. Kreiner and Christensen's re-analysis of
