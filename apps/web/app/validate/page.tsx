@@ -42,7 +42,12 @@ export default function ValidatePage() {
           </div>
         </div>
         <p className="lede">
-          These checks run in your browser against the same code that scores a run. The four REAL track plugin score() functions replay pinned golden artifacts and judgments inside the purity harness. A full fixture run is scored through the same registry path used by the live game. These checks also verify content addressing, rubric-version hashing, and composite reproducibility. Since there's no network or server involved, if it passes here, it will be reproducible anywhere.
+          These checks run in your browser, right now, against the same code that scores a run:
+          all four REAL track plugin score() functions replay pinned golden artifacts and
+          judgments inside the purity harness, and a full fixture run is scored through the same
+          registry path the live game uses. They also check content addressing, rubric-version
+          hashing and composite reproducibility. No network and no server is involved, so what
+          passes here reproduces anywhere.
         </p>
 
         {results && (
@@ -71,8 +76,14 @@ export default function ValidatePage() {
         <Reveal as="section">
         <h2>What this demonstrates</h2>
         <p className="muted" style={{ maxWidth: "44rem" }}>
-          The load-bearing property of the architecture (specified in §14) is that any score, once issued, can be recomputed byte by byte from stored inputs. Each track's actual data supports this process. <code>score()</code> runs here under a harness where <code>fetch</code>, <code>Date.now</code> and{" "}
-          <code>Math.random</code> throw; item banks are content-addressed, so an edited item becomes a new item; judge prompts hash into <code>rubric_version</code>; golden fixtures fail the build on any drift. The same checks run in CI via Vitest. This page serves as in-browser proof.
+          The load-bearing property of the architecture (spec §14) is that any score, once
+          issued, can be recomputed byte by byte from stored inputs. Every track&apos;s real{" "}
+          <code>score()</code> runs here under a harness where <code>fetch</code>,{" "}
+          <code>Date.now</code> and{" "}
+          <code>Math.random</code> throw; item banks are content-addressed, so an edited item
+          becomes a new item; judge prompts hash into <code>rubric_version</code>; golden fixtures
+          fail the build on any drift. CI runs the same checks in Vitest. This page runs them in
+          your browser.
         </p>
         <p>
           <Link className="btn primary" href="/exam">Now play it yourself →</Link>{" "}

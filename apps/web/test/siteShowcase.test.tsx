@@ -281,11 +281,12 @@ describe("pill guard + scrub shortening", () => {
 });
 
 describe("parent dogfood follow-ups", () => {
-  it("methodology construct definition reads 'applied AI literacy: a person's ability'", async () => {
+  it("methodology defines the construct in one grammatical sentence", async () => {
     const h = await render(createElement(Methodology));
     const text = h.textContent!;
-    expect(text).toContain("applied AI literacy: a person's ability");
-    // declaude-pass artifacts closed: no strong/em run-ons left
+    expect(text).toContain("applied AI literacy as a person\u2019s capacity to produce");
+    // declaude-pass artifacts closed: no strong/em run-ons, no dropped subject
+    // and no capitalised mid-sentence verb left behind.
     for (const artifact of [
       "literacy A person's",
       "direct Measurement",
@@ -295,9 +296,23 @@ describe("parent dogfood follow-ups", () => {
       "superseded_byThe stored",
       "pure The main constraint",
       "before The exam includes",
+      "Math.random Throw",
     ]) {
       expect(text).not.toContain(artifact);
     }
+  });
+
+  /**
+   * §09's claim, not a paraphrase of it. An automated copy pass once turned
+   * the spec's "Person ability logits are *not* reported as scores" into
+   * "person abilities are in logits", which says the opposite thing about
+   * what the report publishes. The wording may change; the claim may not.
+   */
+  it("methodology keeps the spec's person-ability claim, not a paraphrase", async () => {
+    const h = await render(createElement(Methodology));
+    const text = h.textContent!;
+    expect(text).toContain("Person-ability logits are not reported as scores");
+    expect(text).not.toContain("person abilities are in logits");
   });
 
   it("nav links render through NavLink, which sets aria-current on the active page", () => {

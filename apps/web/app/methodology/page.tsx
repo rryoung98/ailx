@@ -27,14 +27,18 @@ export default function Methodology() {
           </div>
         </div>
         <p className="lede">
-          The key elements of the instrument specification are the construct, the psychometric approach and the limits its calibration sample imposes, judge governance, and the modularity rules that ensure scores are reproducible indefinitely.
+          The construct, what the calibration sample allows, judge governance, and the
+          modularity rules that keep every score reproducible.
         </p>
 
         <section className="reveal">
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§03</span><span className="paper-chip-note">four tracks</span></span>
         <h2 id="construct">Construct definition (§03)</h2>
         <p>
-          AILX defines <strong>applied AI literacy</strong>: a person's ability to achieve positive outcomes in an environment filled with generative systems, defined clearly enough to test. It consists of four measurable skills, each covering a different aspect.
+          AILX defines <strong>applied AI literacy</strong> as a person&rsquo;s capacity to produce
+          good outcomes in an information environment saturated with generative systems &mdash;
+          stated tightly enough to be falsifiable. It resolves into four measurable capabilities,
+          each of which is a track:
         </p>
         <table>
           <thead><tr><th>Track</th><th>Capability</th><th>Failure it detects</th></tr></thead>
@@ -47,7 +51,13 @@ export default function Methodology() {
         </table>
         <p>
           Construct-validity levels are <em>declared</em>, per NIST AI 800-2, rather than
-          left to be inferred: T2 is a <strong>direct</strong> measurement (discrimination accuracy is the construct); T3 is direct for its planted-error component and a proxy for its rubric component. T1 and T4 are <strong>proxy</strong> measures: artifact quality stands in for creative capability, judged by comparative human judgment rather than a model score. Predictive validity is <strong>unvalidated</strong>: there is no claim yet that any of it predicts real-world outcomes, and establishing that needs the longitudinal follow-up on the 2028 roadmap.
+          left to be inferred: T2 is a <strong>direct</strong> measurement (discrimination
+          accuracy is the construct); T3 is direct on its planted-error component and a proxy on
+          its rubric component; T1 and T4 are <strong>proxy</strong> claims, where artifact
+          quality proxies creative capability and the criterion is comparative human judgment,
+          not a model score. The composite carries a <strong>predictive &mdash; unvalidated</strong>{" "}
+          label: no claim yet that it predicts real-world outcomes, and establishing that needs
+          the longitudinal follow-up on the 2028 roadmap.
         </p>
 
         </section>
@@ -56,14 +66,27 @@ export default function Methodology() {
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§09</span><span className="paper-chip-note">what the sample allows</span></span>
         <h2 id="psychometrics">Psychometric honesty, and what the calibration sample allows (§09)</h2>
         <blockquote>
-          <strong>Where the numbers come from, stated plainly.</strong> The 2026 calibration cohort was small: <strong>n = 45</strong>. Its job was to develop and calibrate items, not to certify anyone. Rasch analysis ranked item difficulty on that cohort and removed misfitting items at ±1 logit; person abilities are in logits — <em>not</em> from 2PL or 3PL models, which a sample that size cannot support (2PL needed n = 355 for GLAT, 3PL needed n = 514 for AICOS). Those limits still bind: absolute cut scores and certification claims stay postponed until the combined sample exceeds <strong>250</strong>, and until then a report carries percentiles and bands, never a competence certification.
+          <strong>Where the numbers come from, stated plainly.</strong> The 2026 calibration
+          cohort was small: <strong>n = 45</strong>. Its job was to develop and calibrate items,
+          not to certify anyone. Rasch is used diagnostically to rank item difficulty and cull
+          misfitting items at ±1 logit, which n = 45 supports. Person-ability logits are{" "}
+          <em>not</em> reported as scores. 2PL and 3PL are off the table entirely: GLAT needed
+          n = 355 for 2PL, AICOS needed 514 for 3PL. Absolute cut scores and certification
+          claims are deferred until the pooled sample crosses <strong>250</strong>; until then a
+          report carries percentiles and bands, never a competence certification.
         </blockquote>
         <ul>
           <li>
-            <strong>The anchor-block move.</strong> An embedded block of 18 published items from the AICOS-SV, normed on 514 adults, takes about eight minutes to complete. This allows for a comparison with a real external norm group and establishes the necessary cross-form linkage to ensure Year 2 is comparable to Year 1.
+            <strong>The anchor-block move.</strong> An embedded block of published, externally
+            normed items (AICOS-SV, 18 items, normed on n = 514 adults) costs about eight minutes
+            of testing time and buys standing against a real external norm group. It also creates
+            the cross-form linkage that makes Year 2 comparable to Year 1.
           </li>
           <li>
-            <strong>The composite forces a normal distribution</strong> (rank → percentile → inverse-normal → mean 50, SD 15) instead of hoping for one. At the calibration cohort's size an empirically normal raw distribution was never likely. This is clearly stated in every export, and the raw-distribution shape is preserved separately in the data.
+            <strong>The composite forces a normal distribution</strong> (rank → percentile →
+            inverse-normal → mean 50, SD 15) rather than hoping for one. At n = 45 an empirically
+            normal raw distribution is unlikely. Every export says so, and the raw-distribution
+            shape is preserved separately in the data.
           </li>
           <li>
             <strong>Reliability is reported with the right statistics:</strong>{" "}
@@ -74,10 +97,16 @@ export default function Methodology() {
           </li>
           <li>
             <strong>Standard setting is Modified Angoff</strong> — 8–10 subject-matter
-            experts, two rounds — the only method defensible <em>without examinee data</em>. The bookmark method is out because it needs IRT parameters a 45-person cohort cannot supply, and contrasting groups is unreliable at that size because it biases toward the smaller group.
+            experts, two rounds — the only method defensible <em>without examinee data</em>.
+            Bookmark is ruled out: it needs IRT parameters n = 45 cannot produce. So is
+            contrasting groups, which at this n is biased toward the smaller group.
           </li>
           <li>
-            <strong>Cross-year comparability uses the AP model with ARC-AGI’s calibration discipline.</strong> In Year 1, a quota-based norm reference is used, and a secure anchor block is established from the start. This enables Year 2 and subsequent years to be equated. The standard, set by Angoff, stays fixed, while the raw cut score adjusts annually. The performance gap between public and secure assessments is tracked each year to serve as contamination telemetry.
+            <strong>Cross-year comparability takes the AP model with ARC-AGI’s calibration
+            discipline.</strong> Year 1 is norm-referenced by quota, and a secure anchor block is
+            built from day one so Year 2 onward can be equated. The standard, once set by Angoff,
+            is held fixed and the raw cut floats. The public-vs-secure performance gap is tracked
+            annually as contamination telemetry.
           </li>
         </ul>
 
@@ -101,22 +130,22 @@ export default function Methodology() {
             <tr>
               <td><strong>Formatting / style</strong> — the largest single effect</td>
               <td className="muted">GPT-4 win rate for bold text: 89.5%; links 87.3%; lists 75.8%</td>
-              <td className="muted">The formatting-invariance ablation was published. T3 was evaluated using both stripped and formatted renderings, with the differences reported.</td>
+              <td className="muted">Formatting-invariance ablation published; T3 judged on stripped and formatted renderings with the delta reported</td>
             </tr>
             <tr>
               <td><strong>Position / order</strong></td>
-              <td className="muted">GPT-4 has a consistency rate of 65.0%, while Claude-v1 has a rate of 23.8%. This method performs best when the candidates are similar in quality.</td>
+              <td className="muted">Swap consistency: GPT-4 65.0%, Claude-v1 23.8% — the bias is strongest when candidates are close in quality</td>
               <td className="muted">Randomised position within every pair; swap used only as part of a combined strategy</td>
             </tr>
             <tr>
               <td><strong>Verbosity</strong></td>
               <td className="muted">Heterogeneous in sign across model families (+0.44 to −0.12)</td>
-              <td className="muted">A heterogeneous three-family jury cancels direction; length enters as a covariate in comparative fits.</td>
+              <td className="muted">A heterogeneous three-family jury cancels direction; length enters comparative fits as a covariate</td>
             </tr>
             <tr>
               <td><strong>Self-enhancement / kinship</strong></td>
               <td className="muted">Preference leakage between judge and candidate tooling</td>
-              <td className="muted">No judge should be from a lab that offers its model as a candidate tool. The panel should be published and rotated annually.</td>
+              <td className="muted">No judge from a lab whose model is offered as candidate tooling; panel published and rotated annually</td>
             </tr>
           </tbody>
         </table>
@@ -145,10 +174,10 @@ export default function Methodology() {
           inputs.</strong> Four rules make it work:
         </p>
         <ul>
-          <li><strong>The package is the unit of release.</strong> Instruments are stored in their own repository as signed, immutable OCI artifacts, which are loaded by digest, not by tag.</li>
+          <li><strong>The package is the unit of release.</strong> Instruments live in their own repository as signed, immutable OCI artifacts, loaded by digest, never by tag.</li>
           <li><strong>Item banks are content-addressed.</strong> <code>item_id = sha256(canonical_json(item))</code>. An edited item is a <em>new</em> item, never a mutation — cohorts cannot be compared across a silently edited item.</li>
           <li><strong>Prompts are content.</strong> The judge prompt is hashed into <code>rubric_version</code>; changing it is a version bump.</li>
-          <li><strong>Locales live beside the item.</strong> Translation provenance is recorded, because the claim that scores compare across languages will be challenged.</li>
+          <li><strong>Locales live beside the item</strong>, with translation provenance recorded, because score comparability across languages is a validity claim that will be challenged.</li>
         </ul>
         <p>
           <code>score()</code> being <strong>pure</strong> is the load-bearing constraint: no network, no clock, no randomness. Model calls happen in pipeline stages whose outputs are stored as inputs;
@@ -156,9 +185,14 @@ export default function Methodology() {
           stating precisely, because an LLM judge does <em>not</em> repeat itself even at
           temperature&nbsp;0: a judgment is evidence collected once, stored immutably and
           content-addressed, and the guarantee is that <strong>re-scoring reproduces, not that
-          re-judging does</strong>. Asking the judge the same question twice may give two answers;
-          asking the scorer the same question twice may not. CI enforces purity by running <code>score()</code> in a sandbox where{" "}
-          <code>fetch</code>, <code>Date.now</code> and <code>Math.random</code> Throw, with golden fixtures per track failing the build on any drift. Re-scores are inserts linked by <code>superseded_by</code>, so no history is lost; the stored model manifest can prove in 2029 which model version produced a 2026 certificate.</p>
+          re-judging does</strong>. Ask the judge the same question twice and you may get two
+          answers; ask the scorer twice and you cannot. CI enforces purity by running{" "}
+          <code>score()</code> in a sandbox where{" "}
+          <code>fetch</code>, <code>Date.now</code> and <code>Math.random</code> throw, with
+          golden fixtures per track failing the build on any drift. Re-scores are inserts linked
+          by <code>superseded_by</code>, so no history is destroyed, and the stored model manifest
+          makes it possible in 2029 to prove which model version produced a 2026 certificate.
+        </p>
         <p className="faint small">
           This showcase build exercises the same contracts client-side: the purity
           harness, content-addressing and golden-fixture checks on the{" "}
