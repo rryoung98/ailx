@@ -24,7 +24,7 @@ export interface TrackMeta {
   brief: string;
   /** One-line intro hype shown before the track starts. */
   hype: string;
-  components: TrackComponentMeta[];
+  components: ReadonlyArray<TrackComponentMeta>;
 }
 
 export const TRACK_META: Record<TrackId, TrackMeta> = {
@@ -50,14 +50,15 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
     components: SCORE_ALLOCATION.t2.components,
   },
   t3: {
-    id: "t3", code: "T3", pluginId: "instrumented-assistant@2", name: "AI-Assisted Reasoning",
+    id: "t3", code: "T3", pluginId: "instrumented-assistant@2", name: "Calibrated Reliance",
     packageName: "@ailx/track-t3", points: trackPoints("t3"), scored: SCORE_ALLOCATION.t3.scored,
-    // Three, not two: the shipped config plants three errors and the reveal
-    // lists all three (apps/web/test/wiring.test.ts pins the count).
-    hype: "T3 — the assistant plants three errors. Catch them.",
+    // Eight, and the count is pinned by apps/web/test/wiring.test.ts. RSR
+    // carries 50 of T3's 160 points, and a four-item subtest cannot support
+    // that weight.
+    hype: "T3 — the assistant plants eight errors. Catch them.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t3, demoBudgetSeconds: 10 * 60,
     brief:
-      "Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis. Thirty-five of the hundred points are model-free measurement of behaviour.",
+      "Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. The construct is calibrated reliance — knowing when to use the model and when not to — reported two-tailed, because refusing correct help is as much a failure as swallowing a planted error. 115 of the 160 points are model-free measurement of behaviour.",
     components: SCORE_ALLOCATION.t3.components,
   },
   t4: {

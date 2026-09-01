@@ -9,6 +9,7 @@ import type {
 import type {
   T3Artifact, T3Config, T3Hosted, T3PresentationConfig, T3Session, T3Turn,
 } from "./types.js";
+import { T3_DEFAULT_WEIGHTS } from "./types.js";
 import { scoreT3, type T3Raw } from "./scoring.js";
 
 export interface T3Score extends TrackScore {
@@ -82,8 +83,8 @@ function validate(raw: unknown, secrets: boolean): T3PresentationConfig {
     ...(hosted !== undefined ? { hosted: hosted as T3Hosted } : {}),
   };
   if (!secrets && cfg.plantedErrors === undefined) return base;
-  const w = (cfg.weights ?? { rsr: 25, analysis: 45, process: 20, rair: 10 }) as Record<string, unknown>;
-  for (const k of ["rsr", "analysis", "process", "rair"] as const) {
+  const w = (cfg.weights ?? T3_DEFAULT_WEIGHTS) as Record<string, unknown>;
+  for (const k of ["rsr", "rair", "process", "analysis"] as const) {
     if (typeof w[k] !== "number" || (w[k] as number) < 0) fail(`weights.${k} must be a non-negative number`);
   }
   return {
@@ -92,9 +93,9 @@ function validate(raw: unknown, secrets: boolean): T3PresentationConfig {
     correctAdvice: (cfg.correctAdvice ?? []) as T3Config["correctAdvice"],
     weights: {
       rsr: w.rsr as number,
-      analysis: w.analysis as number,
-      process: w.process as number,
       rair: w.rair as number,
+      process: w.process as number,
+      analysis: w.analysis as number,
     },
   };
 }

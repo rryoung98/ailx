@@ -11,6 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { t2AnswerKeys, t2DeckItemIds, t2DeckRecords, t2BankSha256, t2Items, trackConfig } from "../lib/instrument";
 import { scoreTrack } from "../lib/registry";
+import { T2_TOTAL_POINTS } from "@ailx/track-t2";
 
 type Item = ReturnType<typeof t2Items>[number];
 const ids = (deck: Item[]) => deck.map((i) => i.id);
@@ -109,8 +110,8 @@ describe("T2 deck rotation (demo-only)", () => {
     };
     const withId = scoreTrack("t2", artifact, "en", attemptId);
     // The deck-aware d′ ceiling (cfg.dPrimeCeiling = attainable corrected
-    // d′) keeps a perfect short deck near the top of the 0-100 scale.
-    expect(withId.score.scaled).toBeGreaterThan(95);
+    // d′) keeps a perfect short deck near the top of T2's 80-point scale.
+    expect(withId.score.scaled).toBeGreaterThan(0.95 * T2_TOTAL_POINTS);
     // Same call again is deterministic.
     expect(scoreTrack("t2", artifact, "en", attemptId).score).toEqual(withId.score);
     // The default deck is a DIFFERENT population, so scoring without the

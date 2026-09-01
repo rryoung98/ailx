@@ -1,5 +1,5 @@
 import type { Judgment } from "@ailx/core";
-import type { T3Config, T3Turn } from "../src/types.js";
+import { T3_DEFAULT_WEIGHTS, type T3Config, type T3Turn } from "../src/types.js";
 
 export const config: T3Config = {
   title: "Trilateral AI workforce readiness memorandum",
@@ -46,7 +46,7 @@ export const config: T3Config = {
     },
   ],
   minWords: 120,
-  weights: { rsr: 25, analysis: 45, process: 20, rair: 10 },
+  weights: T3_DEFAULT_WEIGHTS,
 };
 
 let n = 0;

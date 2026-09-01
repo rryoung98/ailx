@@ -530,7 +530,7 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
     return (
       <div style={{ maxWidth: 760, margin: "0 auto", display: "grid", gap: "1rem" }}>
         <div style={card}>
-          <h2 style={{ marginTop: 0 }}>T3 · AI-Assisted Reasoning</h2>
+          <h2 style={{ marginTop: 0 }}>T3 · Calibrated Reliance</h2>
           <p style={{ fontWeight: 600 }}>{cfg.title}</p>
           <p>{cfg.brief}</p>
           <p style={{ color: "var(--muted)" }}>

@@ -108,7 +108,7 @@ Four tracks, 100 points each, scored by different mechanisms on purpose — so t
 
 - **T1 — Creative Build** (160 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
 - **T2 — Synthetic-Media Discrimination** (80 pts, 50 min). 120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture.
-- **T3 — AI-Assisted Reasoning** (100 pts, 90 min). Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis.
+- **T3 — Calibrated Reliance** (160 pts, 90 min). Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis.
 - **T4 — Generative Direction** (100 pts, 60 min). Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts.
 
 ### Session structure
@@ -118,7 +118,7 @@ Four tracks, 100 points each, scored by different mechanisms on purpose — so t
 | D−2   | T1 build window opens                       | 48 h     | Asynchronous, own device          | Gates + pairwise panel   |
 | D0 §A | Onboarding, consent, calibration block      | 20 min   | Proctored                         | —                        |
 | D0 §A | T2 Synthetic-Media Discrimination              | 50 min   | Proctored, lockstep timing        | Automatic (SDT)          |
-| D0 §B | T3 AI-Assisted Reasoning                    | 90 min   | Proctored, instrumented assistant | Automatic + jury + human |
+| D0 §B | T3 Calibrated Reliance                    | 90 min   | Proctored, instrumented assistant | Automatic + jury + human |
 | D0 §C | T4 Generative Direction                     | 60 min   | Proctored, quota-limited          | Gates + pairwise panel   |
 | D+1   | Peer comparative judgement session (T1, T4) | 40 min   | Blinded, randomised pairs         | Participants as raters   |
 | D+7   | Human adjudication of flagged cases         | —        | Expert panel                      | Expert panel             |
@@ -364,7 +364,7 @@ Six-fingered hands and garbled text were 2022–2023 tells and are now largely d
 
 The provenance block teaches and tests the *asymmetry*, which is the part people get wrong: **credentials present and signed by a valid trust-list signer is meaningful positive evidence; credentials absent is no evidence at all.** Platforms strip metadata on re-encode; screenshots destroy it; a valid manifest can wrap a staged photograph. The worked example in the item set is the Nikon Z6 III — C2PA shipped August 2025, certificates revoked the following month after a firmware flaw let inauthentic content carry a valid signature. That single case teaches why the trust list, not the badge, is the thing.
 
-## T3 · AI-Assisted Reasoning
+## T3 · Calibrated Reliance
 
 Solve a hard problem with an AI that has been quietly seeded with wrong answers. The heaviest-weighted component is objective, un-gameable, and does not involve a model judging anything.
 
@@ -378,12 +378,47 @@ Candidates receive a long, dense primary source — a technical or policy docume
 
 ### Score allocation
 
-- **25 pts — Planted-error detection (RSR).** Did the candidate catch and reject the seeded wrong outputs? Fully objective
-- **45 pts — Analysis quality.** *[Not implemented in 2026.1 — one stub returning three seeded samples that band on answer length; the ~200-example calibration set does not exist. See §04.]* Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
-- **20 pts — Process quality.** From the transcript: decomposition, prompt iteration, verification behaviour, whether the candidate went back to the primary source
-- **10 pts — Appropriate reliance (RAIR).** Did the candidate update toward correct AI advice they had initially resisted? Over-rejection is a failure too
+**160 points, and the track has a new named construct: calibrated reliance — knowing when to use the model and when not to.**
 
-Thirty-five of the hundred points are model-free measurement of behaviour. That is the design's answer to the obvious objection — that scoring reasoning with a language model is scoring the wrong thing.
+- **50 pts — Planted-error detection (RSR).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
+- **30 pts — Deliberate adoption of correct advice (RAIR).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
+- **35 pts — Process quality.** From the transcript: decomposition, prompt iteration, verification behaviour, whether the candidate went back to the primary source
+- **45 pts — Analysis quality.** *[Not implemented in 2026.1 — one stub returning three seeded samples that band on answer length; the ~200-example calibration set does not exist. See §04.]* Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
+
+**115 of the 160 points are model-free measurement of behaviour** — up from 35 of 100. That is the design's answer to the obvious objection, that scoring reasoning with a language model is scoring the wrong thing, and it is also how §04's LLM-jury exposure is held at 45 points in this track.
+
+### Knowing when NOT to use AI — the construct, and why it is measured this way
+
+Every existing AI-literacy instrument, AILX included until now, measures competence *conditional on using AI*. None measures whether the person should have opened the model at all. The failure mode that matters in real organisations is reflexive delegation of judgement.
+
+The obvious designs for it all fail, and it is worth writing down why before defending the one that is built:
+
+1. **There is no defensible answer key.** "Should you use AI for this?" is normative and contested. A ministry reviewer will ask who decided, and the honest answer is "we did". Any keyed should-not-use item is a values claim wearing a psychometric coat.
+2. **Asking destroys the measurement.** On an exam called *the AI Literacy Examination*, a candidate asked whether they would use AI learns within two items that the sophisticated answer is "not here, and I would verify". A situational-judgement item on this construct measures test-wiseness.
+3. **Under-use is a failure too.** A person who refuses the model where it would have helped is also failing. A one-directional "abstained = correct" key scores Luddism as literacy.
+
+The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — that is RSR. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — that is RAIR. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour under time pressure rather than from anything the candidate says about themselves.
+
+**The reliance index is reported two-tailed and never collapsed to one number.**
+
+| Reported | Meaning |
+|---|---|
+| `reliance.over` | share of surfaced planted errors the candidate did **not** challenge |
+| `reliance.under` | share of surfaced correct advice the candidate did **not** adopt |
+| `reliance.index` | `under − over`, in [−1, 1]. Negative = over-reliant, positive = under-reliant |
+| band | derived from **both tails**, not from the index |
+
+The band reads both tails on purpose. A candidate who swallowed every planted error *and* refused every correct suggestion has over = 1, under = 1 and index = 0 — arithmetically "calibrated" and behaviourally the worst run in the cohort. When both tails are large the band names the larger failure.
+
+> **Stated against our own case.** RSR and RAIR are named after the appropriate-reliance literature, but this two-tailed *index* is AILX's own construction. We have found no published index or scoring scheme for calibrated reliance to inherit, and there is no published validity evidence for this one. It is defended on design grounds — behavioural, keyless, un-gameable by verbal sophistication, symmetric — and it is reported descriptively until it has been validated against something external. Saying so here is cheaper than being asked.
+
+### Why eight planted errors, not four
+
+RSR carries 50 of 160 points and **its item count is the number of planted errors the form surfaces.** Four cannot support that weight: catching 2 of 4 versus 3 of 4 is a 12.5-point difference decided by essentially one event, and a four-item subtest cannot have usable reliability at any weight. Eight is the declared floor (`RSR_MIN_SURFACED`), and a sitting that surfaces fewer is flagged in the record as `rsr.underpowered` rather than being silently reported as a rate.
+
+Eight also fits the re-versioning economics. The plants are two instances of each of four stable error **families** — misattributed figure, false causal claim, fabricated citation, wrong calculation. Families are stable even as instances burn, so a re-version is new instances of known families, which is the cheapest possible refresh in the instrument.
+
+One direction the design has to watch: **as models hallucinate less, planting errors becomes less naturalistic**, and a candidate who trusts a 2028 model may be behaving correctly. The planted-error density must be declared in every report, the way exposure time is declared for T2, and the difficulty calibration has to track model reliability.
 
 ### What the research says this track should and should not do
 

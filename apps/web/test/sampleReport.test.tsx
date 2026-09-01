@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { TRACK_META } from "@ailx/report";
 import { AXES } from "@ailx/report";
 import ReportPage from "../app/report/page";
 
@@ -53,7 +54,7 @@ describe("sample report", () => {
     expect(store.size).toBe(0); // nothing persisted
     // The fixture's T2 artifact answers the FIXED default deck; scoring it
     // must not rotate to a per-attempt deck and lapse everything (T2 > 0).
-    const t2Card = [...host.querySelectorAll("h3")].find((h) => h.textContent?.includes("Authenticity"))?.closest("div.card");
+    const t2Card = [...host.querySelectorAll("h3")].find((h) => h.textContent?.includes(TRACK_META.t2.name))?.closest("div.card");
     expect(t2Card, "T2 card").toBeTruthy();
     expect(t2Card!.textContent).not.toContain("0.0 / 100");
     // ONE identity: the player-type card, with its four measured axes inside

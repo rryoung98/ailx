@@ -68,13 +68,14 @@
     ],
     "expected": {
       "raw": {
-        "functional": 24,
-        "comparative": 22,
+        "functional": 32,
+        "comparative": 33,
         "ambition": 8,
-        "rationale": 7,
-        "process.signal": 0.5
+        "rationale": 10.5,
+        "process": 8.333,
+        "process.signal": 0.333
       },
-      "scaled": 61
+      "scaled": 91.833
     }
   },
   "t2": {
@@ -172,22 +173,23 @@
     "judgments": [],
     "expected": {
       "raw": {
-        "sensitivity": 13.49,
+        "sensitivity": 10.466,
+        "criterion": 9.941,
         "calibration": 16,
         "provenance": 15,
         "dPrime": 0.674,
-        "criterion": -0.337,
+        "criterionC": -0.337,
         "accuracy": 0.667,
         "brier": 0.18,
         "weightedAccuracy": 1,
         "answeredBinary": 3,
-        "calibrationCoverage": 1,
+        "responseCoverage": 1,
         "hits": 1,
         "falseAlarms": 1,
         "nSignal": 1,
         "nNoise": 2
       },
-      "scaled": 44.49
+      "scaled": 51.407
     }
   },
   "t3": {
@@ -278,10 +280,10 @@
     ],
     "expected": {
       "raw": {
-        "rsr": 25,
+        "rsr": 50,
         "analysis": 30,
-        "process": 9.167,
-        "rair": 10,
+        "process": 16.042,
+        "rair": 30,
         "plantedSurfaced": 1,
         "plantedCaught": 1,
         "adviceSurfaced": 1,
@@ -294,9 +296,13 @@
         "meanJuryBand": 0.667,
         "jurySpread": 0.2,
         "wordCount": 24,
-        "analysis.lengthGate": 1
+        "analysis.lengthGate": 1,
+        "reliance.over": 0,
+        "reliance.under": 0,
+        "reliance.index": 0,
+        "rsr.underpowered": 1
       },
-      "scaled": 74.167
+      "scaled": 126.042
     }
   },
   "t4": {

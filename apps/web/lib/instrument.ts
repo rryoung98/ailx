@@ -297,13 +297,35 @@ export const T3_SCENARIO = {
     "Advise the U.S. delegation lead: should the three governments adopt the shared AI-skills certification track in 2027? Take a position a negotiator could act on.",
   sourceTitle: "US\u2013Japan\u2013Korea Trilateral AI Workforce Readiness Memorandum (2026) \u2014 Staff Review Draft",
   sourceExcerpt:
-    "Prepared by the trilateral working group on AI workforce readiness (Washington \u00b7 Tokyo \u00b7 Seoul). Status: staff review draft \u2014 not yet adopted by any of the three governments.\n\nSection 2.1 \u2014 Scope. The memorandum covers public-sector AI reskilling programs in the United States, Japan, and the Republic of Korea, and a proposed shared AI-skills certification track to open in 2027.\n\nSection 3.2 \u2014 Certification backlog. The median wait for advanced AI-role certification reached 38 months in 2025 across the three countries. In the two pilot ministries that pooled their assessor panels, shared assessment cut median processing time by 41%.\n\nSection 4.1 \u2014 Withdrawal from training. A completion bond of $2 per enrolled training hour, refunded on completion, deterred speculative enrollment; program withdrawal rates fell from 62% to 29%.\n\nSection 5.3 \u2014 Small employers. Firms under 20 employees saw compliance and assessment costs rise 18% under the pooled model, a regressive effect the working group recommends offsetting with a fee cap. The fee cap is a staff recommendation; no adopted instrument mandates it.",
+    "Prepared by the trilateral working group on AI workforce readiness (Washington · Tokyo · Seoul). Status: staff review draft — not yet adopted by any of the three governments.\n\nSection 2.1 — Scope. The memorandum covers public-sector AI reskilling programs in the United States, Japan, and the Republic of Korea, and a proposed shared AI-skills certification track to open in 2027.\n\nSection 3.2 — Certification backlog. The median wait for advanced AI-role certification reached 38 months in 2025 across the three countries. In the two pilot ministries that pooled their assessor panels, shared assessment cut median processing time by 41%.\n\nSection 4.1 — Withdrawal from training. A completion bond of $2 per enrolled training hour, refunded on completion, deterred speculative enrollment; program withdrawal rates fell from 62% to 29%.\n\nSection 5.3 — Small employers. Firms under 20 employees saw compliance and assessment costs rise 18% under the pooled model, a regressive effect the working group recommends offsetting with a fee cap. The fee cap is a staff recommendation; no adopted instrument mandates it.\n\nSection 6.2 — Assessor supply. The three countries between them certified 1,240 assessors in 2025 against an estimated need of 3,100. The working group notes that assessor training takes 11 months and that no pooled assessor register exists yet.\n\nSection 7.1 — Cost. The pooled model is costed at $46m over three years, of which $31m is assessor training and $9m is the shared registry platform. The remaining $6m is contingency. No cost-benefit ratio is stated anywhere in the draft.\n\nSection 8.4 — Mutual recognition. Recognition of each country's existing credentials would begin in 2028, one year after the shared track opens, and only for credentials issued after the track's start date. Retroactive recognition was considered and not recommended.\n\nSection 9.2 — Evaluation. The working group proposes a two-year evaluation window with no control group, and states that attribution of any employment effect to the certification track will therefore be weak.",
+  /**
+   * EIGHT planted errors, not three.
+   *
+   * RSR carries 50 of T3's 160 points and its item count IS the number of
+   * plants that surface. A four-item subtest cannot support that weight:
+   * catching 2 of 4 versus 3 of 4 is 12.5 points decided by essentially one
+   * event. `RSR_MIN_SURFACED` in the scorer declares 8 as the floor and
+   * flags any sitting that comes in under it.
+   *
+   * Two instances of each of the four stable error FAMILIES — misattributed
+   * figure, false causal claim, fabricated citation, wrong calculation. The
+   * families are what re-versions cheaply: new instances of known families,
+   * not new families.
+   */
   plantedErrors: [
     {
       id: "pe-figure",
       topic: "certification backlog median wait",
       claim: "The memorandum puts the median certification wait at 61 months in 2025.",
       truth: "Section 3.2 states the median wait was 38 months in 2025.",
+    },
+    {
+      id: "pe-figure-assessors",
+      topic: "assessor supply register certified",
+      claim:
+        "The three countries certified 2,400 assessors in 2025, close to the estimated need of 3,100, and a pooled assessor register is already operating.",
+      truth:
+        "Section 6.2 states 1,240 assessors against a need of 3,100, and says no pooled assessor register exists yet.",
     },
     {
       id: "pe-causal",
@@ -314,13 +336,52 @@ export const T3_SCENARIO = {
         "Section 4.1 attributes the fall from 62% to 29% to the completion bond; the memorandum draws no labor-market conclusion.",
     },
     {
+      id: "pe-causal-evaluation",
+      topic: "evaluation window employment effect attribution",
+      claim:
+        "The two-year evaluation window is designed to establish that the certification track causes employment gains, so the adoption case can rest on it.",
+      truth:
+        "Section 9.2 proposes an evaluation with NO control group and states that attribution of any employment effect will therefore be weak.",
+    },
+    {
       id: "pe-citation",
       topic: "OECD annex 2023 compliance mandate",
       claim:
         "OECD Council Annex 2023-B, adopted March 2026, already mandates fee caps for small employers, so Section 5.3 is moot.",
-      truth: "No such annex exists in the record; the fee cap is a staff recommendation, not a mandate.",
+      truth:
+        "No such annex exists in the record. Section 5.3 says the fee cap is a staff recommendation, not a mandate.",
+    },
+    {
+      id: "pe-citation-recognition",
+      topic: "mutual recognition retroactive credentials 2028",
+      claim:
+        "Annex C of the memorandum sets out retroactive recognition of credentials issued before the track opens, on the model of the 2024 Seoul Accord.",
+      truth:
+        "Section 8.4 says retroactive recognition was considered and NOT recommended. There is no Annex C and no 2024 Seoul Accord in this document.",
+    },
+    {
+      id: "pe-arithmetic-cost",
+      topic: "cost assessor training registry contingency",
+      claim:
+        "Assessor training and the registry platform together account for about half the $46m programme cost, leaving roughly $23m of contingency.",
+      truth:
+        "Section 7.1: $31m + $9m = $40m of $46m, i.e. about 87%. Contingency is $6m, not $23m.",
+    },
+    {
+      id: "pe-arithmetic-backlog",
+      topic: "processing time saving months pooled panels",
+      claim:
+        "A 41% cut on a 38-month median saves about 6 months, which is too small to change the negotiating position.",
+      truth:
+        "Section 3.2: 41% of 38 months is about 15.6 months, not 6. The saving is roughly two and a half times what the claim states.",
     },
   ],
+  /**
+   * FOUR correct-advice claims, not two. RAIR is the positive half of the
+   * reliance construct and it now carries 30 points; refusing correct,
+   * source-grounded help is a failure in the same measurement, so the
+   * positive tail needs enough items to be a rate rather than an anecdote.
+   */
   correctAdvice: [
     {
       id: "ca-cluster",
@@ -334,13 +395,25 @@ export const T3_SCENARIO = {
       claim:
         "Section 5.3 flags an 18% cost increase for firms under 20 employees; a fee cap offsets the regressive effect.",
     },
+    {
+      id: "ca-capacity",
+      topic: "assessor training eleven months capacity",
+      claim:
+        "Section 6.2 is the binding constraint on the 2027 date: 1,240 assessors against a need of 3,100, and 11 months to train one. The gap has to be closed before the track opens, not after.",
+    },
+    {
+      id: "ca-sequencing",
+      topic: "recognition begins 2028 sequencing",
+      claim:
+        "Section 8.4 puts mutual recognition a year behind the track opening and limits it to credentials issued afterwards \u2014 so the first cohort carries a credential nobody else recognises for a year. That sequencing is negotiable and worth raising.",
+    },
   ],
   minWords: 120,
 };
 
 /** Pinned sha256(canonicalJson(T3_SCENARIO)) — asserted at test time. */
 export const T3_SCENARIO_SHA256 =
-  "c2419a3cbf6f813f0999afece626f2c3570292d0cfb06239870993b01590c40e";
+  "eade8c2db44a7665bcf3b0ce8cc900de6911518213c4f21eef6f4b5fa063ad56";
 
 /**
 

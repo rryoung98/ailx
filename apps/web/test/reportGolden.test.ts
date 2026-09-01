@@ -107,7 +107,7 @@ describe("report golden", () => {
    * 572c74c9…, 4bb83e18…, c223b246…, 0b6fe323…), and this tier issues none.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("38a45702f27d383ab5355bc2ff50f69d3e093eb31619b56f9c79a166f8bb0872");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("6c786dfb74f9c690096862b4dc68d8d296ad4f5e33e43ff57dbae342e9f9ac69");
   });
 
   it("is stable across repeated derivation", () => {

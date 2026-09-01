@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core";
 import type { Judgment } from "@ailx/core";
 import { plugin, validateT3Config } from "../src/plugin.js";
-import { rairCreditForClaim, revisionChainLength, scoreT3, verifiedClaimIds } from "../src/scoring.js";
+import {
+  rairCreditForClaim, relianceBand, relianceIndex, revisionChainLength, scoreT3,
+  verifiedClaimIds, RELIANCE_CALIBRATED_BAND, RSR_MIN_SURFACED,
+} from "../src/scoring.js";
 import {
   config, credulousTranscript, goodAnswer, goodTranscript,
   juryJudgments, overRejectTranscript, shortAnswer,
 } from "./fixtures.js";
-import type { T3Turn } from "../src/types.js";
+import { T3_DEFAULT_WEIGHTS, T3_TOTAL_POINTS, type T3Turn } from "../src/types.js";
 
 const score = (transcript: readonly T3Turn[], finalAnswer: string, judgments: Judgment[] = juryJudgments) =>
   runPure(() =>
@@ -30,13 +33,13 @@ describe("T3 score()", () => {
 
   it("strong candidate: full RSR, RAIR and process; analysis from stored jury", () => {
     const s = score(goodTranscript, goodAnswer);
-    expect(s.raw.rsr).toBe(25);        // caught 3/3 surfaced planted errors
-    expect(s.raw.rair).toBe(10);       // deliberated then adopted 2/2 correct-advice claims
+    expect(s.raw.rsr).toBe(50);        // caught 3/3 surfaced planted errors
+    expect(s.raw.rair).toBe(30);       // deliberated then adopted 2/2 correct-advice claims
     expect(s.raw.adviceDeliberated).toBe(2);
-    expect(s.raw.process).toBe(20);    // 3 prompts, chain 2, 3 verifies, full deliberation
+    expect(s.raw.process).toBe(35);    // 3 prompts, chain 2, 3 verifies, full deliberation
     // normalized jury mean 0.7333 -> 45 * 0.7333 = 33
     expect(s.raw.analysis).toBe(33);
-    expect(s.scaled).toBe(88);
+    expect(s.scaled).toBe(148);
     expect(s.raw.plantedCaught).toBe(3);
     expect(s.raw.revisionChainLength).toBe(2);
   });
@@ -47,9 +50,9 @@ describe("T3 score()", () => {
     expect(s.raw.plantedSurfaced).toBe(2);
     expect(s.raw.plantedCaught).toBe(0);
     expect(s.raw.verificationCount).toBe(0);
-    expect(s.raw.process).toBeLessThan(10); // no verification, no revision chain
+    expect(s.raw.process).toBeLessThan(config.weights.process / 2); // no verification, no revision chain
     // F5: blind instant accept of the one correct claim — HALF credit only.
-    expect(s.raw.rair).toBe(5);
+    expect(s.raw.rair).toBe(config.weights.rair / 2);
     expect(s.raw.adviceDeliberated).toBe(0);
   });
 
@@ -139,8 +142,12 @@ describe("T3 score()", () => {
 
   it("over-rejection is a failure too: challenging correct advice zeroes RAIR", () => {
     const s = score(overRejectTranscript, goodAnswer);
-    expect(s.raw.rsr).toBe(25);
+    expect(s.raw.rsr).toBe(config.weights.rsr);
     expect(s.raw.rair).toBe(0);
+    // The two-tailed read: perfect non-reliance, total under-reliance.
+    expect(s.raw["reliance.over"]).toBe(0);
+    expect(s.raw["reliance.under"]).toBe(1);
+    expect(s.raw["reliance.index"]).toBe(1);
   });
 
   it("last stance wins: challenge then accept counts as accepted (and IS deliberation)", () => {
@@ -152,7 +159,7 @@ describe("T3 score()", () => {
     const s = score(flip, goodAnswer);
     expect(s.raw.adviceAdopted).toBe(1);
     // Challenged before the final accept -> resistance shown -> full credit.
-    expect(s.raw.rair).toBe(10);
+    expect(s.raw.rair).toBe(config.weights.rair);
     expect(s.raw.adviceDeliberated).toBe(1);
   });
 
@@ -212,15 +219,19 @@ describe("T3 score()", () => {
           "meanJuryBand": 0.733,
           "plantedCaught": 3,
           "plantedSurfaced": 3,
-          "process": 20,
+          "process": 35,
           "promptCount": 3,
-          "rair": 10,
+          "rair": 30,
+          "reliance.index": 0,
+          "reliance.over": 0,
+          "reliance.under": 0,
           "revisionChainLength": 2,
-          "rsr": 25,
+          "rsr": 50,
+          "rsr.underpowered": 1,
           "verificationCount": 4,
           "wordCount": 192,
         },
-        "scaled": 88,
+        "scaled": 148,
       }
     `);
   });
@@ -239,15 +250,19 @@ describe("T3 score()", () => {
           "meanJuryBand": 0.733,
           "plantedCaught": 0,
           "plantedSurfaced": 2,
-          "process": 6.667,
+          "process": 11.667,
           "promptCount": 1,
-          "rair": 5,
+          "rair": 15,
+          "reliance.index": -1,
+          "reliance.over": 1,
+          "reliance.under": 0,
           "revisionChainLength": 0,
           "rsr": 0,
+          "rsr.underpowered": 1,
           "verificationCount": 0,
           "wordCount": 192,
         },
-        "scaled": 44.667,
+        "scaled": 59.667,
       }
     `);
   });
@@ -282,7 +297,125 @@ describe("T3 validateConfig", () => {
     const { minWords: _m, weights: _w, ...rest } = config as Record<string, unknown> & typeof config;
     const parsed = validateT3Config(rest);
     expect(parsed.minWords).toBe(1200);
-    expect(parsed.weights).toEqual({ rsr: 25, analysis: 45, process: 20, rair: 10 });
+    // Read from the ONE allocation table, so a re-weighting cannot leave the
+    // validator handing out last year's defaults.
+    expect(parsed.weights).toEqual(T3_DEFAULT_WEIGHTS);
+    expect(parsed.weights).toEqual({ rsr: 50, rair: 30, process: 35, analysis: 45 });
+    expect(T3_TOTAL_POINTS).toBe(160);
+  });
+});
+
+/**
+ * The two-tailed reliance index — T3's named construct. Over-reliance
+ * (swallowing the model's errors) and under-reliance (refusing its correct
+ * help) are BOTH failures, so a one-directional scale would be wrong.
+ */
+describe("reliance index", () => {
+  it("is zero and calibrated when both tails are clean", () => {
+    expect(relianceIndex(8, 8, 4, 4)).toEqual({
+      over: 0, under: 0, index: 0, band: "calibrated",
+    });
+  });
+
+  it("goes NEGATIVE for over-reliance — swallowed the planted errors", () => {
+    const r = relianceIndex(8, 0, 4, 4);
+    expect(r.over).toBe(1);
+    expect(r.under).toBe(0);
+    expect(r.index).toBe(-1);
+    expect(r.band).toBe("over-reliant");
+  });
+
+  it("goes POSITIVE for under-reliance — refused the correct advice", () => {
+    const r = relianceIndex(8, 8, 4, 0);
+    expect(r.index).toBe(1);
+    expect(r.band).toBe("under-reliant");
+  });
+
+  it("is symmetric: mirrored failures give mirrored indices", () => {
+    expect(relianceIndex(8, 4, 4, 4).index).toBeCloseTo(
+      -relianceIndex(8, 8, 4, 2).index,
+      12,
+    );
+  });
+
+  /**
+   * The trap in a difference score, and the reason `band` does not read the
+   * index alone. Failing in BOTH directions averages to zero.
+   */
+  it("does not call a candidate who fails both ways 'calibrated'", () => {
+    const bothWays = relianceIndex(8, 0, 4, 0);
+    expect(bothWays.index).toBe(0);
+    expect(bothWays.band).not.toBe("calibrated");
+    expect(bothWays.band).toBe("over-reliant"); // the larger failure names it
+  });
+
+  it("names the LARGER failure when both tails are large", () => {
+    expect(relianceBand(1, 0.8)).toBe("over-reliant");
+    expect(relianceBand(0.8, 1)).toBe("under-reliant");
+  });
+
+  it("tolerates a small imbalance inside the declared band", () => {
+    expect(RELIANCE_CALIBRATED_BAND).toBe(0.25);
+    expect(relianceBand(0.25, 0)).toBe("calibrated");
+    expect(relianceBand(0.26, 0)).toBe("over-reliant");
+  });
+
+  it("reads zero on a tail with nothing surfaced, rather than dividing by zero", () => {
+    expect(relianceIndex(0, 0, 0, 0)).toEqual({
+      over: 0, under: 0, index: 0, band: "calibrated",
+    });
+  });
+
+  it("is reported in raw on every sitting, both tails and the index", () => {
+    const s = score(credulousTranscript, goodAnswer);
+    // 2 planted surfaced, 0 challenged -> fully over-reliant on that tail.
+    expect(s.raw["reliance.over"]).toBe(1);
+    expect(s.raw["reliance.index"]).toBeLessThan(0);
+  });
+
+  it("comes back from scoreT3 as a banded object, not only as raw numbers", () => {
+    const r = runPure(() =>
+      scoreT3({ transcript: credulousTranscript, finalAnswer: goodAnswer }, juryJudgments, config),
+    );
+    expect(r.reliance.band).toBe("over-reliant");
+    expect(r.reliance.index).toBe(r.raw["reliance.index"]);
+  });
+});
+
+/**
+ * RSR carries 50 of 160 points on a subtest whose item count is the number
+ * of planted errors the form surfaced. Four cannot support that: catching 2
+ * of 4 versus 3 of 4 is 12.5 points decided by one event.
+ */
+describe("RSR power", () => {
+  it("declares a minimum surfaced-plant count of 8", () => {
+    expect(RSR_MIN_SURFACED).toBe(8);
+  });
+
+  it("flags a sitting that surfaced fewer plants than the declared minimum", () => {
+    const s = score(goodTranscript, goodAnswer); // fixture surfaces 3
+    expect(s.raw.plantedSurfaced).toBeLessThan(RSR_MIN_SURFACED);
+    expect(s.raw["rsr.underpowered"]).toBe(1);
+  });
+
+  it("clears the flag once enough plants surface", () => {
+    const ids = Array.from({ length: 8 }, (_, i) => `pe-${i}`);
+    const cfg = {
+      ...config,
+      plantedErrors: ids.map((id) => ({ id, topic: id, claim: id, truth: id })),
+    };
+    const transcript: T3Turn[] = [
+      { verb: "assisted", object: "assist:1", claimIds: ids, seq: 0, clientTs: "t" },
+      ...ids.map((id, i) => ({
+        verb: "challenged" as const, object: `claim:${id}`, seq: i + 1, clientTs: "t",
+      })),
+    ];
+    const s = runPure(() =>
+      scoreT3({ transcript, finalAnswer: goodAnswer }, juryJudgments, cfg),
+    );
+    expect(s.raw.plantedSurfaced).toBe(8);
+    expect(s.raw["rsr.underpowered"]).toBe(0);
+    expect(s.raw.rsr).toBe(config.weights.rsr);
   });
 });
 

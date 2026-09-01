@@ -6,6 +6,7 @@
 
 // Deep import: the purity harness only (no node:crypto in the browser bundle).
 import { runPure } from "@ailx/core/dist/purity.js";
+import { SCORE_ALLOCATION, trackPoints } from "@ailx/core";
 import {
   append, demoCohort, itemId, project, rubricVersionOf,
   scoreCohort, sha256Hex, TRACK_IDS,
@@ -174,8 +175,15 @@ export function runAllChecks(): CheckResult[] {
       const result1 = scoreSampleAttempt();
       const result2 = scoreSampleAttempt();
       const identical = JSON.stringify(result1) === JSON.stringify(result2);
+      // Each track's bound is ITS declared point total, not a flat 100 —
+      // T1 and T3 are 160, T2 is 80, and T4 is an unscored showcase whose
+      // 0-100 index is recorded but issues no points.
       const inBounds = result1.composite >= 0 && result1.composite <= 100 &&
-        TRACK_IDS.every((t) => result1.tracks[t].score.scaled >= 0 && result1.tracks[t].score.scaled <= 100);
+        TRACK_IDS.every((t) => {
+          const s = result1.tracks[t].score.scaled;
+          const cap = SCORE_ALLOCATION[t].scored ? trackPoints(t) : 100;
+          return s >= 0 && s <= cap;
+        });
       const notInvalid = TRACK_IDS.every((t) => result1.tracks[t].score.raw.invalid === undefined);
       return {
         pass: identical && inBounds && notInvalid && result1.pausedMsAccounted,

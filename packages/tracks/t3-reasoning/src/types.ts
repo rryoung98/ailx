@@ -1,8 +1,9 @@
 /**
- * T3 · AI-Assisted Reasoning — types.
+ * T3 · Calibrated Reliance — types.
  * Spec §T3: instrumented assistant seeded with known-incorrect outputs;
  * RSR / RAIR reliance constructs; xAPI-shaped transcript with revision_of.
  */
+import { trackPoints, weightsFor } from "@ailx/core";
 
 export interface T3PlantedError {
   id: string;
@@ -93,11 +94,21 @@ export interface T3PresentationConfig {
 }
 
 export interface T3Weights {
-  rsr: number;       // planted-error detection, 25
-  analysis: number;  // judged analysis quality, 45
-  process: number;   // transcript process quality, 20
-  rair: number;      // appropriate reliance, 10
+  /** Planted-error detection — appropriate NON-reliance. */
+  rsr: number;
+  /** Deliberate adoption of correct advice — appropriate reliance. */
+  rair: number;
+  /** Transcript process quality. */
+  process: number;
+  /** Judged analysis quality — the track's only LLM-jury points. */
+  analysis: number;
 }
+
+/** Score allocation, read from the ONE table in `@ailx/core`: 50/30/35/45. */
+export const T3_DEFAULT_WEIGHTS: T3Weights = weightsFor<keyof T3Weights>("t3");
+
+/** Points a flawless T3 can earn. Derived, never typed twice. */
+export const T3_TOTAL_POINTS: number = trackPoints("t3");
 
 /** The KEYED config: what score() consumes. Never built in hosted mode. */
 export interface T3Config extends T3PresentationConfig {

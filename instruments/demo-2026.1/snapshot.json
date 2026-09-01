@@ -920,21 +920,21 @@
       "sources": [
         {
           "path": "src/plugin.ts",
-          "sha256": "e59471ab252133be358770e5b22d4bd5f88508ad931cdfc677be737e0b77c20a"
+          "sha256": "01c0556a8841e718e7bdaeeb3158733e2da3fa3321d34aa46eeaf2f56b075082"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "d979b5a7d22e015cd814ff1192d3d899681dd77a1bf42fc5eded1fb6b556dec0"
+          "sha256": "909b454d7500f3a26a17ec50de6010d32342c3511610fa51e63cfa416ec13023"
         },
         {
           "path": "src/types.ts",
-          "sha256": "43dce399834efafd7ae00e7cdaa47fcfa6d77555d944066782ccaf5713a1e42d"
+          "sha256": "250ca873296d60a29bd0f6be35c7c08af08e9396f07d13fe693080d190e12796"
         }
       ],
       "externals": [
         "@ailx/core@workspace:*"
       ],
-      "digest": "a2a4c344628ce0ab8091f48c280585a631c6a765d81fe641f5fe686d694bf121"
+      "digest": "0aa69d7bb2162a0e67b22ee0c310f180681c52ca94cafc74b4af205803abecd4"
     },
     {
       "trackId": "t4",
