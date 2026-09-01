@@ -39,6 +39,7 @@
 import Link from "next/link";
 import {
   MIN_TREND_DAYS,
+  PRACTICE_ACCURACY_CAVEAT,
   REST_WINDOW_DAYS,
   TRACK_META,
   PRACTICE_MIN_ANSWERS,
@@ -56,6 +57,16 @@ import { useService } from "./serviceFetch";
 import styles from "../app/progress/progress.module.css";
 
 const EYEBROW = "YOUR PROGRESS";
+
+/**
+ * The page used to ask "Are you actually getting better?" — a question it
+ * cannot answer and must not imply an answer to. Practice accuracy here is a
+ * hit rate on a small repeating corpus, and accuracy in this literature moves
+ * with the CRITERION as readily as with sensitivity (PRACTICE_ACCURACY_CAVEAT
+ * in @ailx/report carries the argument and the sources). What the page can
+ * honestly show is what a person did.
+ */
+const PAGE_TITLE = "What you actually did.";
 
 /** One colour per track, from the token palette — no new hexes. */
 const TRACK_STROKE: Readonly<Record<TrackId, string>> = {
@@ -254,10 +265,10 @@ function Unrecognised({ accounts }: { accounts: boolean }) {
 export function ProgressView() {
   const result = useService<{ progress: ProgressReport }>("/progress", { identified: true });
   if (result.state === "loading") {
-    return <PageLoading eyebrow={EYEBROW} title="Are you actually getting better?" />;
+    return <PageLoading eyebrow={EYEBROW} title={PAGE_TITLE} />;
   }
   if (result.state === "error") {
-    return <PageError eyebrow={EYEBROW} title="Are you actually getting better?" />;
+    return <PageError eyebrow={EYEBROW} title={PAGE_TITLE} />;
   }
   // Say something TRUE for the deployment that is actually running. Under dev
   // auth there are no accounts and no sign-in to send anyone to, and identity
@@ -274,10 +285,11 @@ export function ProgressView() {
     <main className="page">
       <div className="container">
         <p className="eyebrow">YOUR PROGRESS · DERIVED FROM WHAT YOU DID</p>
-        <h1 style={{ maxWidth: "20ch" }}>Are you actually getting better?</h1>
+        <h1 style={{ maxWidth: "22ch" }}>{PAGE_TITLE}</h1>
         <p className="lede">
-          The honest answer is on this page and nowhere else on the site: your own practice, your
-          own sittings, and the difference between them. Nothing here compares you to anybody.
+          Your own practice days, your own sittings, and what changed between them. Nothing here
+          compares you to anybody, and nothing here is a measure of your ability — it is a record
+          of activity.
         </p>
 
         <section aria-labelledby="streak">
@@ -336,6 +348,12 @@ export function ProgressView() {
               {progress.practiceAccuracy.recent}%.
             </p>
           )}
+          {/* Always, not only when the number moved: the caveat is what makes
+              the figure readable, so it must not appear as a consolation for
+              a fall and vanish on a rise. */}
+          <p className="small faint" style={{ maxWidth: "62ch" }}>
+            {PRACTICE_ACCURACY_CAVEAT}
+          </p>
         </section>
 
         <section aria-labelledby="sittings">
@@ -356,6 +374,9 @@ export function ProgressView() {
         </section>
 
         <section aria-labelledby="moved">
+          {/* "What moved", never "what improved". A negative delta is as
+              legitimate an entry as a positive one, and for the practice
+              subject neither direction is an ability finding. */}
           <h2 id="moved">What moved</h2>
           {progress.improvements.length === 0 ? (
             <p className="muted" style={{ maxWidth: "58ch" }}>

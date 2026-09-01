@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PRACTICE_BANK, PRACTICE_DECK_SIZE, ARTEFACT_FAMILIES, FAMILY_META } from "@ailx/report";
+import {
+  PRACTICE_BANK,
+  PRACTICE_DECK_SIZE,
+  PRACTICE_EFFICACY_NOTE,
+  PRACTICE_EFFICACY_NOTE_SHORT,
+  ARTEFACT_FAMILIES,
+  FAMILY_META,
+} from "@ailx/report";
 import { PracticeDrill } from "../../lib/PracticeDrill";
 import { isServerMode } from "../../lib/mode";
 
 /**
- * /practice — the short, unscored training round (spec §13 "Mastery").
+ * /practice — the short, unscored round (spec §13 "Mastery").
+ *
+ * It claims NOTHING for itself. See PRACTICE_EFFICACY_NOTE in @ailx/report
+ * for why, and apps/web/test/efficacyCopy.test.tsx for the gate.
  *
  * This page exists in BOTH builds: the corpus is bundled, so the drill plays
  * offline in the static demo, and the hosted build additionally records the
@@ -17,7 +27,8 @@ import { isServerMode } from "../../lib/mode";
 export const metadata: Metadata = {
   title: "AILX — practice the tells",
   description:
-    "A short, unscored training round on the durable artefact families: real photograph or AI-generated image, with the tell shown on every card. Practice never draws on the scored item bank.",
+    "A short, unscored round on the durable artefact families: real photograph or AI-generated image, with the tell shown on every card. Practice never draws on the scored item bank. "
+    + PRACTICE_EFFICACY_NOTE_SHORT,
 };
 
 export default function PracticePage() {
@@ -39,12 +50,33 @@ export default function PracticePage() {
         <PracticeDrill />
 
         <p className="muted" style={{ maxWidth: "58ch" }}>
-          Being shown the thing you looked straight past is the teaching. In the published study
-          this round is modelled on, five minutes of it separated groups by twenty points of
-          accuracy — different people in each group, on one family of AI-generated faces, and
-          without a measurable change in sensitivity for non-specialists. So: a good way to learn
-          the tells, not a promise about your score.
+          Being shown the thing you looked straight past is the whole content of the round.
         </p>
+
+        {/* The efficacy question, answered before anybody asks it, in the one
+            wording every surface shares (@ailx/report). It sits directly
+            under the drill because that is where a person decides what the
+            last five minutes were worth. */}
+        <section aria-labelledby="does-it-work">
+          <h2 id="does-it-work">Does this actually work?</h2>
+          <p className="muted" style={{ maxWidth: "62ch" }}>
+            {PRACTICE_EFFICACY_NOTE}
+          </p>
+          <p className="small faint" style={{ maxWidth: "62ch" }}>
+            The detail, since we would rather you checked it than trusted us. The five-minute
+            training study this round is modelled on (Gray et al., <em>R. Soc. Open Sci.</em>{" "}
+            12:250921, 2025) separated <strong>different groups of people</strong> by twenty
+            points of accuracy on one family of AI-generated faces — and its trained
+            non-specialists showed no measurable change in sensitivity at all, so what moved was
+            willingness to call a face fake, not the ability to see that it was. The larger
+            trial (Geissler, Robertson &amp; Feuerriegel, <em>arXiv</em> 2507.23492, N = 1,200)
+            tested five ways of teaching this. Plain text and plain visual instruction worked on
+            the day. <strong>Gamified practice and immediate-feedback practice — this round —
+            did not beat doing nothing</strong>, and two weeks later nothing beat doing nothing.
+            We are keeping the round because it is a good time and the tells are real; we are
+            not going to tell you it made you sharper.
+          </p>
+        </section>
 
         <section aria-labelledby="families">
           <h2 id="families">The three families</h2>
@@ -75,8 +107,10 @@ export default function PracticePage() {
             has to be culturally specific before it can be culturally wrong. Three of the
             generated pictures are a painting or a CGI render rather than a photorealistic
             generation, so they can be called from their finish alone — they are marked as such
-            in the corpus data. So a round repeats material sooner than the scored deck would,
-            and the drill is training, not a measure of anything.{" "}
+            in the corpus data. So a round repeats material sooner than the scored deck would —
+            which is also why your practice percentage is not a measurement of you: past the
+            first few rounds you are partly recognising pictures whose answer you have already
+            been given.{" "}
             {isServerMode() ? (
               <>
                 Your rounds are recorded and your streak is worked out on the server.{" "}

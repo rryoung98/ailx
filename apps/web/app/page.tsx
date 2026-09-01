@@ -283,9 +283,12 @@ export default function Home() {
               </>
             ) : (
               <>
-                <h2 className="wyg-title">Learn the families.</h2>
+                {/* "Meet", not "Learn": whether the round teaches anybody
+                    anything is the open question (PRACTICE_EFFICACY_NOTE),
+                    and a funnel step is a bad place to prejudge it. */}
+                <h2 className="wyg-title">Meet the families.</h2>
                 <p className="wyg-line">
-                  Physics, anatomy, culture: the same tells come back until you see them first.
+                  Physics, anatomy, culture: the same three families come round again and again.
                   This is the static demo build, so rounds play and nothing is recorded.
                 </p>
                 <p className="wyg-more"><Link href="/practice">Practise the tells →</Link></p>

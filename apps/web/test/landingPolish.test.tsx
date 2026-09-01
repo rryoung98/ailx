@@ -65,7 +65,7 @@ describe("funnel section", () => {
     // landingFunnel.test.tsx.
     expect(titles).toEqual([
       "Play one card.",
-      "Learn the families.",
+      "Meet the families.",
       "Then take the whole thing.",
       "Keep what it leaves you.",
     ]);
