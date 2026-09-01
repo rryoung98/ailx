@@ -126,7 +126,39 @@ Four tracks, 100 points each, scored by different mechanisms on purpose — so t
 
 > **Design principle: no track is scored the same way as any other**
 >
-> T2 is scored by arithmetic on response data with no model in the loop at all. T3's most heavily weighted component is a planted-error detection rate — also model-free. T1 and T4 route the subjective portion to *human* comparative judgement, with vision models confined to objectively checkable gates. This means a discovered flaw in LLM-as-judge methodology damages at most 40–45 points out of 400, never the examination as a whole. That property is worth more than any single scoring refinement.
+> T2 is scored by arithmetic on response data with no model in the loop at all. T3's most heavily weighted component is a planted-error detection rate — also model-free. T1 and T4 route the subjective portion to *human* comparative judgement, with vision models confined to objectively checkable gates. The property this buys is that a discovered flaw in one scoring *mechanism* cannot compromise the whole examination.
+>
+> **That principle previously carried a number here — "at most 40–45 points out of 400" — and the number was wrong in both directions. It is stated correctly below and it is now derived from the code rather than asserted in prose.**
+
+#### How the 400 points are actually resolved
+
+Two numbers, because two different failures are worth bounding separately. *Designed* is the mechanism each component is supposed to use. *Implemented* is what `score()` reads today.
+
+| Mechanism | Designed | Implemented (2026.1) |
+|---|---|---|
+| Model-free arithmetic on stored response/transcript data | 159 | 159 |
+| Machine-checkable gates (vision model finds evidence; the finding is checkable) | 30 | 0 |
+| Blinded human pairwise comparison (Bradley–Terry) | 110 | 0 |
+| LLM jury against a locked rubric | 101 | **241** |
+
+Per track, the designed split is: **T1** 30 gate + 40 human-CJ + 30 LLM jury; **T2** 100 model-free; **T3** 55 model-free + 45 LLM jury; **T4** 40 human-CJ + 30 blind-human-viewer panel + 26 LLM jury + 4 model-free.
+
+So the honest statement of the safety property, as designed, is: **a discovered flaw in LLM-as-judge methodology damages at most 101 of 400 points, and at most 45 within any single track.** Not 40–45 overall. The 40–45 figure described T3's analysis component alone and was never the instrument-wide exposure.
+
+The implemented column is worse, and the gap is not a rounding error. `score()` cannot tell a stored human comparison from a stored model judgment — both arrive as a `Judgment` row — so every component that has no measurement code behind it resolves, today, through the same stored-judge path. **241 of 400 points currently resolve through stored judge values.** The four causes are listed in "What is not implemented" immediately below, and §18 carries the sequencing.
+
+#### What is not implemented — read this before quoting a score
+
+Four measurements this document specifies do not exist in code. A stub that returns a number is not the measurement, and marking it here is cheaper than discovering it in an audit.
+
+| Missing | Points affected | What runs instead |
+|---|---|---|
+| **Bradley–Terry** — the model behind every comparative point in T1 and T4 | 80 | Nothing fits it. The stage id `pairwise-comparative` enqueues to a `human-cj` queue that no fit consumes; in the public demo the dimension is filled by a sha256-seeded stand-in over string length. |
+| **T1's functional & accessibility gates** — contrast, viewports, landmarks, keyboard, performance budget, required brief elements | 30 | No check exists. `requiredElements` is displayed to the candidate and never verified. The dimension is a stored judgment median. |
+| **T3's heterogeneous three-model jury**, calibrated against ~200 human-labelled examples per rubric per language | 45 | One stub returning three seeded samples that band on answer length. The calibration set does not exist, and the QWK 0.708–0.712 result this component's defence rests on is conditional on it. |
+| **T4's blind-viewer brief-compliance panel** — the one objective thing in T4, and the reason its humanness was argued for at length | 30 | `plugin.ts` routes `judge-t4-brief-fit` to the `judge` queue, i.e. to a model. |
+
+Until each of those lands, the affected points are a **band with a stated error, not a measurement**. §16's export tiers carry the flag; a report that omits it is a report we would have to withdraw.
 
 ### Composite scoring
 
@@ -162,8 +194,8 @@ Candidates receive a brief 48 hours before the summit: build a personal site tha
 
 ### Score allocation
 
-- **30 pts — Functional & accessibility gates.** Renders without console error; responsive at three viewports; WCAG AA contrast on all text; semantic landmarks; keyboard-navigable; performance budget met; all required brief elements present
-- **40 pts — Comparative visual merit.** Blinded forced-choice pairwise comparison by the full cohort, fitted with Bradley–Terry, style covariates partialled out
+- **30 pts — Functional & accessibility gates.** *[Not implemented in 2026.1 — see §04 "What is not implemented". No contrast, viewport, landmark or keyboard check exists; the dimension is a stored judgment median.]* Renders without console error; responsive at three viewports; WCAG AA contrast on all text; semantic landmarks; keyboard-navigable; performance budget met; all required brief elements present
+- **40 pts — Comparative visual merit.** *[Not implemented in 2026.1 — Bradley–Terry exists nowhere in either repository. See §04.]* Blinded forced-choice pairwise comparison by the full cohort, fitted with Bradley–Terry, style covariates partialled out
 - **20 pts — Technical ambition.** WebGL / Three.js, canvas work, custom shaders, non-trivial interaction — detected objectively, then confirmed by judge as purposeful rather than decorative
 - **10 pts — Design rationale.** 200-word statement of intent plus prompt log; scored on the coherence between stated intent and delivered artefact
 
@@ -312,7 +344,7 @@ Candidates receive a long, dense primary source — a technical or policy docume
 ### Score allocation
 
 - **25 pts — Planted-error detection (RSR).** Did the candidate catch and reject the seeded wrong outputs? Fully objective
-- **45 pts — Analysis quality.** Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
+- **45 pts — Analysis quality.** *[Not implemented in 2026.1 — one stub returning three seeded samples that band on answer length; the ~200-example calibration set does not exist. See §04.]* Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
 - **20 pts — Process quality.** From the transcript: decomposition, prompt iteration, verification behaviour, whether the candidate went back to the primary source
 - **10 pts — Appropriate reliance (RAIR).** Did the candidate update toward correct AI advice they had initially resisted? Over-rejection is a failure too
 
@@ -351,8 +383,8 @@ The quota is not a cost-control measure disguised as a rule — though it is als
 
 ### Score allocation
 
-- **30 pts — Brief compliance & communicative accuracy.** Blind viewers are asked what the work communicates; the score is agreement with the brief's stated intent. Machine-checkable elements verified separately
-- **40 pts — Comparative merit.** Blinded forced-choice pairwise, same Bradley–Terry machinery as T1
+- **30 pts — Brief compliance & communicative accuracy.** *[Not implemented in 2026.1 — `plugin.ts` routes `judge-t4-brief-fit` to the model `judge` queue, not to the blind human viewer panel this component's defence rests on. See §04.]* Blind viewers are asked what the work communicates; the score is agreement with the brief's stated intent. Machine-checkable elements verified separately
+- **40 pts — Comparative merit.** *[Not implemented in 2026.1 — same missing Bradley–Terry as T1. See §04.]* Blinded forced-choice pairwise, same Bradley–Terry machinery as T1
 - **20 pts — Direction & craft evidence.** From the prompt log: iteration structure, use of reference and editing, quota efficiency, whether revisions were diagnostic or random
 - **10 pts — Provenance & disclosure hygiene.** Content Credentials intact on delivered assets, correct disclosure statement, correct attribution of any reference material
 
