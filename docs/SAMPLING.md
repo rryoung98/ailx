@@ -132,3 +132,104 @@ reporting floor for Track B is separate and higher (§4).
 directory: point estimate, standard error, replicate weights method, weighting margins and sources,
 response rate computed to AAPOR RR3, the NRBA, and the item-level parameter file. If the bundle is
 incomplete the release script refuses to build it. There is no way to publish the number alone.
+
+---
+
+## 4. How many people, and what the number buys
+
+### 4.1 The recommendation
+
+**n = 1,500 completes per country per wave is the floor for a national headline. n = 3,000 is the
+number to buy if subgroups are part of the promise, and they will be.** ESTIMATE, with the
+arithmetic below; this is an engineering judgement calibrated against PISA and PIAAC practice, not
+a formal power analysis against a known variance component structure — we do not yet have the
+variance components, and that is an **UNKNOWN** until wave 1.
+
+Reference points. PISA standard 1.7/1.8 requires **4,500 assessed students from 150 schools** per
+participant (1,500 from 50 schools for an adjudicated sub-entity). ICILS 2023 realised ~3,900
+students per system. PIAAC Cycle 2 realised ~160,000 adults across 31 systems, ~5,200 per system;
+the US realised 4,574 assessed from 16,414 sampled households. **VERIFIED.** AILX at 1,500–3,000 is
+below all of them, which is a fact to state rather than hide: we buy less precision than PIAAC and
+we say so in the same sentence as the estimate.
+
+### 4.2 What the precision actually is
+
+The composite is normalised to mean 50, SD 15 (spec §04), so a standard deviation is 15 points on
+the reported scale. Half-width of a 95% confidence interval on a national mean is
+`1.96 · SD · sqrt(deff / n)`.
+
+Design effect `deff` here is the combined effect of unequal weights (Kish: `1 + CV²` of the weights)
+and any clustering. Probability web panels have no geographic clustering but do have substantial
+weight variation after non-response adjustment; **1.3–2.0 is the plausible range and 1.6 is the
+planning value. ESTIMATE** — the real value is vendor-specific and is a deliverable of wave 1, not
+an assumption we should be allowed to keep.
+
+| n | deff 1.3 | deff 1.6 | deff 2.0 |
+|---|---|---|---|
+| 3,000 | ±0.61 pt (0.041 SD) | ±0.68 (0.045) | ±0.76 (0.051) |
+| 2,000 | ±0.75 (0.050) | ±0.83 (0.055) | ±0.93 (0.062) |
+| **1,500** | ±0.87 (0.058) | **±0.96 (0.064)** | ±1.07 (0.072) |
+| 1,000 | ±1.06 (0.071) | ±1.18 (0.078) | ±1.31 (0.088) |
+| 500 | ±1.50 (0.100) | ±1.66 (0.111) | ±1.86 (0.124) |
+| 250 | ±2.12 (0.141) | ±2.35 (0.157) | ±2.63 (0.175) |
+
+These are **sampling error only**. Two further variance components must be added before any figure
+is published, and both are larger than people expect:
+
+1. **Measurement error via plausible values.** A short matrix-sampled form gives each respondent a
+   subset of items, so individual point estimates are biased for group statistics; the correct
+   treatment is multiple imputation (5–10 plausible values, Rubin's rules), which adds imputation
+   variance `(1 + 1/M)·B` on top of sampling variance `U`. ESTIMATE: **expect a 10–30% inflation of
+   the standard error** relative to the table above for a form of AILX's likely panel length.
+   Reporting a mean without this is the single easiest way to overstate precision, and it is the
+   thing a hostile methodologist checks first.
+2. **Linking error, for any year-over-year comparison.** Trend statements need an explicit
+   linking-error term added to the SE of the difference (PISA does this; we must too — see §9 on the
+   frozen trend form).
+
+### 4.3 Country comparison, which is the thing people will actually do
+
+The difference between two independent country means has SE `sqrt(2)` times the single-country SE.
+At n = 1,500 and deff 1.6: the 95% CI on a difference is **±1.36 points**, and the smallest
+difference detectable with 80% power is **1.94 points** — about **0.13 SD**. So a league table
+built on 1,500 per country can separate countries that differ by roughly an eighth of a standard
+deviation and cannot separate anything finer. Most adjacent ranks in any real league table will be
+statistically indistinguishable, and the release must therefore present **overlapping-band
+groupings, not ranks** — PISA's own convention of reporting "countries whose mean is not
+significantly different from" is the model. **A bare ordered list of countries is a
+misrepresentation of our own precision and we should never publish one.**
+
+### 4.4 What breaks at n = 500
+
+n = 500 is the number a budget conversation will produce, so its failure modes need to be concrete.
+
+- **The headline mean survives, barely.** ±1.66 points at deff 1.6 (0.11 SD) is publishable as a
+  national estimate with a wide-enough interval, and the honest framing is "we can tell you roughly
+  where the country sits, not where it ranks".
+- **Country comparison dies.** Minimum detectable difference rises to **3.4 points (0.22 SD)**. On
+  any plausible spread of national means, almost nothing is significant, and a ranking becomes noise
+  with a decimal point on it.
+- **Subgroups die first and hardest.** At n = 1,500 (deff 1.6): a half-sample subgroup (e.g. by sex)
+  gets ±1.36; a quarter ±1.92; a 15% group ±2.48; an 8% group ±3.39; a 4% group ±4.80. Scale all of
+  these by `sqrt(3)` for n = 500. Age × education cross-tabs, which are exactly what a labour
+  ministry wants, are gone.
+- **Weighting gets unstable.** Raking to six or seven margins on 500 cases produces extreme weights
+  and forces heavy trimming, which pushes the design effect up — so the n = 500 row of the table is
+  optimistic about its own design effect, and the true cost is worse than it looks.
+- **The NRBA gets weak.** Non-response bias analysis compares respondent and non-respondent
+  distributions; at n = 500 the comparisons have no power, so "we found no evidence of bias" becomes
+  a statement about our sample size rather than about bias. That is the sentence John Jerrim's FOI
+  work exists to punish.
+
+**Decision rule: below n = 1,000 realised completes in a country, we publish no national mean for
+that country.** We publish the wave, the response rate, the NRBA and the reason the country is
+suppressed. A suppressed country is a credibility asset; a thin country dressed as a full one is
+the whole risk.
+
+### 4.5 Reporting floors
+
+- **Country headline:** ≥ 1,000 realised completes AND a completed NRBA. Below that: suppressed.
+- **Subgroup:** ≥ 100 unweighted cases in the cell AND a CI half-width ≤ 0.25 SD. Below that:
+  the cell is reported as "not estimable at this sample size", with the n shown.
+- **Re-identification floor:** the existing `MIN_COHORT_SIZE = 10` still applies and is a floor on
+  disclosure, not on statistical adequacy. The two floors are separate and both bind.
