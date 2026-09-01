@@ -773,3 +773,131 @@ and publish a credible national knowledge statistic — the thing being proposed
 quota sample and quotes the margin of error a probability sample "would have". **VERIFIED.** That
 sentence is the single most quotable methodological error available to us, and we should never write
 its equivalent. If we do not have a probability sample, we quote no margin of error at all.
+
+---
+
+## 12. Two things that will break the statistic even if the sampling is right
+
+Included here because they are the reason a correct sample can still produce a wrong headline, and
+because both fixes are sampling-design decisions that must be made *before* wave 1.
+
+**12.1 The basket problem — annual re-versioning is a basket change every year.** The CPI's four
+Boskin biases map onto AILX, and **new-product bias is the fatal one**: an item that discriminated
+in 2026 (six-fingered hands, hallucinated citations) is trivial or impossible in 2027 because the
+*generators* changed. A falling national score may mean the population got worse, or that the
+generators got better, and **the two are not separable without an explicit anchor design**.
+Mitigation, following NAEP's Long-Term Trend pattern: carry a **frozen trend form** — fixed items,
+fixed generator vintages — alongside the current form, field both in the same wave, and **report the
+headline trend only on the frozen line**, with the current form reported as a level, not a change.
+The panel budget must therefore include the frozen block in its minutes, which costs form length,
+which costs response rate. That trade is real and should be made deliberately.
+
+**12.2 The composite problem.** AILX sums four heterogeneous tracks to 400 points, and the
+across-track weighting is a design choice, not an estimated parameter. Kreiner and Christensen
+dismantled PISA's country rankings by showing the ordering was not robust to defensible alternative
+models — and a hand-weighted four-track composite is *more* exposed to that attack than PISA is.
+**Before any country ordering is published, run and publish a weighting-sensitivity analysis**: how
+the ordering changes under equal weights, under reliability weights, under a single-factor model,
+and with T1 in and out (§5). If the ordering flips under a defensible alternative, we report track
+scores and no composite ranking. That is a cheaper outcome than having someone else find it.
+
+---
+
+## 13. Costing the first credible release
+
+All figures **ESTIMATE** unless marked. They are built from the one published rate card (UAS) plus
+market-judgement ranges, and every one of them must be replaced by a real quote before commitment.
+The purpose of this section is to make the decision legible, not to be a budget.
+
+### 13.1 Per-country fieldwork
+
+| Country | Route | n | Per complete | Fieldwork |
+|---|---|---|---|---|
+| US | KnowledgePanel / AmeriSpeak / SSRS custom, 45 min | 2,000 | $120 (range $75–200) | **$240k** ($150–400k) |
+| UK | Ipsos KnowledgePanel UK, 45 min | 2,000 | $110 (range $70–190) | **$220k** ($140–380k) |
+| Japan | commissioned ABS push-to-web, no panel to rent | 1,500 | $250 (range $150–500) | **$375k** ($225–750k) |
+| Korea | commissioned RDD phone-to-web recruitment | 1,500 | $250 (range $150–500) | **$375k** ($225–750k) |
+
+The asymmetry is the headline finding of §8: **the two countries in AILX's trilingual framing are
+the two that cannot be bought off the shelf**, and they cost roughly twice as much per complete for
+a smaller n.
+
+### 13.2 Non-fieldwork costs, per wave
+
+| Line | Estimate | Note |
+|---|---|---|
+| Panel short-form build (matrix design, block rotation, device lock, telemetry) | $60–120k | mostly in-house engineering; one-time, then maintenance |
+| Sampling and weighting contractor (design weights, propensity, raking, replicate weights, plausible-value scaling) | $80–150k | do not do this in-house in wave 1; "nobody marks their own homework" is a governance requirement, not a preference |
+| NRBA production and publication | $30–60k | usually the same contractor |
+| Independent technical advisory board + external psychometric review | $30–60k | the antidote to the Meyer critique of a non-mandated body ranking nations |
+| Translation and localisation, per non-English country | $30–60k | cApStAn-style verification; PIAAC uses a dedicated translation contractor |
+| LLM judging for T3/T4 at panel scale | $10–30k | ~$3–8 per sitting × 3,500–7,000 sittings; small relative to fieldwork, and it is a per-wave recurring cost |
+| Microdata publication, documentation, replication code | $20–40k | |
+
+### 13.3 Three release shapes
+
+| Option | Countries | n | Estimated total | What it buys |
+|---|---|---|---|---|
+| **A — minimum credible** | US only | 3,000 | **$0.6–0.9M** | one defensible national estimate, subgroups reportable, an NRBA, and a published method. No comparison, no trend. |
+| **B — recommended first release** | US + UK | 2,000 each | **$0.8–1.2M** | two estimates, one genuine cross-national comparison on a common language, both off-the-shelf frames, lowest execution risk. Establishes the method before spending on hard frames. |
+| **C — the trilateral claim** | US + JP + KR (+UK) | 1,500–2,000 each | **$1.9–2.8M** | the cross-national norming claim in the spec, and the only version that supports "cross-nationally normed" as written. Highest execution risk: two commissioned fresh samples, two translations, and DIF screening across three languages. |
+
+**Recommendation: B, then C.** Option B proves the pipeline — short form, weighting, plausible
+values, NRBA, publication bundle — on frames that can be bought, at roughly a third of C's cost. Do
+C in wave 2 with the method already public and reviewed, rather than debugging the method and the
+Japanese address frame in the same quarter.
+
+**What none of these buys.** None of them is PIAAC. PIAAC realised ~5,200 adults per country with
+in-home administration and a $100 incentive, and still reported 27.8% in the US. We are buying a
+smaller, web-delivered, online-population estimate for a fraction of the cost, and the release
+should say so in those words. An honest smaller claim is worth more than a large claim that a
+methodologist can take apart in an afternoon.
+
+---
+
+## 14. Decisions taken in this document
+
+1. Two tracks, never mixed. Item parameters cross A → B; person scores never enter a population
+   estimator (§2).
+2. The separation is enforced by schema and by a guard test, not by policy (§3).
+3. Floor n = 1,000 realised completes for any published national mean; target 1,500; buy 3,000 where
+   subgroups are promised (§4).
+4. No country ranking. Overlapping bands only (§4.3).
+5. The panel fields a 45–60 minute matrix-sampled short form, not the 4h 20m sitting; the short form
+   and the full sitting are linked by an anchor block with published linking error (§5).
+6. The population form is device-locked to desktop/laptop by default, with a randomised device
+   experiment in wave 1 to test whether the lock is necessary (§6).
+7. Target population is **internet-using adults 18–65**, stated in every release; the offline
+   population is a declared, quantified, sensitivity-bounded exclusion (§7).
+8. Weighting: propensity cells → raking to national-frame margins including internet-use frequency →
+   penalised trimming targeting deff < 2 → Fay-BRR replicate weights (§9).
+9. The NRBA is published in the same bundle as the estimate, always, with the break-off bound, and
+   "no notable bias" is a banned phrase (§10).
+10. Track A publications carry the §11 hedging block verbatim, and never use "national" or
+    "representative".
+11. A frozen trend form is fielded from wave 1, and headline trends are reported only on it (§12).
+12. First release: US + UK, n = 2,000 each, roughly $0.8–1.2M (§13).
+
+---
+
+## 15. Open questions and unknowns
+
+- **UNKNOWN:** the true design effect of any vendor's panel for our instrument. Wave 1 must report
+  the realised CV(w) and deff, and §4's table should be rewritten with real numbers afterwards.
+- **UNKNOWN:** the tolerable form length for a probability panel taking a scored assessment. Settle
+  it with a randomised length experiment in wave 0, not by assertion. Note that USC's UAS caps any
+  single sitting at 30 minutes, which is *shorter* than our planning assumption — that alone may
+  force a two-session panel design, with the §8.3 warning that modularisation can increase total
+  non-response.
+- **UNKNOWN:** whether T1 can be fielded on a panel at all (§5).
+- **UNVERIFIED:** the opt-in status of specific Japanese and Korean commercial panels is inferred
+  from the absence of a probability claim, not from a vendor statement. Confirm before publishing
+  the vendor map.
+- **UNVERIFIED:** per-complete pricing for AmeriSpeak, KnowledgePanel and SSRS custom work. Three
+  real quotes should replace §13's estimates before any budget decision.
+- **UNVERIFIED:** the clause numbering of NCES Statistical Standard 4-4-A (§10.3).
+- **NOT YET DESIGNED:** the conditioning model for plausible values, and which background variables
+  must be in it to support the subgroup breakdowns we intend to publish. This has to be decided
+  *before* fielding, because it determines the background questionnaire.
+- **NOT YET DESIGNED:** DIF screening protocol across en/ja/ko, which is a prerequisite for option C
+  and is the known worst case for T2, where the "tells" of synthetic media are culture-specific.
