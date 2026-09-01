@@ -109,7 +109,7 @@ Four tracks, 100 points each, scored by different mechanisms on purpose — so t
 - **T1 — Creative Build** (160 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
 - **T2 — Synthetic-Media Discrimination** (80 pts, 50 min). 120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture.
 - **T3 — Calibrated Reliance** (160 pts, 90 min). Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis.
-- **T4 — Generative Direction** (100 pts, 60 min). Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts.
+- **T4 — Generative Direction** (**0 pts — unscored showcase**, 60 min). Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts. It is run, recorded and published; it issues no points and enters no composite.
 
 ### Session structure
 
@@ -451,16 +451,20 @@ Sixty minutes to produce a visual set — three still images and one short video
 
 The quota is not a cost-control measure disguised as a rule — though it is also that. Working within a fixed number of final renders is a legitimate test of prompt efficiency and of knowing when a result is good enough, and it is stated in the exam rules.
 
-### Score allocation
+### Score allocation — none. T4 is an unscored showcase.
 
-- **30 pts — Brief compliance & communicative accuracy.** *[Not implemented in 2026.1 — `plugin.ts` routes `judge-t4-brief-fit` to the model `judge` queue, not to the blind human viewer panel this component's defence rests on. See §04.]* Blind viewers are asked what the work communicates; the score is agreement with the brief's stated intent. Machine-checkable elements verified separately
-- **40 pts — Comparative merit.** *[Not implemented in 2026.1 — same missing Bradley–Terry as T1. See §04.]* Blinded forced-choice pairwise, same Bradley–Terry machinery as T1
-- **20 pts — Direction & craft evidence.** From the prompt log: iteration structure, use of reference and editing, quota efficiency, whether revisions were diagnostic or random
-- **10 pts — Provenance & disclosure hygiene.** Content Credentials intact on delivered assets, correct disclosure statement, correct attribution of any reference material
+**T4 issues no points and carries no composite weight.** The runner, the brief and the public gallery stay; what the track may no longer do is contribute to a score of record. Four reasons, in the order a reviewer would raise them:
 
-> **Why "brief compliance" is the largest non-comparative component**
->
-> It is the only part of generative work that has an objective answer. A blind panel is shown the output without the brief and asked what it communicates; the score is the agreement between their reading and the brief's stated intent. This measures the thing that separates direction from generation, and it does so without any model rendering an aesthetic verdict. It also happens to be the component that will most clearly differentiate a strong cohort.
+1. **It duplicated T1.** Forty points of blinded pairwise comparative merit on the same Bradley–Terry machinery, twenty points of process evidence from a prompt log, ten of provenance hygiene, and the same `[Proxy]` claim type. §03 maps T1 to "Create with AI 1–3, Manage AI 1–3" and T4 to "Create with AI 1, 2, 4" — an overlap, not a distinction. Whether the two scores correlate above ~.6 in the calibration cohort is now a question the recorded showcase index can still answer.
+2. **It could never enter the population statistic.** Seventy of its hundred points — comparative 40 plus the blind-viewer panel 30 — need human panels a probability panel structurally cannot supply: panellists are paid once and do not come back to judge each other. §6 of `docs/TRACK-REVIEW.md` states the criterion plainly: a track that cannot be shortened cannot contribute at all. A compressed T4 block would have yielded craft and provenance, 30 points measuring prompt-log shape and metadata hygiene, which is not T4.
+3. **Its governance model does not survive scale.** The gallery is approval-required, and a human approves every asset before it is publicly visible. At four assets per candidate and N = 50,000 that is 200,000 approvals — roughly 1,100 person-hours at 20 seconds each. That commitment is correct for a 45-person summit with three foreign ministries watching. It is not a growth plan, and the alternatives (sampled approval, takedown-based moderation) are exactly the weaker posture this document refused.
+4. **It was the largest block of judge-resolved points in the instrument** — 96 of 100, including the one objective component whose entire defence was that a *human* panel decides it (see §04's implemented column, and `plugin.ts` routing `judge-t4-brief-fit` to the model `judge` queue).
+
+**What survives, and where it went.** The distinctive thing T4 measured — *did the artefact communicate what it was meant to communicate* — is a rubric dimension, not a track. It moves into T3, which already produces a written analysis for a named stakeholder: "would the stakeholder understand the position" is the same construct on material that is cheaper, compressible and already collected. This follows `docs/FUTURE-TRACKS.md`'s own pattern of preferring an item family or a rubric dimension over a new track.
+
+**What is still recorded.** `score()` still computes a 0–100 **showcase index** from the same evidence (brief-fit 30, comparative 40, craft 20, provenance 10, as local constants), it is stored in the attempt, and it renders as "showcase, not scored". Keeping it is free, it is useful research data, and it is the only way left to compute the T1–T4 correlation that would settle the redundancy argument with numbers instead of judgement.
+
+> **Stated against our own case.** The one piece of external evidence that cuts the other way is the PISA 2029 Media & AI Literacy framework, which gives roughly half its test time to *create* alongside analyse and evaluate. Cutting a generative track moves AILX away from that balance. The answer is that T1 is a create track, it is now the flagship at 160 points, and it is the create track that has an external criterion. AILX has not stopped measuring creation; it has stopped measuring it twice.
 
 ### Gallery governance
 

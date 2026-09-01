@@ -14,6 +14,26 @@ export function isServerMode(): boolean {
 }
 
 /**
+ * Is Clerk mounted in THIS build?
+ *
+ * Two conditions, and both are load-bearing. A build with no backend has
+ * nothing to authenticate against, and a build with no publishable key cannot
+ * mount `<ClerkProvider>` without throwing on first render — so a hosted
+ * deploy that has not been given a key stays on the asserted dev id and keeps
+ * working. That is the reversible half of the atomic switch in
+ * docs/ARCHITECTURE.md §10.2: unset the key and the frontend is back where it
+ * started, no rollback needed.
+ *
+ * The ONLY reader of NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in this app, the same
+ * one-place rule `apiOrigin()` follows — Clerk's own SDK reads the variable
+ * from the environment itself, so no call site needs to pass it around.
+ */
+export function isClerkEnabled(): boolean {
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  return isServerMode() && typeof key === "string" && key !== "";
+}
+
+/**
  * Footer provenance line. The static showcase really is offline — the
  * hosted build is not, and claiming "no network calls" there is a lie the
  * dogfooder caught on every page.

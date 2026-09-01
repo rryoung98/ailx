@@ -657,7 +657,7 @@ export default function ExamPage() {
                   <span style={{ flex: 1 }}>{t.name}</span>
                   {ts.status === "completed" ? (
                     <span className="small mono" style={{ color: "var(--good)" }}>
-                      ✓ {formatTrackScore(ts.score, ts.judgments)}
+                      ✓ {formatTrackScore(ts.score, ts.judgments, t.id)}
                     </span>
                   ) : t.id === next ? (
                     <span className="small mono" style={{ color: "var(--warn)" }}>next</span>

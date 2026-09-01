@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  append, loadAttempt, project, TRACK_IDS,
+  append, loadAttempt, project, SCORED_TRACKS, TRACK_IDS,
   type SequencedEntry,
 } from "@ailx/session";
+import { TOTAL_POINTS } from "@ailx/core";
 import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
 import { scoreTrack } from "../../lib/registry";
 import {
@@ -309,7 +310,7 @@ export default function ReportPage() {
               </span>
               <div className="muted small">composite · standardized on the synthetic demo cohort · mean 50 · SD 15</div>
               <div className="muted small">
-                raw {TRACK_IDS.reduce((a, t) => a + summary.trackRaw[t], 0).toFixed(1)} / 400
+                raw {SCORED_TRACKS.reduce((a, t) => a + summary.trackRaw[t], 0).toFixed(1)} / {TOTAL_POINTS}
               </div>
               {summary.percentile <= 0.5 / summary.cohortSize + 1e-9 ? (
                 <div className="faint small" style={{ maxWidth: "34ch" }}>
@@ -448,7 +449,7 @@ export default function ReportPage() {
                 {/* One formatter, so a number never renders without saying what
                     produced it: demo-judged tracks carry the qualifier and an
                     unscored track says so in words (packages/report judging.ts). */}
-                <span className="mono">{formatTrackScore(score, ts.judgments)}</span>
+                <span className="mono">{formatTrackScore(score, ts.judgments, t)}</span>
               </div>
               {meta.components.map((c) => {
                 const ALIASES: Record<string, string[]> = {

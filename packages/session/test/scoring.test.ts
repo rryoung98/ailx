@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { runPure } from "@ailx/core";
+import { runPure, trackPoints } from "@ailx/core";
 import {
   bandFromComposite, demoCohort, mean, midRankPercentiles, probit,
-  quotaBands, scoreCohort, stdev, zScores, TRACK_WEIGHTS,
+  quotaBands, scoreCohort, stdev, zScores, TRACK_WEIGHTS, SCORED_TRACKS,
   seededUniform,
   type TrackRawScores,
 } from "../src/index.js";
@@ -41,10 +41,40 @@ describe("statistics primitives", () => {
 });
 
 describe("composite pipeline (spec \u00a704)", () => {
-  it("weights are equal and sum to 1 (deliberate annual policy)", () => {
-    const w = Object.values(TRACK_WEIGHTS);
-    expect(new Set(w).size).toBe(1);
-    expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 12);
+  /**
+   * Weights are PROPORTIONAL TO POINTS, not equal — and the difference is
+   * load-bearing. The composite is built from z-scores, so keeping "equal
+   * weighting" after T4 became a showcase would have raised T2 from a quarter
+   * of the composite to a third, i.e. promoted the track the point
+   * allocation had just demoted.
+   */
+  it("weights the scored tracks by their share of the 400 points", () => {
+    expect(TRACK_WEIGHTS).toEqual({ t1: 0.4, t2: 0.2, t3: 0.4, t4: 0 });
+    const scored = SCORED_TRACKS.map((t) => TRACK_WEIGHTS[t]);
+    expect(scored.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 12);
+    for (const t of SCORED_TRACKS) {
+      expect(TRACK_WEIGHTS[t]).toBeCloseTo(trackPoints(t) / 400, 12);
+    }
+  });
+
+  it("gives the showcase track zero weight, and leaves it out of the sum", () => {
+    expect(TRACK_WEIGHTS.t4).toBe(0);
+    expect([...SCORED_TRACKS]).toEqual(["t1", "t2", "t3"]);
+  });
+
+  /**
+   * The arithmetic-accident guard: a zero weight is not enough on its own if
+   * the z-column is still computed and summed. Moving only T4 must move
+   * nothing.
+   */
+  it("ignores the showcase column entirely — moving only T4 moves no composite", () => {
+    const cohort = demoCohort("showcase-neutral", 20);
+    const shifted = cohort.map((r) => ({ ...r, t4: (r.t4 + 37) % 100 }));
+    const a = scoreCohort(cohort);
+    const b = scoreCohort(shifted);
+    expect(b.composite).toEqual(a.composite);
+    expect(b.band).toEqual(a.band);
+    expect(b.zComposite).toEqual(a.zComposite);
   });
 
   it("reproduces the golden fixture byte-for-byte", () => {
@@ -117,16 +147,16 @@ describe("tie policy + realized cutlines (F14)", () => {
     return { arr: perm.map((i) => xs[i]), perm };
   }
 
-  it("breaks quota ties by higher T3, then T2, T1, T4, then attempt hash", () => {
+  it("breaks quota ties by higher T3, then T2, T1, then attempt hash", () => {
     // 12 candidates → 1 Distinction seat. The top three scores are exactly
     // tied; the documented policy must pick the higher-T3 profile.
     const scores = [5, 5, 5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5, 0];
     const keys = scores.map((_, i) =>
-      [50, 50, 50, 50, `hash-${String(i).padStart(2, "0")}`] as const);
+      [50, 50, 50, `hash-${String(i).padStart(2, "0")}`] as const);
     // candidate 2 has the highest T3 among the tied trio
-    (keys as unknown as (number | string)[][])[0] = [60, 90, 50, 50, "hash-00"];
-    (keys as unknown as (number | string)[][])[1] = [60, 80, 50, 50, "hash-01"];
-    (keys as unknown as (number | string)[][])[2] = [70, 10, 50, 50, "hash-02"];
+    (keys as unknown as (number | string)[][])[0] = [60, 90, 50, "hash-00"];
+    (keys as unknown as (number | string)[][])[1] = [60, 80, 50, "hash-01"];
+    (keys as unknown as (number | string)[][])[2] = [70, 10, 50, "hash-02"];
     const bands = quotaBands(scores, keys as never);
     expect(bands[2]).toBe("Distinction");   // highest T3 wins the tie
     expect(bands[0]).toBe("Merit");         // then T2 orders the rest
@@ -134,9 +164,9 @@ describe("tie policy + realized cutlines (F14)", () => {
     // equal numeric keys → lexicographic attempt hash (ascending) decides
     const flat = [1, 1, 0];
     const flatKeys = [
-      [5, 5, 5, 5, "bbbb"],
-      [5, 5, 5, 5, "aaaa"],
-      [5, 5, 5, 5, "cccc"],
+      [5, 5, 5, "bbbb"],
+      [5, 5, 5, "aaaa"],
+      [5, 5, 5, "cccc"],
     ] as const;
     const flatBands = quotaBands(flat, flatKeys as never);
     // 3 candidates → 0 Distinction, 1 Merit (round(3/6)=1): "aaaa" outranks "bbbb"

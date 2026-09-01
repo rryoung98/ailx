@@ -11,17 +11,38 @@
  * All functions here are PURE: no I/O, no clock, no Math.random.
  */
 
+import { SCORE_ALLOCATION, SCORED_TRACK_IDS, trackPoints } from "@ailx/core";
 import { canonicalJson, seededUniform, sha256Hex } from "./hash.js";
 
 export const TRACK_IDS = ["t1", "t2", "t3", "t4"] as const;
 export type TrackId = (typeof TRACK_IDS)[number];
 
-/** Equal weighting is a deliberate policy choice, restated annually (spec §04). */
+/**
+ * Track ids that carry composite weight. T4 is a SHOWCASE track: it is still
+ * run, still recorded and still published to the gallery, and it issues no
+ * points and enters no composite.
+ */
+export const SCORED_TRACKS: readonly TrackId[] = SCORED_TRACK_IDS;
+
+/**
+ * Composite weights, PROPORTIONAL TO THE POINT ALLOCATION (spec §04).
+ *
+ * This used to be four equal quarters, and equal weighting was defended as a
+ * deliberate policy choice. It cannot survive the restructure unexamined, for
+ * a reason that is easy to miss: the composite is built from z-scores, so
+ * dropping T4 and keeping "equal weighting" would have RAISED T2 from a
+ * quarter of the composite to a third — the exact opposite of the demotion
+ * the point allocation just made. Weighting by declared points is what makes
+ * the two agree: T1 .40, T2 .20, T3 .40.
+ *
+ * It stays a policy choice, restated annually. It is now a policy choice that
+ * says the same thing twice instead of two things at once.
+ */
 export const TRACK_WEIGHTS: Readonly<Record<TrackId, number>> = {
-  t1: 0.25,
-  t2: 0.25,
-  t3: 0.25,
-  t4: 0.25,
+  t1: SCORE_ALLOCATION.t1.compositeWeight,
+  t2: SCORE_ALLOCATION.t2.compositeWeight,
+  t3: SCORE_ALLOCATION.t3.compositeWeight,
+  t4: SCORE_ALLOCATION.t4.compositeWeight,
 };
 
 export interface TrackRawScores {
@@ -140,23 +161,25 @@ export interface CompositeResult {
 /**
  * Deterministic tie key for quota banding (documented policy, F14):
  * candidates tied on the z-composite are ordered by higher T3, then higher
- * T2, then higher T1, then higher T4 scaled score, then by the LEXICOGRAPHIC
- * attempt hash (ascending). With distinct attempt ids this is a total order,
+ * T2, then higher T1, then by the LEXICOGRAPHIC attempt hash (ascending).
+ * T4 is deliberately absent: it is an unscored showcase, and a showcase
+ * result may not decide who receives an award. With distinct attempt ids this is a total order,
  * so banding is invariant under input order. Without ids the hash falls back
  * to the canonical JSON of the raw score row; fully identical rows without
  * distinct ids are the only residual index-order case.
  */
-export type TieKey = readonly [number, number, number, number, string];
+export type TieKey = readonly [number, number, number, string];
 
 export function tieKeyFor(row: TrackRawScores, attemptHash: string): TieKey {
-  return [row.t3, row.t2, row.t1, row.t4, attemptHash];
+  // SCORED tracks only. A showcase score may not decide an award.
+  return [row.t3, row.t2, row.t1, attemptHash];
 }
 
 function compareTieKeys(a: TieKey, b: TieKey): number {
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < 3; k++) {
     if (a[k] !== b[k]) return (b[k] as number) - (a[k] as number); // higher first
   }
-  return a[4] < b[4] ? -1 : a[4] > b[4] ? 1 : 0; // hash ascending
+  return a[3] < b[3] ? -1 : a[3] > b[3] ? 1 : 0; // hash ascending
 }
 
 /**
@@ -171,9 +194,11 @@ export function scoreCohort(
 ): CompositeResult {
   const n = cohort.length;
   if (n < 2) throw new Error("composite scoring needs a cohort of ≥ 2");
-  const zByTrack = TRACK_IDS.map((t) => zScores(cohort.map((c) => c[t])));
+  // SCORED tracks only: a showcase track has no composite weight, and
+  // including its z-column would give it one by arithmetic accident.
+  const zByTrack = SCORED_TRACKS.map((t) => zScores(cohort.map((c) => c[t])));
   const zComposite = cohort.map((_, i) =>
-    TRACK_IDS.reduce((acc, t, ti) => acc + TRACK_WEIGHTS[t] * zByTrack[ti][i], 0),
+    SCORED_TRACKS.reduce((acc, t, ti) => acc + TRACK_WEIGHTS[t] * zByTrack[ti][i], 0),
   );
   const percentile = midRankPercentiles(zComposite);
   const composite = percentile.map((p) =>
@@ -222,7 +247,7 @@ export function quotaBands(
   const nMerit = Math.round(n * BAND_QUOTAS.Merit);
   const nPass = Math.round(n * BAND_QUOTAS.Pass);
   // Descending order; ties broken by the documented tie policy when keys
-  // are supplied (higher T3 → T2 → T1 → T4 → attempt hash), else by index.
+  // are supplied (higher T3 → T2 → T1 → attempt hash), else by index.
   const order = scores
     .map((v, i) => ({ v, i }))
     .sort((a, b) =>
@@ -281,7 +306,12 @@ export function demoCohort(seed: string, size: number): TrackRawScores[] {
       const centre = [15, 34, 58][tier];
       const spread = [10, 14, 12][tier];
       const raw = centre + [-4, 2, -1, 3][ti] + (s - 6) * spread;
-      row[t] = round1(clamp(raw, 0, 100));
+      // Generated on a 0-100 shape, then stretched onto THIS track's point
+      // total. Without the stretch a synthetic peer would top out at 100 on a
+      // 160-point track and every real candidate would outrank all 44 of
+      // them. A showcase track has no point total, so its index stays 0-100.
+      const cap = trackPoints(t) || 100;
+      row[t] = round1(clamp(raw, 0, 100) * (cap / 100));
     });
     out.push(row);
   }

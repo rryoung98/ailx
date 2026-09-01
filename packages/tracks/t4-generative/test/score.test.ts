@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { runPure } from "@ailx/core";
+import { runPure, SCORE_ALLOCATION, SCORED_TRACK_IDS, TOTAL_POINTS, trackPoints } from "@ailx/core";
 import type { Judgment, ScoreInputs } from "@ailx/core";
 import {
   scoreT4,
+  T4_SHOWCASE_WEIGHTS,
   medianForDimension,
   steeringEfficiency,
   quotaEfficiency,
@@ -181,5 +182,36 @@ describe("promotedDraftIndex", () => {
     expect(promotedDraftIndex(goldenArtifact)).toBe(3);
     const noFinals: T4Artifact = { ...goldenArtifact, finals: { images: [] }, chosenSet: [] };
     expect(promotedDraftIndex(noFinals)).toBe(goldenArtifact.drafts.length - 1);
+  });
+});
+
+/**
+ * T4 is an unscored SHOWCASE track. These assertions are the whole of that
+ * claim, and they belong next to the function that would otherwise look like
+ * a scorer.
+ */
+describe("T4 is a showcase index, not a score", () => {
+  it("is declared unscored, with zero points and zero composite weight", () => {
+    expect(SCORE_ALLOCATION.t4.scored).toBe(false);
+    expect(trackPoints("t4")).toBe(0);
+    expect(SCORE_ALLOCATION.t4.compositeWeight).toBe(0);
+    expect(SCORE_ALLOCATION.t4.components).toEqual([]);
+  });
+
+  it("is absent from the scored track list", () => {
+    expect(SCORED_TRACK_IDS).not.toContain("t4");
+  });
+
+  it("keeps its own local proportions, summing to a 0-100 index", () => {
+    const sum = Object.values(T4_SHOWCASE_WEIGHTS).reduce((a, b) => a + b, 0);
+    expect(sum).toBe(100);
+  });
+
+  it("cannot contribute a point to the 400-point instrument", () => {
+    const scored = (["t1", "t2", "t3", "t4"] as const)
+      .filter((t) => SCORE_ALLOCATION[t].scored)
+      .reduce((a, t) => a + trackPoints(t), 0);
+    expect(scored).toBe(TOTAL_POINTS);
+    expect(TOTAL_POINTS).toBe(400);
   });
 });

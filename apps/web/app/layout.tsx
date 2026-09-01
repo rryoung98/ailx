@@ -8,7 +8,9 @@ const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--fon
 import Link from "next/link";
 import { Loader } from "../lib/Loader";
 import { NavLink } from "../lib/NavLink";
-import { assetUrl, footerModeCopy, isServerMode } from "../lib/mode";
+import { assetUrl, footerModeCopy, isClerkEnabled, isServerMode } from "../lib/mode";
+import { AuthShell } from "../lib/auth/AuthShell";
+import { AuthNav } from "../lib/auth/AuthNav";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
@@ -20,6 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${serif.variable} ${script.variable}`}>
       <body>
+        {/* Clerk, or nothing at all — the static export has no auth and must
+            keep rendering without one (docs/ARCHITECTURE.md §10.2). */}
+        <AuthShell>
         <Loader />
         <a href="#main" className="skip-link">Skip to main content</a>
         <header className="site-header">
@@ -56,6 +61,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 )}
                 <NavLink href="/methodology">Methodology</NavLink>
                 <NavLink href="/validate">Validate</NavLink>
+                {/* Sign-in is a link, never a gate: the game plays anonymously
+                    and an identity buys a scored sitting and saved progress.
+                    Absent unless Clerk is mounted, because /sign-in does not
+                    exist in the static export. */}
+                {isClerkEnabled() && <AuthNav />}
               </div>
               {/* Compact pill twin of the bottom .pill-cta, aligned right, and
                   outside the scrolling row so it is never scrolled off. */}
@@ -78,6 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </p>
           </div>
         </footer>
+        </AuthShell>
       </body>
     </html>
   );

@@ -82,7 +82,7 @@ describe("no user-visible score renders without its provenance (F2/F14)", () => 
 
   it("the between-tracks screen prints scores only through the shared formatter", () => {
     const src = read("../app/exam/page.tsx");
-    expect(src).toContain("formatTrackScore(ts.score, ts.judgments)");
+    expect(src).toContain("formatTrackScore(ts.score, ts.judgments, t.id)");
     // The bare number this replaced.
     expect(src).not.toMatch(/score\.scaled\.toFixed/);
     // …and the screen says once, in words, what a demo estimate is.

@@ -10,6 +10,8 @@
  * pseudo-points (F1).
  */
 import { sha256Hex, type Judgment } from "@ailx/core";
+import type { TrackId } from "@ailx/session";
+import { TRACK_META } from "./tracks.js";
 
 /**
  * Evidence stamped on every row this module emits. It is the ONLY marker that
@@ -44,15 +46,26 @@ export function isDemoScored(judgments: ReadonlyArray<{ evidence?: string }> | u
 
 /**
  * The one formatter for a user-visible track score. A number never renders
- * without saying what produced it, and an unscored track says so in words
- * instead of printing a placeholder number.
+ * without saying what produced it, without its DENOMINATOR, or as a score at
+ * all when the track does not issue one.
+ *
+ * The denominator is a parameter now rather than a hardcoded 100, because the
+ * tracks stopped being worth 100 each: T1 and T3 are 160, T2 is 80, and T4
+ * issues no points at all. "87.9 / 100" printed under a 160-point track is a
+ * wrong number in front of a candidate, which is worse than no number.
  */
 export function formatTrackScore(
   score: { scaled: number } | undefined,
   judgments?: ReadonlyArray<{ evidence?: string }>,
+  trackId?: TrackId,
 ): string {
   if (!score || !Number.isFinite(score.scaled)) return "recorded, not scored";
-  const n = `${score.scaled.toFixed(1)} / 100`;
+  const meta = trackId ? TRACK_META[trackId] : undefined;
+  if (meta && !meta.scored) {
+    // A showcase index is real data and it is not a score. Say which.
+    return `${score.scaled.toFixed(1)} / 100 · showcase, not scored`;
+  }
+  const n = `${score.scaled.toFixed(1)} / ${meta ? meta.points : 100}`;
   return isDemoScored(judgments) ? `${n} · ${DEMO_SCORE_QUALIFIER}` : n;
 }
 

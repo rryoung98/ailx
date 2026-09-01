@@ -2,18 +2,47 @@ import type { Judgment, ScoreInputs } from "@ailx/core";
 import type { T4Artifact, T4Config, T4Final, T4Score } from "./types.js";
 
 /**
- * PURE score() for T4 — spec §T4 "Score allocation" + §14 purity rule.
- * Consumes STORED judgments only.
+ * T4 · Generative Direction — a 0-100 SHOWCASE INDEX. NOT a score.
  *
- * - 30 pts brief compliance & communicative accuracy ('brief-fit')
- * - 40 pts comparative merit                          ('comparative')
- * - 20 pts direction & craft evidence:
- *     50% steering efficiency — improvement per iteration, computed from
- *         stored per-DRAFT judge values ('generation', sample = draft index)
- *     30% direction-note judgment              ('direction-note')
- *     20% final-quota efficiency — how much of the hard deliverable quota
- *         (three final images + one video, spec §T4) was actually delivered
- * - 10 pts provenance & disclosure hygiene            ('provenance')
+ * T4 issues no points and carries no composite weight (`SCORE_ALLOCATION.t4`
+ * in `@ailx/core`, `scored: false`). The runner, the brief and the public
+ * gallery stay — they are good product — but four things made T4
+ * indefensible as a hundred points of measurement:
+ *
+ *  - **It duplicated T1.** Forty points of blinded pairwise comparative merit
+ *    on the same Bradley-Terry machinery, twenty points of process evidence
+ *    from a prompt log, ten of provenance hygiene, and the same `[Proxy]`
+ *    claim type. §03 mapped T1 to "Create with AI 1-3" and T4 to "Create with
+ *    AI 1, 2, 4" — an overlap, not a distinction.
+ *  - **It could never enter the population statistic.** 70 of its 100 points
+ *    (comparative 40 + blind viewer 30) need human panels that a probability
+ *    panel structurally cannot supply: panellists are paid once and do not
+ *    come back to judge each other. A compressed T4 block would have yielded
+ *    craft and provenance — 30 points measuring prompt-log shape and metadata
+ *    hygiene — which is not T4.
+ *  - **Its governance model does not survive scale.** The spec commits to a
+ *    human approving every asset before it is publicly visible. At four
+ *    assets a candidate and N = 50,000 that is 200,000 approvals, ~1,100
+ *    person-hours. Correct for a 45-person summit; not a growth plan.
+ *  - **It was the largest single block of judge-resolved points.** 96 of its
+ *    100 points resolved through stored judgment values, including the one
+ *    objective component — brief compliance — whose defence was that a HUMAN
+ *    panel decides it, and which `plugin.ts` routed to a model.
+ *
+ * The one thing T4 measured that nothing else does — did the artefact
+ * communicate what it was meant to communicate — moves into T3 as a rubric
+ * dimension over material that is cheaper, compressible and already
+ * collected.
+ *
+ * WHY THE FUNCTION STILL EXISTS. The index is useful research data, it is
+ * free to keep, and deleting it would throw away the only way to compute the
+ * T1-T4 correlation that would settle the redundancy question empirically.
+ * It is recorded in the attempt, rendered as "showcase, not scored", and
+ * excluded from every composite. Its internal 30/40/20/10 proportions are
+ * LOCAL constants — deliberately not in the allocation table, because the
+ * allocation table is what issues points.
+ *
+ * PURE — spec §14 purity rule. Consumes STORED judgments only.
  */
 
 function clamp01(x: number): number {
@@ -121,6 +150,17 @@ export function promotedDraftIndex(artifact: T4Artifact): number {
   return Math.max(...promoted);
 }
 
+/**
+ * Showcase-index proportions. Local on purpose — see the module comment.
+ * They sum to 100 so the index reads on the familiar 0-100 scale.
+ */
+export const T4_SHOWCASE_WEIGHTS = {
+  "brief-fit": 30,
+  comparative: 40,
+  craft: 20,
+  provenance: 10,
+} as const;
+
 export function scoreT4(
   inputs: ScoreInputs<T4Artifact>,
   cfg: T4Config,
@@ -137,11 +177,12 @@ export function scoreT4(
   const quota = quotaEfficiency(artifact.finals, cfg);
   const craft = 0.5 * steering + 0.3 * note + 0.2 * quota;
 
+  const W = T4_SHOWCASE_WEIGHTS;
   const raw: Record<string, number> = {
-    "brief-fit": round3(30 * briefFit),
-    comparative: round3(40 * comparative),
-    craft: round3(20 * craft),
-    provenance: round3(10 * provenance),
+    "brief-fit": round3(W["brief-fit"] * briefFit),
+    comparative: round3(W.comparative * comparative),
+    craft: round3(W.craft * craft),
+    provenance: round3(W.provenance * provenance),
     // Diagnostic sub-signals, reported but already folded into craft:
     "craft.steering": round3(steering),
     "craft.note": round3(note),
@@ -152,7 +193,8 @@ export function scoreT4(
     "drafts.count": artifact.drafts.length,
   };
   const scaled = round3(
-    30 * briefFit + 40 * comparative + 20 * craft + 10 * provenance,
+    W["brief-fit"] * briefFit + W.comparative * comparative +
+      W.craft * craft + W.provenance * provenance,
   );
   return { raw, scaled };
 }
