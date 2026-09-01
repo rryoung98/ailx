@@ -393,3 +393,134 @@ that survives the population short form.**
    minutes, a reveal at the end.
 
 ---
+
+## 5. T4 · Generative Direction
+
+### 5.1 Construct validity
+
+T4 claims to measure "direction, not generation" — can a person take a communicative brief to a
+finished visual result. The 30-point brief-compliance component is the right idea and the spec's
+defence of it is sound: show the work to blind viewers without the brief, ask what it communicates,
+score the agreement. That is objective, model-free, and it is the only part of generative work that
+has an answer.
+
+The problem is that **the rest of T4 is T1 again.** Forty points of blinded pairwise comparative
+merit on the same Bradley–Terry machinery; twenty points of process evidence from a prompt log;
+ten points of provenance hygiene. Two tracks, one scoring apparatus, one claim type (`[Proxy]`,
+"artefact quality proxies creative capability"). §03 maps T1 to "Create with AI 1–3, Manage AI 1–3"
+and T4 to "Create with AI 1, 2, 4" — an overlap, not a distinction. If T1 and T4 scores correlate
+above ~.6 in the calibration cohort, T4 is buying a hundred points of nothing, and that correlation
+should be the first thing computed from the summit data.
+
+There is a second construct problem specific to image generation: **the model does most of the
+variance.** A 2026 image model produces a competent image from a mediocre prompt. What separates
+candidates is largely taste in *selecting* among outputs — which is real, but it is much closer to
+T1's aesthetic comparison than to a distinct literacy.
+
+The code makes this worse than the spec. `packages/tracks/t4-generative/src/score.ts` puts **80 of
+100 points** (brief-fit 30, comparative 40, provenance 10) on stored judgment medians, and the
+pipeline routes brief-fit to `queue: "judge"` — a **model** — not to the blind human viewer panel
+whose humanness is the entire justification for that component (`plugin.ts:173`). As built, the one
+objective thing in T4 is scored by the kind of judge the spec spent a page arguing against.
+
+### 5.2 Engagement
+
+Genuinely high in the moment, and the public gallery is a real asset. Making images is fun. But the
+engagement does not convert into what AILX needs: the output is a picture that looks like every other
+AI picture, the brief is someone else's, and the sharing value decays as generated images become
+ambient. Compare T1, where the output is *the candidate's own site*.
+
+### 5.3 Scoring cost — the highest of the four, by a wide margin
+
+| Item | Per candidate | N = 500 | N = 50,000 |
+|---|---|---|---|
+| Final renders (3 × $0.134 + video $0.12) | ≈ $0.52 | $260 | $26,000 |
+| Unlimited drafts (est. 30 × ~$0.03) | ≈ $0.90 | $450 | $45,000 |
+| Comparative judgement (flat in N, as T1) | 15 pairs | — | — |
+| Blind-viewer brief-compliance panel | needs a second human pool | feasible | needs its own recruitment |
+| **Human approval of every gallery asset** | 4 assets | 2,000 approvals | **200,000 approvals** |
+
+Estimates from spec §T4 model pricing. The generation cost is survivable. The **approval gate is
+not**: the spec commits to "a human approves every asset before it becomes publicly visible", which
+at 20 seconds per asset is ~1,100 person-hours at N = 50,000. That commitment was made for a
+45-person summit with three foreign ministries watching, and it is correct at that size. It does not
+survive scale, and the alternatives (sampled approval, takedown-based moderation) are exactly the
+weaker posture the spec refused. **T4 is the track whose governance model contradicts AILX's growth
+plan.** That is a structural fact, not a cost line.
+
+### 5.4 Burn rate
+
+The fastest-ageing track after T2, for a different reason: **the brief does not burn, the model
+does.** T4 pins Gemini 3 Pro Image and Veo 3.1 Fast by date suffix, correctly, for reproducibility.
+But a score of record computed on a pinned 2026 model measures 2026 direction skill against 2026
+tooling, and a 2027 candidate on a 2027 model is not comparable. Every model refresh is an equating
+event. T2 needs new items; T4 needs a new *scale*, which is worse.
+
+### 5.5 What a psychometrician attacks first
+
+The T1–T4 correlation (redundancy), then the blind-viewer panel's inter-rater agreement on "what does
+this communicate", which is an open-ended coding task and needs a codebook and a κ, then the
+model-pinning equating problem above, then the same Bradley–Terry issues as T1 with a smaller
+effective sample of raters.
+
+### 5.6 Short-form viability
+
+**The worst of the four.** Sixty minutes is already most of the 45–60 minute panel budget on its own,
+and 70 of its 100 points (comparative 40 + blind viewer 30) require human panels that a probability
+panel structurally cannot supply — panellists are paid once and do not return to judge each other.
+A compressed T4 block would yield the 20 craft points and the 10 provenance points: 30 points of a
+100-point track, measuring prompt-log shape and metadata hygiene. That is not T4.
+
+**T4 cannot contribute to the population statistic.** By §6's own criterion — a track that cannot be
+shortened cannot contribute at all — that is disqualifying for a track whose purpose includes the
+ministry-citable number.
+
+### 5.7 Recommendation — CUT as a scored track
+
+Keep the runner, the gallery and the brief. Move them to the **play surface**: an unscored, public,
+shareable generative challenge with the gallery it already has. It is good product. It is not a
+hundred points of measurement.
+
+What to do with the one thing T4 measures that nothing else does — *did the artefact communicate what
+it was meant to communicate* — is to **move it into T3 as a rubric dimension**. T3 already produces a
+written analysis for a named stakeholder; "would the stakeholder understand the position" is the same
+construct, measured on material that is cheaper, compressible and already collected. This follows
+`docs/FUTURE-TRACKS.md`'s own pattern of preferring an item family or rubric dimension over a track.
+
+Redistribute the freed weight: T1 and T3 to 150 points each, T2 to 100, or a three-track 100/100/100
+with T2 reduced. The four-track symmetry is aesthetic, not psychometric.
+
+---
+
+## 6. The divergence between spec and code — a finding in itself
+
+Audited against `packages/tracks/*/src` (full detail in the audit notes accompanying this review):
+
+- **Bradley–Terry does not exist anywhere in this repository.** Two doc comments and the stage-id
+  string `"pairwise-comparative"` are the whole of it. **80 of the 400 spec points** — T1's 40 and
+  T4's 40 — have no measurement code. In the demo they resolve through
+  `packages/report/src/judging.ts`, a sha256-seeded stand-in over string length and regex.
+- **T1's accessibility and functional gates do not exist.** No contrast check, no viewport check, no
+  landmark or keyboard test; `cfg.requiredElements` is displayed to the candidate
+  (`Runner.tsx:544`) and never verified. The 30 points the spec calls "machine-checkable" are, in
+  code, another judgment median.
+- **T4's brief-fit goes to a model judge**, not to the blind human viewer panel the spec requires.
+- **T3's three-model heterogeneous jury is one stub with three fake model ids** (`judge.ts:25–41`),
+  banding on answer length.
+- **T2 is the only track that matches its specification.** Its scoring is implemented exactly as
+  written. (Its item bank in this public repo is the 20-item redacted demo tier by design; the
+  operational bank is in the private repo.)
+
+Two conclusions follow, and they point the same way.
+
+First, **"it is already built" is not an argument for keeping T1 or T4 as scored tracks**, because
+the parts that make them defensible are the parts that are not built. The runners are built. The
+measurement is not. Choosing what to build next is therefore a genuinely open decision, which is
+what makes this review worth acting on.
+
+Second, the §04 design principle — "no track is scored the same way as any other", so a flaw in
+LLM-judge methodology damages at most 40–45 points out of 400 — **is currently false in the code.**
+As implemented, T1 (100), T4 (80) and T3 (45) all resolve through stored judge values: 225 of 400
+points, not 45. The principle is sound and worth restoring; it is not currently true.
+
+---
