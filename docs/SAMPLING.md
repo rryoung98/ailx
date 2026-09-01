@@ -233,3 +233,47 @@ the whole risk.
   the cell is reported as "not estimable at this sample size", with the n shown.
 - **Re-identification floor:** the existing `MIN_COHORT_SIZE = 10` still applies and is a floor on
   disclosure, not on statistical adequacy. The two floors are separate and both bind.
+
+---
+
+## 5. The panel cannot sit the exam
+
+This is the design constraint that most changes the plan, and it is easy to miss because it is not
+a sampling fact.
+
+The AILX sitting is **4h 20m across two sessions plus an untimed T1 build window** (spec §01). No
+probability panel will field that. PIAAC's in-home session is roughly two hours with an interviewer
+present and a paid incentive, and it still lost half its sample at the screener. A four-hour
+unsupervised web task, on a panel, at any realistic incentive, produces a completion rate so low
+that the panel's probability design is destroyed by its own break-off — you would have bought a
+probability frame and returned a self-selected sample from inside it, at ten times the price. That
+is the worst of both designs.
+
+So Track B fields a **panel short form**:
+
+- **Target 45–60 minutes**, one session, no untimed window. ESTIMATE: this is at the upper end of
+  what a probability panel will complete without severe break-off; the exact tolerable length is an
+  **UNKNOWN** we should establish with a randomised length experiment in wave 0 rather than by
+  assertion.
+- **Matrix sampling.** Each respondent sees a rotated block covering a subset of items across all
+  four tracks. No respondent completes the full instrument; the population estimate is recovered by
+  IRT scaling and plausible values. This is exactly the PIAAC/PISA design and the reason plausible
+  values are mandatory rather than fussy.
+- **T1 is the problem.** The Creative Build track's untimed build window is not compressible into a
+  matrix block. Options, in order of preference: (a) field a reduced-scope T1 build with a hard
+  30-minute cap as a separate rotated block given to a random third of the panel, accepting a larger
+  SE on the T1 subscale; (b) field T1 only in the convenience track and publish the national
+  composite over T2–T4 with T1 explicitly excluded and the exclusion stated in the headline;
+  (c) drop T1 from the population statistic permanently. **Recommendation: (a) for wave 1, with (b)
+  as the declared fallback if T1 break-off exceeds 25%.** A composite whose components have very
+  different measurement precision is also the Kreiner-style attack surface, so the composite
+  weighting sensitivity analysis (§9) must include a T1-in / T1-out contrast.
+- **Judging cost scales with the panel, not with the item bank.** T3/T4 are LLM-judged, and judging
+  is an evidence-collection step whose output is persisted (spec core invariant). 1,500 panellists ×
+  judged tracks is a real per-wave cost line, and it belongs in the budget (§10), not in the
+  infrastructure section.
+
+**The short form and the full sitting must be linked, not assumed equivalent.** The link is an
+anchor block of common items appearing in both, scaled together, with the linking error reported.
+Without that, the national statistic and the individual credential are on two different scales that
+merely look alike, which is a trap we would fall into silently.
