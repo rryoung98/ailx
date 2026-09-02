@@ -316,11 +316,16 @@ and none of them is BYOD.** If AILX lets a respondent bring their own screen, it
 neither programme was willing to do, there is no established adjustment method to copy, and we must
 say so rather than assume it away.
 
-**The specific mechanism that should worry us most is timing.** Hassenstab et al. (2023,
-*Behavior Research Methods*) benchmarked 26 popular smartphones from under $100 to over $1,000 and
-found **total device latency — display plus touch — ranging from 35 ms to 140 ms**, warning that if
-unaccounted for it "could be misattributed as individual or group differences in response times".
-**VERIFIED.** Passell et al. (2021, same journal) found that, controlling for age, gender, education
+**The specific mechanism that should worry us most is timing.** Nicosia et al. (2023,
+*Behavior Research Methods* 55(6):2800–2812, DOI 10.3758/s13428-022-01925-1; Hassenstab is the
+senior author, and this document cited it under his name until 2026-09-02) benchmarked 26 popular
+smartphones from under $100 to over $1,000 with a timing robot and found **total device latency —
+display plus touch — ranging from 35 ms to 140 ms**, warning that if unaccounted for it "could be
+misattributed as individual or group differences in response times". Their own design table puts
+the spread across a **full bring-your-own-device study at about 105 ms**, an iOS-only study at
+about 70 ms and a single-model study at about 17 ms. More expensive phones with faster CPUs had
+smaller display latencies (r_s = −0.47 and −0.44, p < .05). **VERIFIED at source** (abstract,
+Results "Device Characteristic and Latency Correlations", and Table 1B), 2026-09-02. Passell et al. (2021, same journal) found that, controlling for age, gender, education
 and performance on an **untimed** anchor test, mobile users — Android smartphone users in particular
 — were significantly slower on reaction-time tests. **VERIFIED.** A 105 ms device-driven spread that
 correlates with handset price, and therefore with income, is construct-irrelevant variance aimed
@@ -380,6 +385,117 @@ here so nobody discovers it independently later.
 half-width is ±0.064 SD (§4). **So any device effect above roughly 0.06 SD is a larger error term
 than our entire sampling error**, and printing the two numbers side by side is the whole argument
 for taking device seriously rather than treating it as a UX detail.
+
+### 6.1 Where a clock can reach a score, checked file by file
+
+The rule "no population score may depend on response latency" is worth nothing unless somebody has
+read the scorers. This is that reading, done on 2026-09-02 over every track's `score()` import
+closure and over the session engine. Each row says what the quantity is, where it lives, and
+whether it feeds points, feeds a diagnostic, or feeds nothing.
+
+| Quantity | Where | What it feeds |
+|---|---|---|
+| `T2Response.latencyMs` | recorded in `packages/tracks/t2-discrimination/src/Runner.tsx`, typed in `types.ts` | **Nothing scored.** `scoreT2` never reads it. It leaves the browser in the research export only (`packages/report/src/exportTiers.ts`) |
+| T2 exposure lapse (`choice = -1`) | `Runner.tsx` countdown; consumed by `scoring.ts` | **Points.** A lapsed item is a miss on a signal item, a false alarm on a noise item, and is excluded from the Brier mean. This is the one place a clock reaches a T2 score — see §6.2 |
+| `T2Item.exposureSeconds` | `types.ts`, set per item type from the snapshot | **Points, by design.** It is a declared measurement decision, identical for every candidate on that item |
+| `T1 promptLog[].clientTs` | T1 artifact | **Nothing.** `processSignal` counts distinct prompts and completed prompt→revise cycles. It never subtracts two timestamps |
+| `T3 transcript[].clientTs` | T3 artifact | **Nothing.** RSR, RAIR and the deliberation rule are SEQUENCE tests: a claim must have been challenged or checked *before* it was accepted. Order, not elapsed time |
+| `T4 drafts[]/finals[].clientTs` | T4 artifact | **Nothing.** Copied through ingest normalisation and never read by `score()` |
+| `activeMs`, `runningSince`, `timedOut` | `packages/session/src/machine.ts` | **Neither.** Budget accounting. `timedOut` is derived from the accounting and refused if the caller disagrees. No scorer sees any of it |
+| `activeSeconds`, `timedOut`, the rushed-run rule | `packages/report/src/insights.ts`, `diagnosis.ts`, `share.ts` | **Diagnostic prose only** ("ended on the clock, not on submission") |
+| `latencyMs`, `tRelMs` in the statement export | `packages/report/src/exportTiers.ts` | **Nothing scored.** Research export tiers |
+| The composite | `packages/session/src/scoring.ts` | **Points, no clock.** Within-cohort z-scores of track points with declared track weights |
+| `PracticeDrill` latency | `apps/web/lib/PracticeDrill.tsx` | **Nothing.** The practice loop carries no score of record |
+
+Two honest residuals, stated rather than buried.
+
+- **The track budget is a clock.** A slower device does less inside a fixed budget. The size is
+  bounded: at 140 ms of device latency per action, twenty T2 actions cost 2.8 s against a T2 budget
+  of several minutes, which is under 1% of the working time. It is not zero, and it is the reason
+  the budget is generous rather than tight.
+- **A lapse is a clock reaching a score.** That is what §6.2 is about.
+
+**This is enforced, not asserted.** `packages/content-tools/test/latencyNeverScored.test.ts` walks
+each track's `score()` import closure — the same walk that builds the audit digest, so a scorer
+that starts delegating to a new module cannot slip out of it — and fails on a read of a timing
+field or a clock. `apps/web/test/latencyNeverScored.test.ts` is the behavioural half: it scores
+each track's fixture artifact, then scores a copy with every latency and every client timestamp
+moved by ±105 ms, ±2 s and ±10 minutes, and demands a byte-identical score. Declaring or recording
+a timing field stays legal. Scoring one does not.
+
+### 6.2 T2's exposure was the sharp case, and it is fixed
+
+T2 shows timed material for a declared number of seconds. If that countdown starts when React
+selects the item, then the exposure a candidate really gets is the declared exposure MINUS however
+long their phone took to paint the picture — and paint time tracks handset price for the same
+reason display latency does. That is not a neutral difference: Swaroop et al. (arXiv:2306.07458,
+IUI 2024) report that with a visible timer "accuracy reduces later in the study", so exposure lost
+to a slow device lands in the score.
+
+Two defects were found on 2026-09-02 and both are fixed in `SwipeDeck.tsx` and `Runner.tsx`:
+
+1. **An image stimulus was reported as visible at DOM commit**, before the picture had loaded, on
+   every path that does not use WebGL — which is the path a low-end handset is most likely to take.
+   The countdown now starts when the image fires `load`, when a WebGL texture decodes, or when the
+   "image failed to load" block replaces it, whichever comes first.
+2. **The 1.5-second safety net that stops a hung item was itself a device effect**: on a phone that
+   needed three seconds to paint, the exposure started on a blank card and 1.5 s of it was spent
+   looking at nothing. The provisional anchor is now UPGRADED when the real signal arrives, which
+   restarts the exposure at its declared length. The upgrade happens at most once per item and
+   never after a verdict is cast, so the exposure can only ever be the declared one — never
+   shorter because the device is slow, never repeatedly extended.
+
+Pinned by `packages/tracks/t2-discrimination/test/exposureAnchor.test.tsx`.
+
+### 6.3 What we record, so a device effect can be detected
+
+Detection needs data, and the data must not become a tracking signal. Two fields per SITTING, and
+nothing per event:
+
+- **A device class**: one of `desktop`, `tablet`, `phone`, `unknown`. A category with four values,
+  derived in the browser from pointer and viewport media queries — not from a user-agent string,
+  and never a fingerprint. Four values cannot single anyone out in a cohort of thousands.
+- **A measured client render latency**: the median milliseconds between item selection and stimulus
+  paint over the sitting, rounded to 10 ms and capped at 5,000 ms. The Runner already measures this
+  to anchor the exposure (§6.2), so it costs nothing to keep. Rounded and capped because an
+  unrounded per-sitting timing distribution is closer to a device fingerprint than to a covariate.
+
+Both belong on the ATTEMPT record in the exam service, which is where exam evidence lives. They do
+**not** go in the funnel: `packages/contract/src/funnel.ts` states that a funnel row may carry no
+user-agent string and no exam evidence, and it has no device field today. Adding one there would
+create a second, conflicting device field on a table that is joined to a rotating client id — the
+worst place to put it. Checked against branch `w/ten-20` on 2026-09-02.
+
+**What separates a device effect from a candidate effect.** In order of strength, and the first
+three need no new instrument:
+
+1. **The untimed anchor.** T2's provenance block is untimed by construction, so it is the anchor
+   this section already asks for: regress the timed components on device class with the untimed
+   block as a covariate. If the timed components move with device and the untimed block does not,
+   that is a device effect, not an ability difference.
+2. **Item-level DIF by device class**, uniform and non-uniform, on the Track A logs.
+3. **Measurement invariance** across device classes: scalar invariance permits comparing means,
+   metric-only invariance permits comparing relationships and not means.
+4. **The within-person crossover** described above. It is the gold standard and it costs a
+   substudy.
+
+### 6.4 What a published statistic must say
+
+Device is **never** a weighting margin. The margins are the ones §9 lists; device is not among
+them, cannot be added to them, and the reason is in this section: weighting fixes composition, not
+measurement.
+
+If the detection above finds a real effect, the published statistic carries this sentence, with the
+numbers filled in and nothing softened:
+
+> AILX was sat on each respondent's own device. A device effect of **X SD** (95% CI a to b) was
+> estimated between phone and desktop sittings, against a sampling half-width of **±0.064 SD** at
+> n = 1,500 (deff 1.6). The effect is reported and not adjusted away: no AILX weight uses device,
+> and the figure above is a measurement of AI fluency as exercised on the respondent's own device.
+
+The ±0.064 SD is OUR arithmetic — `1.96 · sqrt(deff / n)` with the planning deff of 1.6 (§4.2), not
+a published figure. The device-effect estimate must come from one of the designs in §6.3, be
+reported with its interval, and be labelled ESTIMATE until the crossover substudy is run.
 
 **Design decision now, before the data:** the population form is **device-locked to desktop/laptop
 by default**, with the randomised experiment run to test whether that lock is necessary. It is far
