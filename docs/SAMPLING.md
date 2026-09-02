@@ -5,7 +5,9 @@ worth nothing as a credibility asset, and there is no secret in here — the ite
 private (see `AGENTS.md`, "The repository split"), not the way we pick people.
 
 Companion documents: `docs/POSITIONING.md` (why a population statistic is the ambition),
-`AILX-Spec-2026.1.md` §01 and §09 (the claim and the psychometrics), `docs/TRANSFER-STUDY.md`.
+`docs/PANEL-MARKETS.md` (what can and cannot be bought in Japan and Korea, and the decision that
+follows), `AILX-Spec-2026.1.md` §01 and §09 (the claim and the psychometrics),
+`docs/TRANSFER-STUDY.md`.
 
 Every number below is marked. **VERIFIED** means a primary source was read and is cited.
 **ESTIMATE** means an engineering judgement with the reasoning shown. **UNKNOWN** means we do not
@@ -480,8 +482,8 @@ the product.
 | **US** | **NORC AmeriSpeak** (NORC National Frame area probability + USPS address frame, in-person non-response follow-up); **Ipsos KnowledgePanel** (ABS, no self-enrolment); **SSRS Opinion Panel** (ABS from the USPS Delivery Sequence File + RDD cell supplement); **USC Understanding America Study** (academic, ABS, published price list) | Pew's American Trends Panel is ABS probability but is in-house and not sold. **VERIFIED** |
 | **UK** | **Ipsos KnowledgePanel UK** (random unclustered ABS, launched Aug 2020, >25,000 panellists, tablets + data supplied to digitally excluded households); NatCen Opinion Panel | **VERIFIED** |
 | **EU** | Ipsos KnowledgePanel now runs in FR, DE, IT, ES, NL, SE, PL, HR. Academic register-based panels: **LISS** (NL), **GESIS Panel** and **GIP** (DE), **ELIPSS** (FR), Swedish and Norwegian Citizen Panels | The academic panels are research infrastructures with access committees, not vendors — access is by application and the cost model is different. **VERIFIED** |
-| **Japan** | **No commercial probability online panel found.** Rakuten Insight, Macromill, Intage, Cross Marketing are opt-in access panels | The Japanese practice for probability general-population data is **ABS push-to-web mail** using a housing/resident-register address frame. A published example (Ome City, 2024) reports **RR3 = 19.2%**, comparable to Asahi Shimbun's national ABS push-to-web. **VERIFIED** |
-| **Korea** | **No live commercial probability panel.** KAMOS (area-stratified address sampling) stopped adding members after 2019 for budget reasons; the live probability route is an **RDD-with-follow-up-texting** panel (~10,471 members as of Feb 2023). Embrain, Macromill Embrain, Hankook Research access panels are opt-in | **VERIFIED** for KAMOS/RDD; the opt-in status of the commercial panels is asserted from the absence of any probability claim on their methodology pages — **UNVERIFIED at source level** |
+| **Japan** | **No probability online panel is sold.** Macromill, Intage, Rakuten Insight, Cross Marketing and Freeasy are opt-in; Nikkei Research closed its access panel in December 2025. Probability *fieldwork* is on sale: Central Research Services runs a quarterly omnibus drawn from the Basic Resident Register, in person, ~1,100 completes | The route to a fresh web sample is **ABS push-to-web mail**. Ome City, fielded Oct–Nov 2023, reports **RR3 = 19.2%**; the first national Japanese ABS push-to-web (Asahi Shimbun, 2023) got **22%**. **VERIFIED** — see `docs/PANEL-MARKETS.md` §2, §5 |
+| **Korea** | **No probability online panel is sold.** Gallup Panel, Embrain Panel Power and Kantar's mobile panel are self-signup; Hankook Research's Master Sample is opt-in with a proportional quota draw. The probability route is **ad-hoc mobile RDD** (Gallup Korea, Realmeter, Hankook), sold by the project | Korean telephone response has collapsed: Gallup Korea **13.8%** (Jul 2023) → **9.7%** (Aug 2026), Realmeter ARS **3.7%** (May 2026). The one probability web attempt is the KPOP pilot, ~21% of 570 households (N = 112). **VERIFIED** — see `docs/PANEL-MARKETS.md` §3, §5 |
 
 **Consequence for AILX's trilateral (en/ja/ko) framing:** the US and UK can be bought off the shelf.
 **Japan and Korea require commissioning a fresh probability sample, not renting panel time** — ABS
@@ -489,6 +491,13 @@ push-to-web in Japan, RDD phone-to-web recruitment in Korea. That is more expens
 needs a local fieldwork partner. It is also the difference between a cross-national norm and three
 convenience samples wearing country labels, which is exactly the PISA-China failure mode
 (a technically legal, politically fatal sampling frame) in miniature.
+
+Say it precisely, because "nothing exists in Japan" is not true and a reviewer will know it. Japan
+sells probability fieldwork by the omnibus question and Korea sells probability telephone fieldwork
+by the project. **What neither sells is a probability sample you can send a 45–60 minute
+assessment to.** That is the gap AILX has to buy its way across, and the decision that follows —
+first wave US + UK, Japan and Korea as a funded phase with a named condition — is in
+`docs/PANEL-MARKETS.md` §7.
 
 **Why pay for probability at all.** Pew's 2023 methods study compared sample types against 28
 benchmarks: opt-in samples averaged **5.8 points of absolute error**, probability panels **2.6
@@ -942,8 +951,17 @@ assertions the numbers in this section rest on.
 | Korea | commissioned RDD phone-to-web recruitment | 1,500 | $250 (range $150–500) | **$375k** ($225–750k) |
 
 The asymmetry is the headline finding of §8: **the two countries in AILX's trilingual framing are
-the two that cannot be bought off the shelf**, and they cost roughly twice as much per complete for
-a smaller n.
+the two that cannot be bought off the shelf**, at a smaller n.
+
+**The 2× per-complete premium on the Japan and Korea rows is ours, and nothing supports it.** The
+September 2026 vendor review (`docs/PANEL-MARKETS.md` §6) went looking for the number and found the
+opposite comparison: a Japanese probability omnibus complete costs **$9.37–$11.07** against NORC
+AmeriSpeak's **$9.25**, within two dollars. That does not make Japan cheap — an omnibus ride buys a
+few questions on somebody else's in-person questionnaire, not 45 minutes of assessment, and nobody
+publishes a price for what we actually need, in any of the four countries. It does mean the premium
+here is a planning assumption about building recruitment from nothing, not a rate we were quoted.
+Korea has no published per-complete price at all. **Get three quotes before this table is used to
+commit money.**
 
 ### 13.2 Non-fieldwork costs, per wave
 
@@ -1145,6 +1163,13 @@ the comfortable one.
     stated 20% contingency; the older $0.8–1.2M figure was the same fieldwork and contractors with
     both left out. If the money lands at $0.8M the wave becomes US only at n = 1,500, and no method
     line is cut to save it (§13.5).
+13. **Japan and Korea are a funded phase, not a date.** Neither country sells a probability panel,
+    so each needs commissioned fieldwork — about $1.1–1.6M on top of wave 1, our estimate. A
+    country fields only when the money is committed, a local partner is contracted with a written
+    sampling design, a pilot has produced a realised response rate and an NRBA, and the realised n
+    clears the §4.5 floor. Until then AILX publishes no Japanese or Korean population figure and
+    says so in the same sentence as "the exam runs in three languages"
+    (`docs/PANEL-MARKETS.md` §7).
 
 ---
 
@@ -1158,9 +1183,10 @@ the comfortable one.
   force a two-session panel design, with the §8.3 warning that modularisation can increase total
   non-response.
 - **UNKNOWN:** whether T1 can be fielded on a panel at all (§5).
-- **UNVERIFIED:** the opt-in status of specific Japanese and Korean commercial panels is inferred
-  from the absence of a probability claim, not from a vendor statement. Confirm before publishing
-  the vendor map.
+- **CLOSED (2026-09-02):** the opt-in status of the Japanese and Korean commercial panels was
+  confirmed against the vendors' own recruitment pages, and Nikkei Research's access panel turned
+  out to have closed in December 2025. `docs/PANEL-MARKETS.md` §2–§3 carries the vendor map and its
+  sources; what remains unknown there is pricing, not panel status.
 - **UNVERIFIED:** per-complete pricing for AmeriSpeak, KnowledgePanel and SSRS custom work. Three
   real quotes should replace §13's estimates before any budget decision.
 - **UNVERIFIED:** what a measurement operator actually costs us. §13.4's three routes are built from

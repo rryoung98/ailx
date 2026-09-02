@@ -9,6 +9,15 @@ formation histories of CFA / CompTIA / CNCF / ETS).
 **AILX is the first cross-nationally normed, annually re-versioned, task-performance-based
 AI-literacy examination for adults.** Every qualifier is load-bearing (see spec §01).
 
+**What the norm covers at first release.** The exam runs in three languages. The first
+population statistic covers two countries, the US and the UK, because they are the only
+two markets in our framing where a probability panel can be bought (`docs/PANEL-MARKETS.md`).
+Japan and Korea need commissioned fieldwork — address-based push-to-web in Japan, RDD
+phone recruitment in Korea — at roughly double the per-complete cost, so they are a funded
+phase with a price (about $1.1–1.6M on top of the US + UK wave, our estimate) and not a
+date. Say the two-country version in public. A cross-national adult AI-literacy norm over
+two countries is still one more than anybody else has.
+
 "No precedent" — as heard from strategic-intelligence people at frontier labs — is
 false as a market claim and true at the measurement layer:
 
