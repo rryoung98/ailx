@@ -49,7 +49,7 @@ export const SERVICE_ERROR_COPY =
  * said could not be trusted, so nothing is rendered from it.
  */
 export const SERVICE_INVALID_COPY =
-  "The AILX service answered with something this page could not read, so it is showing you nothing rather than a half-parsed card. This is a bug on our side.";
+  "The AILX service answered with something this page could not read, so nothing from it is shown. That is a bug on our side, not a problem with your connection.";
 
 /**
  * The browser's own store, or null where there is none (server render, a
@@ -144,8 +144,10 @@ export function useService<T>(path: ApiPath | null, opts: ServiceOptions<T> = {}
   const identified = opts.identified === true;
   const { schema } = opts;
   const query = useQuery({
-    // Identity is in the key: the same path read as two different people is
-    // two different answers, and one must never be served for the other.
+    // The key says WHETHER the read was identified, not who it was — the id
+    // is resolved inside `authHeaders()`, one layer down. `QueryProvider`
+    // clears the cache when the account changes, which is what stops one
+    // person's rows being served to the next.
     queryKey: ["service", path, identified],
     enabled: path !== null,
     queryFn: ({ signal }) => serviceFetch<T>(path!, { identified, signal, schema }),

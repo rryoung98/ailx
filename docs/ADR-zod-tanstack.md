@@ -64,9 +64,9 @@ what this branch ships, and §3.2 explains why they differ.
 
 | | baseline | tables in `routes.ts` | tables split (shipped) |
 |---|---|---|---|
-| all JS in `out/_next/static`, raw | 2,282,968 B | 2,372,193 B | 2,314,286 B |
-| the same, gzipped | 678,493 B | 705,084 B | **688,436 B** |
-| gzip delta | — | +26,591 B | **+9,943 B** |
+| all JS in `out/_next/static`, raw | 2,282,968 B | 2,372,193 B | 2,314,316 B |
+| the same, gzipped | 678,493 B | 705,084 B | **688,467 B** |
+| gzip delta | — | +26,591 B | **+9,974 B** |
 | `/` first load (Next's number) | 184 kB | 200 kB | 184 kB |
 | `/exam` first load | 205 kB | 225 kB | 209 kB |
 | `/report` first load | 236 kB | 252 kB | 236 kB |
@@ -82,11 +82,11 @@ actually requests tells the other story:
 
 | page | baseline | tables in `routes.ts` | tables split (shipped) |
 |---|---|---|---|
-| `/` | 228,072 B | 252,532 B (+24,460) | 235,802 B (**+7,730**) |
-| `/wall` | 230,253 B | 254,713 B (+24,460) | 237,983 B (**+7,730**) |
-| `/exam` | 267,413 B | 292,750 B (+25,337) | 277,377 B (**+9,964**) |
-| `/methodology` | 169,287 B | 195,144 B (+25,857) | 177,735 B (**+8,448**) |
-| `/report` | 288,399 B | 312,767 B (+24,368) | 297,473 B (**+9,074**) |
+| `/` | 228,072 B | 252,532 B (+24,460) | 235,864 B (**+7,792**) |
+| `/wall` | 230,253 B | 254,713 B (+24,460) | 238,045 B (**+7,792**) |
+| `/exam` | 267,413 B | 292,750 B (+25,337) | 277,408 B (**+9,995**) |
+| `/methodology` | 169,287 B | 195,144 B (+25,857) | 177,797 B (**+8,510**) |
+| `/report` | 288,399 B | 312,767 B (+24,368) | 297,579 B (**+9,180**) |
 
 That sum counts every script on the page, so it is much larger than Next's
 "First Load JS" in absolute terms. The DELTA is the comparable figure, and the
@@ -109,7 +109,7 @@ TanStack Query**, which the root layout mounts and every page therefore pays
 for.
 
 In the hosted build the split costs a little instead of saving: total artifact
-bytes went from 782,575 B gzip (unsplit) to 787,374 B gzip (split), because an
+bytes went from 782,575 B gzip (unsplit) to 787,493 B gzip (split), because an
 extra chunk boundary is not free where both libraries ship anyway. 4.8 kB of
 build output against 14.5 kB on every static page is not a close call.
 
@@ -119,15 +119,15 @@ build output against 14.5 kB on every static page is not a close call.
 
 | | baseline | shipped |
 |---|---|---|
-| all JS in `.next/static`, gzipped | 761,241 B | 787,374 B (+26,133) |
+| all JS in `.next/static`, gzipped | 761,241 B | 787,493 B (+26,252) |
 | `/` first load | 185 kB | 184 kB |
 | `/exam` first load | 205 kB | 210 kB |
 | `/report` first load | 239 kB | 239 kB |
 | shared by all | 103 kB | 103 kB |
 
 `/gallery` is a dynamic route, so Next reports 0 B for it and no before/after
-page number exists. Its client entry is 146,277 B gzip in the shipped build, of
-which the chunk carrying zod is 15,443 B gzip. That is what the validated page
+page number exists. Its client entry is 146,331 B gzip in the shipped build, of
+which the chunk carrying zod is 15,411 B gzip. That is what the validated page
 pays, and it is the page that gets the benefit.
 
 The total artifact number moved more than any page number because the hosted
@@ -235,7 +235,7 @@ are compile-time failures there, which is where they belong.
 
 ## 7. The suite, the builds and lint
 
-- `AILX_TEST_FORKS=2 pnpm test`: **203 files, 2797 passed, 4 skipped, 0 failed.**
+- `AILX_TEST_FORKS=2 pnpm test`: **204 files, 2796 passed, 10 skipped, 0 failed.**
 - `pnpm -r build`: green, including `packages/core/test/frontendOnly.test.ts`
   (no `app/api/**` route added, no server adapter, no banned dependency) and
   `packages/content-tools/test/public-tree.test.ts`.
@@ -261,7 +261,7 @@ it made a query parser's silent clamp into an explicit refusal. It costs
 15.4 kB gzip on the one page that uses it, and — after the split — nothing at
 all on the build that cannot use it.
 
-TanStack Query costs +7.7 kB gzip on EVERY page of the static export, because
+TanStack Query costs +7.8 kB gzip on EVERY page of the static export, because
 the provider is in the root layout, and it buys that build nothing today: the
 Pages export reads no service. It buys the hosted build a cache, request
 dedup, and the deletion of a hand-rolled cancellation protocol that had four
@@ -271,10 +271,43 @@ and 7.7 kB is a third of what oRPC was rejected for.
 Two conversions, not a migration. 37 routes have no schema and every other read
 still goes through the same seam, unchanged.
 
-## 9. What would make this the wrong call
+## 9. The review, and what it changed
+
+`codex exec` was run over the branch diff before this ADR was finished. Seven
+findings; five were real and are fixed on this branch.
+
+- **Accepted.** `sharePayloadSchema` used `z.custom` with `parseSharePayload` as
+  a PREDICATE, so the schema returned the object that arrived, not the cleaned
+  one the parser produced. It is a `z.unknown().transform()` now and returns the
+  parsed value. A test pins that an unknown key on the payload is dropped.
+- **Accepted.** The query key holds `identified: boolean`, not who the person
+  is, and the comment claimed otherwise. `QueryProvider` now clears the cache
+  when the signed-in account changes, and the comment says what the key really
+  carries.
+- **Accepted.** `staleTime: 30_000` put a cache above a seam that sends
+  `cache: "no-store"` precisely so that a revocation is visible the moment it
+  lands (`apps/web/test/serviceFetch.test.ts`). It is `staleTime: 0`: a
+  returning reader still sees the page instead of a spinner, and the service is
+  always asked again.
+- **Accepted.** The T1 runner had its own copy of the same PKCE effect, with the
+  same four defects. `claimPkceCallback` moved into `@ailx/track-t1`, both
+  callers use it, and the package has its own test for it.
+- **Accepted.** A refused query (400) was reported to the reader as "we could
+  not reach the service". The gallery now says the filter is not one it can
+  show, which is what happened.
+- **Accepted, in part.** The copy note on `SERVICE_INVALID_COPY` was fair —
+  "half-parsed card" is gallery-specific wording in a seam every page shares —
+  and that sentence is rewritten. `SERVICE_ERROR_COPY` is unchanged: it predates
+  this branch and rewriting it here would hide a copy decision inside a
+  dependency change.
+- **Accepted.** `@tanstack/react-query` is pinned to `5.102.8`. FRONTEND.md
+  requires exact versions in `apps/web/package.json`, and `scoringDigest()`
+  hashes bundled output.
+
+## 10. What would make this the wrong call
 
 - **The static export's budget matters more than the hosted build's cache.**
-  +7.7 kB gzip on nine pages that never call a service is a real cost. If the
+  +7.8 kB gzip on nine pages that never call a service is a real cost. If the
   Pages export becomes the product, mount the provider only in the hosted tree
   and this number goes to zero.
 - **`zod/mini` stops being a readability tax.** If the schema table grows past a

@@ -1,11 +1,11 @@
-"use client";
-
 /**
  * The OAuth PKCE callback, claimed exactly once.
  *
  * An authorization code is single-use and so is the verifier that redeems it.
- * The old effect read both, started the exchange, and cleaned up in
- * `.finally()` behind an `if (cancelled) return` — so React 18/19 StrictMode
+ * TWO components take this callback: `ConnectPanel` on the run-start screen in
+ * `apps/web`, and the T1 runner. Both read both halves, started the exchange,
+ * and cleaned up in `.finally()` behind an `if (cancelled) return` — so
+ * React 18/19 StrictMode
  * ran it twice in development, the second exchange spent an already-spent code
  * and painted an error over a sign-in that had worked (TEN-64 defect 1). An
  * unmount mid-flight left the verifier in storage and the code in the URL and
@@ -16,7 +16,7 @@
  * returns null and asks for nothing. Cleanup is not on the success path; it
  * is the read itself.
  */
-import { PKCE_VERIFIER_STORAGE, cleanCallbackUrl, extractCallbackCode } from "@ailx/track-t1";
+import { PKCE_VERIFIER_STORAGE, cleanCallbackUrl, extractCallbackCode } from "./sso.js";
 
 export interface PkceClaim {
   readonly code: string;

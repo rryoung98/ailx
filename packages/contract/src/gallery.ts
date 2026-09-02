@@ -31,8 +31,17 @@ import { z } from "zod";
  * schemas here would be a second definition of the same shape, so this
  * delegates and keeps the inferred type exact.
  */
-export const sharePayloadSchema = z.custom<SharePayload>((value) => parseSharePayload(value) !== null, {
-  error: "not a share payload",
+export const sharePayloadSchema = z.unknown().transform((value, ctx): SharePayload => {
+  const parsed = parseSharePayload(value);
+  if (parsed === null) {
+    ctx.addIssue({ code: "custom", message: "not a share payload" });
+    return z.NEVER;
+  }
+  // The PARSED value, not the one that arrived. `parseSharePayload` drops keys
+  // it does not know and reads a malformed section as null, so returning the
+  // original would hand the UI an object typed `SharePayload` that the parser
+  // had already decided to clean.
+  return parsed;
 });
 
 /**

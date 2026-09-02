@@ -25,7 +25,7 @@ import { useSearchParams } from "next/navigation";
 import { API_RESPONSE_SCHEMAS, apiPath, type GalleryQuery } from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { PageError, PageLoading } from "./PageNotice";
-import { firstValueQuery, useService } from "./serviceFetch";
+import { firstValueQuery, useService, type ServiceState } from "./serviceFetch";
 
 const EYEBROW = "PUBLIC GALLERY · PUBLISHED BY THEIR OWNERS";
 const TITLE = "What people can actually do with AI.";
@@ -43,6 +43,21 @@ function href(query: GalleryQuery, over: Partial<Record<"type" | "sort" | "site"
   for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
   const qs = params.toString();
   return qs === "" ? "/gallery" : `/gallery?${qs}`;
+}
+
+/**
+ * The service refuses a filter it will not act on rather than quietly serving
+ * a different one (docs/ADR-zod-tanstack.md §4), so a 400 here means the URL
+ * asked for something this wall does not have. It is not an outage and must
+ * not be reported as one.
+ */
+const BAD_QUERY_COPY =
+  "That filter is not one this wall can show. Open the gallery without it to see every published card.";
+
+function notice(result: ServiceState<unknown>): string | undefined {
+  if (result.state === "error") return result.message;
+  if (result.state === "missing" && result.status === 400) return BAD_QUERY_COPY;
+  return undefined;
 }
 
 const SORTS: { key: GalleryQuery["sort"]; label: string }[] = [
@@ -64,13 +79,7 @@ export function GalleryView() {
   // state with a story. Saying "nobody has published a card yet" because the
   // service was down would be a lie about other people's work.
   if (result.state !== "ready") {
-    return (
-      <PageError
-        eyebrow={EYEBROW}
-        title={TITLE}
-        message={result.state === "error" ? result.message : undefined}
-      />
-    );
+    return <PageError eyebrow={EYEBROW} title={TITLE} message={notice(result)} />;
   }
 
   const { entries, total, facets, query } = result.data.gallery;

@@ -18,12 +18,8 @@ import {
   OpenRouterError,
   requestVibeCompletion,
 } from "./openrouter.js";
-import {
-  cleanCallbackUrl,
-  exchangeCodeForKey,
-  extractCallbackCode,
-  PKCE_VERIFIER_STORAGE,
-} from "./sso.js";
+import { exchangeCodeForKey } from "./sso.js";
+import { claimPkceCallback } from "./pkceClaim.js";
 import { t1Plugin } from "./plugin.js";
 import { T1_TOTAL_POINTS, T1_WEIGHTS, type PromptLogEntry } from "./types.js";
 
@@ -237,19 +233,14 @@ export function Runner(props: TrackUIProps) {
   }, []);
 
   // OAuth PKCE callback: ?code= in the URL + a stored verifier -> exchange
-  // for a user-scoped key, then clean the URL. Client-side only.
+  // for a user-scoped key. `claimPkceCallback` takes both single-use halves
+  // out of the browser BEFORE the request, so a StrictMode second pass has
+  // nothing to spend and an unmount leaves neither behind (TEN-64).
   useEffect(() => {
-    const code = extractCallbackCode(window.location.search);
-    if (!code) return;
-    let verifier: string | null = null;
-    try {
-      verifier = window.localStorage.getItem(PKCE_VERIFIER_STORAGE);
-    } catch {
-      /* ignore */
-    }
-    if (!verifier) return;
+    const claimed = claimPkceCallback();
+    if (claimed === null) return;
     let cancelled = false;
-    exchangeCodeForKey(fetch, code, verifier)
+    exchangeCodeForKey(fetch, claimed.code, claimed.verifier)
       .then((key) => {
         if (cancelled) return;
         updateKey(key);
@@ -260,15 +251,6 @@ export function Runner(props: TrackUIProps) {
         setAssistError(
           e instanceof OpenRouterError ? e.message : "OpenRouter sign-in failed.",
         );
-      })
-      .finally(() => {
-        if (cancelled) return;
-        try {
-          window.localStorage.removeItem(PKCE_VERIFIER_STORAGE);
-        } catch {
-          /* ignore */
-        }
-        window.history.replaceState(null, "", cleanCallbackUrl(window.location.href));
       });
     return () => {
       cancelled = true;

@@ -34,7 +34,22 @@ const payloadWith = (over: Partial<SharePayload> = {}): SharePayload => ({
     instrument: "ailx 2026.1",
     sections: ALL_SHARE_SECTIONS,
     completedOn: "2026-03-01",
-    process: { totalActiveSeconds: 1800, tracks: [] },
+    // A per-track row is required: `parseSharePayload` reads a process block
+    // with no tracks as no process at all, and the seam now returns what that
+    // parser produced rather than the object that arrived.
+    process: {
+      totalActiveSeconds: 1800,
+      tracks: [
+        {
+          track: "t1",
+          activeSeconds: 1800,
+          budgetSeconds: 3600,
+          timedOut: false,
+          iterationRatio: null,
+          verificationEvents: 0,
+        },
+      ],
+    },
   }),
   ...over,
 });
@@ -239,7 +254,7 @@ describe("filters", () => {
     // rendering a listing nobody asked for.
     expect(html).not.toContain("DROP TABLE");
     expect(html).not.toContain("<script>alert");
-    expect(html).toContain("could not");
+    expect(html).toContain("That filter is not one this wall can show");
   });
 
   it("pages forward and back without losing the filter", async () => {

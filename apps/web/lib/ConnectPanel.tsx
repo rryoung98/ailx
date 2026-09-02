@@ -12,6 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   buildAuthUrl,
+  claimPkceCallback,
   cleanCallbackUrl,
   clearLlmConnection,
   computeCodeChallenge,
@@ -23,8 +24,8 @@ import {
   OpenRouterError,
   OPENROUTER_KEY_STORAGE,
   PKCE_VERIFIER_STORAGE,
+  type PkceClaim,
 } from "@ailx/track-t1";
-import { claimPkceCallback, type PkceClaim } from "./pkceClaim";
 
 /** Fired on every key/base change so the same page (e.g. the start gate)
  *  can re-read the connection state without prop drilling. */

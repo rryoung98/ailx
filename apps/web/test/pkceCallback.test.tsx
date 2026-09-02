@@ -11,10 +11,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { OPENROUTER_KEY_STORAGE, PKCE_VERIFIER_STORAGE } from "@ailx/track-t1";
+import { OPENROUTER_KEY_STORAGE, PKCE_VERIFIER_STORAGE, claimPkceCallback } from "@ailx/track-t1";
 import { ConnectPanel } from "../lib/ConnectPanel";
 import { QueryProvider } from "../lib/QueryProvider";
-import { claimPkceCallback } from "../lib/pkceClaim";
 import { flushAsync } from "./helpers/clientPage";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;

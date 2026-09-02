@@ -6,6 +6,7 @@ import {
   GALLERY_MAX_PAGE_SIZE,
   GALLERY_PAGE_SIZE,
   PLAYER_TYPE_CODE_RE,
+  galleryEntrySchema,
   galleryListingSchema,
   parseGalleryQuery,
   publicEntry,
@@ -147,6 +148,13 @@ describe("the gallery response schema", () => {
     expect(galleryListingSchema.safeParse(noTotal).success).toBe(false);
     expect(galleryListingSchema.safeParse(listing({ total: "1" })).success).toBe(false);
     expect(galleryListingSchema.safeParse({ ...listing(), extra: 1 }).success).toBe(false);
+  });
+
+  it("returns the payload the parser CLEANED, not the object that arrived", () => {
+    const dirty = { ...PAYLOAD, surprise: "kept?" } as unknown;
+    const parsed = galleryEntrySchema.safeParse({ ...entry(), payload: dirty });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect("surprise" in parsed.data.payload).toBe(false);
   });
 
   it("refuses a payload that is not a share payload", () => {
