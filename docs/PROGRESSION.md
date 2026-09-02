@@ -246,6 +246,60 @@ before yesterday is alive too if a rest day can cover the gap.
 they never decrease. A lapsed streak reads "your best run of N days stands", not
 "you lost your streak". There is no way to lose anything on this page.
 
+### 3.6 The anonymous on-ramp: playing with no account
+
+The first ask for an account used to arrive before anybody had a reason to
+care, and once Clerk landed it arrived in front of the game: the API refuses an
+unauthenticated caller, so a drill that could only play through the server
+could not play at all for a stranger. **A visitor now plays immediately and
+keeps a streak with no account.** Signing in is asked for only where an
+identity is genuinely needed — a scored sitting, progress across devices, a
+credential — and never anywhere else.
+
+**Where an anonymous day lives, and why.** `localStorage`, in the visitor's own
+browser (`packages/report/src/localPractice.ts` holds the rules,
+`apps/web/lib/localPractice.ts` the storage and the network). Three candidates
+were considered:
+
+| Option | Verdict |
+|---|---|
+| **localStorage** | **Chosen.** Works in BOTH builds — the static Pages export has no server at all, so anything server-shaped would make the loop exist in only one of them. Nothing about a stranger leaves their machine, and there is no row to delete later because there is no row. |
+| A cookie | Rejected. It ships the days to the server on every navigation, which is collection about somebody who has agreed to nothing, and 4 kB is a ceiling a year of days would reach. |
+| An anonymous server participant | Rejected. `participants.auth_ref` is provider-scoped and means a PROVEN identity. Minting one for a visitor manufactures exactly the identity the scored path requires, and leaves a personal-data row belonging to nobody. |
+
+The cost is real and is stated on the page rather than hidden: clearing site
+data ends it, and it does not follow anyone to a second device. **That cost is
+the honest reason to sign in**, and it is the only one the copy is allowed to
+use — `LOCAL_PRACTICE_BASIS`, `SIGN_IN_VALUE`, `CLAIM_PROMISE` and
+`CLAIMED_DAYS_BASIS` are exported wordings, and a test refuses scarcity,
+countdowns and "you are about to lose" phrasing in any of them.
+
+**A local day is worth less than a server day, and is labelled as such.** A
+server day is derived from a server-stamped `completed_at` and cannot be
+asserted by a client (§3.5). A local day is the browser's own word: it earns
+the streak on that browser's screen and nothing else. It reaches no score, no
+report figure, no credential and no cohort statistic. The qualification rule is
+the same `qualifiesForStreak` in both places, applied to an elapsed time each
+side measures for itself.
+
+**The claim.** When an anonymous player signs in, `lib/auth/ClaimProgress.tsx`
+posts the unclaimed days to `POST /practice/claim`, once per account. The
+server stores them in `practice_claims` — a table of its own, so a
+client-asserted day can never wear a server stamp — and `practiceDays()` merges
+the two lists with the same `mergePracticeDays` the browser uses: per field the
+LARGER of the two, never the sum, so claiming twice changes nothing. A day is
+marked claimed in the browser only when the server says it stored THAT day, so
+a failed claim loses nothing and the next sign-in retries it; a day already
+claimed is never offered to a second account. `/progress` marks a claimed day
+"brought from a browser" in words, not a colour.
+
+**Anonymous play is not a way into a scored sitting**, and that is a test
+(`apps/web/test/anonymousScoredSitting.test.ts`), not a convention. A refused
+attempt creation yields no attempt id, so no deck is dealt and no score is ever
+requested; the run falls back to the bundled released-practice tier, whose keys
+are published on purpose and which is no score of record. A score of record
+needs a proven identity, and always will.
+
 ### 3.5 Derived, never stored
 
 There is **no streak column and no streak table**. A stored counter is a number
@@ -289,6 +343,11 @@ comparison.
 |---|---|
 | Practice corpus, deck sampling, grading | `packages/report/src/practice.ts` (pure) |
 | Local days, streak rule, progression shaping | `packages/report/src/progress.ts` (pure) |
+| The browser-kept ledger, the claim's rules and its wordings | `packages/report/src/localPractice.ts` (pure) |
+| Reading/writing that ledger, and POSTing a claim | `apps/web/lib/localPractice.ts` |
+| Who the browser is, as something a view re-renders on | `apps/web/lib/auth/identityState.ts` |
+| The claim itself, fired once per account at sign-in | `apps/web/lib/auth/ClaimProgress.tsx` |
+| Claimed days (server side) | `practice_claims` + `POST /practice/claim` (PRIVATE backend repo) |
 | Session persistence, server grading, day counting | `packages/backend/src/practice.ts` |
 | Tables | `db/schema.sql` — `practice_sessions`, `practice_answers`; migration in `db/README.md` |
 | API | `apps/web/app/api/practice/route.api.ts`, `.../[id]/route.api.ts` |
@@ -393,5 +452,12 @@ sharing work, not here.
    render carries the session; under `AILX_AUTH=dev` the browser sends no
    asserted header on a navigation, so the page shows its honest "we do not know
    who you are" state. The drill itself works either way.
-6. **No E2E yet.** FRONTEND.md §6.4 lists the required specs; a practice→streak
+6. **A claimed day cannot be verified, and is not pretended to be.** A browser
+   ledger is the browser's own word: somebody who edits it can claim a streak
+   they did not practise. Practice is unscored, unshared and uncredentialled,
+   so what that buys is a lie told to oneself — but the days are stored apart
+   from the sessions we stamped, bounded (`MAX_LOCAL_DAYS`,
+   `MAX_LOCAL_SESSIONS_PER_DAY`), and labelled as self-reported wherever they
+   are drawn, so nothing downstream can ever mistake one for a measurement.
+7. **No E2E yet.** FRONTEND.md §6.4 lists the required specs; a practice→streak
    journey belongs on that list once Playwright covers the exam path.
