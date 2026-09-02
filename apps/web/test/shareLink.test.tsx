@@ -16,7 +16,7 @@ import {
   shareIntentUrl,
   sharePayloadFrom,
 } from "@ailx/report";
-import { ShareLink } from "../lib/ShareLink";
+import { ShareLink } from "../features/report/ShareLink";
 import { syncKey } from "../lib/persistence";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;

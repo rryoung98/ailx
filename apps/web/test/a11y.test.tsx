@@ -257,11 +257,11 @@ describe("the credential surfaces are legible and never colour-only", () => {
 
   it("never signals the verdict with colour alone — the word says it too", () => {
     // "Verified" / "Revoked" / "Cannot be confirmed" are TEXT in
-    // lib/VerifyView.tsx (the client view behind app/verify/[code]); the
+    // features/verify/VerifyView.tsx (the client view behind app/verify/[code]); the
     // coloured border is decoration on top. Pinned here so a redesign cannot
     // reduce the state to a hue.
     const page = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "..", "lib", "VerifyView.tsx"),
+      join(dirname(fileURLToPath(import.meta.url)), "..", "features", "verify", "VerifyView.tsx"),
       "utf8",
     );
     for (const word of ["Verified", "Revoked", "Cannot be confirmed"]) {

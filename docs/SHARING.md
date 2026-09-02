@@ -72,7 +72,7 @@ may be shared; T2/T3/T4 detail may not, at any layer.**
 ## 2. Private by default, recoverable by its owner, revocable for real
 
 - Nothing exists until the candidate presses "Create a share link"
-  (`apps/web/lib/ShareLink.tsx`). There is no default share.
+  (`apps/web/features/report/ShareLink.tsx`). There is no default share.
 - The link is an **unlisted capability URL**: 32 random bytes, base64url
   (`/s/<43 chars>`), `noindex`, `cache-control: no-store`.
 - **The server stores the token.** This reverses the original design, which
@@ -170,7 +170,7 @@ The share view renders the card plus a "What they chose to show" section that
 appears only when at least one opt-in section is present. `og:image` is a real
 **PNG**, rendered by `next/og` (bundled with Next.js —
 no new dependency, no network at render time) from
-`apps/web/lib/shareCardArt.ts`. SVG was rejected: Facebook, X, LinkedIn and
+`apps/web/features/share/shareCardArt.ts`. SVG was rejected: Facebook, X, LinkedIn and
 Slack do not render SVG previews, and a paste with no preview does not
 spread. The card's text comes from `shareCardLines` in `@ailx/report`, the
 same function the page uses, so the preview cannot drift from the page. Its

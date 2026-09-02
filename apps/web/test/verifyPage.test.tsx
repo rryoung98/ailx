@@ -84,7 +84,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers({ host: "ailx.example" }),
 }));
 
-const { VerifyView } = await import("../lib/VerifyView");
+const { VerifyView } = await import("../features/verify/VerifyView");
 const { generateMetadata } = await import("../app/verify/[code]/page.api");
 
 const params = { params: Promise.resolve({ code: CODE }) };

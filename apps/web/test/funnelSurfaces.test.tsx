@@ -276,7 +276,7 @@ describe("the share path", () => {
       }),
     };
     stubFetch(async () => new Response(JSON.stringify({ share }), { status: 200 }));
-    const { ShareView } = await import("../lib/ShareView");
+    const { ShareView } = await import("../features/share/ShareView");
     await render(ShareView);
     const seen = await steps();
     expect(seen.filter((s) => s === "share_opened")).toHaveLength(1);
@@ -303,7 +303,7 @@ describe("the share path", () => {
         ? new Response(JSON.stringify({ share }), { status: 200 })
         : new Response("{}", { status: 404 }),
     );
-    const { ShareLink } = await import("../lib/ShareLink");
+    const { ShareLink } = await import("../features/report/ShareLink");
     await render(ShareLink, { attemptId: "11111111-1111-4111-8111-111111111111" });
     await click(/Create a share link/);
     const seen = await events();
@@ -317,7 +317,7 @@ describe("the share path", () => {
       useParams: () => ({ token: TOKEN }),
     }));
     stubFetch(async () => new Response("{}", { status: 404 }));
-    const { ShareView } = await import("../lib/ShareView");
+    const { ShareView } = await import("../features/share/ShareView");
     await expect(render(ShareView)).rejects.toThrow();
     expect(await steps()).not.toContain("share_opened");
     vi.doUnmock("next/navigation");

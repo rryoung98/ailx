@@ -406,8 +406,8 @@ describe("the daily never touches the credential", () => {
     "lib/registry.ts",
     "lib/persistence.ts",
     "lib/checkpoints.ts",
-    "lib/credentialView.ts",
-    "lib/CredentialPanel.tsx",
+    "features/verify/credentialView.ts",
+    "features/report/CredentialPanel.tsx",
   ];
   /** The daily page and everything it imports, transitively. */
   const DAILY_CLOSURE = [...reachable("app/daily/page.tsx")];

@@ -14,7 +14,7 @@ import {
   SHARE_CARD_WIDTH,
   clampLine,
   shareCardElement,
-} from "../lib/shareCardArt";
+} from "../features/share/shareCardArt";
 
 const payload = sharePayloadFrom(
   { t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 },

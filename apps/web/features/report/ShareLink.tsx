@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
-import { authHeaders } from "./authHeaders";
+import { authHeaders } from "../../lib/authHeaders";
 import {
   DEFAULT_SHARE_SECTIONS,
   SHARE_NOTE_MAX,
@@ -29,12 +29,12 @@ import {
   type ShareSection,
   type ShareSections,
 } from "@ailx/report";
-import { funnel } from "./funnel";
-import { assetUrl, basePath, isServerMode } from "./mode";
-import { ShareTargets } from "../components/ShareTargets";
-import { CandidateThread } from "../components/Moderation";
-import { browserApiOptions, getServerAttemptId } from "./persistence";
-import { loadSiteSubmission } from "./siteUpload";
+import { funnel } from "../../lib/funnel";
+import { assetUrl, basePath, isServerMode } from "../../lib/mode";
+import { ShareTargets } from "../../components/ShareTargets";
+import { CandidateThread } from "../../components/Moderation";
+import { browserApiOptions, getServerAttemptId } from "../../lib/persistence";
+import { loadSiteSubmission } from "../../lib/siteUpload";
 
 /** Label and one honest line per section. Rendered here and nowhere else. */
 const SECTION_COPY: Record<ShareSection, { label: string; hint: string }> = {

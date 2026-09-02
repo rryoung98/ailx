@@ -19,8 +19,8 @@ import {
   exportFilename,
   pollGithubExport,
   startGithubExport,
-} from "../lib/siteExport";
-import { SiteExportPanel } from "../lib/SiteExportPanel";
+} from "../features/report/siteExport";
+import { SiteExportPanel } from "../features/report/SiteExportPanel";
 
 const ATTEMPT = "att-local-1";
 const SERVER_ID = "00000000-0000-4000-8000-0000000000aa";

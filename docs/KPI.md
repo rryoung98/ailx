@@ -40,7 +40,7 @@ They are not funnel metrics and must never be copied into one.
 | 5 | Return D1/D7 | derived, see below | (none) | the same client id came back. |
 | 6 | Identity | `signed_in` | `lib/auth/FunnelIdentity.tsx` | an account exists and this browser holds it. |
 | 7 | Sitting | `sitting_started` | `app/exam/page.tsx` | a scored run began. |
-| 8 | Share | `share_created`, then `share_opened` | `lib/ShareLink.tsx`, `lib/ShareView.tsx` | a link was minted; a link was opened and the card resolved. |
+| 8 | Share | `share_created`, then `share_opened` | `features/report/ShareLink.tsx`, `features/share/ShareView.tsx` | a link was minted; a link was opened and the card resolved. |
 
 Two decisions inside those rows are load-bearing.
 

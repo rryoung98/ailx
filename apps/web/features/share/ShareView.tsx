@@ -22,13 +22,13 @@ import { notFound, useParams } from "next/navigation";
 import { apiPath, shareUrlPath } from "@ailx/contract";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
-import { CharacterPortrait, CharacterVoice } from "../components/CharacterPortrait";
-import { FunnelStep } from "../components/FunnelStep";
-import { siteHref } from "./mode";
-import { PageError, PageLoading } from "../components/PageNotice";
-import { ShareTargets } from "../components/ShareTargets";
-import { TrackRadar } from "../components/TrackRadar";
-import { useService } from "./serviceFetch";
+import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPortrait";
+import { FunnelStep } from "../../components/FunnelStep";
+import { siteHref } from "../../lib/mode";
+import { PageError, PageLoading } from "../../components/PageNotice";
+import { ShareTargets } from "../../components/ShareTargets";
+import { TrackRadar } from "../../components/TrackRadar";
+import { useService } from "../../lib/serviceFetch";
 
 export interface SharedView {
   status: string;

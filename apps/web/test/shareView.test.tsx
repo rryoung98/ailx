@@ -75,7 +75,7 @@ const notFound = vi.fn(() => {
 const TOKEN = "b".repeat(43);
 vi.mock("next/navigation", () => ({ notFound, useParams: () => ({ token: "b".repeat(43) }) }));
 
-const { ShareView } = await import("../lib/ShareView");
+const { ShareView } = await import("../features/share/ShareView");
 const { generateMetadata } = await import("../app/s/[token]/page.api");
 
 const params = { params: Promise.resolve({ token: TOKEN }) };

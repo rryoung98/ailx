@@ -7,7 +7,7 @@ import {
   SHARE_CARD_HEIGHT,
   SHARE_CARD_WIDTH,
   shareCardElement,
-} from "../../../../lib/shareCardArt";
+} from "../../../../features/share/shareCardArt";
 
 /**
  * GET /s/:token/card.png — the og:image for a share view.

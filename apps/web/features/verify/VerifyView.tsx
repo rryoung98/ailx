@@ -36,9 +36,9 @@ import { useParams } from "next/navigation";
 import { apiPath } from "@ailx/contract";
 import { CREDENTIAL_ASSERTS, CREDENTIAL_ISSUER, CREDENTIAL_LIMITS } from "@ailx/report";
 import { credentialViewFrom } from "./credentialView";
-import { siteHref } from "./mode";
-import { PageError, PageLoading } from "../components/PageNotice";
-import { useService } from "./serviceFetch";
+import { siteHref } from "../../lib/mode";
+import { PageError, PageLoading } from "../../components/PageNotice";
+import { useService } from "../../lib/serviceFetch";
 
 const EYEBROW = "AILX · CREDENTIAL VERIFICATION";
 

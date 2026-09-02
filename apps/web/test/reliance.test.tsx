@@ -20,7 +20,7 @@ import { clearAttempt, saveAttempt } from "@ailx/session";
 import { formatInterval, relianceReportFromRaw, wilsonInterval } from "@ailx/track-t3";
 import { browserSources } from "./helpers/browserSources";
 import { completedLog, completedState, memoryStorage } from "./helpers/completedAttempt";
-import { RelianceCard } from "../lib/RelianceCard";
+import { RelianceCard } from "../features/report/RelianceCard";
 import ReportPage from "../app/report/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -178,7 +178,7 @@ describe("no frontend module reads a reliance rate out of the raw record", () =>
   });
 
   it("and RelianceCard itself computes no rate", () => {
-    const card = readFileSync(join(__dirname, "..", "lib", "RelianceCard.tsx"), "utf8");
+    const card = readFileSync(join(__dirname, "..", "features", "report", "RelianceCard.tsx"), "utf8");
     expect(card).not.toMatch(FORBIDDEN);
     expect(card).toContain("relianceReportFromRaw");
   });

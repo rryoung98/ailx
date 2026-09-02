@@ -31,7 +31,7 @@ import {
   type ExportedRepo,
   type GithubAuthorization,
 } from "./siteExport";
-import { isServerMode } from "./mode";
+import { isServerMode } from "../../lib/mode";
 
 type Phase = "idle" | "downloading" | "consent" | "authorizing" | "done";
 
