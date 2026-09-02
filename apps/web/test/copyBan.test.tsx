@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { withQueryClient } from "./helpers/clientPage";
 import Home from "../app/page";
 import ExamPage from "../app/exam/page";
 import ReportPage from "../app/report/page";
@@ -51,7 +52,7 @@ async function renderedText(el: ReactElement): Promise<string> {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
-  await act(async () => { root!.render(el); });
+  await act(async () => { root!.render(withQueryClient(el)); });
   return host.textContent ?? "";
 }
 

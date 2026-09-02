@@ -11,7 +11,7 @@
  * the view serves the same payload the tile shows, and revoking kills both.
  */
 import Link from "next/link";
-import type { GalleryEntry } from "@ailx/contract";
+import type { PublicGalleryEntry } from "@ailx/contract";
 import { shareUrlPath } from "@ailx/contract";
 import { shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
@@ -23,7 +23,12 @@ export function GalleryCard({
   entry,
   children,
 }: {
-  entry: GalleryEntry;
+  /**
+   * A PUBLIC entry: the tile renders nothing that names a moderator, so it
+   * takes the shape without `approvedBy`. The reviewer queue passes its full
+   * entries in, which is allowed and drops nothing on the page.
+   */
+  entry: PublicGalleryEntry;
   /** Reviewer controls; nothing on the public wall. */
   children?: React.ReactNode;
 }) {

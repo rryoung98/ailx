@@ -9,11 +9,38 @@
  * One copy, because six suites need exactly this and a private copy in each
  * would drift on the day React changes how effects flush.
  */
-import { act, type ReactElement } from "react";
+import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { vi } from "vitest";
+import { QueryProvider } from "../../lib/QueryProvider";
+
+/**
+ * Every client page reads the service through `useService`, which is a
+ * TanStack Query `useQuery` and needs a client in context — the app mounts one
+ * in `app/layout.tsx`, so a test that mounts a page without one is testing a
+ * tree the browser never renders. A FRESH provider per render, because a
+ * shared cache would let one test answer another test's fetch.
+ */
+export function withQueryClient(element: ReactElement): ReactElement {
+  return createElement(QueryProvider, null, element);
+}
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+
+/**
+ * Let a page's data arrive. One empty `act` was enough while the seam was a
+ * bare effect; TanStack Query notifies through its own scheduler, so the
+ * update lands a MACROTASK later and a microtask flush alone leaves the
+ * second render in a suite stuck on "Loading…". Three timer turns, which is
+ * what a browser does in about a millisecond.
+ */
+export async function flushAsync(): Promise<void> {
+  for (let i = 0; i < 3; i += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+}
 
 /** Mount, flush effects and their microtasks, return the served HTML. */
 export async function renderClient(element: ReactElement): Promise<string> {
@@ -21,10 +48,9 @@ export async function renderClient(element: ReactElement): Promise<string> {
   document.body.appendChild(host);
   const root = createRoot(host);
   await act(async () => {
-    root.render(element);
+    root.render(withQueryClient(element));
   });
-  // A second empty act lets the fetch promise chain settle before we look.
-  await act(async () => {});
+  await flushAsync();
   const html = host.innerHTML;
   await act(async () => {
     root.unmount();
@@ -39,7 +65,7 @@ export async function renderClientPending(element: ReactElement): Promise<string
   document.body.appendChild(host);
   const root = createRoot(host);
   await act(async () => {
-    root.render(element);
+    root.render(withQueryClient(element));
   });
   const html = host.innerHTML;
   await act(async () => {

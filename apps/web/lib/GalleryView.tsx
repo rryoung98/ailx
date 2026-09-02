@@ -22,7 +22,7 @@
  */
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { apiPath, type GalleryListing, type GalleryQuery } from "@ailx/contract";
+import { API_RESPONSE_SCHEMAS, apiPath, type GalleryQuery } from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { PageError, PageLoading } from "./PageNotice";
 import { firstValueQuery, useService } from "./serviceFetch";
@@ -53,12 +53,25 @@ const SORTS: { key: GalleryQuery["sort"]; label: string }[] = [
 
 export function GalleryView() {
   const search = useSearchParams();
-  const result = useService<{ gallery: GalleryListing }>(apiPath("gallery", {}, firstValueQuery(search)));
+  // The schema comes from the manifest, keyed by the same route key the path
+  // is built from, so the body this page believes is the body the route
+  // declares. A response that is not that shape renders the error notice.
+  const result = useService(apiPath("gallery", {}, firstValueQuery(search)), {
+    schema: API_RESPONSE_SCHEMAS.gallery,
+  });
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title={TITLE} />;
   // The wall is public and unauthenticated, so a non-200 is an outage, not a
   // state with a story. Saying "nobody has published a card yet" because the
   // service was down would be a lie about other people's work.
-  if (result.state !== "ready") return <PageError eyebrow={EYEBROW} title={TITLE} />;
+  if (result.state !== "ready") {
+    return (
+      <PageError
+        eyebrow={EYEBROW}
+        title={TITLE}
+        message={result.state === "error" ? result.message : undefined}
+      />
+    );
+  }
 
   const { entries, total, facets, query } = result.data.gallery;
   const shown = query.offset + entries.length;
