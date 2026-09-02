@@ -93,7 +93,7 @@ const RULES: readonly { name: string; pattern: RegExp }[] = [
 ];
 
 /** Every banned claim in one string, as `rule: matched text` lines. */
-export function findClaims(text: string): string[] {
+function findClaims(text: string): string[] {
   const stripped = text.replace(ALLOWED_CLAIM, "");
   return RULES.flatMap((rule) =>
     [...stripped.matchAll(rule.pattern)].map((m) => `${rule.name}: ${m[0].trim()}`),
