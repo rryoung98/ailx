@@ -29,6 +29,7 @@ import {
   type ShareSection,
   type ShareSections,
 } from "@ailx/report";
+import { funnel } from "./funnel";
 import { assetUrl, basePath, isServerMode } from "./mode";
 import { ShareTargets } from "./ShareTargets";
 import { CandidateThread } from "./Moderation";
@@ -210,6 +211,9 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
       const body = (await res.json()) as { share: ShareState };
       setShare(body.share);
       setPhase("live");
+      // A link now exists. The TOKEN never leaves with this event: it is a
+      // capability, and a capability in a metrics table is a leak.
+      funnel().step("share_created");
     } catch {
       setPhase("error");
     }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Annotation } from "../lib/Annotation";
+import { FunnelStep } from "../lib/FunnelStep";
 import { HeroCanvas } from "../lib/HeroCanvas";
 import { PillCTA } from "../lib/PillCTA";
 import { PracticeDrill } from "../lib/PracticeDrill";
@@ -199,6 +200,9 @@ function CastStrip() {
 export default function Home() {
   return (
     <main className="page">
+      {/* Step 2 of docs/KPI.md. Silent in the static export, which has no
+          backend to post to. */}
+      <FunnelStep step="landing_viewed" />
       <div className="hero-cinema">
         <div className="hero-stage">
           <section className="hero hero-phase-a">

@@ -23,6 +23,7 @@ import { shareUrlPath } from "@ailx/contract";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "./CharacterPortrait";
+import { FunnelStep } from "./FunnelStep";
 import { siteHref } from "./mode";
 import { PageError, PageLoading } from "./PageNotice";
 import { ShareTargets } from "./ShareTargets";
@@ -62,6 +63,10 @@ export function ShareView() {
 
   return (
     <main className="page">
+      {/* The click-through step: a shared link was opened AND the card
+          resolved. A 404 or an outage above is not a click-through. No token
+          travels with it, so this counts opens, never whose link. */}
+      <FunnelStep step="share_opened" />
       <div className="container" style={{ maxWidth: 820 }}>
         <section className="card ptype-card" style={{ marginBottom: "1.6rem" }}>
           <p className="eyebrow" style={{ margin: 0 }}>{p.instrument.toUpperCase()} · PLAYER TYPE</p>

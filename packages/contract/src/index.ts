@@ -22,6 +22,23 @@
 export { type ApiResult, FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "./api.js";
 export { clampInt } from "./clamp.js";
 export {
+  FUNNEL_BATCH_MAX,
+  FUNNEL_EVENTS_PATH,
+  FUNNEL_ID_RE,
+  FUNNEL_MAX_ANSWERED,
+  FUNNEL_MAX_DAY_INDEX,
+  FUNNEL_PLAY_MODES,
+  FUNNEL_SCHEMA_VERSION,
+  FUNNEL_STEPS,
+  parseFunnelBatch,
+  parseFunnelEvent,
+  type FunnelBody,
+  type FunnelEnvelope,
+  type FunnelEvent,
+  type FunnelPlayMode,
+  type FunnelStep,
+} from "./funnel.js";
+export {
   DEV_USER_COOKIE,
   DEV_USER_HEADER,
   DEV_USER_RE,

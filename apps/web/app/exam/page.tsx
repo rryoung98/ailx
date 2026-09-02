@@ -33,6 +33,7 @@ import { PillCTA } from "../../lib/PillCTA";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
 import { eventLogCopy } from "../../lib/mode";
+import { funnel } from "../../lib/funnel";
 
 function demoConfig(locale: "en"): SessionConfig {
   return {
@@ -582,6 +583,11 @@ export default function ExamPage() {
                 const attemptId =
                   serverId ?? `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;
                 commit([{ type: "attempt_started", attemptId, config: cfg, ts }]);
+                // The ONLY funnel event a scored sitting emits. Everything
+                // after this — responses, timings, judgments — is exam
+                // evidence and belongs in the append-only store, not in a
+                // metrics table (docs/KPI.md, AGENTS.md core invariants).
+                funnel().step("sitting_started");
               } finally {
                 startingRef.current = false;
               }
