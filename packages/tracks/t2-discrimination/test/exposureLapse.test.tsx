@@ -79,6 +79,16 @@ function advance(ms: number) {
   });
 }
 
+/**
+ * The picture painted. jsdom loads no images, so the load event that anchors
+ * a T2 exposure has to be raised by hand — the exposure starts here, not at
+ * mount, and that is the point of the anchor (docs/SAMPLING.md §6.1).
+ */
+function paint() {
+  const img = container.querySelector<HTMLImageElement>('[data-testid="top-card"] img');
+  if (img) act(() => img.dispatchEvent(new Event("load")));
+}
+
 function responded(): TrackEvent[] {
   return events.filter((e) => e.verb === "responded");
 }
@@ -86,6 +96,7 @@ function responded(): TrackEvent[] {
 describe("T2 exposure lapse feedback", () => {
   it("announces the lapse and records no response for the missed item", () => {
     mount();
+    paint();
     advance(EXPOSURE_MS);
     const n = notice();
     expect(n, "lapse notice").not.toBeNull();
@@ -101,6 +112,7 @@ describe("T2 exposure lapse feedback", () => {
 
   it("blocks the stale click: answer buttons and arrow keys are inert during the notice", () => {
     mount();
+    paint();
     advance(EXPOSURE_MS);
     // aria-disabled, never `disabled`: a disabled control drops focus to
     // <body> (audit P0-2), so the deck is made inert without losing focus.
@@ -121,8 +133,10 @@ describe("T2 exposure lapse feedback", () => {
 
   it("clears the notice and re-enables the deck, giving the next item a full exposure", () => {
     mount();
+    paint();
     advance(EXPOSURE_MS);
     advance(NOTICE_MS);
+    paint();
     expect(notice()).toBeNull();
     for (const b of answerButtons()) expect(b.getAttribute("aria-disabled")).toBe("false");
     expect(container.textContent).toContain("Item 2 / ");
@@ -141,6 +155,7 @@ describe("T2 exposure lapse feedback", () => {
       items: [{ ...items[0], exposureSeconds: 0 }, ...items.slice(1)],
     };
     mount(zero);
+    paint();
     advance(0);
     expect(notice()!.textContent).toContain("Item 1 missed");
     expect(responded()).toHaveLength(1);

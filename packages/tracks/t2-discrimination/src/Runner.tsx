@@ -290,19 +290,37 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
   // still be decoding when React selects the item — latency and exposure must
   // anchor at the moment the stimulus is actually visible, not at selection.
   // Per-item readiness keyed by item id: SwipeDeck reports synchronously on
-  // commit for DOM stimuli, at texture-decode for WebGL image cards. Keying
-  // avoids child-before-parent effect ordering races.
-  const [readyItemId, setReadyItemId] = useState<string | null>(null);
+  // commit for TEXT stimuli, and for an image when the picture paints (or
+  // when the fallback block replaces it, or when a WebGL texture decodes).
+  // Keying avoids child-before-parent effect ordering races.
+  //
+  // The anchor also records WHERE it came from, because the safety net below
+  // is itself a device effect if it is left alone: a handset that takes two
+  // seconds to paint the picture would start its exposure on a blank card and
+  // sit the item with less material time than a fast one. So a provisional
+  // ("fallback") anchor is UPGRADED when the real signal lands, which
+  // restarts the exposure at its declared length. The upgrade can happen at
+  // most once per item and never after a verdict is cast, so the exposure can
+  // only ever be the declared one — never shorter, never repeatedly extended.
+  const [ready, setReady] = useState<{ id: string; from: "stimulus" | "fallback" } | null>(null);
   const itemIdRef = useRef<string | null>(null);
   itemIdRef.current = item ? item.id : null;
-  const stimulusReady = Boolean(item && readyItemId === item.id);
+  const stimulusReady = Boolean(item && ready?.id === item.id);
   const handleStimulusReady = useCallback(() => {
-    setReadyItemId(itemIdRef.current);
+    const id = itemIdRef.current;
+    if (id === null) return;
+    setReady((prev) => {
+      if (prev?.id === id && prev.from === "stimulus") return prev;
+      // A verdict is already cast: the candidate saw the card, so re-anchoring
+      // would hand out extra time and overwrite the recorded decision latency.
+      if (prev?.id === id && choiceRef.current !== null) return prev;
+      return { id, from: "stimulus" };
+    });
   }, []);
   // Safety net: never leave an item unanchored if a load event is lost.
   useEffect(() => {
     if (phase !== "deck" || stimulusReady || !item) return;
-    const t = setTimeout(() => setReadyItemId(item.id), 1500);
+    const t = setTimeout(() => setReady({ id: item.id, from: "fallback" }), 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, idx, stimulusReady]);
@@ -329,7 +347,7 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
     }, 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, idx, stimulusReady, lapse === null]);
+  }, [phase, idx, stimulusReady, ready?.from, lapse === null]);
 
   useEffect(() => {
     if (phase === "deck" && secondsLeft !== null && secondsLeft <= 0) {

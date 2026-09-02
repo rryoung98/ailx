@@ -57,6 +57,12 @@ function clickByText(container: HTMLElement, text: string) {
   act(() => btn.click());
 }
 
+/** Raise the top card's image `load`: the moment the stimulus is visible. */
+function paintStimulus(container: HTMLElement) {
+  const img = container.querySelector<HTMLImageElement>('[data-testid="top-card"] img');
+  if (img) act(() => img.dispatchEvent(new Event("load")));
+}
+
 /** Confidence is scored, so it is never assumed: the slider must be moved
  *  before "Lock in" is enabled. */
 function setConfidence(container: HTMLElement, value: number) {
@@ -124,7 +130,13 @@ describe("runner → session log event flow (audit: zero silent drops)", () => {
     });
     clickByText(container, "Start the deck");
 
-    // Item 1 (timed): wait exactly 3 s from ITEM RENDER before answering.
+    // The picture paints. jsdom loads no images, so the load event that
+    // anchors the exposure and the latency is raised by hand — the anchor is
+    // the paint, not the render, so a slow phone loses no exposure
+    // (docs/SAMPLING.md §6.2).
+    paintStimulus(container);
+
+    // Item 1 (timed): wait exactly 3 s from the PAINT before answering.
     act(() => { vi.advanceTimersByTime(3000); });
     clickByText(container, "AI-generated / hostile");
     setConfidence(container, 70);
