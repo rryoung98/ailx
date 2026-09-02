@@ -25,8 +25,8 @@
  *  - a thrown fetch (offline, DNS, CORS) becomes `error`, which every caller
  *    renders as a sentence. A page that cannot reach its data says so.
  */
-import { useEffect, useState } from "react";
-import type { ApiPath } from "@ailx/contract";
+import { useQuery } from "@tanstack/react-query";
+import type { ApiPath, ResponseSchema } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
 import { apiBase } from "./mode";
@@ -43,6 +43,15 @@ export const SERVICE_ERROR_COPY =
   "We could not reach the AILX service, so this page has nothing to show you rather than something invented. Reload in a moment.";
 
 /**
+ * What a reader is told when the call landed and the body was not the shape
+ * this route promises. It is a different fact from "we could not reach it",
+ * and the page must not pretend otherwise: the service answered, and what it
+ * said could not be trusted, so nothing is rendered from it.
+ */
+export const SERVICE_INVALID_COPY =
+  "The AILX service answered with something this page could not read, so nothing from it is shown. That is a bug on our side, not a problem with your connection.";
+
+/**
  * The browser's own store, or null where there is none (server render, a
  * locked-down browser). Null means "send no identity" — never a fabricated
  * one, and never a crash on a page that does not need identity at all.
@@ -55,16 +64,23 @@ function browserStorage(): StorageLike | null {
   }
 }
 
-export interface ServiceOptions {
+export interface ServiceOptions<T = unknown> {
   /** Send `authHeaders()`. Required for any page that shows one person's rows. */
   readonly identified?: boolean;
   readonly signal?: AbortSignal;
+  /**
+   * The route's response schema from `API_RESPONSE_SCHEMAS`. With one, a body
+   * that is not the promised shape becomes `error` and NOTHING is rendered
+   * from it. Without one, the body is cast, exactly as it always was — this is
+   * per-route work and the seam does not pretend otherwise.
+   */
+  readonly schema?: ResponseSchema<T>;
 }
 
 /** One GET against the exam service, resolved into a `ServiceState`. */
 export async function serviceFetch<T>(
   path: ApiPath,
-  opts: ServiceOptions = {},
+  opts: ServiceOptions<T> = {},
 ): Promise<ServiceState<T>> {
   try {
     const storage = opts.identified === true ? browserStorage() : null;
@@ -75,9 +91,16 @@ export async function serviceFetch<T>(
       signal: opts.signal,
     });
     if (res.status !== 200) return { state: "missing", status: res.status };
-    return { state: "ready", data: (await res.json()) as T };
+    const body: unknown = await res.json();
+    if (opts.schema === undefined) return { state: "ready", data: body as T };
+    const parsed = opts.schema.safeParse(body);
+    if (parsed.success) return { state: "ready", data: parsed.data };
+    // Loud, because nobody would otherwise hear it: the page renders a
+    // sentence, and the console carries the field that was wrong.
+    console.error(`AILX: ${path} answered with an unreadable body`, parsed.error);
+    return { state: "error", message: SERVICE_INVALID_COPY };
   } catch {
-    // Aborted by the effect's cleanup: the component is gone, so stay in the
+    // Aborted by the query's cleanup: the component is gone, so stay in the
     // state it already had rather than flashing an error on the way out.
     if (opts.signal?.aborted === true) return { state: "loading" };
     return { state: "error", message: SERVICE_ERROR_COPY };
@@ -103,20 +126,36 @@ export function firstValueQuery(params: URLSearchParams | null | undefined): str
 }
 
 /**
- * The same read, as a hook. `path` may be null when there is nothing to ask
- * for yet; the state then stays `loading` and no request is made.
+ * The same read, as a hook — a TanStack Query `useQuery` under the seam.
+ *
+ * The four states stay, because they say something `useQuery` does not: a
+ * non-200 is `missing` WITH its status, which is a fact a page renders
+ * differently from an outage. What the library replaces is the hand-rolled
+ * part around it: the mount effect, the `AbortController`, the `cancelled`
+ * flag and the `setState` that had to check it. What it adds is a cache keyed
+ * by the path, so a reader who goes to a card and comes back sees the wall
+ * they left instead of a spinner, and two components asking for the same path
+ * make one request.
+ *
+ * `path` may be null when there is nothing to ask for yet; the state then
+ * stays `loading` and no request is made.
  */
-export function useService<T>(path: ApiPath | null, opts: ServiceOptions = {}): ServiceState<T> {
+export function useService<T>(path: ApiPath | null, opts: ServiceOptions<T> = {}): ServiceState<T> {
   const identified = opts.identified === true;
-  const [state, setState] = useState<ServiceState<T>>({ state: "loading" });
-  useEffect(() => {
-    if (path === null) return;
-    const ctrl = new AbortController();
-    setState({ state: "loading" });
-    void serviceFetch<T>(path, { identified, signal: ctrl.signal }).then((next) => {
-      if (!ctrl.signal.aborted) setState(next);
-    });
-    return () => ctrl.abort();
-  }, [path, identified]);
-  return state;
+  const { schema } = opts;
+  const query = useQuery({
+    // The key says WHETHER the read was identified, not who it was — the id
+    // is resolved inside `authHeaders()`, one layer down. `QueryProvider`
+    // clears the cache when the account changes, which is what stops one
+    // person's rows being served to the next.
+    queryKey: ["service", path, identified],
+    enabled: path !== null,
+    queryFn: ({ signal }) => serviceFetch<T>(path!, { identified, signal, schema }),
+  });
+  // `serviceFetch` resolves every EXPECTED failure into a state and throws
+  // nothing, so `isError` here means something unforeseen threw. Reporting it
+  // as `error` rather than falling through to `loading` is the difference
+  // between a page that says so and a spinner that never stops.
+  if (query.isError) return { state: "error", message: SERVICE_ERROR_COPY };
+  return query.data ?? { state: "loading" };
 }

@@ -20,8 +20,8 @@
  * point of the split, and `apps/web/test/bundleSecrecy.test.ts` keeps biting.
  */
 export { type ApiResult, FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "./api.js";
+export { API_QUERY_PARSERS, API_RESPONSE_SCHEMAS, type ResponseSchema } from "./tables.js";
 export {
-  API_QUERY_PARSERS,
   API_ROUTES,
   apiPath,
   type ApiMethod,
@@ -84,14 +84,22 @@ export {
   PLAYER_TYPE_CODE_RE,
   REJECT_REASON_MAX,
   REVIEW_DECISIONS,
+  galleryEntrySchema,
+  galleryFacetSchema,
+  galleryListingSchema,
+  galleryQuerySchema,
+  gallerySearchSchema,
   parseGalleryQuery,
   publicEntry,
+  publicGalleryEntrySchema,
+  sharePayloadSchema,
   type GalleryEntry,
   type GalleryFacet,
   type GalleryListing,
   type GalleryQuery,
   type GallerySort,
   type PublicGalleryEntry,
+  type QueryParseResult,
   type ReviewDecision,
 } from "./gallery.js";
 export {

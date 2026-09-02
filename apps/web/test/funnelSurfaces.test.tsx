@@ -15,6 +15,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { flushAsync, withQueryClient } from "./helpers/clientPage";
 import { FUNNEL_EVENTS_PATH, parseFunnelBatch, type FunnelEvent } from "@ailx/contract";
 import { DAILY_DECK_SIZE, PRACTICE_OPTIONS, dailyDay, dailyDeck } from "@ailx/report";
 import { funnel, resetFunnel } from "../lib/funnel";
@@ -74,8 +75,9 @@ async function render(node: Parameters<typeof createElement>[0], props?: Record<
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
-    root!.render(createElement(node, props));
+    root!.render(withQueryClient(createElement(node, props)));
   });
+  await flushAsync();
   return host;
 }
 

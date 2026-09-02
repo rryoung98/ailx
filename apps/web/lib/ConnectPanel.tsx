@@ -8,21 +8,23 @@
  * Key handling matches the T1 runner: the key lives ONLY in this browser
  * (localStorage), never in the artifact or the event log.
  */
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   buildAuthUrl,
+  claimPkceCallback,
   cleanCallbackUrl,
   clearLlmConnection,
   computeCodeChallenge,
   DEFAULT_BASE_URL,
   exchangeCodeForKey,
-  extractCallbackCode,
   generateCodeVerifier,
   LLM_BASE_URL_STORAGE,
   normalizeBaseUrl,
   OpenRouterError,
   OPENROUTER_KEY_STORAGE,
   PKCE_VERIFIER_STORAGE,
+  type PkceClaim,
 } from "@ailx/track-t1";
 
 /** Fired on every key/base change so the same page (e.g. the start gate)
@@ -61,42 +63,6 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
     }
   }, []);
 
-  // OAuth PKCE callback lands back on /exam: exchange ?code= for a key.
-  useEffect(() => {
-    const code = extractCallbackCode(window.location.search);
-    if (!code) return;
-    let verifier: string | null = null;
-    try {
-      verifier = window.localStorage.getItem(PKCE_VERIFIER_STORAGE);
-    } catch {
-      /* ignore */
-    }
-    if (!verifier) return;
-    let cancelled = false;
-    setSsoBusy(true);
-    exchangeCodeForKey(fetch, code, verifier)
-      .then((key) => {
-        if (!cancelled) updateKey(key);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof OpenRouterError ? e.message : "OpenRouter sign-in failed.");
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setSsoBusy(false);
-        try {
-          window.localStorage.removeItem(PKCE_VERIFIER_STORAGE);
-        } catch {
-          /* ignore */
-        }
-        window.history.replaceState(null, "", cleanCallbackUrl(window.location.href));
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const updateKey = (value: string) => {
     setOrKey(value);
     setError(null);
@@ -121,6 +87,33 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
     announceChange();
   };
 
+  /**
+   * The one-shot `?code=` exchange, as a MUTATION.
+   *
+   * A mutation is the right primitive for it: one non-idempotent call, no
+   * retry, no cache entry, side effects in the handlers. The four defects
+   * TEN-64 listed are fixed by the two halves together — `claimPkceCallback()`
+   * takes the code and the verifier out of the browser before the request, so
+   * a StrictMode second pass has nothing to spend and an unmount leaves
+   * nothing behind, and `updateKey` is now DEFINED above the call that uses
+   * it rather than captured under an `exhaustive-deps` disable.
+   */
+  const exchange = useMutation({
+    mutationFn: ({ code, verifier }: PkceClaim) => exchangeCodeForKey(fetch, code, verifier),
+    onSuccess: (key) => updateKey(key),
+    onError: (e) => setError(e instanceof OpenRouterError ? e.message : "OpenRouter sign-in failed."),
+  });
+  const claim = exchange.mutate;
+
+  /** Redirecting to OpenRouter, or redeeming the code it sent back. */
+  const busy = ssoBusy || exchange.isPending;
+
+  // OAuth PKCE callback lands back on /exam: exchange ?code= for a key.
+  useEffect(() => {
+    const claimed = claimPkceCallback();
+    if (claimed !== null) claim(claimed);
+  }, [claim]);
+
   /** Disconnect means disconnected: key AND endpoint. Dropping only the key
    *  left the shared-demo/custom base URL in place, so the track runners
    *  stayed in real mode against a dead endpoint. */
@@ -137,7 +130,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   };
 
   const connect = async () => {
-    if (ssoBusy) return;
+    if (busy) return;
     setSsoBusy(true);
     setError(null);
     try {
@@ -190,8 +183,8 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
           </span>
         ) : (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-            <button type="button" className="btn primary" style={{ padding: "6px 14px", fontSize: 13, opacity: ssoBusy ? 0.5 : 1 }} onClick={() => void connect()} disabled={ssoBusy}>
-              {ssoBusy ? "Connecting…" : "Connect OpenRouter"}
+            <button type="button" className="btn primary" style={{ padding: "6px 14px", fontSize: 13, opacity: busy ? 0.5 : 1 }} onClick={() => void connect()} disabled={busy}>
+              {busy ? "Connecting…" : "Connect OpenRouter"}
             </button>
             <button type="button" className="btn" style={{ padding: "6px 10px", fontSize: 12 }} onClick={useSharedDemo}>
               Try the shared demo model

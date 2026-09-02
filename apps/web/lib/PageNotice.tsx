@@ -46,11 +46,27 @@ export function PageLoading({ eyebrow, title }: { eyebrow?: string; title: strin
   );
 }
 
-/** The call never landed. Say so — never an empty page pretending to be data. */
-export function PageError({ eyebrow, title }: { eyebrow?: string; title: string }) {
+/**
+ * The call never landed, or what came back could not be read. Say so — never
+ * an empty page pretending to be data.
+ *
+ * `message` carries the state's own sentence when there is one, because
+ * "we could not reach the service" and "the service said something we could
+ * not read" are different facts and the second is our bug, not the reader's
+ * network (`SERVICE_INVALID_COPY`).
+ */
+export function PageError({
+  eyebrow,
+  title,
+  message = SERVICE_ERROR_COPY,
+}: {
+  eyebrow?: string;
+  title: string;
+  message?: string;
+}) {
   return (
     <PageNotice eyebrow={eyebrow} title={title}>
-      {SERVICE_ERROR_COPY}
+      {message}
     </PageNotice>
   );
 }

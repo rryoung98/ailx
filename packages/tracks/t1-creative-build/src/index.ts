@@ -35,6 +35,7 @@ export {
   OPENROUTER_KEY_EXCHANGE_URL,
   PKCE_VERIFIER_STORAGE,
 } from "./sso.js";
+export { claimPkceCallback, type PkceClaim } from "./pkceClaim.js";
 export { buildPreviewSrcdoc, PREVIEW_CSP, SANDBOX_ATTR } from "./sandbox.js";
 export { encodeT1Checkpoint, decodeT1Checkpoint, type T1CheckpointState } from "./checkpoint.js";
 export { sha256Hex } from "@ailx/core";
