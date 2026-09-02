@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   append,
+  attestJudgments,
+  JUDGE_RESOLVED_TRACKS,
   initialState,
   nextTrack,
   project,
@@ -53,11 +55,17 @@ describe("session machine", () => {
       t += 1000;
       log = append(log, { type: "track_completed", trackId, artifact: { trackId }, timedOut: false, ts: t });
       t += 1000;
+      // T2 is model-free: its score() reads no judgments, so it must store
+      // none. The judge-resolved tracks must store the rows they consumed.
+      const rows = JUDGE_RESOLVED_TRACKS.includes(trackId)
+        ? [{ dimension: "analysis", sample: 0, value: 0.6, modelId: "demo-judge@1" }]
+        : [];
       log = append(log, {
         type: "track_scored", trackId,
         score: { raw: { total: 61 }, scaled: 61 },
         rubricVersion: "r", scoringDigest: "s", modelManifest: { demo: "demo-judge@1" },
-        judgments: [{ dimension: "analysis", sample: 0, value: 0.6, modelId: "demo-judge@1" }],
+        scoredBy: "local",
+        ...attestJudgments(rows),
         ts: t,
       });
     }

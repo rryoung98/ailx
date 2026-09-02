@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { saveAttempt, loadAttemptValidated, SaveConflictError, ATTEMPT_KEY } from "../src/persist.js";
-import { append } from "../src/machine.js";
+import { append, attestJudgments } from "../src/machine.js";
 
 function mem() {
   const m = new Map<string, string>();
@@ -28,7 +28,12 @@ describe("duplicate track_scored rejected (audit M2)", () => {
     let log = append([], { type: "attempt_started", attemptId: "a", config: cfg, ts: 1 } as never);
     log = append(log, { type: "track_started", trackId: "t1", ts: 2 } as never);
     log = append(log, { type: "track_completed", trackId: "t1", artifact: {}, timedOut: false, ts: 3 } as never);
-    const score = { type: "track_scored", trackId: "t1", score: { raw: {}, scaled: 10 }, rubricVersion: "r", scoringDigest: "s", modelManifest: {}, ts: 4 };
+    const score = {
+      type: "track_scored", trackId: "t1", score: { raw: {}, scaled: 10 },
+      rubricVersion: "r", scoringDigest: "s", modelManifest: {}, scoredBy: "local",
+      ...attestJudgments([{ dimension: "analysis", sample: 0, value: 0.6, modelId: "m@1" }]),
+      ts: 4,
+    };
     log = append(log, score as never);
     expect(() => append(log, { ...score, score: { raw: {}, scaled: 99 }, ts: 5 } as never)).toThrow(/already scored/);
   });

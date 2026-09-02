@@ -25,6 +25,28 @@ export type TrackId = (typeof TRACK_IDS)[number];
 export const SCORED_TRACKS: readonly TrackId[] = SCORED_TRACK_IDS;
 
 /**
+ * Tracks whose pure score() READS `inputs.judgments`, i.e. whose number
+ * cannot be derived from the artifact alone.
+ *
+ * It is deliberately NOT derived from `SCORE_ALLOCATION`. The allocation
+ * table describes the SCORED point budget; T4 is a showcase track and
+ * declares no components at all, yet its showcase number is read straight off
+ * stored judge values. A rule derived from the table would therefore exempt
+ * exactly the track with the least oversight. This is instead a declaration
+ * about the PLUGINS, and it is verified against them —
+ * `apps/web/test/judgmentDependence.test.ts` varies only the stored judgments
+ * of every real plugin and asserts that the set of scores that move is
+ * exactly this set. A declaration that nothing checks is how the last one
+ * went wrong.
+ *
+ * The session machine uses it for one thing: a locally-issued score on one of
+ * these tracks MUST carry the judgment rows score() consumed. `judgments: []`
+ * beside a judge-derived score is the precise shape of a score with no
+ * recorded evidence, which is what the recomputability invariant forbids.
+ */
+export const JUDGE_RESOLVED_TRACKS: readonly TrackId[] = ["t1", "t3", "t4"];
+
+/**
  * Composite weights, PROPORTIONAL TO THE POINT ALLOCATION (spec §04).
  *
  * This used to be four equal quarters, and equal weighting was defended as a
