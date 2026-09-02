@@ -71,9 +71,13 @@ const files = [
  */
 const ALLOWED_CLAIM = /independent under published governance/gi;
 
-/** A banned adjective asserted OF US: "AILX is neutral", "we remain impartial". */
+/**
+ * A banned adjective asserted OF US: "AILX is neutral", "we remain impartial".
+ * A DENIAL is not a claim: "we are not neutral" is the sentence the correction
+ * asks us to write, so the verb may not be followed by a negator.
+ */
 const SELF_CLAIM =
-  /\b(AILX|we|our examination|the examiner)\b[^.\n]{0,60}?\b(is|are|remains?|stays?|becomes?)\s+(an?\s+|the\s+)?(?:[\w-]+[,]?\s+){0,2}(neutral|impartial|unbiased|disinterested|objective|independent)\b/gi;
+  /\b(AILX|we|our examination|the examiner)\b[^.\n]{0,60}?\b(is|are|remains?|stays?|becomes?)\s+(?!(?:not|never|no longer|nobody's|no)\b)(an?\s+|the\s+)?(?:[\w-]+[,]?\s+){0,2}(neutral|impartial|unbiased|disinterested|objective|independent)\b/gi;
 
 /** The examiner role dressed in a banned adjective, whoever the subject is. */
 const ROLE_CLAIM =
@@ -132,6 +136,10 @@ describe("the pattern separates the claim from the innocent word", () => {
     "Academic instruments are objectively keyed MCQ, not task performance.",
     "Each step is independently releasable.",
     "AILX does not claim to be neutral.",
+    "We are not neutral, and we should stop using the word.",
+    "AILX is not neutral.",
+    "The examiner is never impartial.",
+    "We are no longer independent of the labs.",
     "The claim is independent under published governance, once it is provable.",
   ];
 

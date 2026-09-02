@@ -375,10 +375,10 @@ OURS. `docs/SAMPLING.md` §11 fixes, in advance, the sentences we are allowed to
 stage, and forbids the words "national" and "representative" for the open cohort in any language.
 `docs/TRANSFER-STUDY.md` §1 records that our practice loop is assembled from the two arms that did
 not beat control in Geissler, Robertson and Feuerriegel (CHI 2026, doi:10.1145/3772318.3790428),
-and that no arm beat control at two weeks. Branch `w/ten-40` rewrites `docs/POSITIONING.md` to drop the word
-"neutral" and to list six governance conditions for calling ourselves independent under published
-governance, recording that none of the six is met. That branch is not merged on 2026-09-02, so do
-not point anyone at the file until it is.
+and that no arm beat control at two weeks. `docs/POSITIONING.md` no longer uses the word
+"neutral" about us. It lists six governance conditions for calling ourselves independent under
+published governance, and records that none of the six is met. That rewrite came from branch
+`w/ten-40` and is merged here.
 
 Handing over the list of results that would sink us is cheaper now than being handed it later.
 
@@ -414,14 +414,11 @@ from the public tree, and we should say so rather than gesture at "the repo".
 6. **No cross-language or cross-country evidence exists.** No invariance testing, no translated
    forms, no field trial.
 7. **We are not neutral, and we should stop using the word.** An examiner is funded by somebody,
-   and editorial independence does not cure who chose the donors. Note the contradiction while it
-   lasts: `docs/POSITIONING.md` in this branch still calls the empty seat "neutral". Branch
-   `w/ten-40` removes the
-   neutrality claim from `docs/POSITIONING.md` and replaces it with six governance conditions:
-   a diversified funding pool with a per-donor cap, no donor veto over methods or publication, an
-   independent board with a public conflict register, preregistered methods, mandatory publication
-   of negative results, and funding committed before results are known. None of the six is in
-   place. That branch is unmerged as of 2026-09-02.
+   and editorial independence does not cure who chose the donors. `docs/POSITIONING.md` no longer
+   calls the empty seat "neutral". It states six governance conditions instead: a diversified
+   funding pool with a per-donor cap, no donor veto over methods or publication, an independent
+   board with a public conflict register, preregistered methods, mandatory publication of negative
+   results, and funding committed before results are known. None of the six is in place.
 8. **We have no partnership, endorsement or pilot with any body named in this file.** Every
    organisation in §4 appears because its published documents were read, not because anyone spoke
    to us.
