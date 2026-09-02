@@ -45,8 +45,12 @@ versus steer. The gap between the median user (shallow chat) and frontier operat
 - Forward-deployed-engineer postings up ~800% Jan–Sep 2025; eval-harness discipline
   cited as the differentiator.
 - Shopify and Duolingo grade employees on AI use in performance reviews with no
-  measurement instrument. EU AI Act Art. 4 (in force Feb 2025) mandates AI literacy
-  with no measure attached.
+  measurement instrument. EU AI Act Art. 4 has applied to providers and deployers
+  since 2 Feb 2025, and Regulation (EU) 2026/1744 (Digital Omnibus on AI, 8 July 2026)
+  replaced it with a weaker duty to "support the development of" AI literacy that
+  "does not require providers or deployers to guarantee any specific level". No measure
+  is attached either way: the Commission's AI literacy Q&A says Art. 4 "does not entail
+  an obligation to measure the knowledge of AI of employees". See docs/POLICY-BRIEF.md §2.
 
 AILX answers this by construction: authentic task scoring (unfakeable by cramming)
 and annual re-versioning (the item bank chases the frontier).
@@ -152,7 +156,8 @@ AILX's fit is a **CNCF-consortium + CFA-eminent-cohort hybrid**. In order:
    benchmarked org capability scores, sold into the 95%-pilot-failure problem.
 4. **One anchor mandate.** One employer requiring AILX in hiring, or one
    ministry/procurement pilot. The exam is worthless until someone requires it and
-   compounds fast after. EU AI Act Art. 4 is the distribution hook.
+   compounds fast after. EU AI Act Art. 4 is a weaker hook than it looks: it requires
+   no measurement and carries no EU fine (docs/POLICY-BRIEF.md §2.2, §2.3).
 5. **Structural hygiene from day one.** Nonprofit examiner owns the trademark and the
    secure anchor block; training/prep lives in a separate entity. This makes the
    neutrality claim legally credible — and is why audit-grade score recomputability
