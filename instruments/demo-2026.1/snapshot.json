@@ -873,6 +873,26 @@
       "packageVersion": "0.0.1",
       "sources": [
         {
+          "path": "@ailx/core/src/allocation.ts",
+          "sha256": "b7d72a20e5600cd5056dbb1cfeecd39694961dec8767ad43a74d7c34ecde7756"
+        },
+        {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/judgments.ts",
+          "sha256": "69b2f911d76e9ab1b20991efb5d85a6da6a5df9cd7e819a3fb53fbfd3ffb0ed7"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
+        {
           "path": "src/plugin.ts",
           "sha256": "aad22b8949c42e21fb91b7c7d1a05665b051126c6df367b8de51f95fbffdfe64"
         },
@@ -888,13 +908,29 @@
       "externals": [
         "@ailx/core@0.2.0"
       ],
-      "digest": "ec42907b471120c9509153f122de6a87f25441870d81e36ea34c74ad1a9e4d4b"
+      "digest": "35dbe1f2dd2def75899e542fb20e9d31895437408f0b78399a1e1167fef95309"
     },
     {
       "trackId": "t2",
       "packageName": "@ailx/track-t2",
       "packageVersion": "0.1.0",
       "sources": [
+        {
+          "path": "@ailx/core/src/allocation.ts",
+          "sha256": "b7d72a20e5600cd5056dbb1cfeecd39694961dec8767ad43a74d7c34ecde7756"
+        },
+        {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
         {
           "path": "src/plugin.ts",
           "sha256": "bdee4b063db5a3dfe9c5ed6b5de285270dbd65dc82f1676ca8196f5044eaf814"
@@ -911,13 +947,33 @@
       "externals": [
         "@ailx/core@0.2.0"
       ],
-      "digest": "5c1f585027893a29d8b36235689b8e7eebaa507342b5c0d2ade40510000f6a70"
+      "digest": "385b169ffc7496199eb72f9a36904dfe24a4d23287c6cd2ef7be859845663e25"
     },
     {
       "trackId": "t3",
       "packageName": "@ailx/track-t3",
       "packageVersion": "0.0.1",
       "sources": [
+        {
+          "path": "@ailx/core/src/allocation.ts",
+          "sha256": "b7d72a20e5600cd5056dbb1cfeecd39694961dec8767ad43a74d7c34ecde7756"
+        },
+        {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/judgments.ts",
+          "sha256": "69b2f911d76e9ab1b20991efb5d85a6da6a5df9cd7e819a3fb53fbfd3ffb0ed7"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
         {
           "path": "src/plugin.ts",
           "sha256": "01c0556a8841e718e7bdaeeb3158733e2da3fa3321d34aa46eeaf2f56b075082"
@@ -934,13 +990,29 @@
       "externals": [
         "@ailx/core@0.2.0"
       ],
-      "digest": "46c6ecd5b108d456d528faeeaeb598acf1efae59579abab1abdfbad215042ae6"
+      "digest": "6e9829775ee9e91d1c622201dd30d5381907eeea03bbc83658b979147e517e45"
     },
     {
       "trackId": "t4",
       "packageName": "@ailx/track-t4",
       "packageVersion": "0.0.1",
       "sources": [
+        {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/judgments.ts",
+          "sha256": "69b2f911d76e9ab1b20991efb5d85a6da6a5df9cd7e819a3fb53fbfd3ffb0ed7"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
         {
           "path": "src/plugin.ts",
           "sha256": "bff0441c61a666292cf35d278c97ea50032e1b504e5e591fa534bccd0a6e54ef"
@@ -957,7 +1029,7 @@
       "externals": [
         "@ailx/core@0.2.0"
       ],
-      "digest": "2e1be91c3115bf835b76ef4a6dfcfa698b723445cbc0aa2c19b057ad98096d60"
+      "digest": "ebf5d2302b56005c2f68ffac96e0f4780d18786550211cd1efa1c7dce8fce129"
     }
   ]
 }
