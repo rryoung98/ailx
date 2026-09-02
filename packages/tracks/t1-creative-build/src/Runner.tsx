@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import { demoAssist } from "./assist.js";
@@ -232,33 +232,7 @@ export function Runner(props: TrackUIProps) {
     }
   }, []);
 
-  // OAuth PKCE callback: ?code= in the URL + a stored verifier -> exchange
-  // for a user-scoped key. `claimPkceCallback` takes both single-use halves
-  // out of the browser BEFORE the request, so a StrictMode second pass has
-  // nothing to spend and an unmount leaves neither behind (TEN-64).
-  useEffect(() => {
-    const claimed = claimPkceCallback();
-    if (claimed === null) return;
-    let cancelled = false;
-    exchangeCodeForKey(fetch, claimed.code, claimed.verifier)
-      .then((key) => {
-        if (cancelled) return;
-        updateKey(key);
-        setAssistError(null);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setAssistError(
-          e instanceof OpenRouterError ? e.message : "OpenRouter sign-in failed.",
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateKey = (value: string) => {
+  const updateKey = useCallback((value: string) => {
     setOrKey(value);
     setAssistError(null);
     try {
@@ -270,7 +244,35 @@ export function Runner(props: TrackUIProps) {
     } catch {
       /* non-fatal */
     }
-  };
+  }, []);
+
+  // OAuth PKCE callback: ?code= in the URL + a stored verifier -> exchange
+  // for a user-scoped key. `claimPkceCallback` takes both single-use halves
+  // out of the browser BEFORE the request, so a StrictMode second pass has
+  // nothing to spend and an unmount leaves neither behind (TEN-64 defects 1
+  // to 3).
+  //
+  // `updateKey` is DEFINED above this effect and is a stable `useCallback`,
+  // so it can be a real dependency. It used to be read here from the line
+  // BELOW this effect, with the exhaustive-deps lint rule switched off to
+  // hide that (defect 4).
+  //
+  // There is no cancellation flag. Nothing is left to cancel: both secrets
+  // are already spent, and a key that arrives after an unmount should still
+  // be kept — the candidate paid for it with a sign-in. React 18+ makes a
+  // state update on an unmounted component a no-op, so the write to storage
+  // is the part that matters.
+  useEffect(() => {
+    const claimed = claimPkceCallback();
+    if (claimed === null) return;
+    exchangeCodeForKey(fetch, claimed.code, claimed.verifier)
+      .then((key) => updateKey(key))
+      .catch((e) => {
+        setAssistError(
+          e instanceof OpenRouterError ? e.message : "OpenRouter sign-in failed.",
+        );
+      });
+  }, [updateKey]);
 
   /**
    * Leave real mode for good: clear BOTH stored slots and reset the local
@@ -317,7 +319,8 @@ export function Runner(props: TrackUIProps) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // The deps below are complete; the lint disable that sat here was left
+    // over from an earlier version of this effect.
   }, [realMode, orKey, effectiveBase]);
 
   // Checkpoint every meaningful mutation with explicit next values (state
