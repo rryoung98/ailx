@@ -65,7 +65,7 @@ export type ApiMethod = "GET" | "POST" | "DELETE";
 /**
  * Which pure parser normalizes this route's query string. Named rather than
  * inlined so the manifest and `parseGalleryQuery`/`parseCaseQuery` cannot
- * drift: a route that takes `?limit=` must say WHICH clamp applies to it.
+ * drift: a route that takes `?limit=` must say which clamp applies to it.
  */
 export type ApiQueryParserName = "gallery" | "case";
 
@@ -75,8 +75,14 @@ export interface ApiRoute {
   readonly path: string;
   /** The success body, as the browser reads it. A name, not a checked type. */
   readonly response: string;
-  /** Set when the route reads a query string. */
-  readonly query?: ApiQueryParserName;
+  /**
+   * The shared parser that normalizes this route's query string, when one
+   * exists. Absence does not mean the route takes no query: `uploadSite`
+   * carries `?seq=` (`apps/web/lib/siteUpload.ts`), which only the service
+   * reads. A parser is named here when the browser and the service must clamp
+   * the same input the same way.
+   */
+  readonly queryParser?: ApiQueryParserName;
 }
 
 export const API_ROUTES = {
@@ -109,11 +115,11 @@ export const API_ROUTES = {
   // ---- moderation ---------------------------------------------------------
   candidateThread: { method: "GET", path: "/attempts/:id/moderation", response: "{ thread: CandidateThread }" },
   candidateReply: { method: "POST", path: "/attempts/:id/moderation", response: "{ thread: CandidateThread }" },
-  moderationCases: { method: "GET", path: "/moderation/cases", response: "{ listing: CaseListing }", query: "case" },
+  moderationCases: { method: "GET", path: "/moderation/cases", response: "{ listing: CaseListing }", queryParser: "case" },
   moderationCase: { method: "GET", path: "/moderation/:id", response: "{ case: ModerationCaseDetail }" },
   moderationComment: { method: "POST", path: "/moderation/:id", response: "{ comment: ModerationComment }" },
   // ---- gallery + review ---------------------------------------------------
-  gallery: { method: "GET", path: "/gallery", response: "{ gallery: GalleryListing }", query: "gallery" },
+  gallery: { method: "GET", path: "/gallery", response: "{ gallery: GalleryListing }", queryParser: "gallery" },
   reviewQueue: { method: "GET", path: "/gallery/review", response: "{ submissions: GalleryEntry[] }" },
   reviewDecision: { method: "POST", path: "/gallery/review", response: "{ share: GalleryEntry }" },
   // ---- practice + progress ------------------------------------------------
@@ -131,7 +137,7 @@ export const API_ROUTES = {
 export type ApiRouteKey = keyof typeof API_ROUTES;
 
 /**
- * The pure query normalizer each `query` name refers to. One object, so a new
+ * The pure query normalizer each `queryParser` name refers to. One object, so a new
  * parser cannot be added to the package without a route being able to name it.
  */
 export const API_QUERY_PARSERS = {

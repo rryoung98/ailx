@@ -88,12 +88,21 @@ describe("apiPath — refusals", () => {
 });
 
 describe("query-parser coupling", () => {
-  it("names a parser that exists, and names one only where the route reads a query", () => {
-    const named = entries.filter(([, r]) => r.query !== undefined);
+  it("names a parser that exists, for the two routes a shared parser covers", () => {
+    const named = entries.filter(([, r]) => r.queryParser !== undefined);
     expect(named.map(([name]) => name).sort()).toEqual(["gallery", "moderationCases"]);
     for (const [, route] of named) {
-      expect(typeof API_QUERY_PARSERS[route.query!]).toBe("function");
+      expect(typeof API_QUERY_PARSERS[route.queryParser!]).toBe("function");
     }
+  });
+
+  it("does not claim these are the only routes that take a query", () => {
+    // `uploadSite` is called with `?seq=` (apps/web/lib/siteUpload.ts), through
+    // apiPath()'s third argument. No shared parser owns it: only the service
+    // reads it. `queryParser` names a clamp both sides must agree on, and the
+    // field name is the whole claim.
+    expect(API_ROUTES.uploadSite.queryParser).toBeUndefined();
+    expect(apiPath("uploadSite", { id: "a1" }, "?seq=3")).toBe("/attempts/a1/site?seq=3");
   });
 
   it("is the SAME parser the package exports — one clamp, not a second copy", () => {
@@ -102,12 +111,12 @@ describe("query-parser coupling", () => {
   });
 
   it("normalizes through the named parser, so a hostile query is clamped once", () => {
-    const gallery = API_QUERY_PARSERS[API_ROUTES.gallery.query] as typeof parseGalleryQuery;
+    const gallery = API_QUERY_PARSERS[API_ROUTES.gallery.queryParser] as typeof parseGalleryQuery;
     expect(gallery({ limit: "1000000000", sort: "sideways" })).toMatchObject({
       limit: GALLERY_MAX_PAGE_SIZE,
       sort: "recent",
     });
-    const cases = API_QUERY_PARSERS[API_ROUTES.moderationCases.query] as typeof parseCaseQuery;
+    const cases = API_QUERY_PARSERS[API_ROUTES.moderationCases.queryParser] as typeof parseCaseQuery;
     expect(cases({ limit: "-4", lane: "sideways" })).toMatchObject({
       limit: 1,
       lane: "pending",
