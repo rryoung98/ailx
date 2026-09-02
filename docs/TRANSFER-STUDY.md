@@ -180,9 +180,15 @@ claim"). This section is the smallest study that would change that. It is
 additive: it reuses the same recruitment, the same pre-registration and the same
 `t0`/`t2` spacing as §2, and it changes nothing about the T2 arms.
 
+**Sample size is not settled here, and must be before `t0`.** §2.5's n = 176 per
+arm is powered for a between-arm difference in Δd′, which is a different
+quantity from an ICC or a correlation. §3 needs its own calculation, driven by
+the narrowest interval it must report — the ICC(2,1) in §3.2 — and by the
+timed/untimed allocation in §3.5. Naming the gap is not the same as closing it.
+
 ### 3.1 A two-stage block, so RAIR and RSR can actually be computed
 
-The centrepiece, and the one measurement without which the rest is decoration.
+The centrepiece. Without it the published statistics cannot be computed at all.
 
 Schemmer et al.'s RAIR and RSR (IUI '23, doi:10.1145/3581641.3584066) condition
 on an **independent first answer**: RAIR is switching to correct advice given the
@@ -196,6 +202,11 @@ The block fixes that for the study only:
   as a question. The candidate commits an answer and a confidence (0–100) before
   the assistant speaks. The assistant then advises: correct on half the claims,
   seeded-wrong on the other half, randomised per candidate.
+- **The two blocks share no claim, and the two-stage block runs second.** Running
+  it first would teach the candidate that the assistant lies before the ordinary
+  block measures whether they notice. Block order is fixed rather than
+  counterbalanced for that reason, and the order is a stated limit of the
+  correlation in the next point.
 - From that block, compute **RAIR and RSR to the published definitions**, and the
   Appropriateness-of-Reliance tuple. Report the tuple, never a difference.
 - Compute AILX's `reliance.over`, `reliance.under` and `reliance.index` on the
@@ -203,8 +214,10 @@ The block fixes that for the study only:
   between the two sets, with confidence intervals. **Publish them whatever they
   are.** A low correlation is the finding, not a failure of the study.
 - Pre-register the direction: `reliance.over` should track 1 − RSR, and
-  `reliance.under` should track 1 − RAIR. If they do not, the spec's claim that
-  the two rates are "comparable in direction" to the literature goes.
+  `reliance.under` should track 1 − RAIR. That is the mapping asserted in the
+  private repo's `docs/EVIDENCE-CALIBRATED-RELIANCE.md` §6, and it has never been
+  measured. If the correlations are low, the spec drops the claim that AILX's
+  rates are comparable in direction to the published ones.
 
 The block costs the candidate time and changes the task, which is exactly why it
 is a study instrument and not a shipped form. It is the only design found that
@@ -239,8 +252,8 @@ support an individual score.
 - **≥ 20 planted errors and ≥ 20 correct-advice opportunities per sitting**, so
   the retest design accumulates ≥ 40 of each.
 - Report the **binomial interval and the empirical interval side by side.** If
-  they disagree, the events are not independent and the binomial one is a
-  fiction.
+  they disagree, the events are not independent and the binomial one understates
+  the true width.
 - Add a **split-half / Spearman–Brown internal-consistency estimate at the
   achieved length**, split by error family, so the answer is not one number for
   a mixed bag of four different tasks.
@@ -251,9 +264,9 @@ Collected at `t0`, one page, no scoring impact:
 
 - A validated self-report reliance or complacency scale (GenAI-RTS,
   arXiv:2607.14301, ω = .75–.88) and Need for Cognition. Convergence should be
-  **modest**. Near 1.0 with self-report means the behavioural measure is a
-  personality questionnaire in disguise; near 0 with everything means it may be
-  noise.
+  **modest**. Near 1.0 with self-report means the behavioural measure adds
+  nothing a questionnaire does not already give; near 0 with everything means it
+  may be noise.
 - One **criterion**: accuracy on a held-out task where an assistant is available
   and wrong on 30% of its claims. Without a criterion outside the exam, calibrated
   reliance stays a descriptive index.
@@ -283,13 +296,14 @@ candidate. If form variance dominates, the index is a property of the exam.
 
 ### 3.7 Judge validation: Spearman beside QWK
 
-The 45 analysis-quality points route to a jury (spec §04). Whenever that jury is
+The 45 analysis-quality points route to a jury (spec §T3, "Score allocation";
+the evidence is in §04). Whenever that jury is
 validated against a human panel, **report Spearman ρ next to QWK, both with
 intervals.** Distribution calibration can match the human score distribution
 while carrying almost no rank information (Yeadon et al., arXiv:2603.14732), and
 QWK alone cannot tell the two apart. Report the human–human agreement measured on
-the same panel in the same table, because a judge figure without its human
-comparator is not a result. Pin and record the judge version with every
+the same panel in the same table: a judge coefficient without its human
+comparator cannot be read. Pin and record the judge version with every
 coefficient.
 
 ---
