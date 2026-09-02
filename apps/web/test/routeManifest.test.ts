@@ -47,7 +47,9 @@ const PATTERNS: readonly { readonly what: string; readonly re: RegExp }[] = [
   },
   {
     what: "an API root followed by a literal path",
-    re: new RegExp(`\\$\\{[^}]*(?:apiBase\\(\\)|[bB]aseUrl)[^}]*\\}\\/(?:${SEGMENTS.join("|")})\\b`),
+    re: new RegExp(
+      `\\$\\{[^}]*(?:apiBase\\(\\)|apiRoot\\(\\)|[bB]aseUrl)[^}]*\\}\\/(?:${SEGMENTS.join("|")})\\b`,
+    ),
   },
   {
     what: "serviceFetch/useService given a string instead of an ApiPath",
@@ -69,6 +71,9 @@ describe("the detector catches what it exists to catch", () => {
     ]);
     expect(offences("await opts.fetchFn(`${opts.baseUrl}/attempts/${id}/share`);")).toEqual([
       "a fetch with a literal service path",
+      "an API root followed by a literal path",
+    ]);
+    expect(offences('await request.post(`${apiRoot()}/attempts`, {});')).toEqual([
       "an API root followed by a literal path",
     ]);
     expect(offences('useService<{ progress: Report }>("/progress");')).toEqual([
@@ -103,11 +108,17 @@ describe("the detector catches what it exists to catch", () => {
 });
 
 describe("apps/web spells no service URL by hand", () => {
-  const files = sources(join(webDir, "lib")).concat(sources(join(webDir, "app")));
+  // e2e too: the Playwright fixtures seed through the same routes, and a
+  // renamed route that only the fixtures spell would go green here and red on
+  // a machine that has a service to talk to.
+  const files = sources(join(webDir, "lib"))
+    .concat(sources(join(webDir, "app")))
+    .concat(sources(join(webDir, "e2e")));
 
   it("reads the frontend it is guarding", () => {
     expect(files.length).toBeGreaterThan(50);
     expect(files.map((f) => relative(webDir, f))).toContain(join("lib", "serviceFetch.ts"));
+    expect(files.map((f) => relative(webDir, f))).toContain(join("e2e", "fixtures.ts"));
   });
 
   it("has no offender", () => {
