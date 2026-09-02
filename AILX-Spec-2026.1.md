@@ -7,7 +7,7 @@ Web version: <https://claude.ai/code/artifact/569a7a59-fcae-4236-a55e-cf68c64a2f
 
 ---
 
-A performance-based benchmark that measures what a person can actually do with, against, and about artificial intelligence — scored on four tracks, normed across three countries, and re-versioned every year.
+A performance-based benchmark that measures what a person can actually do with, against, and about artificial intelligence — scored on four tracks, sat in three languages, and re-versioned every year.
 
 ## 01 · Summary
 
@@ -28,6 +28,10 @@ Precision here matters more than ambition, because the first thing a serious rev
 >
 > **AILX is the first cross-nationally normed, annually re-versioned, task-performance-based AI-literacy examination for adults.** Every qualifier in that sentence is load-bearing and independently supportable. Drop any one of them and a reviewer can produce a counterexample.
 
+> **"Cross-nationally normed" is a claim about the panel wave, and the first wave is two countries**
+>
+> The exam runs in three languages and every item ships in all three. The statistic does not follow the exam. A population figure needs a probability sample, and there is no probability panel to buy in Japan or Korea: Japan needs commissioned address-based push-to-web, Korea needs RDD phone recruitment into a web instrument, both at roughly twice the per-complete cost for a smaller n (`docs/PANEL-MARKETS.md`). So the first population statistic covers the **US and the UK**, whose frames are off the shelf, at an estimated **$0.8–1.2M** — our own figure, arithmetic in `docs/SAMPLING.md` §13. Japan and Korea are a funded phase, not a date: they field when roughly **$1.1–1.6M** of additional fieldwork is committed and a local partner is contracted. Until then AILX publishes no Japanese or Korean population number, and "cross-nationally normed" means two countries, said in that many words.
+
 What must *not* be claimed is that no performance-based human AI-literacy instrument exists. Two do — **GLAT** (20 items, 2PL IRT, α = 0.80) and **AICOS** (51 items, 3PL IRT, n = 514) — and a third, SAIL4ALL, has been validated on 1,500+ respondents across three samples. A systematic review counts three "performance-based" scales against thirteen self-report ones.
 
 The catch, and the opening, is terminological. In that literature "performance-based" means *objective and keyed* — multiple-choice or true/false — as opposed to self-report. It does not mean authentic task performance. Nobody is scoring a person actually building something, actually being deceived or not deceived, actually directing a model, against a rubric, at scale. That is the space AILX occupies **today**.
@@ -39,13 +43,13 @@ The catch, and the opening, is terminological. In that literature "performance-b
 ### Four supporting facts worth memorising
 
 - **Self-report does not work.** A 2026 LAK study found low correlation between self-reported and objectively measured AI literacy, with systematic over- and under-estimators. In the GLAT validation, objective score predicted AI-assisted task performance (β = 0.220, p = .040) while self-reported ChatGPT proficiency predicted nothing (p = .118).
-- **No existing instrument is cross-culturally validated.** The *npj Science of Learning* review states plainly that none of the sixteen scales has been tested for cross-cultural validity. A trilateral cohort is therefore not a nice-to-have framing — it is the single strongest methodological differentiator available.
+- **No existing instrument is cross-culturally validated.** The *npj Science of Learning* review states plainly that none of the sixteen scales has been tested for cross-cultural validity. A trilingual instrument is therefore not decoration: differential item functioning across en/ja/ko can be analysed from cohort 1, on convenience data, for the cost of authoring the items. A trilateral *population comparison* is a separate purchase and is not funded (`docs/PANEL-MARKETS.md`).
 - **The construct is moving, and the OECD is moving into it.** The OECD–EC *AILit* framework was finalised 18 June 2026 with 4 domains and 19 competences; PISA 2029 will field a separate Media & AI Literacy domain, and its draft framework is performance-based rather than multiple-choice. Both are aimed at primary and secondary school, on a three-year cycle. **Adults, measured annually, are unserved — that is the moat, not the item format.**
 - **Humans are worse at detection than they believe.** In a 2,000-person study, 0.1% correctly classified every item, and confidence stayed above 60% regardless of correctness. Overconfidence, not accuracy, is likely to be AILX's most quotable finding.
 
 ### What a pitch meeting should take away
 
-AILX gives a government a defensible number for a population it currently cannot measure, and gives a frontier lab something it does not have: a calibrated human baseline on tasks its models are also evaluated on. The 2026 pilot is explicitly a **calibration cohort**, not a certification event — a point stated up front rather than discovered by a reviewer, for reasons set out in §9.
+AILX gives a frontier lab something it does not have: a calibrated human baseline on tasks its models are also evaluated on. It can give a government a defensible number for a population it currently cannot measure, once a probability panel wave is bought — the first one covers the US and the UK, and Japan and Korea wait on funded fieldwork (`docs/PANEL-MARKETS.md`). The 2026 pilot is explicitly a **calibration cohort**, not a certification event and not a population estimate — a point stated up front rather than discovered by a reviewer, for reasons set out in §9.
 
 ## 02 · The gap being filled
 
@@ -62,7 +66,7 @@ Frameworks are abundant. Instruments are scarce. Instruments that measure **adul
 | **AICOS / AICOS-SV**     | Instrument             | Adults (mean age 32.9)  | 51 / 18 MCQ, 3PL IRT, α = .83           | Validated n = 514                  |
 | **SAIL4ALL**             | Instrument             | General public          | 56 objective items, CTT                 | Validated n = 1,513 (3 samples)    |
 | **MAILS / SNAIL / PECS** | Self-report scales     | Various                 | Likert                                  | Not predictive of task performance |
-| **AILX**                 | **Instrument**         | **Adults, 3 countries** | **4 authentic performance tracks**      | **Pilot Aug 2026**                 |
+| **AILX**                 | **Instrument**         | **Adults, 3 languages** | **4 authentic performance tracks**      | **Pilot Aug 2026**                 |
 
 Landscape as of August 2026. "Instrument" means something a person can sit and be scored on.
 
@@ -73,6 +77,8 @@ Landscape as of August 2026. "Instrument" means something a person can sit and b
 ### Why the trilateral framing is a methodological asset, not decoration
 
 Cross-cultural validity is the loudest unaddressed weakness in the existing literature, and a US–Japan–Korea cohort attacks it directly. It also creates a real obligation: every item ships in English, Japanese and Korean with recorded translation provenance, and differential item functioning is analysed by language from the first cohort onward. A benchmark that produces different difficulty by language and does not say so is not measuring AI literacy — it is measuring English.
+
+Say which half is funded. **The trilingual instrument is funded — it is authoring cost, and it is being paid.** The trilateral *population statistic* is not: Japan and Korea have no probability panel to rent, so each needs a commissioned fresh sample at roughly twice the per-complete cost (`docs/PANEL-MARKETS.md`). A ja/ko convenience cohort supports DIF analysis, item calibration and individual credentials. It supports no sentence beginning "adults in Japan".
 
 ## 03 · Construct definition
 
