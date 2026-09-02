@@ -20,6 +20,16 @@
  * point of the split, and `apps/web/test/bundleSecrecy.test.ts` keeps biting.
  */
 export { type ApiResult, FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "./api.js";
+export {
+  API_QUERY_PARSERS,
+  API_ROUTES,
+  apiPath,
+  type ApiMethod,
+  type ApiPath,
+  type ApiQueryParserName,
+  type ApiRoute,
+  type ApiRouteKey,
+} from "./routes.js";
 export { clampInt } from "./clamp.js";
 export {
   DEV_USER_COOKIE,
