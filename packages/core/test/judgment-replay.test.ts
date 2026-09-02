@@ -1,23 +1,35 @@
 /**
- * The recomputability invariant, at the point where it is easiest to break —
- * spec §14, AGENTS.md "Core invariants".
+ * THE CONTRACT AROUND A STORED JUDGE OUTPUT — spec §14, AGENTS.md.
  *
  * "Any score ever issued is byte-identically recomputable from stored inputs"
- * is TRUE for T3/T4 only because a judge's output is one of the stored inputs.
- * An LLM judge is not reproducible even at temperature 0, so the honest pair of
- * claims is: re-SCORING reproduces, re-JUDGING does not. These tests assert
- * both halves — including the one that admits the weakness — so that a future
- * judging pipeline cannot quietly re-invoke a judge on the recompute path and
- * still pass.
+ * is TRUE for T1/T3/T4 only because a judge's output is one of the stored
+ * inputs. An LLM judge is not reproducible even at temperature 0, so the
+ * honest pair of claims is: re-SCORING reproduces, re-JUDGING does not.
  *
- * The judging pipeline does not exist yet. This locks the CONTRACT before it
- * is built, which is the cheap end of that fix.
+ * WHAT THIS FILE DOES AND DOES NOT PROVE. It pins `judgmentId` — the content
+ * address the whole scheme rests on. It proves NOTHING about any real track,
+ * and it used to pretend otherwise: it scored a toy `replayScore` defined
+ * inside this file, which could not fail when the real system broke, and the
+ * real system was broken at the time (`judgmentId` had no production caller
+ * anywhere, and a judge-resolved track could be scored with `judgments: []`).
+ * That toy is gone. The claims it seemed to make are now made where they can
+ * fail for the right reason:
+ *
+ *   packages/session/test/recomputability.test.ts
+ *     the machine refuses a score that is not attested, and a tampered stored
+ *     log truncates on load;
+ *   apps/web/test/recomputability.test.ts
+ *     the REAL T1-T4 plugins replay their REAL stored rows byte-identically,
+ *     ignore a drifted judge, and are invariant to stored row order;
+ *   packages/core/test/judgments.test.ts
+ *     the aggregation those rows feed is order-invariant by construction;
+ *   packages/core/test/purity.test.ts
+ *     what the purity harness does and does not catch.
  */
 import { describe, it, expect } from "vitest";
-import type { Judgment, ScoreInputs, TrackScore } from "../src/plugin.js";
+import type { Judgment } from "../src/plugin.js";
 import { judgmentId } from "../src/content-address.js";
 import { canonicalJson } from "../src/hash.js";
-import { runPure } from "../src/purity.js";
 
 // ---------------------------------------------------------------------------
 // A stand-in for an LLM judge: same artifact, same prompt, different number.
@@ -29,7 +41,7 @@ function unstableJudge(): (artifact: string, dimension: string, sample: number) 
   return (artifact, dimension, sample) => ({
     dimension,
     sample,
-    value: 60 + (drift++ % 7),
+    value: (60 + (drift++ % 7)) / 100,
     evidence: `cited from ${artifact}`,
     modelId: "test-judge@20260101",
   });
@@ -39,65 +51,21 @@ function collect(judge: ReturnType<typeof unstableJudge>, artifact: string): Jud
   return ["clarity", "control"].flatMap((d) => [0, 1, 2].map((s) => judge(artifact, d, s)));
 }
 
-/** A track's score(): PURE, and reads nothing but its stored inputs. */
-function replayScore(inputs: ScoreInputs<string>): TrackScore {
-  const raw: Record<string, number> = {};
-  for (const j of [...inputs.judgments].sort((a, b) =>
-    a.dimension === b.dimension ? a.sample - b.sample : a.dimension < b.dimension ? -1 : 1,
-  )) {
-    raw[j.dimension] = (raw[j.dimension] ?? 0) + j.value;
-  }
-  const dims = Object.keys(raw).sort();
-  for (const d of dims) raw[d] = raw[d] / 3;
-  return { raw, scaled: dims.reduce((t, d) => t + raw[d], 0) / dims.length };
-}
+describe("re-JUDGING is not reproducible — the weaker half, stated on purpose", () => {
+  it("two collections over one artifact disagree, and that is expected", () => {
+    const judge = unstableJudge();
+    expect(canonicalJson(collect(judge, "artifact-a")))
+      .not.toBe(canonicalJson(collect(judge, "artifact-a")));
+  });
 
-describe("stored judge output is an INPUT to score(), not something score() re-derives", () => {
-  it("re-JUDGING is not reproducible — the weaker claim, stated on purpose", () => {
+  it("...so a re-judged row gets a DIFFERENT content address, loudly", () => {
     const judge = unstableJudge();
     const first = collect(judge, "artifact-a");
     const second = collect(judge, "artifact-a");
-
-    expect(canonicalJson(second)).not.toBe(canonicalJson(first));
-    expect(replayScore({ artifact: "artifact-a", judgments: second, rubricVersion: "r1" }).scaled).not.toBe(
-      replayScore({ artifact: "artifact-a", judgments: first, rubricVersion: "r1" }).scaled,
-    );
-  });
-
-  it("re-SCORING from the STORED judgments is byte-identical, however far the judge has drifted", () => {
-    const judge = unstableJudge();
-    const stored: ReadonlyArray<Judgment> = Object.freeze(collect(judge, "artifact-a"));
-    const inputs: ScoreInputs<string> = { artifact: "artifact-a", judgments: stored, rubricVersion: "r1" };
-
-    const ofRecord = canonicalJson(replayScore(inputs));
-    for (let i = 0; i < 5; i++) {
-      collect(judge, "artifact-a"); // the judge keeps moving; the score must not
-      expect(canonicalJson(replayScore(inputs))).toBe(ofRecord);
-    }
-  });
-
-  it("is invariant to the order rows come back from the store in", () => {
-    const stored = collect(unstableJudge(), "artifact-a");
-    const shuffled = [stored[3], stored[0], stored[5], stored[1], stored[4], stored[2]];
-    expect(canonicalJson(replayScore({ artifact: "a", judgments: shuffled, rubricVersion: "r1" }))).toBe(
-      canonicalJson(replayScore({ artifact: "a", judgments: stored, rubricVersion: "r1" })),
-    );
-  });
-
-  it("a score() that reaches for the judge instead of the stored row is a purity violation", () => {
-    const stored = collect(unstableJudge(), "artifact-a");
-    // Positive control: this is the mistake the contract exists to prevent.
-    const reJudgingScore = (inputs: ScoreInputs<string>): TrackScore => {
-      void (globalThis as { fetch: unknown }).fetch;
-      (globalThis as { fetch: () => unknown }).fetch();
-      return replayScore(inputs);
-    };
-    expect(() =>
-      runPure(() => reJudgingScore({ artifact: "a", judgments: stored, rubricVersion: "r1" })),
-    ).toThrow(/Purity violation/);
-    expect(
-      runPure(() => replayScore({ artifact: "a", judgments: stored, rubricVersion: "r1" })).scaled,
-    ).toBeGreaterThan(0);
+    // Not one id in common: an auditor comparing ids against the score of
+    // record sees a re-judge as a re-judge, never as a silent agreement.
+    const ids = new Set(first.map(judgmentId));
+    expect(second.filter((j) => ids.has(judgmentId(j)))).toHaveLength(0);
   });
 });
 
@@ -105,7 +73,7 @@ describe("judgmentId content-addresses the stored judge output", () => {
   const base: Judgment = {
     dimension: "clarity",
     sample: 0,
-    value: 62,
+    value: 0.62,
     evidence: "cited from artifact-a",
     modelId: "test-judge@20260101",
   };
@@ -114,7 +82,7 @@ describe("judgmentId content-addresses the stored judge output", () => {
     // Independently produced by node:crypto over JSON.stringify of the
     // key-sorted object; see test/hash.test.ts for the same discipline.
     expect(judgmentId(base)).toBe(
-      "350123c5a538e5b6bdd7d75b3931624f478f3df5e9e265f4a76ce1a88ed4a0cb",
+      "ad1122c157f4ad128e48fc175914549c4a67344552687d5a08e2aa74c73f5972",
     );
   });
 
@@ -131,7 +99,7 @@ describe("judgmentId content-addresses the stored judge output", () => {
 
   it("changes when ANY field of the stored judgment changes", () => {
     const mutations: Judgment[] = [
-      { ...base, value: 62.0001 },
+      { ...base, value: 0.620001 },
       { ...base, dimension: "control" },
       { ...base, sample: 1 },
       { ...base, modelId: "test-judge@20260102" },
@@ -142,6 +110,18 @@ describe("judgmentId content-addresses the stored judge output", () => {
     // discarded, not silently equal to an evidenced one (spec §10).
     const { evidence: _drop, ...withoutEvidence } = base;
     expect(judgmentId(withoutEvidence as Judgment)).not.toBe(judgmentId(base));
+  });
+
+  it("is not fooled by the values JSON cannot represent", () => {
+    // The title above used to be false: JSON.stringify collapses -0 with 0,
+    // NaN and Infinity with null, and an explicit `undefined` property with
+    // its absence, so four different judgments hashed the same. The encoder
+    // now REFUSES them, which is the loud failure a judgment carrying NaN
+    // deserves. `evidence: undefined` throws; an ABSENT evidence still hashes.
+    for (const bad of [-0, NaN, Infinity, -Infinity]) {
+      expect(() => judgmentId({ ...base, value: bad }), String(bad)).toThrow(/canonicalJson/);
+    }
+    expect(() => judgmentId({ ...base, evidence: undefined })).toThrow(/canonicalJson/);
   });
 
   it("separates the samples of an ensemble, so a median cannot be forged from one call", () => {
