@@ -34,10 +34,17 @@ private repo.
 Two ceilings fall out of that table, and both are products of defaults.
 
 **Postgres connections: 12.** `AILX_PG_POOL_MAX` (3) times `max_instances` (4). Neon's pooled
-endpoint accepts 10,000 client connections globally, and a 1 CU compute allows 419 direct
-connections of which `0.9 x 419 = 377` may hold a transaction at once
-(neon.com/docs/connect/connection-pooling, read 2026-09-02). Twelve is 3% of 377. Neon pooling
-is not what breaks first. The load test should confirm that rather than discover it.
+endpoint accepts 10,000 client connections globally, and the number that may hold a transaction
+at once is `0.9 x max_connections`, which moves with the compute size: 104 direct connections at
+0.25 CU (93 slots), 209 at 0.5 CU (188), 419 at 1 CU (377), 839 at 2 CU (755)
+(neon.com/docs/connect/connection-pooling, read 2026-09-02). Twelve fits at every size. Neon
+pooling is not what breaks first. The load test should confirm that rather than discover it.
+
+The compute size is a floor, not a constant, and **no repository records it.** Terraform holds
+only `DATABASE_URL` as a secret; the plan, the autoscale range and the autosuspend setting live
+in the Neon console. Free and Launch autoscale up from 0.25 CU, so 93 is what a cold database
+offers a spike. Read the console before trusting any figure derived from 377. Section 8 does the
+arithmetic at the conservative floor instead.
 
 **In-flight requests: 320.** Concurrency (80) times `max_instances` (4). Above that Cloud Run
 queues, and Google publishes exactly one number about the queue: a request pends for up to 3.5
@@ -52,7 +59,14 @@ database-touching requests at once. The 4th waits on `connectionTimeoutMillis` a
 10 seconds with a generic 500.
 
 Cloud Run is told it may put 80 requests on that instance. The gap between 80 and 3 is not a
-tuning question, it is a queue with a 10-second fuse. Nothing has fallen over yet because
+tuning question, it is a queue with a 10-second fuse.
+
+Nor does the autoscaler rescue the instance early. Metrics-based scaling "sets a 60% threshold
+for CPU utilization and request concurrency targets", and "at lower instance counts, the
+autoscaler might wait longer to scale" (cloud.google.com/run/docs/about-instance-autoscaling,
+read 2026-09-02). At concurrency 80 that is roughly 48 average concurrent requests over a
+minute before a second instance is asked for. The pool wall is at 3. Requests 4 to about 48
+fail on one instance while the autoscaler sees a revision that is not busy yet. Nothing has fallen over yet because
 staging traffic is a handful of requests at a time.
 
 This is the single most useful thing the reading produced, and it is worth being blunt about:
@@ -146,9 +160,10 @@ is written to the object store in a sequential PUT. Estimate for a maximum-size 
 **about 75 MiB of live buffers for one request**, plus up to 501 external PUTs inside the
 request.
 
-That number, not the sitting path, is what should set memory and concurrency. On a 512 MiB
-instance, four concurrent maximum-size uploads is an OOM, and a Cloud Run OOM kills the
-instance and every request on it. The direct-to-blob upload path that would avoid this returns
+That number, not the sitting path, is what should set memory and concurrency. Four concurrent
+maximum-size uploads is about 300 MiB of live buffers, 59% of a 512 MiB instance before the
+Node baseline is counted, and the baseline has never been measured. A Cloud Run OOM kills the
+instance and every request on it, so the headroom is the whole point. The direct-to-blob upload path that would avoid this returns
 501 in this deployment (`makeUploadStaging` returns null), so today every large T1 site goes
 through the function body.
 
@@ -192,6 +207,10 @@ moves p50 by the round-trip time and the two numbers are not comparable.
 Six scenarios. The mix is weighted by what real traffic looks like during a campaign, where
 most people take a practice drill and few sit the full exam.
 
+Weight the scenarios by REQUESTS, not by iterations. One `sitting_write` iteration is 252
+requests and one `report_read` iteration is three, so equal iteration rates give a mix nothing
+like the table below.
+
 | Scenario | Share of requests | What it does |
 | --- | --- | --- |
 | `sitting_write` | 60% | Create an attempt, then post 250 log entries at a realistic pace, then finalize |
@@ -211,10 +230,12 @@ Four stages, one run, about 40 minutes.
 
 1. **Warm-up, 2 min.** `GET /livez` at 1 rps. No database, no auth. It proves the harness and
    the target agree before anything is measured.
-2. **Cold start probe, 5 min.** Scale the service to zero, wait past the Neon 5-minute
-   autosuspend, then send one `POST /v1/attempts` and record the full wall clock. Repeat 20
-   times. This is the number the whole min-instances decision turns on, and it needs a
-   distribution, not one sample.
+2. **Cold start probe, a run of its own, about 2.5 hours.** Scale the service to zero, wait
+   past the Neon 5-minute autosuspend, then send one `POST /v1/attempts` and record the full
+   wall clock. Repeat 20 times. Each sample costs its own idle wait, so 20 samples is over 100
+   minutes plus scale-down and startup; it does not fit inside a 40-minute mixed run and should
+   not be attempted there. This is the number the whole min-instances decision turns on, and it
+   needs a distribution, not one sample.
 3. **Steady state, 20 min.** Ramp virtual users 0 to 50 over 5 minutes, hold 50 for 15. Fifty
    VUs against `concurrency x max_instances` is deliberately modest: with the pool at 3 the
    service can serve 12 database requests at once, so 50 concurrent VUs already tests the queue.
@@ -432,3 +453,159 @@ Said plainly, so nobody cites an estimate as a measurement.
   assumes it does not, which is the conservative direction.
 - The Neon autosuspend setting is not in any repository. Read it in the Neon console, or with
   `GET /projects/<id>` and `suspend_timeout_seconds`, before trusting section 4.4.
+
+## 8. The concurrency setting, decided
+
+TEN-44. Section 1.1 found the defect by reading. This section prices the two ways out, records
+which pair the repository carries, and adds the check that stops the pair drifting apart again.
+Nothing here is applied: the values are Terraform variables in the private repo and this
+repository cannot deploy. What it can do is hold the arithmetic and go red when the arithmetic
+stops working.
+
+### 8.1 The rule, and why both options in the issue break it
+
+**`concurrency` may not exceed `AILX_PG_POOL_MAX`.** That is Google's own rule, not an invention
+here: set a code-level concurrency limit, then "set the Cloud Run concurrency to a value equal
+to or less than" it (cloud.google.com/run/docs/tips/general, read 2026-09-02). Every route goes
+through `withApiContext`, so the pool IS the code-level limit.
+
+The issue proposed pool 6 with concurrency 8, and pool 3 with concurrency 4. Both leave a gap on
+the argument that the spare slots go to requests that never touch the pool — `GET /livez`, the
+startup probe, a CORS preflight. Nothing enforces that. Cloud Run does not know which request is
+which, so eight database requests can land on a six-client pool and two of them wait ten seconds
+and 500. It is the same bug, two orders of magnitude smaller, and it would be found by the same
+reading. So the numbers below close the gap instead of shrinking it.
+
+### 8.2 What the two options cost
+
+| | Option 1: raise the pool | Option 2: lower concurrency |
+| --- | --- | --- |
+| `AILX_PG_POOL_MAX` | 8 (issue said 6) | 3 (unchanged) |
+| `concurrency` | 8 | 3 (issue said 4) |
+| `max_instances` | 20 | 40 |
+| `memory` | 1Gi, forced | 512Mi (unchanged) |
+| Requests in flight at the ceiling | 160 | 120 |
+| Postgres connections at the ceiling | 160 | 120 |
+| Instances for 120 requests | 15 | 40 |
+| Neon compute floor required | 1 CU | 0.5 CU |
+
+Serving cost separates them by nothing. At the steady level in section 4.1 (300,000 requests a
+month, 60 ms mean) option 1's 1 GiB doubles the memory half to 18,000 GiB-seconds against a
+360,000 free tier: $0.045 a month if it were billed at all. Neither option touches
+`min_instances`, which stays 0, so neither buys idle. The differences are these three.
+
+**Option 1 forces the memory limit up, and the issue does not say so.** The heaviest request is
+a maximum-size T1 upload at an estimated 75 MiB of live buffers (section 2.4). Eight of those is
+600 MiB and a 512 MiB instance cannot hold them. Cloud Run's guidance with the same setting is
+"match memory to concurrency". One vCPU is allowed 512 MiB to 4 GiB
+(cloud.google.com/run/docs/configuring/services/memory-limits, read 2026-09-02), so 1 GiB is
+available. It costs nothing while `min_instances` is 0 and $3.24 a month per warm instance
+afterwards (section 4.2 rates), which is the price a campaign would pay under section 6 point 4.
+
+**Option 2 pays roughly twice the cold starts.** An instance covers 3 requests instead of 8, so
+the same burst starts about 2.7 times as many containers, each an estimated 1 to 3 seconds
+(section 5) and each opening its own Neon connections. Cloud Run keeps an idle instance up to 15
+minutes (cloud.google.com/run/docs/about-instance-autoscaling, read 2026-09-02), so the cost is
+paid per instance per quiet period rather than per request — but it is paid on a path that
+includes `POST /t3/assist` inside a timed turn, where section 5 says a stall is not just an
+annoyance.
+
+**The Neon compute floor is a requirement, not a preference, and no repository records it.**
+Neon's pooler allows `0.9 x max_connections` clients to hold a transaction at once, and
+`max_connections` moves with the compute: 104 at 0.25 CU (93 slots), 209 at 0.5 CU (188), 419 at
+1 CU (377). Option 1's 160 connections need 1 CU. Option 2's 120 need 0.5 CU. Past the limit a
+client waits and then fails with `query_wait_timeout` after two minutes, which is a worse
+failure than the ten-second one this issue is about. Terraform holds only `DATABASE_URL`; the
+plan and the autoscale floor live in the Neon console. **Read it before applying either option.**
+Free and Launch autoscale up from 0.25 CU, and at that floor there are 93 slots: cap
+`max_instances` at 11 under option 1 or 31 under option 2.
+
+Section 3.4 sizes its spike stage against the in-flight ceiling of 320 that concurrency 80 and
+`max_instances` 4 give today. Under option 1 that ceiling is 160 and under option 2 it is 120.
+Re-read stages 3 and 4 against the pair actually deployed before running them.
+
+### 8.3 The sizing this branch carries
+
+The numbers the check reads. Change them here and the check re-runs on the new pair.
+
+| Setting | Value | Where it is applied |
+| --- | --- | --- |
+| `AILX_PG_POOL_MAX` | 8 | `run.tf` runtime env, from a new `pg_pool_max` variable |
+| `concurrency` | 8 | `max_instance_request_concurrency` |
+| `max_instances` | 20 | `max_instance_count` |
+| `memory` | 1Gi | the service and the migration job |
+| `neon_min_compute_cu` | 1 | the Neon console. Not in any repository |
+
+This is **option 1**. The commit before it carries option 2 (pool 3, concurrency 3,
+`max_instances` 40, memory 512Mi, Neon floor 0.5 CU); revert this one commit to take that
+instead. Option 1 is the branch's final state because section 6 already preferred it and the
+costing did not overturn that: it pays fewer cold starts, and its price is $3.24 a month per
+warm instance that nobody is buying today. That is a preference, not a decision. The human
+picks. What is not open is leaving `concurrency` at 80 against a pool of 3.
+
+### 8.4 The check, in both repositories
+
+The two numbers live in different repositories, which is why neither repository could see the
+gap. Neither half of the check is optional, and neither half is sufficient.
+
+**Here.** `packages/core/test/serviceSizing.test.ts` reads the table in section 8.3 and asserts
+that `concurrency` does not exceed `AILX_PG_POOL_MAX`, that `AILX_PG_POOL_MAX x max_instances`
+fits Neon's pooler at `neon_min_compute_cu`, that `concurrency x 75 MiB` fits inside 80% of the
+memory limit, and that the memory limit is one 1 vCPU may have. It checks a decision this
+repository wrote down. It cannot see Terraform and does not claim to.
+
+**There.** Terraform does not set `AILX_PG_POOL_MAX` at all today, so it cannot compare anything.
+Give it the number, then make it check:
+
+```hcl
+variable "pg_pool_max" {
+  description = <<-EOT
+    AILX_PG_POOL_MAX. withApiContext checks out one pool client per request and
+    holds it for the whole handler, so this is the instance's real request
+    concurrency and var.concurrency may not exceed it.
+  EOT
+  type        = number
+  default     = 8
+}
+
+variable "concurrency" {
+  type    = number
+  default = 8
+
+  validation {
+    condition     = var.concurrency <= var.pg_pool_max
+    error_message = "concurrency exceeds AILX_PG_POOL_MAX: the surplus requests 500 after the 10s pool acquire timeout, and Cloud Run's autoscaler does not react until average concurrency reaches 60% of the limit."
+  }
+}
+```
+
+`run.tf` then adds `{ name = "AILX_PG_POOL_MAX", value = tostring(var.pg_pool_max) }` to
+`local.runtime_env`, and `tests/config.tftest.hcl` gets a case that expects the validation to
+reject the old pair. Until that lands the deployed service still runs concurrency 80 against a
+pool of 3.
+
+### 8.5 What neither option fixes
+
+A bigger pool moves the wall. It does not change the shape of the thing that hits it: **a
+handler holds its pool client across an await on something that is not the database.** Two
+routes in the private repo do that today.
+
+- `handleGithubExport` (`packages/backend/src/t1/export.ts`). It runs inside `withApiContext`,
+  so it holds a client while it calls github.com to redeem the device code and then pushes every
+  file of the candidate's site. The request timeout is 300 seconds. One slow GitHub call holds
+  one of an instance's few clients for as long as GitHub takes.
+- `recordSiteSubmission` behind `POST /v1/attempts/:id/site`
+  (`packages/backend/src/t1/handlers.ts`). It holds a client across `ctx.snapshots.put`, which
+  is up to 501 sequential object-store PUTs (section 2.4).
+
+Three such requests starve an instance under option 2 and eight under option 1. Both numbers are
+reachable at the end of a T1 session, and under either option the instance's other requests fail
+while the pool waits on a third party.
+
+No route calls a model, so the worst version of this shape does not exist yet: judging runs from
+the offline `pnpm judge` CLI (section 2.1). Phase 4 is where it would arrive, and it should not
+arrive holding a pool client.
+
+The fix is to release the client before the external call and take a new one after, or to move
+the external work off the request. That is a change to handlers in the private repo. It is not
+this issue, and it is the one that stops the next version of this bug.
