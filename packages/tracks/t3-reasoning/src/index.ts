@@ -4,10 +4,14 @@ export {
 export { Runner } from "./Runner.js";
 export {
   scoreT3, revisionChainLength, rairCreditForClaim, verifiedClaimIds,
-  relianceIndex, relianceBand,
+  relianceIndex, relianceBand, wilsonInterval, proportionDifferenceInterval,
   RUBRIC_BAND_MAX, RSR_MIN_SURFACED, RELIANCE_CALIBRATED_BAND,
-  type T3Raw, type Reliance, type RelianceBand,
+  type T3Raw, type Reliance, type RelianceBand, type Interval,
 } from "./scoring.js";
+export {
+  relianceReportFromRaw, formatInterval, formatRate,
+  type RelianceReport, type RelianceRow,
+} from "./relianceReport.js";
 export { encodeT3Checkpoint, decodeT3Checkpoint, type T3CheckpointState, type T3ChatMsg } from "./checkpoint.js";
 export { assistantReply, DEMO_ASSISTANT_ID, type AssistantReply } from "./assistant.js";
 export {
