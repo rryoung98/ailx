@@ -72,6 +72,12 @@ somebody makes in front of a reviewer.
   minimum n and precision, weighting, coverage limits, device effects, the
   non-response bias analysis we publish unprompted, the exact hedging language
   for convenience-sample findings, and the cost of a first release.
+- `docs/PANEL-MARKETS.md` — the vendor evidence behind the country plan: no
+  probability online panel is sold in Japan or Korea, what each country does
+  sell instead, the published response rates and rate cards with their sources,
+  why the 2× per-complete premium we assumed has no source, and the decision
+  that follows — the exam is trilingual, the first population statistic covers
+  the US and the UK, and Japan and Korea field on a named funding condition.
 
 ## Frontend/backend separation
 - `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
