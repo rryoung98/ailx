@@ -48,6 +48,11 @@
  * repo's `apiRoute` wrapper generic in `ApiRouteKey`; that is a separate
  * decision (docs/ADR-orpc.md §8, TEN-43).
  *
+ * TWO ENTRIES HAVE NO CALLER in `apps/web` today: `getAttempt` and
+ * `countShareView`. They stay listed because direction 2 above is an equality,
+ * and a service route missing from this table would fail it. Delete the route
+ * and the entry together, or neither.
+ *
  * ORDER IS NOT DECLARED. This is a table, not a router. `/practice/claim` must
  * still be mounted before `/practice/:id` — Hono matches in registration order
  * and "claim" is a valid-looking session id — and nothing here says so.
