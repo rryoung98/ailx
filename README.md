@@ -57,6 +57,12 @@ pnpm test      # the whole monorepo in ONE vitest, one capped worker pool
 pnpm -r build
 ```
 
+Node 22 or newer (CI runs 22, and `package.json` now says so). In that order or
+any other: `pnpm test` does not need a build. Every vitest project resolves
+`@ailx/*` to package SOURCE through the one alias table in `vitest.shared.ts`,
+so a clean clone is green, and the suite measures this tree instead of the last
+build.
+
 `pnpm test` caps the pool at 4 forks because the ceiling is memory, not CPU;
 `AILX_TEST_FORKS=8 pnpm test` raises it. `pnpm -r test` runs the same tests one
 package at a time, and `vitest run` inside a package debugs just that package.
