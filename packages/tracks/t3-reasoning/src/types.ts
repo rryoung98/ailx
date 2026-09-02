@@ -1,7 +1,7 @@
 /**
  * T3 · Calibrated Reliance — types.
  * Spec §T3: instrumented assistant seeded with known-incorrect outputs;
- * RSR / RAIR reliance constructs; xAPI-shaped transcript with revision_of.
+ * over-/under-reliance components; xAPI-shaped transcript with revision_of.
  */
 import { trackPoints, weightsFor } from "@ailx/core";
 
@@ -18,7 +18,7 @@ export interface T3PlantedError {
 export interface T3CorrectAdvice {
   id: string;
   topic: string;
-  /** Correct, source-grounded claim — adopting it after resistance is RAIR. */
+  /** Correct, source-grounded claim — refusing it is under-reliance. */
   claim: string;
 }
 
@@ -94,10 +94,10 @@ export interface T3PresentationConfig {
 }
 
 export interface T3Weights {
-  /** Planted-error detection — appropriate NON-reliance. */
-  rsr: number;
-  /** Deliberate adoption of correct advice — appropriate reliance. */
-  rair: number;
+  /** Planted-error detection — the over-reliance tail. */
+  overReliance: number;
+  /** Deliberate adoption of correct advice — the under-reliance tail. */
+  underReliance: number;
   /** Transcript process quality. */
   process: number;
   /** Judged analysis quality — the track's only LLM-jury points. */

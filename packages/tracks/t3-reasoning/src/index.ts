@@ -3,9 +3,9 @@ export {
 } from "./plugin.js";
 export { Runner } from "./Runner.js";
 export {
-  scoreT3, revisionChainLength, rairCreditForClaim, verifiedClaimIds,
+  scoreT3, revisionChainLength, adoptionCreditForClaim, verifiedClaimIds,
   relianceIndex, relianceBand,
-  RUBRIC_BAND_MAX, RSR_MIN_SURFACED, RELIANCE_CALIBRATED_BAND,
+  RUBRIC_BAND_MAX, OVER_RELIANCE_MIN_SURFACED, RELIANCE_CALIBRATED_BAND,
   type T3Raw, type Reliance, type RelianceBand,
 } from "./scoring.js";
 export { encodeT3Checkpoint, decodeT3Checkpoint, type T3CheckpointState, type T3ChatMsg } from "./checkpoint.js";

@@ -119,9 +119,16 @@ describe("report golden", () => {
    * moved — and no SCORE moved, which is the load-bearing half: the
    * aggregation these rows feed is order-invariant by construction now, so
    * re-ordering the evidence must not, and did not, change the number.
+   *
+   * It MOVED a sixth time when T3's `rsr`/`rair` components were renamed to
+   * `overReliance`/`underReliance` (TEN-38). Exactly 8 leaves changed, found
+   * by diffing the whole derivation leaf by leaf: 6 renamed T3 raw keys, each
+   * carrying the same value as before (50, 30, 1), and T3's `rubricVersion`
+   * in two places, because the criterion names moved with them. No score, no
+   * insight and no export field moved.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("073bc1592b708918a26e0dc8f2739fd655f0284b23de666eac5e0243ec1e2e3a");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("7e245e5165ca002d5a132e68becc205572ee44e3275224f12c620b2a90f963b1");
   });
 
   it("is stable across repeated derivation", () => {

@@ -3,7 +3,8 @@
  * T3 Runner — instrumented AI-assisted reasoning.
  * Chat with a DETERMINISTIC demo assistant (seeded, planted errors),
  * a revisioned answer draft, a primary-source panel (verification is an
- * instrumented act), and per-claim challenge/accept controls (RSR/RAIR).
+ * instrumented act), and per-claim challenge/accept controls (both reliance
+ * tails).
  * Every action is emitted as an xAPI-shaped event; the artifact is the
  * full transcript + final answer. Reveal after submission: "you caught
  * X of Y".

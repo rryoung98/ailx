@@ -300,6 +300,13 @@ score is whether the candidate caught them. That is a direct measurement with no
 `packages/tracks/t3-reasoning/src/scoring.ts` implements it as such — 25 points RSR, 10 points RAIR,
 20 points process quality from the transcript, all model-free; 45 points routed to a stored jury.
 
+> Read after 2026-09-02: this review predates two changes and its numbers are the numbers at the
+> time of review. T3 was re-weighted to 160 points, and the two components were renamed from `rsr`
+> and `rair` to `overReliance` (50 pts) and `underReliance` (30 pts) in TEN-38, because RSR and RAIR
+> are Schemmer et al.'s published statistics and T3 does not compute them. Every "RSR"/"RAIR" below
+> that names an AILX component means those two. The allocation table in
+> `packages/core/src/allocation.ts` is the live source.
+
 The implementation is more careful than the spec. RAIR requires *deliberation before acceptance*: a
 claim must have been challenged, or checked against the source after it surfaced, before its
 acceptance earns full credit; a blind instant accept of correct advice earns half, because "the

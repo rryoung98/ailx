@@ -301,11 +301,11 @@ export const T3_SCENARIO = {
   /**
    * EIGHT planted errors, not three.
    *
-   * RSR carries 50 of T3's 160 points and its item count IS the number of
-   * plants that surface. A four-item subtest cannot support that weight:
-   * catching 2 of 4 versus 3 of 4 is 12.5 points decided by essentially one
-   * event. `RSR_MIN_SURFACED` in the scorer declares 8 as the floor and
-   * flags any sitting that comes in under it.
+   * The over-reliance component carries 50 of T3's 160 points and its item
+   * count IS the number of plants that surface. A four-item subtest cannot
+   * support that weight: catching 2 of 4 versus 3 of 4 is 12.5 points decided
+   * by essentially one event. `OVER_RELIANCE_MIN_SURFACED` in the scorer
+   * declares 8 as the floor and flags any sitting that comes in under it.
    *
    * Two instances of each of the four stable error FAMILIES — misattributed
    * figure, false causal claim, fabricated citation, wrong calculation. The
@@ -377,8 +377,8 @@ export const T3_SCENARIO = {
     },
   ],
   /**
-   * FOUR correct-advice claims, not two. RAIR is the positive half of the
-   * reliance construct and it now carries 30 points; refusing correct,
+   * FOUR correct-advice claims, not two. Under-reliance is the positive half
+   * of the reliance construct and it now carries 30 points; refusing correct,
    * source-grounded help is a failure in the same measurement, so the
    * positive tail needs enough items to be a rate rather than an anecdote.
    */

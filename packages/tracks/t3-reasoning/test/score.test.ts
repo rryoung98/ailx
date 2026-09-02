@@ -3,8 +3,8 @@ import { runPure, judgmentArrivalOrders } from "@ailx/core";
 import type { Judgment } from "@ailx/core";
 import { plugin, validateT3Config } from "../src/plugin.js";
 import {
-  rairCreditForClaim, relianceBand, relianceIndex, revisionChainLength, scoreT3,
-  verifiedClaimIds, RELIANCE_CALIBRATED_BAND, RSR_MIN_SURFACED,
+  adoptionCreditForClaim, relianceBand, relianceIndex, revisionChainLength, scoreT3,
+  verifiedClaimIds, RELIANCE_CALIBRATED_BAND, OVER_RELIANCE_MIN_SURFACED,
 } from "../src/scoring.js";
 import {
   config, credulousTranscript, goodAnswer, goodTranscript,
@@ -31,10 +31,10 @@ describe("T3 score()", () => {
     expect(a).toEqual(b);
   });
 
-  it("strong candidate: full RSR, RAIR and process; analysis from stored jury", () => {
+  it("strong candidate: both reliance tails full, and process; analysis from stored jury", () => {
     const s = score(goodTranscript, goodAnswer);
-    expect(s.raw.rsr).toBe(50);        // caught 3/3 surfaced planted errors
-    expect(s.raw.rair).toBe(30);       // deliberated then adopted 2/2 correct-advice claims
+    expect(s.raw.overReliance).toBe(50);        // caught 3/3 surfaced planted errors
+    expect(s.raw.underReliance).toBe(30);       // deliberated then adopted 2/2 correct-advice claims
     expect(s.raw.adviceDeliberated).toBe(2);
     expect(s.raw.process).toBe(35);    // 3 prompts, chain 2, 3 verifies, full deliberation
     // normalized jury mean 0.7333 -> 45 * 0.7333 = 33
@@ -44,29 +44,29 @@ describe("T3 score()", () => {
     expect(s.raw.revisionChainLength).toBe(2);
   });
 
-  it("credulous candidate: accepted planted errors score zero RSR", () => {
+  it("credulous candidate: accepted planted errors score zero over-reliance points", () => {
     const s = score(credulousTranscript, goodAnswer);
-    expect(s.raw.rsr).toBe(0);              // 2 planted surfaced, 0 challenged
+    expect(s.raw.overReliance).toBe(0);              // 2 planted surfaced, 0 challenged
     expect(s.raw.plantedSurfaced).toBe(2);
     expect(s.raw.plantedCaught).toBe(0);
     expect(s.raw.verificationCount).toBe(0);
     expect(s.raw.process).toBeLessThan(config.weights.process / 2); // no verification, no revision chain
     // F5: blind instant accept of the one correct claim — HALF credit only.
-    expect(s.raw.rair).toBe(config.weights.rair / 2);
+    expect(s.raw.underReliance).toBe(config.weights.underReliance / 2);
     expect(s.raw.adviceDeliberated).toBe(0);
   });
 
-  it("F5 regression: assisted followed directly by accepted earns < full RAIR", () => {
+  it("F5 regression: assisted followed directly by accepted earns < full adoption credit", () => {
     // The review's read-only probe: an 'assisted' event followed immediately
-    // by 'accepted' used to earn the full 10 RAIR points.
+    // by 'accepted' used to earn the full adoption credit.
     const blind: T3Turn[] = [
       { verb: "assisted", object: "assist:1", text: "…", claimIds: ["ca-cluster"], seq: 0, clientTs: "2026-02-01T10:00:00Z" },
       { verb: "accepted", object: "claim:ca-cluster", seq: 1, clientTs: "2026-02-01T10:00:01Z" },
     ];
     const s = score(blind, goodAnswer);
-    expect(s.raw.rair).toBeLessThan(config.weights.rair);
-    expect(s.raw.rair).toBe(config.weights.rair / 2);
-    expect(rairCreditForClaim(blind, "ca-cluster")).toBe(0.5);
+    expect(s.raw.underReliance).toBeLessThan(config.weights.underReliance);
+    expect(s.raw.underReliance).toBe(config.weights.underReliance / 2);
+    expect(adoptionCreditForClaim(blind, "ca-cluster")).toBe(0.5);
   });
 
   it("F5: verifying THAT claim between surfacing and acceptance restores full credit", () => {
@@ -75,15 +75,15 @@ describe("T3 score()", () => {
       { verb: "verified", object: "claim:ca-cluster", claimIds: ["ca-cluster"], seq: 1, clientTs: "2026-02-01T10:01:00Z" },
       { verb: "accepted", object: "claim:ca-cluster", seq: 2, clientTs: "2026-02-01T10:02:00Z" },
     ];
-    expect(rairCreditForClaim(deliberate, "ca-cluster")).toBe(1);
-    expect(score(deliberate, goodAnswer).raw.rair).toBe(config.weights.rair);
+    expect(adoptionCreditForClaim(deliberate, "ca-cluster")).toBe(1);
+    expect(score(deliberate, goodAnswer).raw.underReliance).toBe(config.weights.underReliance);
     // A verify that happened BEFORE the claim surfaced is not deliberation
     // on that claim.
     const staleVerify: T3Turn[] = [
       { verb: "verified", object: "claim:ca-cluster", claimIds: ["ca-cluster"], seq: 0, clientTs: "2026-02-01T09:59:00Z" },
       ...blindShift(deliberate.filter((t) => t.verb !== "verified")),
     ];
-    expect(rairCreditForClaim(staleVerify, "ca-cluster")).toBe(0.5);
+    expect(adoptionCreditForClaim(staleVerify, "ca-cluster")).toBe(0.5);
   });
 
   it("F5: a verification of ANOTHER claim is not deliberation on this one", () => {
@@ -92,7 +92,7 @@ describe("T3 score()", () => {
       { verb: "verified", object: "claim:ca-equity", claimIds: ["ca-equity"], seq: 1, clientTs: "2026-02-01T10:01:00Z" },
       { verb: "accepted", object: "claim:ca-cluster", seq: 2, clientTs: "2026-02-01T10:02:00Z" },
     ];
-    expect(rairCreditForClaim(elsewhere, "ca-cluster")).toBe(0.5);
+    expect(adoptionCreditForClaim(elsewhere, "ca-cluster")).toBe(0.5);
   });
 
   it("F5: pressing an unattributed verify button buys no process points", () => {
@@ -140,10 +140,10 @@ describe("T3 score()", () => {
     expect(verifiedClaimIds(ghost).size).toBe(0);
   });
 
-  it("over-rejection is a failure too: challenging correct advice zeroes RAIR", () => {
+  it("over-rejection is a failure too: challenging correct advice pays no adoption credit", () => {
     const s = score(overRejectTranscript, goodAnswer);
-    expect(s.raw.rsr).toBe(config.weights.rsr);
-    expect(s.raw.rair).toBe(0);
+    expect(s.raw.overReliance).toBe(config.weights.overReliance);
+    expect(s.raw.underReliance).toBe(0);
     // The two-tailed read: perfect non-reliance, total under-reliance.
     expect(s.raw["reliance.over"]).toBe(0);
     expect(s.raw["reliance.under"]).toBe(1);
@@ -159,7 +159,7 @@ describe("T3 score()", () => {
     const s = score(flip, goodAnswer);
     expect(s.raw.adviceAdopted).toBe(1);
     // Challenged before the final accept -> resistance shown -> full credit.
-    expect(s.raw.rair).toBe(config.weights.rair);
+    expect(s.raw.underReliance).toBe(config.weights.underReliance);
     expect(s.raw.adviceDeliberated).toBe(1);
   });
 
@@ -217,17 +217,17 @@ describe("T3 score()", () => {
           "deliberationRate": 1,
           "jurySpread": 0.2,
           "meanJuryBand": 0.733,
+          "overReliance": 50,
+          "overReliance.underpowered": 1,
           "plantedCaught": 3,
           "plantedSurfaced": 3,
           "process": 35,
           "promptCount": 3,
-          "rair": 30,
           "reliance.index": 0,
           "reliance.over": 0,
           "reliance.under": 0,
           "revisionChainLength": 2,
-          "rsr": 50,
-          "rsr.underpowered": 1,
+          "underReliance": 30,
           "verificationCount": 4,
           "wordCount": 192,
         },
@@ -248,17 +248,17 @@ describe("T3 score()", () => {
           "deliberationRate": 1,
           "jurySpread": 0.2,
           "meanJuryBand": 0.733,
+          "overReliance": 0,
+          "overReliance.underpowered": 1,
           "plantedCaught": 0,
           "plantedSurfaced": 2,
           "process": 11.667,
           "promptCount": 1,
-          "rair": 15,
           "reliance.index": -1,
           "reliance.over": 1,
           "reliance.under": 0,
           "revisionChainLength": 0,
-          "rsr": 0,
-          "rsr.underpowered": 1,
+          "underReliance": 15,
           "verificationCount": 0,
           "wordCount": 192,
         },
@@ -300,7 +300,7 @@ describe("T3 validateConfig", () => {
     // Read from the ONE allocation table, so a re-weighting cannot leave the
     // validator handing out last year's defaults.
     expect(parsed.weights).toEqual(T3_DEFAULT_WEIGHTS);
-    expect(parsed.weights).toEqual({ rsr: 50, rair: 30, process: 35, analysis: 45 });
+    expect(parsed.weights).toEqual({ overReliance: 50, underReliance: 30, process: 35, analysis: 45 });
     expect(T3_TOTAL_POINTS).toBe(160);
   });
 });
@@ -383,19 +383,20 @@ describe("reliance index", () => {
 });
 
 /**
- * RSR carries 50 of 160 points on a subtest whose item count is the number
- * of planted errors the form surfaced. Four cannot support that: catching 2
- * of 4 versus 3 of 4 is 12.5 points decided by one event.
+ * The over-reliance component carries 50 of 160 points on a subtest whose
+ * item count is the number of planted errors the form surfaced. Four cannot
+ * support that: catching 2 of 4 versus 3 of 4 is 12.5 points decided by one
+ * event.
  */
-describe("RSR power", () => {
+describe("over-reliance power", () => {
   it("declares a minimum surfaced-plant count of 8", () => {
-    expect(RSR_MIN_SURFACED).toBe(8);
+    expect(OVER_RELIANCE_MIN_SURFACED).toBe(8);
   });
 
   it("flags a sitting that surfaced fewer plants than the declared minimum", () => {
     const s = score(goodTranscript, goodAnswer); // fixture surfaces 3
-    expect(s.raw.plantedSurfaced).toBeLessThan(RSR_MIN_SURFACED);
-    expect(s.raw["rsr.underpowered"]).toBe(1);
+    expect(s.raw.plantedSurfaced).toBeLessThan(OVER_RELIANCE_MIN_SURFACED);
+    expect(s.raw["overReliance.underpowered"]).toBe(1);
   });
 
   it("clears the flag once enough plants surface", () => {
@@ -414,8 +415,8 @@ describe("RSR power", () => {
       scoreT3({ transcript, finalAnswer: goodAnswer }, juryJudgments, cfg),
     );
     expect(s.raw.plantedSurfaced).toBe(8);
-    expect(s.raw["rsr.underpowered"]).toBe(0);
-    expect(s.raw.rsr).toBe(config.weights.rsr);
+    expect(s.raw["overReliance.underpowered"]).toBe(0);
+    expect(s.raw.overReliance).toBe(config.weights.overReliance);
   });
 });
 
