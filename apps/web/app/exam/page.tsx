@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
 import {
-  append, nextTrack, project,
+  append, attestJudgments, nextTrack, project,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
@@ -17,7 +17,8 @@ import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
 } from "../../lib/checkpoints";
 import {
-  checkpointToArtifact, loadTrackModule, scoreTrack, trackModelManifest, type TrackModule,
+  checkpointToArtifact, loadTrackModule, scoreTrack, trackModelManifest,
+  trackScoredEntry, type TrackModule,
 } from "../../lib/registry";
 import { trackConfig } from "../../lib/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
@@ -314,7 +315,18 @@ export default function ExamPage() {
         if (cur?.tracks[trackId].score !== undefined) return;
         commit([
           {
-            type: "track_scored", trackId, score: remote.score, judgments: [],
+            type: "track_scored", trackId, score: remote.score,
+            /**
+             * The exam service holds the answer key this browser must not
+             * have, so it — not this log — is the replay surface for a score
+             * it issued. `scoredBy: "server"` says exactly that. When the
+             * service hands the judgment rows back it carries them, attested
+             * like any other; when it does not, the log records no evidence
+             * AND makes no claim to any, which is the narrow truth rather
+             * than the broad falsehood `judgments: []` used to imply.
+             */
+            ...attestJudgments(remote.judgments ?? []),
+            scoredBy: "server",
             rubricVersion: remote.rubricVersion,
             scoringDigest: remote.scoringDigest,
             modelManifest: trackModelManifest(trackId),
@@ -366,14 +378,7 @@ export default function ExamPage() {
     const rec = scoreTrack(t, artifact, cur.config?.locale ?? "en", cur.attemptId ?? undefined);
     commit([
       { type: "track_completed", trackId: t, artifact, timedOut, ts },
-      {
-        type: "track_scored", trackId: t, score: rec.score,
-        judgments: rec.judgments,
-        rubricVersion: rec.rubricVersion,
-        scoringDigest: rec.scoringDigest,
-        modelManifest: rec.modelManifest,
-        ts,
-      },
+      trackScoredEntry(t, rec, ts),
     ]);
     if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
     // T1's artifact is a servable site: publish it (server mode; no-op otherwise).

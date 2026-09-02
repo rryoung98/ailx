@@ -8,7 +8,43 @@ import {
 } from "@ailx/session";
 import { TOTAL_POINTS } from "@ailx/core";
 import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
-import { scoreTrack } from "../../lib/registry";
+import { replayTrackScore, scoreTrack, trackScoredEntry } from "../../lib/registry";
+import type { TrackId } from "@ailx/session";
+
+/**
+ * Recompute a track's score of record from its stored inputs and say what
+ * came back. Four outcomes, and none of them is silent:
+ *  - byte-identical: the claim in AGENTS.md, verified rather than asserted;
+ *  - VOID: a stored judgment no longer content-addresses to its recorded id;
+ *  - MISMATCH: intact evidence, and score() disagrees with the number anyway;
+ *  - not replayable here: the exam service issued it and kept the evidence.
+ */
+function ScoreReplayLine({ trackId, stored, locale, attemptId }: {
+  trackId: TrackId;
+  stored: Parameters<typeof replayTrackScore>[1];
+  locale: string;
+  attemptId?: string;
+}) {
+  const r = replayTrackScore(trackId, stored, locale, attemptId);
+  const label =
+    r.status === "byte-identical"
+      ? "✓ recomputed from the stored artifact and judgments — byte-identical"
+      : r.status === "not-replayable-here"
+        ? `· not replayable in this browser (${r.detail})`
+        : r.status === "judgment-mutated"
+          ? `✗ VOID — a stored judgment was altered (${r.detail})`
+          : `✗ MISMATCH — ${r.detail}`;
+  return (
+    <p
+      className="faint small mono"
+      style={{ margin: "0.2rem 0 0", color: r.status.startsWith("byte") ? undefined : "var(--warn, #b45309)" }}
+      data-testid={`replay-${trackId}`}
+      data-replay-status={r.status}
+    >
+      {label}
+    </p>
+  );
+}
 import {
   AXES, calibrationBins, candidateComposite, DEMO_SCORE_NOTE, formatTrackScore, participantExport,
   playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
@@ -189,14 +225,10 @@ export default function ReportPage() {
         // default T2 deck — scoring with the fixture's attemptId would
         // rotate to a different deck and lapse every response.
         const rec = scoreTrack(t, artifact, "en");
-        sampleLog = append(sampleLog, {
-          type: "track_scored", trackId: t, score: rec.score,
-          judgments: rec.judgments,
-          rubricVersion: rec.rubricVersion,
-          scoringDigest: rec.scoringDigest,
-          modelManifest: rec.modelManifest,
-          ts: sampleLog[sampleLog.length - 1].ts + 1000,
-        });
+        sampleLog = append(
+          sampleLog,
+          trackScoredEntry(t, rec, sampleLog[sampleLog.length - 1].ts + 1000),
+        );
       }
       setLog(sampleLog);
     } else setLog(loadAttempt(window.localStorage));
@@ -481,6 +513,13 @@ export default function ReportPage() {
                 {ts.modelManifest?.screening ? `judge ${ts.modelManifest.screening}` : ts.modelManifest?.pipeline ?? ts.modelManifest?.note}
                 {ts.timedOut ? " · ended on the clock" : ""}
               </p>
+              {/* The auditor's check, run in front of the candidate: score()
+                  is re-run over the STORED artifact and the STORED judgment
+                  rows and compared byte for byte to the number of record. The
+                  judge is not called — that is the whole point, and it is why
+                  re-scoring reproduces while re-judging does not. */}
+              <ScoreReplayLine trackId={t} stored={ts} locale={state.config?.locale ?? "en"}
+                attemptId={sample ? undefined : state.attemptId} />
               {ts.judgments && ts.judgments.length > 0 && (
                 <details className="small" style={{ marginTop: "0.5rem" }}>
                   <summary className="faint mono">

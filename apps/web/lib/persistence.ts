@@ -16,6 +16,7 @@ import {
   clearAttempt,
   loadAttemptValidated,
   saveAttempt,
+  type JudgmentRecord,
   type SequencedEntry,
   type StorageLike,
   type ValidatedLog,
@@ -538,13 +539,61 @@ export async function postTranscriptTurn(
  * stays inside `@ailx/instrument` and only the resulting score comes back
  * (ATP/ITC §3.6 — scoring at the server level, docs/ARCHITECTURE.md §4).
  */
+export interface ServerTrackScore {
+  score: { raw: Record<string, number>; scaled: number };
+  /**
+   * The judgment rows the SERVICE's score() consumed, when it hands them
+   * back. Empty means the service kept its evidence, not that there was
+   * none — the session log records that difference as `scoredBy: "server"`
+   * rather than pretending an unevidenced local score.
+   */
+  judgments: JudgmentRecord[];
+  rubricVersion: string;
+  scoringDigest: string;
+}
+
+/**
+ * Judgment rows off the wire are UNTRUSTED input, so every field is checked
+ * before it can become part of a score of record. A malformed row is dropped
+ * rather than coerced: a judgment with a missing modelId or a NaN value would
+ * content-address to something meaningless, and a meaningless content address
+ * is worse than no evidence at all.
+ *
+ * The ARRAY ORDER here is the service's, and the service's order is not a
+ * contract. It is not canonicalized here on purpose: `attestJudgments` at the
+ * one point these rows enter the log is where ordering is decided, so there
+ * is a single place that knows what canonical means.
+ */
+function parseServerJudgments(raw: unknown): JudgmentRecord[] {
+  if (!Array.isArray(raw)) return [];
+  const out: JudgmentRecord[] = [];
+  for (const r of raw) {
+    if (typeof r !== "object" || r === null) continue;
+    const j = r as Record<string, unknown>;
+    if (typeof j.dimension !== "string" || j.dimension.length === 0) continue;
+    if (typeof j.modelId !== "string" || j.modelId.length === 0) continue;
+    if (typeof j.sample !== "number" || !Number.isInteger(j.sample)) continue;
+    if (typeof j.value !== "number" || !Number.isFinite(j.value)) continue;
+    if (j.evidence !== undefined && typeof j.evidence !== "string") continue;
+    const row: JudgmentRecord = {
+      dimension: j.dimension,
+      sample: j.sample,
+      value: j.value === 0 ? 0 : j.value, // -0 hashes differently from 0
+      modelId: j.modelId,
+    };
+    if (typeof j.evidence === "string") row.evidence = j.evidence;
+    out.push(row);
+  }
+  return out;
+}
+
 export async function postTrackScore(
   storage: StorageLike,
   opts: ApiPersistenceOptions,
   attemptId: string,
   trackId: string,
   artifact: unknown,
-): Promise<{ score: { raw: Record<string, number>; scaled: number }; rubricVersion: string; scoringDigest: string }> {
+): Promise<ServerTrackScore> {
   const body = await postJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/score`, {
     trackId,
     artifact,
@@ -555,6 +604,7 @@ export async function postTrackScore(
   }
   return {
     score: { raw: score.raw ?? {}, scaled: score.scaled },
+    judgments: parseServerJudgments(body.judgments),
     rubricVersion: String(body.rubricVersion ?? ""),
     scoringDigest: String(body.scoringDigest ?? ""),
   };
