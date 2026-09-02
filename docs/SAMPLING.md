@@ -1045,6 +1045,10 @@ The cost is linear in this number, so it is the single assumption most worth arg
 | **Contracted**, 0.6 FTE | $130–175 per hour, 1,880 h/yr | **$220–296k** | Fastest to start and the easiest to stop. Not independent of us: a contractor we pay and can replace mid-wave is not a check on us, and should never be the person who also signs off the weighting. |
 | **Seconded**, 0.5 FTE | UK Grade 9 £63.6–80.5k, +29% on-costs, +57–67% institutional overhead | **$131–176k** | Cheapest on paper and slowest in practice. Brings the institution's name and its ethics review, and its review process runs on its own calendar. The secondment agreement decides who can publish an unflattering number; settle that before signing, not after fielding. |
 
+**The three routes are not the same amount of person-time.** Employed is 1.0 FTE, contracted is
+0.6 and seconded is 0.5, because that is how each is normally engaged. So the cheaper rows buy less
+attention, not the same job for less money. Compare them on what each covers, then on price.
+
 Sources, each read at the primary source on 2026-09-02:
 
 - Salary band **OURS**, anchored on BLS OEWS May 2025 (released 2026-05-15, USDL-26-0725), SOC
