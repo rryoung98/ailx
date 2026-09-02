@@ -530,15 +530,18 @@ The numbers the check reads. Change them here and the check re-runs on the new p
 
 | Setting | Value | Where it is applied |
 | --- | --- | --- |
-| `AILX_PG_POOL_MAX` | 3 | `run.tf` runtime env, from a new `pg_pool_max` variable |
-| `concurrency` | 3 | `max_instance_request_concurrency` |
-| `max_instances` | 40 | `max_instance_count` |
-| `memory` | 512Mi | the service and the migration job |
-| `neon_min_compute_cu` | 0.5 | the Neon console. Not in any repository |
+| `AILX_PG_POOL_MAX` | 8 | `run.tf` runtime env, from a new `pg_pool_max` variable |
+| `concurrency` | 8 | `max_instance_request_concurrency` |
+| `max_instances` | 20 | `max_instance_count` |
+| `memory` | 1Gi | the service and the migration job |
+| `neon_min_compute_cu` | 1 | the Neon console. Not in any repository |
 
-This is **option 2**, on the commit that introduced it. The commit after it carries option 1.
-Revert that one commit to come back here. What is not open is leaving `concurrency` at 80
-against a pool of 3.
+This is **option 1**. The commit before it carries option 2 (pool 3, concurrency 3,
+`max_instances` 40, memory 512Mi, Neon floor 0.5 CU); revert this one commit to take that
+instead. Option 1 is the branch's final state because section 6 already preferred it and the
+costing did not overturn that: it pays fewer cold starts, and its price is $3.24 a month per
+warm instance that nobody is buying today. That is a preference, not a decision. The human
+picks. What is not open is leaving `concurrency` at 80 against a pool of 3.
 
 ### 8.4 The check, in both repositories
 
@@ -562,12 +565,12 @@ variable "pg_pool_max" {
     concurrency and var.concurrency may not exceed it.
   EOT
   type        = number
-  default     = 3
+  default     = 8
 }
 
 variable "concurrency" {
   type    = number
-  default = 3
+  default = 8
 
   validation {
     condition     = var.concurrency <= var.pg_pool_max
