@@ -33,6 +33,7 @@
  */
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { apiPath } from "@ailx/contract";
 import { CREDENTIAL_ASSERTS, CREDENTIAL_ISSUER, CREDENTIAL_LIMITS } from "@ailx/report";
 import { credentialViewFrom } from "./credentialView";
 import { siteHref } from "./mode";
@@ -77,7 +78,7 @@ export function VerifyView() {
   const params = useParams<{ code: string }>();
   const code = typeof params?.code === "string" ? params.code : null;
   const result = useService<unknown>(
-    code === null ? null : `/credentials/${encodeURIComponent(code)}`,
+    code === null ? null : apiPath("credentialView", { code }),
   );
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title="Checking this credential" />;

@@ -15,7 +15,7 @@
  *
  * There is deliberately no "Open in v0" button: see V0_NOTE below.
  */
-import { DEFAULT_REPO_NAME } from "@ailx/contract";
+import { apiPath, DEFAULT_REPO_NAME } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
 import { isServerMode } from "./mode";
@@ -72,9 +72,12 @@ export interface ExportError {
 
 export type ExportResult<T> = { ok: true; value: T } | { ok: false } & ExportError;
 
-/** The exam-service path for one attempt's export endpoints. */
-function exportPath(opts: ApiPersistenceOptions, serverAttemptId: string, suffix: string): string {
-  return `${opts.baseUrl}/attempts/${serverAttemptId}/site${suffix}`;
+/** The export routes, which all take the attempt id and nothing else. */
+type ExportRoute = "exportSite" | "startGithubExport" | "finishGithubExport";
+
+/** The exam-service URL for one of this attempt's export routes. */
+function exportUrl(opts: ApiPersistenceOptions, serverAttemptId: string, route: ExportRoute): string {
+  return `${opts.baseUrl}${apiPath(route, { id: serverAttemptId })}`;
 }
 
 /**
@@ -172,7 +175,7 @@ export async function downloadSiteZip(
   if (serverAttemptId === null) return { ok: false, ...NOT_MIRRORED };
   let res: Response;
   try {
-    res = await opts.fetchFn(exportPath(opts, serverAttemptId, "/export"), {
+    res = await opts.fetchFn(exportUrl(opts, serverAttemptId, "exportSite"), {
       headers: await authHeaders(storage),
     });
   } catch {
@@ -209,7 +212,7 @@ export async function startGithubExport(
   if (serverAttemptId === null) return { ok: false, ...NOT_MIRRORED };
   let res: Response;
   try {
-    res = await opts.fetchFn(exportPath(opts, serverAttemptId, "/github/start"), {
+    res = await opts.fetchFn(exportUrl(opts, serverAttemptId, "startGithubExport"), {
       method: "POST",
       headers: await authHeaders(storage),
     });
@@ -262,7 +265,7 @@ export async function pollGithubExport(
   if (serverAttemptId === null) return { ok: false, ...NOT_MIRRORED };
   let res: Response;
   try {
-    res = await opts.fetchFn(exportPath(opts, serverAttemptId, "/github"), {
+    res = await opts.fetchFn(exportUrl(opts, serverAttemptId, "finishGithubExport"), {
       method: "POST",
       headers: { "content-type": "application/json", ...(await authHeaders(storage)) },
       body: JSON.stringify(input),

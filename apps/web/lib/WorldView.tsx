@@ -25,6 +25,7 @@
  *    is not used about these runs, because that document forbids it.
  */
 import Link from "next/link";
+import { apiPath } from "@ailx/contract";
 import { TRACK_META, type WorldAggregates } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { PageError, PageLoading } from "./PageNotice";
@@ -89,7 +90,7 @@ function Suppressed({ have, min }: { have: number; min: number }) {
 
 
 export function WorldView() {
-  const result = useService<{ aggregates: WorldAggregates }>("/aggregates");
+  const result = useService<{ aggregates: WorldAggregates }>(apiPath("aggregates"));
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title="How is the world doing at keeping up with AI?" />;
   }

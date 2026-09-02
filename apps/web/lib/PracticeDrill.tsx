@@ -26,6 +26,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { apiPath } from "@ailx/contract";
 import {
   CLAIM_PROMISE,
   FAMILY_META,
@@ -191,7 +192,7 @@ export function PracticeDrill() {
       let id: string;
       let ids: string[];
       if (recorded) {
-        const res = await fetch(`${apiBase()}/practice`, {
+        const res = await fetch(`${apiBase()}${apiPath("startPractice")}`, {
           method: "POST",
           headers: await authHeaders(window.localStorage),
         });
@@ -354,7 +355,7 @@ export function PracticeDrill() {
     }
     setSending(true);
     try {
-      const res = await fetch(`${apiBase()}/practice/${sessionId}`, {
+      const res = await fetch(`${apiBase()}${apiPath("submitPractice", { id: sessionId })}`, {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({

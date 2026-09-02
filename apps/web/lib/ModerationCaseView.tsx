@@ -17,7 +17,7 @@
  */
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import type { ModerationCaseDetail } from "@ailx/contract";
+import { apiPath, type ModerationCaseDetail } from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { ModeratorThread } from "./Moderation";
 import { PageError, PageLoading } from "./PageNotice";
@@ -30,7 +30,7 @@ export function ModerationCaseView() {
   const params = useParams<{ id: string }>();
   const id = typeof params?.id === "string" ? params.id : null;
   const result = useService<{ case: ModerationCaseDetail }>(
-    id === null ? null : `/moderation/${encodeURIComponent(id)}`,
+    id === null ? null : apiPath("moderationCase", { id }),
     { identified: true },
   );
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title="Moderation case" />;

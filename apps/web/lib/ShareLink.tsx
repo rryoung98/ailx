@@ -19,7 +19,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
+import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import {
   DEFAULT_SHARE_SECTIONS,
@@ -67,6 +67,9 @@ interface ShareState {
 }
 
 type Phase = "loading" | "none" | "live" | "busy" | "error";
+
+/** The four manifest routes this panel drives, and nothing else. */
+type ShareRoute = "createShare" | "getShare" | "revokeShare" | "publishShare";
 
 /** Which sections a live link actually carries, read from its frozen payload. */
 function includedSections(payload: SharePayload): ShareSection[] {
@@ -156,11 +159,15 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
     [attemptId],
   );
 
+  /**
+   * One call to a share route. The route KEY carries both the path and the
+   * method, so a caller cannot pair "DELETE" with the publish path.
+   */
   const request = useCallback(
-    async (method: "GET" | "POST" | "DELETE", body?: unknown, suffix = ""): Promise<Response> => {
+    async (route: ShareRoute, body?: unknown): Promise<Response> => {
       const opts = browserApiOptions();
-      return opts.fetchFn(`${opts.baseUrl}/attempts/${serverId()}/share${suffix}`, {
-        method,
+      return opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id: serverId() })}`, {
+        method: API_ROUTES[route].method,
         headers: {
           "content-type": "application/json",
           ...(await authHeaders(window.localStorage)),
@@ -177,7 +184,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
     let live = true;
     void (async () => {
       try {
-        const res = await request("GET");
+        const res = await request("getShare");
         if (!live) return;
         if (res.ok) {
           const body = (await res.json()) as { share: ShareState };
@@ -203,7 +210,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   const create = async () => {
     setPhase("busy");
     try {
-      const res = await request("POST", {
+      const res = await request("createShare", {
         sections: { ...sections, site: sections.site && hasSite },
         note: sections.note ? note : "",
       });
@@ -229,7 +236,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
     setPublishing(true);
     setPublishFailed(false);
     try {
-      const res = await request("POST", undefined, "/publish");
+      const res = await request("publishShare");
       if (!res.ok) throw new Error(String(res.status));
       const body = (await res.json()) as { share?: ShareState };
       if (body.share) setShare(body.share);
@@ -243,7 +250,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   const revoke = async () => {
     setPhase("busy");
     try {
-      const res = await request("DELETE");
+      const res = await request("revokeShare");
       if (!res.ok) throw new Error(String(res.status));
       setShare(null);
       setPhase("none");

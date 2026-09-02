@@ -10,8 +10,10 @@
  * fetch + identity + try/catch + "what does a non-200 mean here" would have
  * been seven chances to disagree, so there is one:
  *
- *  - the URL is always `apiBase()` + path, never a hard-coded `/api` (the
- *    seam is the only thing that knows which host answers);
+ *  - the URL is always `apiBase()` + an `ApiPath` built by `apiPath()` from
+ *    the route manifest in `@ailx/contract`, never a path spelled here (the
+ *    seam is the only thing that knows which host answers, and the manifest is
+ *    the only thing that knows which routes exist);
  *  - IDENTITY travels as a HEADER, from `lib/authHeaders.ts`. The
  *    `ailx_dev_user` cookie is `SameSite=Lax` and is NOT sent cross-origin,
  *    so the moment `NEXT_PUBLIC_AILX_API_BASE` names another origin a cookie
@@ -24,6 +26,7 @@
  *    renders as a sentence. A page that cannot reach its data says so.
  */
 import { useEffect, useState } from "react";
+import type { ApiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
 import { apiBase } from "./mode";
@@ -60,7 +63,7 @@ export interface ServiceOptions {
 
 /** One GET against the exam service, resolved into a `ServiceState`. */
 export async function serviceFetch<T>(
-  path: string,
+  path: ApiPath,
   opts: ServiceOptions = {},
 ): Promise<ServiceState<T>> {
   try {
@@ -103,7 +106,7 @@ export function firstValueQuery(params: URLSearchParams | null | undefined): str
  * The same read, as a hook. `path` may be null when there is nothing to ask
  * for yet; the state then stays `loading` and no request is made.
  */
-export function useService<T>(path: string | null, opts: ServiceOptions = {}): ServiceState<T> {
+export function useService<T>(path: ApiPath | null, opts: ServiceOptions = {}): ServiceState<T> {
   const identified = opts.identified === true;
   const [state, setState] = useState<ServiceState<T>>({ state: "loading" });
   useEffect(() => {

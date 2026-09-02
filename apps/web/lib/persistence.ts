@@ -12,6 +12,7 @@
  * and resumable: progress is persisted per attempt, retries happen on the
  * next save, and server-side seq idempotency makes re-sends safe.
  */
+import { apiPath, type ApiPath } from "@ailx/contract";
 import {
   clearAttempt,
   loadAttemptValidated,
@@ -136,7 +137,7 @@ function writeSyncState(storage: StorageLike, clientAttemptId: string, state: Sy
 async function getJson(
   storage: StorageLike,
   opts: ApiPersistenceOptions,
-  path: string,
+  path: ApiPath,
 ): Promise<Record<string, unknown>> {
   const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
     headers: await authHeaders(storage),
@@ -151,7 +152,7 @@ async function getJson(
 async function postJson(
   storage: StorageLike,
   opts: ApiPersistenceOptions,
-  path: string,
+  path: ApiPath,
   body?: unknown,
 ): Promise<Record<string, unknown>> {
   const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
@@ -200,7 +201,7 @@ class ServerMirror {
     return this.inflight;
   }
 
-  private post(path: string, body?: unknown): Promise<Record<string, unknown>> {
+  private post(path: ApiPath, body?: unknown): Promise<Record<string, unknown>> {
     return postJson(this.storage, this.opts, path, body);
   }
 
@@ -214,13 +215,13 @@ class ServerMirror {
     if (state.finalized) return;
 
     if (!state.serverAttemptId) {
-      const created = await this.post("/attempts", {});
+      const created = await this.post(apiPath("createAttempt"), {});
       state.serverAttemptId = (created.attempt as { id: string }).id;
       this.write(clientAttemptId, state);
     }
     for (let i = state.syncedThrough; i < log.length; i++) {
       const entry = log[i];
-      await this.post(`/attempts/${state.serverAttemptId}/responses`, {
+      await this.post(apiPath("appendResponse", { id: state.serverAttemptId }), {
         seq: entry.seq,
         payload: entry,
         clientTs: entry.ts,
@@ -229,7 +230,7 @@ class ServerMirror {
       this.write(clientAttemptId, state);
     }
     if (log[log.length - 1].type === "attempt_completed") {
-      await this.post(`/attempts/${state.serverAttemptId}/finalize`);
+      await this.post(apiPath("finalizeAttempt", { id: state.serverAttemptId }));
       state.finalized = true;
       this.write(clientAttemptId, state);
     }
@@ -346,7 +347,7 @@ export async function createServerAttempt(
   opts: ApiPersistenceOptions,
   locale: string,
 ): Promise<string> {
-  const created = await postJson(storage, opts, "/attempts", { locale, decks: true });
+  const created = await postJson(storage, opts, apiPath("createAttempt"), { locale, decks: true });
   const id = (created.attempt as { id: string }).id;
   const recorded = readDecks(created);
   writeSyncState(storage, id, {
@@ -385,7 +386,7 @@ export async function fetchPresentedDeck(
   opts: ApiPersistenceOptions,
   attemptId: string,
 ): Promise<PresentedDeck> {
-  const body = await getJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/items`);
+  const body = await getJson(storage, opts, apiPath("attemptItems", { id: attemptId }));
   const items = Array.isArray(body.items) ? (body.items as Record<string, unknown>[]) : [];
   const deck: PresentedDeck = {
     phase: body.phase === "review" ? "review" : "sitting",
@@ -440,14 +441,11 @@ export async function fetchTrackView(
   attemptId: string,
   trackId: FormTrackId,
 ): Promise<PresentedTrackView> {
-  const body = await getJson(
-    storage,
-    opts,
-    `/attempts/${encodeURIComponent(attemptId)}/track/${trackId}`,
-  );
+  const path = apiPath("attemptTrackView", { id: attemptId, trackId });
+  const body = await getJson(storage, opts, path);
   const view = body.view;
   if (typeof view !== "object" || view === null || Array.isArray(view)) {
-    throw new Error(`GET /attempts/${attemptId}/track/${trackId} returned no view`);
+    throw new Error(`GET ${path} returned no view`);
   }
   return {
     phase: body.phase === "review" ? "review" : "sitting",
@@ -490,12 +488,13 @@ export async function postT3Assist(
   attemptId: string,
   req: { prompt: string; promptSeq: number; regenNonce: number; seq: number },
 ): Promise<T3AssistResponse> {
-  const body = await postJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/t3/assist`, {
+  const path = apiPath("t3Assist", { id: attemptId });
+  const body = await postJson(storage, opts, path, {
     ...req,
     clientTs: new Date().toISOString(),
   });
   if (typeof body.text !== "string" || !Array.isArray(body.claimRefs)) {
-    throw new Error(`POST /attempts/${attemptId}/t3/assist returned no reply`);
+    throw new Error(`POST ${path} returned no reply`);
   }
   return {
     text: body.text,
@@ -520,7 +519,7 @@ export async function postTranscriptTurn(
   trackId: string,
   turn: { seq: number; verb: string; object: string; text?: string; claimRefs?: readonly string[] },
 ): Promise<void> {
-  await postJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/transcripts`, {
+  await postJson(storage, opts, apiPath("appendTranscript", { id: attemptId }), {
     trackId,
     seq: turn.seq,
     verb: turn.verb,
@@ -594,13 +593,11 @@ export async function postTrackScore(
   trackId: string,
   artifact: unknown,
 ): Promise<ServerTrackScore> {
-  const body = await postJson(storage, opts, `/attempts/${encodeURIComponent(attemptId)}/score`, {
-    trackId,
-    artifact,
-  });
+  const path = apiPath("scoreTrack", { id: attemptId });
+  const body = await postJson(storage, opts, path, { trackId, artifact });
   const score = body.score as { raw?: Record<string, number>; scaled?: unknown } | undefined;
   if (!score || typeof score.scaled !== "number") {
-    throw new Error(`POST /attempts/${attemptId}/score returned no score`);
+    throw new Error(`POST ${path} returned no score`);
   }
   return {
     score: { raw: score.raw ?? {}, scaled: score.scaled },

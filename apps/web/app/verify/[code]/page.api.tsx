@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { apiPath } from "@ailx/contract";
 import { credentialViewFrom } from "../../../lib/credentialView";
 import { serverApiBase } from "../../../lib/server/page";
 import { VerifyView } from "../../../lib/VerifyView";
@@ -30,10 +31,9 @@ export async function generateMetadata({ params }: VerifyParams): Promise<Metada
   const robots = { index: false, follow: false };
   let credential = null;
   try {
-    const res = await fetch(
-      `${await serverApiBase()}/credentials/${encodeURIComponent(code)}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(`${await serverApiBase()}${apiPath("credentialView", { code })}`, {
+      cache: "no-store",
+    });
     credential = res.status === 200 ? credentialViewFrom(await res.json()) : null;
   } catch {
     // Unreachable service: the PAGE says so out loud. A tab title cannot,

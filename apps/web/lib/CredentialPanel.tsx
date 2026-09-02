@@ -20,7 +20,7 @@
  * and this component renders nothing (FRONTEND.md §2.3.4).
  */
 import { useCallback, useEffect, useState } from "react";
-import type { OwnerCredential } from "@ailx/contract";
+import { API_ROUTES, apiPath, type OwnerCredential } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import { CREDENTIAL_LIMITS, linkedInAddUrl } from "@ailx/report";
 import { basePath, isServerMode } from "./mode";
@@ -28,17 +28,20 @@ import { browserApiOptions, getServerAttemptId } from "./persistence";
 
 type Phase = "loading" | "none" | "live" | "busy" | "error";
 
+/** The three manifest routes this panel drives — one path, three methods. */
+type CredentialRoute = "issueCredential" | "getCredential" | "revokeCredential";
+
 export function CredentialPanel({ attemptId }: { attemptId: string }) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [credential, setCredential] = useState<OwnerCredential | null>(null);
   const [copied, setCopied] = useState(false);
 
   const request = useCallback(
-    async (method: "GET" | "POST" | "DELETE"): Promise<Response> => {
+    async (route: CredentialRoute): Promise<Response> => {
       const opts = browserApiOptions();
       const id = getServerAttemptId(window.localStorage, attemptId) ?? attemptId;
-      return opts.fetchFn(`${opts.baseUrl}/attempts/${id}/credential`, {
-        method,
+      return opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id })}`, {
+        method: API_ROUTES[route].method,
         headers: {
           "content-type": "application/json",
           ...(await authHeaders(window.localStorage)),
@@ -53,7 +56,7 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
     let live = true;
     void (async () => {
       try {
-        const res = await request("GET");
+        const res = await request("getCredential");
         if (!live) return;
         if (res.ok) {
           setCredential(((await res.json()) as { credential: OwnerCredential }).credential);
@@ -77,12 +80,12 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
       ? null
       : `${window.location.origin}${basePath()}${credential.verifyPath}`;
 
-  const act = async (method: "POST" | "DELETE") => {
+  const act = async (route: "issueCredential" | "revokeCredential") => {
     setPhase("busy");
     try {
-      const res = await request(method);
+      const res = await request(route);
       if (!res.ok) throw new Error(String(res.status));
-      if (method === "DELETE") {
+      if (route === "revokeCredential") {
         setCredential(null);
         setPhase("none");
         return;
@@ -127,7 +130,7 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
           <button
             type="button"
             className="btn primary"
-            onClick={() => act("POST")}
+            onClick={() => act("issueCredential")}
             disabled={phase === "busy"}
           >
             {phase === "busy" ? "Working…" : "Issue my credential"}
@@ -171,7 +174,7 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
               See what a stranger sees <span aria-hidden>↗</span>
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
-            <button type="button" className="btn small-btn" onClick={() => act("DELETE")}>
+            <button type="button" className="btn small-btn" onClick={() => act("revokeCredential")}>
               Revoke
             </button>
           </div>
