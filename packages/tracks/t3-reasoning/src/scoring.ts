@@ -250,9 +250,11 @@ export interface VerificationTally {
  *     there was an error to find;
  *  3. the check happened before the `submitted` turn. A check after the
  *     answer is final cost the candidate nothing and changed nothing;
- *  4. the candidate's FINAL stance on that claim was recorded after the
- *     check, and it resolves the claim the right way: challenged a planted
- *     error, accepted correct advice.
+ *  4. the candidate's final stance BEFORE the answer was final was recorded
+ *     after the check, and it resolves the claim the right way: challenged a
+ *     planted error, accepted correct advice. A stance taken after the
+ *     `submitted` turn changed nothing the candidate wrote, so it neither
+ *     earns nor removes credit.
  *
  * Repeat checks of one claim count once, in both halves of the fraction.
  *
@@ -265,8 +267,8 @@ export interface VerificationTally {
  * they marked a mismatch — and inventing that event before the timed/untimed
  * arm of `docs/TRANSFER-STUDY.md` §3.5 runs would be building an instrument
  * for a study nobody has designed. What the rule DOES buy is that checking
- * everything no longer pays: an indiscriminate checker dilutes their own
- * denominator, and a check followed by the wrong call pays nothing.
+ * everything no longer pays: every check the candidate does not resolve, or
+ * resolves the wrong way, sits in their denominator and pays nothing.
  *
  * The planted half overlaps RSR by construction (RSR pays for the stance,
  * this pays for the check that preceded it). That is deliberate: the two
@@ -289,7 +291,9 @@ export function verificationTally(
     if (t.verb === "assisted" && t.claimIds) {
       for (const id of t.claimIds) if (!surfacedAt.has(id)) surfacedAt.set(id, i);
     }
-    if ((t.verb === "challenged" || t.verb === "accepted") && t.object.startsWith("claim:")) {
+    // Both halves of the coupling stop at the answer: a stance recorded after
+    // the candidate submitted changed nothing they wrote.
+    if (i < answerFinalAt && (t.verb === "challenged" || t.verb === "accepted") && t.object.startsWith("claim:")) {
       finalStanceAt.set(t.object.slice("claim:".length), { at: i, verb: t.verb });
     }
   });

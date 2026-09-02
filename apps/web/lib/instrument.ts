@@ -428,10 +428,16 @@ export const T3_SCENARIO_SHA256 =
 /**
  * The T3 sitting clock this build's form declares, in seconds, or undefined
  * when it declares none (TEN-30). The static demo form declares nothing, so
- * the demo budget is unchanged; a form built for the 30-minute condition sets
- * the sitting clock here, in the one place the clock is chosen, so the record
- * and the countdown cannot disagree. A HOSTED sitting takes its budget from
- * the exam service, not from this function.
+ * the demo budget is unchanged; a static form built for the 30-minute
+ * condition sets the sitting clock here, in the one place the static build
+ * chooses it, so the record and the countdown cannot disagree.
+ *
+ * A HOSTED sitting is NOT covered by this. The exam service serves the form
+ * and owns the sitting clock; this build still opens the session on its own
+ * budgets, so a hosted 30-minute form would be recorded as the condition it
+ * is and run against whatever budget the session was started with. Closing
+ * that needs the service to carry a per-track budget into `attempt_started`,
+ * which is the private repo's decision to make.
  */
 export function t3FormBudgetSeconds(): number | undefined {
   return t3TimeBudgetSeconds(T3_SCENARIO as T3PresentationConfig);

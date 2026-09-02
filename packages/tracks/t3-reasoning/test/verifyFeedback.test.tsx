@@ -91,9 +91,10 @@ describe("T3 verification feedback", () => {
   it("tells the candidate what verification scores: the claim, not the click count", () => {
     mount();
     expect(statusText()).toContain("Opening the source is not scored");
-    // TEN-30: the copy must not promise credit for the number of checks.
-    expect(statusText()).toContain("neither is the number of checks");
-    expect(statusText()).toContain("challenging or accepting it");
+    // TEN-30: the copy must not promise credit for the number of checks, and
+    // must say the stance has to be the right one.
+    expect(statusText()).toContain("A check counts when you go on to challenge or accept that claim");
+    expect(statusText()).toContain("your call on it is right");
   });
 
   it("attributes the emitted event to the claim that was checked", () => {
@@ -108,7 +109,7 @@ describe("T3 verification feedback", () => {
     mount();
     click(checkBtn(CLAIM));
     expect(statusText()).toBe(
-      "Checked against the source: 1 claim. Re-checking one claim adds nothing, and a check only scores once you challenge or accept that claim.",
+      "Checked against the source: 1 claim. Re-checking one claim adds nothing. A check counts once you challenge or accept that claim, and only if your call on it is right.",
     );
   });
 

@@ -976,11 +976,11 @@
         },
         {
           "path": "src/plugin.ts",
-          "sha256": "274c62118f52276d0c0b857176337df163e176eda767f88d30119d241fcfd74d"
+          "sha256": "6a81d0b52239509bc700db5797a32537240cddf7ef02ed658ec839d139fa2028"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "5a4988b51425e9202cd9af4dc1bc385a631a3003a1fdaea00cafbe2de919bf26"
+          "sha256": "6a8d11b0c12f798a54864ebebdbdcc041cd2c6f80797967b3dac6ddc838c9b56"
         },
         {
           "path": "src/types.ts",
@@ -990,7 +990,7 @@
       "externals": [
         "@ailx/core@0.2.0"
       ],
-      "digest": "e9528e79e15dd8ec2b27dcdef5b7b09a1a8ea18d663418766fc453a9164b3ae2"
+      "digest": "501ac096425ff9a56888e50053d6f17d69c1b3cad1a6ffe62eeaed89b45b9810"
     },
     {
       "trackId": "t4",

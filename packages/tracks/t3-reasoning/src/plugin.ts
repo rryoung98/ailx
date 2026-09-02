@@ -78,9 +78,11 @@ function validate(raw: unknown, secrets: boolean): T3PresentationConfig {
   // shipped behaviour; present, it must be a real positive number of minutes,
   // because a sitting labelled with a nonsense budget is worse than one
   // labelled with none.
+  // Whole minutes, at least one: 0.001 is a positive number and a zero-second
+  // clock, which is a sitting nobody can run.
   const tb = cfg.timeBudgetMinutes;
-  if (tb !== undefined && (typeof tb !== "number" || !Number.isFinite(tb) || tb <= 0)) {
-    fail("timeBudgetMinutes must be a positive number of minutes when present");
+  if (tb !== undefined && (typeof tb !== "number" || !Number.isInteger(tb) || tb < 1)) {
+    fail("timeBudgetMinutes must be a whole number of minutes, 1 or more, when present");
   }
   const base: T3PresentationConfig = {
     title: cfg.title as string,

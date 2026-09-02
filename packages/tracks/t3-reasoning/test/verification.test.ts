@@ -129,6 +129,20 @@ describe("discriminating verification", () => {
     expect(score(t).raw.verificationCount).toBe(1);
   });
 
+  it("ignores a stance taken after the answer was final", () => {
+    // The check was in time, the call came too late to change anything the
+    // candidate wrote, so it buys nothing.
+    const t = [
+      surfaceAll(),
+      turn({ verb: "verified", object: "claim:pe-figure", claimIds: ["pe-figure"] }),
+      turn({ verb: "submitted", object: "t3-reasoning:final" }),
+      turn({ verb: "challenged", object: "claim:pe-figure" }),
+    ];
+    expect(tally(t)).toMatchObject({ checked: 1, discriminating: 0, rate: 0 });
+    // RSR still reads the stance — that rule is unchanged and not ours.
+    expect(score(t).raw.plantedCaught).toBe(1);
+  });
+
   it("ignores a claim the form knows nothing about", () => {
     const t = [
       turn({ verb: "assisted", object: "assist:1", claimIds: ["unkeyed-1"] }),
@@ -251,7 +265,9 @@ describe("declared time condition", () => {
   it("validates the declaration, because a nonsense budget mislabels a sitting", () => {
     expect(() => validateT3Config({ ...config, timeBudgetMinutes: 30 })).not.toThrow();
     expect(validateT3Config({ ...config, timeBudgetMinutes: 30 }).timeBudgetMinutes).toBe(30);
-    for (const bad of [0, -30, Number.NaN, Number.POSITIVE_INFINITY, "30", null]) {
+    // Whole minutes only: 0.001 minutes is a positive number and a
+    // zero-second clock.
+    for (const bad of [0, -30, 0.001, 29.5, Number.NaN, Number.POSITIVE_INFINITY, "30", null]) {
       expect(() => validateT3Config({ ...config, timeBudgetMinutes: bad })).toThrow(
         /timeBudgetMinutes/,
       );
