@@ -878,7 +878,7 @@
         },
         {
           "path": "src/score.ts",
-          "sha256": "cf66c6fc83c8123e7022e80b8c4ce44f89bc011f942388299e415d8b57c080bd"
+          "sha256": "06b193ad1fcfe118f6745260ec0e23367c500e968db8d283bd3a580a2c885c28"
         },
         {
           "path": "src/types.ts",
@@ -886,9 +886,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.2.0"
       ],
-      "digest": "5947f628cec8ffb38fe3e736d9e340d8ef2309ce3ef9efe2a8b631e482d0e88e"
+      "digest": "ec42907b471120c9509153f122de6a87f25441870d81e36ea34c74ad1a9e4d4b"
     },
     {
       "trackId": "t2",
@@ -901,7 +901,7 @@
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "f4ab81b0f0bf5b2e8fbede2b84f68007efbc1263de31ddadd56f0f0cf88040e4"
+          "sha256": "b68e0ef6a491ddfe80e9ffe2859cfb02ad1775592820118476e96d9121b075f8"
         },
         {
           "path": "src/types.ts",
@@ -909,9 +909,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.2.0"
       ],
-      "digest": "0b08fa8d10a8efb05a9292da75e76adab893be614babeff84bcbad58dcc246e7"
+      "digest": "5c1f585027893a29d8b36235689b8e7eebaa507342b5c0d2ade40510000f6a70"
     },
     {
       "trackId": "t3",
@@ -924,7 +924,7 @@
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "909b454d7500f3a26a17ec50de6010d32342c3511610fa51e63cfa416ec13023"
+          "sha256": "c286c1dbde6264506c812ab2d0f44615e8af8850ff747cc785bca434b37239cd"
         },
         {
           "path": "src/types.ts",
@@ -932,9 +932,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.2.0"
       ],
-      "digest": "65741e794c7be3e3a23346a05b2049ae4089a51f7ea0f8e44c1d7a27882c648c"
+      "digest": "46c6ecd5b108d456d528faeeaeb598acf1efae59579abab1abdfbad215042ae6"
     },
     {
       "trackId": "t4",
@@ -947,7 +947,7 @@
         },
         {
           "path": "src/score.ts",
-          "sha256": "fb9492052e6ec2fb78b6f0d6786611a21e2303704bb80fa92831b6c6ed9be2b0"
+          "sha256": "8aaa46a82219bcb12dd72f4e9165273fdafff1f1a12ed19f254daa940dfae9c5"
         },
         {
           "path": "src/types.ts",
@@ -955,9 +955,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.2.0"
       ],
-      "digest": "c5dfc791d6dc7569e12a8fb580df3f66c9328e63224071f57ef6d5db01453729"
+      "digest": "2e1be91c3115bf835b76ef4a6dfcfa698b723445cbc0aa2c19b057ad98096d60"
     }
   ]
 }

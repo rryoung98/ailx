@@ -21,6 +21,18 @@
  * touching a byte inside a track package. `@ailx/core` was bumped to 0.1.0
  * with the restructure, and it has to be bumped again with the next one, or
  * the audit digest will keep addressing an allocation that has moved.
+ *
+ * It got sharper still at 0.2.0, and the boundary is now the WEAKEST part of
+ * this digest. `@ailx/core` holds the score ARITHMETIC as well as the weights:
+ * `judgments.ts` (the canonical row order and the order-invariant mean and
+ * median every judged track aggregates through) and `rounding.ts` (`round3`,
+ * which all four tracks report through). Rewriting either changes every score
+ * in the instrument while every hashed track file stays byte-identical, and
+ * the digest moves only because somebody remembered the version bump. That is
+ * a convention, not a content address. Making it one means following the
+ * import into the workspace package's own source closure; until that is done,
+ * READ THE CLAIM NARROWLY: this digest addresses the TRACK half of `score()`
+ * exactly, and its shared half by version only.
  */
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
