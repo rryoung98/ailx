@@ -10,9 +10,12 @@ import type { Judgment } from "./plugin.js";
  * floating-point addition is NOT associative: the three legal values
  * [0.1, 0.2, 0.30000000000000004] sum to 0.6000000000000001 in one
  * permutation and 0.6 in another, so their mean is 0.20000000000000004 or
- * 0.19999999999999998 depending on nothing but arrival order. Downstream
- * that survived rounding — a real T3 sitting differed by 30.226 vs 30.227
- * AFTER round3. The score of record was not reproducible.
+ * 0.19999999999999998 depending on nothing but arrival order. That is not
+ * only a last-bit difference: with the jury values [0.69, 0.41,
+ * 0.5831666666666665] the T3 analysis component lands on 25.247 in two of
+ * the six arrival orders and 25.248 in the other four, AFTER round3 — a
+ * verified case, pinned in `packages/tracks/t3-reasoning/test/score.test.ts`.
+ * The score of record was not reproducible.
  *
  * The fix is arithmetic, not documentation: every aggregation here is
  * order-invariant BY CONSTRUCTION.

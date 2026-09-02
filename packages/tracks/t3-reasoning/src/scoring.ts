@@ -270,8 +270,10 @@ export function rairCreditForClaim(
  * averaged, floating-point addition is not associative, and stored rows
  * arrive in whatever order the database returns them: the three legal values
  * [0.1, 0.2, 0.30000000000000004] mean 0.20000000000000004 in one permutation
- * and 0.19999999999999998 in another, which survived round3 as 30.226 vs
- * 30.227 in a real sitting. So the values are canonically sorted before they
+ * and 0.19999999999999998 in another, and the jury values [0.69, 0.41,
+ * 0.5831666666666665] carry that difference past round3 — 25.247 points in
+ * two arrival orders, 25.248 in the other four (pinned in test/score.test.ts).
+ * So the values are canonically sorted before they
  * are summed and the result is order-invariant BY CONSTRUCTION. The one
  * implementation lives in `@ailx/core` (`judgments.ts`); T1 and T4 share it.
  */
