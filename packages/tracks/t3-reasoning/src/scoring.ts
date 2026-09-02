@@ -56,6 +56,7 @@
  * 'analysis.lengthGate'. The component is clamped to [0, weights.analysis].
  */
 import type { Judgment } from "@ailx/core";
+import { meanValue, validatedValues } from "@ailx/core";
 import type { T3Artifact, T3Config, T3Turn } from "./types.js";
 
 /** Demo jury band scale — DemoJudge normalizes bands 0..5 to [0,1] by /5. */
@@ -261,17 +262,21 @@ export function rairCreditForClaim(
   return deliberated ? 1 : 0.5;
 }
 
+/**
+ * Stored jury values for the analysis dimension, RANGE-CHECKED and in the
+ * canonical ascending order — F6.
+ *
+ * The order matters to the arithmetic, not just to the eye. These values are
+ * averaged, floating-point addition is not associative, and stored rows
+ * arrive in whatever order the database returns them: the three legal values
+ * [0.1, 0.2, 0.30000000000000004] mean 0.20000000000000004 in one permutation
+ * and 0.19999999999999998 in another, which survived round3 as 30.226 vs
+ * 30.227 in a real sitting. So the values are canonically sorted before they
+ * are summed and the result is order-invariant BY CONSTRUCTION. The one
+ * implementation lives in `@ailx/core` (`judgments.ts`); T1 and T4 share it.
+ */
 function validatedAnalysisValues(judgments: ReadonlyArray<Judgment>): number[] {
-  return judgments
-    .filter((j) => j.dimension === "analysis")
-    .map((j) => {
-      if (!Number.isFinite(j.value) || j.value < 0 || j.value > 1) {
-        throw new Error(
-          `t3 judgment out of range: dimension=${j.dimension} sample=${j.sample} value=${j.value} (expected normalized [0,1])`,
-        );
-      }
-      return j.value;
-    });
+  return validatedValues(judgments, "analysis", "t3");
 }
 
 export function scoreT3(
@@ -322,7 +327,7 @@ export function scoreT3(
 
   // --- Analysis (45): stored jury judgments only — F6 ----------------------
   const vals = validatedAnalysisValues(judgments);
-  const meanJury = vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+  const meanJury = meanValue(vals);
   const jurySpread = vals.length > 0 ? Math.max(...vals) - Math.min(...vals) : 0;
   const wordCount = finalAnswer.trim().length === 0 ? 0 : finalAnswer.trim().split(/\s+/).length;
   // Declared length gate: capped at 1 — can only withhold, never add.

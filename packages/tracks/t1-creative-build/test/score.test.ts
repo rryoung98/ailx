@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runPure } from "@ailx/core";
+import { runPure, judgmentArrivalOrders } from "@ailx/core";
 import type { Judgment, ScoreInputs } from "@ailx/core";
 import { scoreT1, medianForDimension, processSignal } from "../src/score.js";
 import { t1Plugin } from "../src/plugin.js";
@@ -201,5 +201,73 @@ describe("processSignal", () => {
 
   it("reads the log in order — revisions before any prompt close nothing", () => {
     expect(processSignal(art([REV, REV, P("a"), P("b"), P("c")]))).toBe(0.5);
+  });
+});
+
+/**
+ * ORDER INVARIANCE — the property that makes "byte-identically recomputable
+ * from stored inputs" true. Stored judgments come back from a database, and a
+ * read without ORDER BY has no guaranteed row order, so a permuted read must
+ * not move the score by one bit.
+ */
+describe("scoreT1 is order-invariant over stored judgment rows", () => {
+  const canonical = (s: unknown) => JSON.stringify(s);
+
+  it("gives byte-identical output for EVERY arrival order of the golden rows", () => {
+    const expected = canonical(runPure(() => scoreT1(goldenInputs, cfg)));
+    for (const order of judgmentArrivalOrders(goldenJudgments, 5040)) {
+      const s = runPure(() => scoreT1({ ...goldenInputs, judgments: order }, cfg));
+      expect(canonical(s)).toBe(expected);
+    }
+  });
+
+  /**
+   * Values chosen because they are PROVEN to diverge under a naive
+   * left-to-right sum: [0.1, 0.2, 0.30000000000000004] means
+   * 0.20000000000000004 or 0.19999999999999998 by permutation alone. The
+   * assertion below fails if that ever stops being true, so the fixture
+   * cannot go quietly blunt.
+   */
+  it("gives byte-identical output on values that DO diverge under naive summation", () => {
+    const sharp = [0.1, 0.2, 0.30000000000000004];
+    expect(
+      new Set([
+        sharp.reduce((a, b) => a + b, 0),
+        [...sharp].reverse().reduce((a, b) => a + b, 0),
+      ]).size,
+    ).toBe(2);
+    const rows = [
+      J("comparative", 0, sharp[0]),
+      J("comparative", 1, sharp[1]),
+      J("comparative", 2, sharp[2]),
+      J("ambition", 0, sharp[0]),
+      J("ambition", 1, sharp[2]),
+    ];
+    const expected = canonical(
+      runPure(() => scoreT1({ ...goldenInputs, judgments: rows }, cfg)),
+    );
+    for (const order of judgmentArrivalOrders(rows)) {
+      expect(
+        canonical(runPure(() => scoreT1({ ...goldenInputs, judgments: order }, cfg))),
+      ).toBe(expected);
+    }
+  });
+
+  it("does not let rows sharing a dimension and sample tie-break by arrival", () => {
+    const dup: Judgment[] = [
+      { dimension: "rationale", sample: 0, value: 0.4, modelId: "judge-b@1" },
+      { dimension: "rationale", sample: 0, value: 0.8, modelId: "judge-a@1" },
+    ];
+    const a = medianForDimension(dup, "rationale");
+    const b = medianForDimension([...dup].reverse(), "rationale");
+    expect(a).toBe(b);
+    expect(a).toBeCloseTo(0.6, 12);
+  });
+
+  it("never lets a stored -0 leak into the score as -0", () => {
+    const s = runPure(() =>
+      scoreT1({ ...goldenInputs, judgments: [J("functional", 0, -0)] }, cfg),
+    );
+    expect(Object.is(s.raw.functional, 0)).toBe(true);
   });
 });

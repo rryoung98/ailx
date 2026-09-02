@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runPure } from "@ailx/core";
+import { runPure, judgmentArrivalOrders } from "@ailx/core";
 import type { Judgment } from "@ailx/core";
 import { plugin, validateT3Config } from "../src/plugin.js";
 import {
@@ -440,5 +440,84 @@ describe("T3 plugin shape", () => {
         json: { transcript: [{ verb: "hacked", object: "x" }], finalAnswer: "" },
       }),
     ).rejects.toThrow(/unknown verb/);
+  });
+});
+
+/**
+ * ORDER INVARIANCE — the property that makes "byte-identically recomputable
+ * from stored inputs" true for T3.
+ *
+ * The analysis component averages the stored jury rows, floating-point
+ * addition is not associative, and a SQL read without ORDER BY has no
+ * guaranteed row order. Before the fix, a permuted read of three legal values
+ * moved the mean in the last bit and could move `scaled` after round3.
+ */
+describe("scoreT3 is order-invariant over stored jury rows", () => {
+  const canonical = (s: unknown) => JSON.stringify(s);
+
+  it("gives byte-identical output for EVERY arrival order of the real fixture", () => {
+    const expected = canonical(score(goodTranscript, goodAnswer, juryJudgments));
+    for (const order of judgmentArrivalOrders(juryJudgments)) {
+      expect(canonical(score(goodTranscript, goodAnswer, [...order]))).toBe(expected);
+    }
+  });
+
+  /**
+   * KNOWN-SHARP fixture, and the one that survives round3.
+   *
+   * These three legal jury values sum differently by permutation AND the
+   * difference crosses a rounding boundary: naively averaged they score the
+   * analysis component 25.247 in two of the six arrival orders and 25.248 in
+   * the other four, i.e. a sitting whose score of record depends on which
+   * rows the database happened to hand back first. The first two assertions
+   * PROVE the fixture is still sharp, so this test cannot go quietly blunt.
+   */
+  it("gives byte-identical output on values that DIVERGE past round3 naively", () => {
+    const sharp = [0.69, 0.41, 0.5831666666666665];
+    const naive = (v: number[]) => v.reduce((s, x) => s + x, 0) / v.length;
+    const round3 = (x: number) => Math.round(x * 1000) / 1000;
+    const naiveAnalysis = new Set(
+      judgmentArrivalOrders(
+        sharp.map((value, i) => ({ dimension: "analysis", sample: i, value, modelId: `m${i}@1` })),
+      ).map((o) => round3(config.weights.analysis * naive(o.map((j) => j.value)))),
+    );
+    expect(naiveAnalysis).toEqual(new Set([25.247, 25.248]));
+
+    const rows: Judgment[] = sharp.map((value, i) => ({
+      dimension: "analysis", sample: i, value, modelId: `demo-judge-${i}@1`,
+    }));
+    const expected = canonical(score(goodTranscript, goodAnswer, rows));
+    for (const order of judgmentArrivalOrders(rows)) {
+      expect(canonical(score(goodTranscript, goodAnswer, [...order]))).toBe(expected);
+    }
+    // And it settles on the canonically-sorted sum, every time.
+    const s = score(goodTranscript, goodAnswer, rows);
+    expect(s.raw.analysis).toBe(25.248);
+    expect(s.scaled).toBe(140.248);
+  });
+
+  it("does not let two rows with the same sample tie-break by arrival order", () => {
+    const rows: Judgment[] = [
+      { dimension: "analysis", sample: 0, value: 0.9, modelId: "b@1" },
+      { dimension: "analysis", sample: 0, value: 0.1, modelId: "a@1" },
+      { dimension: "analysis", sample: 1, value: 0.30000000000000004, modelId: "a@1" },
+    ];
+    expect(canonical(score(goodTranscript, goodAnswer, rows))).toBe(
+      canonical(score(goodTranscript, goodAnswer, [...rows].reverse())),
+    );
+  });
+
+  it("ignores rows from other dimensions whatever order they arrive in", () => {
+    const noise: Judgment[] = [
+      { dimension: "comparative", sample: 0, value: 1, modelId: "x@1" },
+      ...juryJudgments,
+      { dimension: "craft", sample: 0, value: 0, modelId: "y@1" },
+    ];
+    expect(canonical(score(goodTranscript, goodAnswer, noise))).toBe(
+      canonical(score(goodTranscript, goodAnswer, juryJudgments)),
+    );
+    expect(canonical(score(goodTranscript, goodAnswer, [...noise].reverse()))).toBe(
+      canonical(score(goodTranscript, goodAnswer, juryJudgments)),
+    );
   });
 });

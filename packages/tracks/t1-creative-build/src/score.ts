@@ -1,4 +1,5 @@
 import type { Judgment, ScoreInputs } from "@ailx/core";
+import { medianForDimension as medianForDimensionCore } from "@ailx/core";
 import { T1_DIMENSIONS, T1_WEIGHTS } from "./types.js";
 import type { T1Artifact, T1Config, T1Score } from "./types.js";
 
@@ -33,29 +34,18 @@ function clamp01(x: number): number {
 }
 
 /**
- * Median across judge samples — robust to a single outlier sample.
- * Judgment values are NORMALIZED to [0, 1] by contract (JudgeResponse.value);
- * anything outside that range is invalid stored data and throws rather than
- * silently clamping into full credit (F10).
+ * Median across judge samples — robust to a single outlier sample, and
+ * ORDER-INVARIANT: stored judgments arrive in whatever order the database
+ * returns them, so the arithmetic may not depend on that order. The one
+ * implementation lives in `@ailx/core` (`judgments.ts`) and T4 shares it;
+ * this used to be a near-identical private copy. The "t1" label keeps the
+ * out-of-range message naming its track, which is load-bearing for debugging.
  */
 export function medianForDimension(
   judgments: ReadonlyArray<Judgment>,
   dimension: string,
 ): number {
-  const vals = judgments
-    .filter((j) => j.dimension === dimension)
-    .map((j) => {
-      if (!Number.isFinite(j.value) || j.value < 0 || j.value > 1) {
-        throw new Error(
-          `t1 judgment out of range: dimension=${j.dimension} sample=${j.sample} value=${j.value} (expected normalized [0,1])`,
-        );
-      }
-      return j.value;
-    })
-    .sort((a, b) => a - b);
-  if (vals.length === 0) return 0;
-  const mid = Math.floor(vals.length / 2);
-  return vals.length % 2 === 1 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+  return medianForDimensionCore(judgments, dimension, "t1");
 }
 
 /** Distinct prompts, and completed prompt→revise cycles, for full credit. */

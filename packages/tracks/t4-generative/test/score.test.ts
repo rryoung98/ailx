@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { runPure, SCORE_ALLOCATION, SCORED_TRACK_IDS, TOTAL_POINTS, trackPoints } from "@ailx/core";
+import { runPure, judgmentArrivalOrders, SCORE_ALLOCATION, SCORED_TRACK_IDS, TOTAL_POINTS, trackPoints } from "@ailx/core";
 import type { Judgment, ScoreInputs } from "@ailx/core";
 import {
   scoreT4,
@@ -213,5 +213,108 @@ describe("T4 is a showcase index, not a score", () => {
       .reduce((a, t) => a + trackPoints(t), 0);
     expect(scored).toBe(TOTAL_POINTS);
     expect(TOTAL_POINTS).toBe(400);
+  });
+});
+
+/**
+ * ORDER INVARIANCE — stored judgments come back from a database, and a read
+ * without ORDER BY has no guaranteed row order. The showcase index must not
+ * move by one bit under a permuted read. Two places were exposed: the medians
+ * (aggregation) and the generation SERIES, which is read positionally and
+ * used to sort by `sample` alone — so two rows sharing a sample tie-broke by
+ * arrival order.
+ */
+describe("scoreT4 is order-invariant over stored judgment rows", () => {
+  const canonical = (s: unknown) => JSON.stringify(s);
+
+  it("gives byte-identical output for many arrival orders of the golden rows", () => {
+    const expected = canonical(runPure(() => scoreT4(goldenInputs, cfg)));
+    // 10 golden rows is 3.6M permutations; enumerate over a 6-row slice and
+    // check the remaining rows by rotation, which is enough to catch an
+    // arrival-order dependency without a factorial test run.
+    const head = goldenJudgments.slice(0, 6);
+    const tail = goldenJudgments.slice(6);
+    for (const order of judgmentArrivalOrders(head)) {
+      expect(
+        canonical(runPure(() => scoreT4({ ...goldenInputs, judgments: [...order, ...tail] }, cfg))),
+      ).toBe(expected);
+    }
+    for (let i = 0; i < goldenJudgments.length; i++) {
+      const rotated = [...goldenJudgments.slice(i), ...goldenJudgments.slice(0, i)];
+      expect(
+        canonical(runPure(() => scoreT4({ ...goldenInputs, judgments: rotated }, cfg))),
+      ).toBe(expected);
+    }
+    expect(
+      canonical(runPure(() => scoreT4({ ...goldenInputs, judgments: [...goldenJudgments].reverse() }, cfg))),
+    ).toBe(expected);
+  });
+
+  /** Known-sharp values: proven to diverge under a naive left-to-right sum. */
+  it("gives byte-identical output on values that DO diverge under naive summation", () => {
+    const sharp = [0.1, 0.2, 0.30000000000000004];
+    expect(sharp.reduce((a, b) => a + b, 0)).not.toBe(
+      [...sharp].reverse().reduce((a, b) => a + b, 0),
+    );
+    const rows = [
+      J("brief-fit", 0, sharp[0]), J("brief-fit", 1, sharp[1]),
+      J("comparative", 0, sharp[2]), J("comparative", 1, sharp[0]),
+      J("generation", 0, sharp[1]), J("generation", 1, sharp[2]),
+    ];
+    const expected = canonical(
+      runPure(() => scoreT4({ ...goldenInputs, judgments: rows }, cfg)),
+    );
+    for (const order of judgmentArrivalOrders(rows)) {
+      expect(
+        canonical(runPure(() => scoreT4({ ...goldenInputs, judgments: order }, cfg))),
+      ).toBe(expected);
+    }
+  });
+
+  it("generationSeries: rows sharing a sample do not tie-break by arrival", () => {
+    const dup: Judgment[] = [
+      { dimension: "generation", sample: 0, value: 0.3, modelId: "judge-a@1" },
+      { dimension: "generation", sample: 1, value: 0.9, modelId: "judge-b@1" },
+      { dimension: "generation", sample: 1, value: 0.2, modelId: "judge-a@1" },
+    ];
+    // Canonical order is (sample, modelId, value): 0.3, then a@1's 0.2, then b@1's 0.9.
+    expect(generationSeries(dup)).toEqual([0.3, 0.2, 0.9]);
+    expect(generationSeries([...dup].reverse())).toEqual([0.3, 0.2, 0.9]);
+    for (const order of judgmentArrivalOrders(dup)) {
+      expect(generationSeries(order)).toEqual([0.3, 0.2, 0.9]);
+    }
+  });
+
+  /**
+   * The duplicate pair is 0.4/0.5 on purpose: `steeringEfficiency` counts
+   * steps that improved on the running best, so [0.3, 0.4, 0.5, 0.6] scores
+   * three improving steps and the swapped [0.3, 0.5, 0.4, 0.6] scores two.
+   * A stable sort by `sample` alone leaves that difference decided by
+   * arrival order — i.e. by the database.
+   */
+  it("a duplicate-sample series scores the same whichever way the rows arrive", () => {
+    const dup: Judgment[] = [
+      { dimension: "generation", sample: 0, value: 0.3, modelId: "judge-a@1" },
+      { dimension: "generation", sample: 1, value: 0.5, modelId: "judge-b@1" },
+      { dimension: "generation", sample: 1, value: 0.4, modelId: "judge-a@1" },
+      { dimension: "generation", sample: 2, value: 0.6, modelId: "judge-a@1" },
+    ];
+    expect(generationSeries(dup)).toEqual([0.3, 0.4, 0.5, 0.6]);
+    const forward = runPure(() => scoreT4({ ...goldenInputs, judgments: dup }, cfg));
+    const backward = runPure(() =>
+      scoreT4({ ...goldenInputs, judgments: [...dup].reverse() }, cfg),
+    );
+    expect(JSON.stringify(forward)).toBe(JSON.stringify(backward));
+    // 0.6 × gain(0.3→0.6 of 0.7 headroom) + 0.4 × 3 improving steps of 3.
+    expect(forward.raw["craft.steering"]).toBe(
+      Math.round((0.6 * (0.3 / 0.7) + 0.4) * 1000) / 1000,
+    );
+  });
+
+  it("never lets a stored -0 leak into the index as -0", () => {
+    const s = runPure(() =>
+      scoreT4({ ...goldenInputs, judgments: [J("brief-fit", 0, -0)] }, cfg),
+    );
+    expect(Object.is(s.raw["brief-fit"], 0)).toBe(true);
   });
 });

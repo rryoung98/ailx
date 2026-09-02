@@ -10,6 +10,7 @@ import {
   medianForDimension,
   meanForDimension,
   orderedDimensionValues,
+  judgmentArrivalOrders,
 } from "../src/index.js";
 
 const J = (
@@ -173,6 +174,12 @@ describe("validatedValues / medianForDimension / meanForDimension", () => {
     }
   });
 
+  it("validatedValues keeps ARRIVAL order — the invariance lives in the aggregators", () => {
+    expect(validatedValues(rows, "analysis", "t3")).toEqual([
+      0.30000000000000004, 0.1, 0.2,
+    ]);
+  });
+
   it("throws on an out-of-range row in the selected dimension only", () => {
     expect(() => validatedValues([J("a", 0, 2)], "a", "t3")).toThrow(/t3 judgment out of range/);
     expect(validatedValues([J("a", 0, 2)], "b", "t3")).toEqual([]);
@@ -201,5 +208,29 @@ describe("orderedDimensionValues — positional series", () => {
         "t4",
       ),
     ).toThrow(/t4 judgment out of range/);
+  });
+});
+
+describe("judgmentArrivalOrders — the shared enumerator", () => {
+  const rows = [J("a", 0, 0.1), J("a", 1, 0.2), J("a", 2, 0.3)];
+
+  it("enumerates exactly n! distinct orders and agrees with a generic permuter", () => {
+    const orders = judgmentArrivalOrders(rows);
+    expect(orders).toHaveLength(6);
+    expect(new Set(orders.map((o) => JSON.stringify(o))).size).toBe(6);
+    expect(new Set(orders.map((o) => JSON.stringify(o)))).toEqual(
+      new Set(permutations(rows).map((o) => JSON.stringify(o))),
+    );
+  });
+
+  it("handles the empty and single-row cases", () => {
+    expect(judgmentArrivalOrders([])).toEqual([[]]);
+    expect(judgmentArrivalOrders([rows[0]])).toEqual([[rows[0]]]);
+  });
+
+  it("refuses to hang a test run: too many orderings throws", () => {
+    const many = Array.from({ length: 8 }, (_, i) => J("a", i, 0.5));
+    expect(() => judgmentArrivalOrders(many)).toThrow(/40320 orderings \(max 720\)/);
+    expect(judgmentArrivalOrders(many, 100000)).toHaveLength(40320);
   });
 });

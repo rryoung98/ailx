@@ -90,11 +90,12 @@ export function checkJudgmentRange(
 }
 
 /**
- * Validated values for one dimension, in CANONICAL VALUE ORDER (ascending).
+ * Validated values for one dimension, in the order the rows arrived.
  *
- * Validation runs over the rows in canonical ROW order, so which bad row is
- * reported first does not depend on arrival order either — the error message
- * is part of the observable behaviour.
+ * It does NOT sort: the order-invariance guarantee lives in exactly ONE place
+ * per aggregation ({@link meanValue}, {@link medianValue}), so there is one
+ * line to get wrong and one line a test can catch. Anything that reads these
+ * values POSITIONALLY must use {@link orderedDimensionValues} instead.
  */
 export function validatedValues(
   judgments: ReadonlyArray<Judgment>,
@@ -106,8 +107,7 @@ export function validatedValues(
     if (j.dimension !== dimension) continue;
     vals.push(checkJudgmentRange(j, track));
   }
-  // Rows that failed validation never reach here, so no NaN can poison sort.
-  return vals.sort((a, b) => a - b);
+  return vals;
 }
 
 /**
@@ -173,4 +173,36 @@ export function orderedDimensionValues(
   // inconsistent and the result implementation-defined.
   for (const j of rows) checkJudgmentRange(j, track);
   return canonicalJudgments(rows).map((j) => checkJudgmentRange(j, track));
+}
+
+/**
+ * Every arrival order of these rows.
+ *
+ * Order-invariance is asserted by tests in core, T1, T3 and T4, and this is
+ * the ONE enumerator they share, so "every permutation" means the same thing
+ * in all of them — the alternative was four hand-rolled copies drifting into
+ * four different definitions of thorough. Pure.
+ *
+ * The count is factorial, so it is capped: more than `max` orderings throws
+ * rather than hanging a test run. Jury reads are small (3-8 rows); anything
+ * larger should sample orderings instead of enumerating them.
+ */
+export function judgmentArrivalOrders(
+  judgments: ReadonlyArray<Judgment>,
+  max = 720,
+): Judgment[][] {
+  let count = 1;
+  for (let i = 2; i <= judgments.length; i++) count *= i;
+  if (count > max) {
+    throw new Error(
+      `judgmentArrivalOrders: ${judgments.length} rows is ${count} orderings (max ${max})`,
+    );
+  }
+  if (judgments.length <= 1) return [judgments.slice()];
+  const out: Judgment[][] = [];
+  judgments.forEach((j, i) => {
+    const rest = [...judgments.slice(0, i), ...judgments.slice(i + 1)];
+    for (const p of judgmentArrivalOrders(rest, max)) out.push([j, ...p]);
+  });
+  return out;
 }

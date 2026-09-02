@@ -1,4 +1,8 @@
 import type { Judgment, ScoreInputs } from "@ailx/core";
+import {
+  medianForDimension as medianForDimensionCore,
+  orderedDimensionValues,
+} from "@ailx/core";
 import type { T4Artifact, T4Config, T4Final, T4Score } from "./types.js";
 
 /**
@@ -53,43 +57,35 @@ function round3(x: number): number {
   return Math.round(x * 1000) / 1000;
 }
 
-function checkRange(j: Judgment): number {
-  if (!Number.isFinite(j.value) || j.value < 0 || j.value > 1) {
-    throw new Error(
-      `t4 judgment out of range: dimension=${j.dimension} sample=${j.sample} value=${j.value} (expected normalized [0,1])`,
-    );
-  }
-  return j.value;
-}
-
 /**
- * Median across judge samples — robust to a single outlier sample.
- * Judgment values are NORMALIZED to [0, 1] by contract (JudgeResponse.value);
- * anything outside that range is invalid stored data and throws rather than
- * silently clamping into full credit (F10).
+ * Median across judge samples — robust to a single outlier sample, and
+ * ORDER-INVARIANT: stored judgments arrive in whatever order the database
+ * returns them, so the arithmetic may not depend on that order. The one
+ * implementation lives in `@ailx/core` (`judgments.ts`) and T1 shares it;
+ * this file used to carry a near-identical copy of it, plus its own copy of
+ * the range check. The "t4" label keeps the out-of-range message naming its
+ * track, which is load-bearing for debugging.
  */
 export function medianForDimension(
   judgments: ReadonlyArray<Judgment>,
   dimension: string,
 ): number {
-  const vals = judgments
-    .filter((j) => j.dimension === dimension)
-    .map(checkRange)
-    .sort((a, b) => a - b);
-  if (vals.length === 0) return 0;
-  const mid = Math.floor(vals.length / 2);
-  return vals.length % 2 === 1 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+  return medianForDimensionCore(judgments, dimension, "t4");
 }
 
-/** Stored per-draft judge values, ordered by draft index. */
+/**
+ * Stored per-draft judge values, ordered by draft index.
+ *
+ * This is read POSITIONALLY by {@link steeringEfficiency}, so its order is
+ * part of the score. Sorting by `sample` alone was not enough: two stored
+ * rows sharing a `sample` — a re-judge, or two jurors on one draft — then
+ * tie-broke by ARRIVAL ORDER, and a database read has no guaranteed order.
+ * The canonical TOTAL order in `@ailx/core` breaks the tie deterministically.
+ */
 export function generationSeries(
   judgments: ReadonlyArray<Judgment>,
 ): number[] {
-  return judgments
-    .filter((j) => j.dimension === "generation")
-    .slice()
-    .sort((a, b) => a.sample - b.sample)
-    .map(checkRange);
+  return orderedDimensionValues(judgments, "generation", "t4");
 }
 
 /**
