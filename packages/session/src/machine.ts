@@ -280,10 +280,15 @@ function assertJudgmentsAttested(
   }
   const judgeResolved = JUDGE_RESOLVED_TRACKS.includes(e.trackId);
   if (e.scoredBy === "local") {
-    if (judgeResolved && rows.length === 0) {
+    // A judge-resolved track may store no rows in exactly one case: it issued
+    // no points, because score() never ran on a usable artifact (the
+    // fail-closed sentinel). Anything ABOVE zero had to come from stored
+    // judge output, so the rows that produced it must be in the log.
+    if (judgeResolved && rows.length === 0 && e.score.scaled !== 0) {
       fail(
-        `${e.trackId} resolves points from stored judge output, so a locally issued score ` +
-        "must carry the judgment rows score() consumed — an empty list is a score with no evidence",
+        `${e.trackId} resolves points from stored judge output, so a locally issued score of ` +
+        `${e.score.scaled} must carry the judgment rows score() consumed — an empty list is ` +
+        "points with no evidence",
       );
     }
     if (!judgeResolved && rows.length > 0) {
