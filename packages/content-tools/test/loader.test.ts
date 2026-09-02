@@ -122,6 +122,107 @@ describe("parseManifest anchor", () => {
   });
 });
 
+/**
+ * The panel short form (docs/SHORT-FORM.md). The manifest declares the block
+ * structure because the time budget IS the design: a form that grows past the
+ * minutes a panel will sit does not fail at fielding, it fails as break-off.
+ */
+describe("parseManifest short_form", () => {
+  const BASE = "id: ailx\nversion: '2026.1'\neffective_from: 2026-01-01\nlocales: [en]\ntracks: [t2-discrimination]\n";
+  const FORM = [
+    "short_form:",
+    "  id: psf-2026a",
+    "  target_minutes: 55",
+    "  blocks:",
+    "    - id: anchor-core",
+    "      minutes: 14",
+    "      every_respondent: true",
+    "    - id: t3-reliance-a",
+    "      minutes: 20",
+    "    - id: t3-reliance-b",
+    "      minutes: 20",
+    "",
+  ].join("\n");
+
+  it("is absent on a package that is only ever sat in full", () => {
+    expect(parseManifest(BASE).short_form).toBeUndefined();
+  });
+  it("accepts a common block and two rotated blocks inside the target", () => {
+    const f = parseManifest(BASE + FORM).short_form;
+    expect(f?.id).toBe("psf-2026a");
+    expect(f?.target_minutes).toBe(55);
+    expect(f?.blocks).toEqual([
+      { id: "anchor-core", minutes: 14, every_respondent: true },
+      { id: "t3-reliance-a", minutes: 20 },
+      { id: "t3-reliance-b", minutes: 20 },
+    ]);
+  });
+  it("accepts fractional minutes, because a 25-second item does not land on a minute", () => {
+    expect(parseManifest(BASE + FORM.replace("minutes: 14", "minutes: 13.5")).short_form?.blocks[0].minutes)
+      .toBe(13.5);
+  });
+  it("rejects a short_form that is not a mapping, including a half-written one", () => {
+    for (const bad of ["short_form: psf-2026a\n", "short_form: [psf-2026a]\n", "short_form:\n"]) {
+      expect(() => parseManifest(BASE + bad)).toThrow(/'short_form' must be a mapping/);
+    }
+  });
+  it("rejects an unknown field on the form or on a block", () => {
+    expect(() => parseManifest(BASE + FORM + "  rotations: 4\n"))
+      .toThrow(/unknown short_form field 'rotations'/);
+    expect(() => parseManifest(BASE + FORM.replace("      minutes: 20\n    - id: t3-reliance-b", "      minutes: 20\n      items: 12\n    - id: t3-reliance-b")))
+      .toThrow(/unknown short_form block field 'items'/);
+  });
+  it("rejects an id that is not a lowercase slug, on the form or on a block", () => {
+    expect(() => parseManifest(BASE + FORM.replace("psf-2026a", "PSF-2026a")))
+      .toThrow(/short_form id/);
+    expect(() => parseManifest(BASE + FORM.replace("anchor-core", "anchor core")))
+      .toThrow(/short_form block id/);
+  });
+  it("rejects a missing or non-positive target", () => {
+    expect(() => parseManifest(BASE + FORM.replace("  target_minutes: 55\n", "")))
+      .toThrow(/missing required field 'target_minutes'/);
+    for (const t of ["0", "-5", "'55'"]) {
+      expect(() => parseManifest(BASE + FORM.replace("target_minutes: 55", `target_minutes: ${t}`)))
+        .toThrow(/target_minutes/);
+    }
+  });
+  it("rejects a block list that is empty, or a block that is not a mapping", () => {
+    expect(() => parseManifest(BASE + "short_form:\n  id: psf-2026a\n  target_minutes: 55\n  blocks: []\n"))
+      .toThrow(/'blocks' must be a non-empty list/);
+    expect(() => parseManifest(BASE + "short_form:\n  id: psf-2026a\n  target_minutes: 55\n  blocks: [anchor-core]\n"))
+      .toThrow(/each short_form block must be a mapping/);
+  });
+  it("rejects a block without positive minutes", () => {
+    expect(() => parseManifest(BASE + FORM.replace("      minutes: 14\n", "")))
+      .toThrow(/missing required field 'minutes'/);
+    expect(() => parseManifest(BASE + FORM.replace("minutes: 14", "minutes: 0")))
+      .toThrow(/short_form block 'anchor-core' needs a positive number of 'minutes'/);
+  });
+  it("rejects a non-boolean every_respondent", () => {
+    expect(() => parseManifest(BASE + FORM.replace("every_respondent: true", "every_respondent: yes please")))
+      .toThrow(/'every_respondent' must be a boolean/);
+  });
+  it("rejects duplicate block ids, which would make a rotation ambiguous", () => {
+    expect(() => parseManifest(BASE + FORM.replace("t3-reliance-b", "t3-reliance-a")))
+      .toThrow(/duplicate short_form block id 't3-reliance-a'/);
+  });
+  it("rejects a form with no common block, because nothing would link the rotations", () => {
+    expect(() => parseManifest(BASE + FORM.replace("      every_respondent: true\n", "")))
+      .toThrow(/at least one 'every_respondent' block/);
+  });
+  it("rejects a form with fewer than two rotated blocks, which is a fixed form", () => {
+    const oneRotation = FORM.replace("    - id: t3-reliance-b\n      minutes: 20\n", "");
+    expect(() => parseManifest(BASE + oneRotation)).toThrow(/at least two rotated blocks/);
+  });
+  it("rejects a longest respondent path over the target, counting one rotation only", () => {
+    expect(() => parseManifest(BASE + FORM.replace("target_minutes: 55", "target_minutes: 33")))
+      .toThrow(/longest path is 34 min, over its target_minutes of 33/);
+    // 14 + 20 + 20 = 54 if the rotations were summed; the check must not do that.
+    expect(parseManifest(BASE + FORM.replace("target_minutes: 55", "target_minutes: 34")).short_form)
+      .toBeDefined();
+  });
+});
+
 describe("parseTrackConfig", () => {
   it("rejects plugin ids without an apiVersion suffix", () => {
     expect(() => parseTrackConfig("plugin: item-bank\nconfig: {}\n", "t.yaml"))
