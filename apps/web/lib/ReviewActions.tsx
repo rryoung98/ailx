@@ -12,7 +12,7 @@
  */
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { REJECT_REASON_MAX } from "@ailx/contract";
+import { apiPath, REJECT_REASON_MAX } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import { apiBase } from "./mode";
 
@@ -36,7 +36,7 @@ export function ReviewActions({ shareId, name }: { shareId: string; name: string
       // The dev identity rides the HEADER, never the cookie: this POST may
       // cross an origin (the exam service), where a SameSite=Lax cookie is
       // not sent at all. Same id either way — see lib/persistence devUser.
-      const res = await fetch(`${apiBase()}/gallery/review`, {
+      const res = await fetch(`${apiBase()}${apiPath("reviewDecision")}`, {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({ shareId, decision, reason }),

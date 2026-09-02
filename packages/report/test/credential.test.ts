@@ -24,7 +24,6 @@ import {
   linkedInCertification,
   parseCredentialClaim,
   verifyUrlPath,
-  type CredentialClaim,
   type CredentialState,
 } from "../src/credential.js";
 import { playerTypeFor } from "../src/playerType.js";

@@ -5,7 +5,9 @@ worth nothing as a credibility asset, and there is no secret in here — the ite
 private (see `AGENTS.md`, "The repository split"), not the way we pick people.
 
 Companion documents: `docs/POSITIONING.md` (why a population statistic is the ambition),
-`AILX-Spec-2026.1.md` §01 and §09 (the claim and the psychometrics), `docs/TRANSFER-STUDY.md`.
+`docs/PANEL-MARKETS.md` (what can and cannot be bought in Japan and Korea, and the decision that
+follows), `AILX-Spec-2026.1.md` §01 and §09 (the claim and the psychometrics),
+`docs/TRANSFER-STUDY.md`.
 
 Every number below is marked. **VERIFIED** means a primary source was read and is cited.
 **ESTIMATE** means an engineering judgement with the reasoning shown. **UNKNOWN** means we do not
@@ -316,11 +318,16 @@ and none of them is BYOD.** If AILX lets a respondent bring their own screen, it
 neither programme was willing to do, there is no established adjustment method to copy, and we must
 say so rather than assume it away.
 
-**The specific mechanism that should worry us most is timing.** Hassenstab et al. (2023,
-*Behavior Research Methods*) benchmarked 26 popular smartphones from under $100 to over $1,000 and
-found **total device latency — display plus touch — ranging from 35 ms to 140 ms**, warning that if
-unaccounted for it "could be misattributed as individual or group differences in response times".
-**VERIFIED.** Passell et al. (2021, same journal) found that, controlling for age, gender, education
+**The specific mechanism that should worry us most is timing.** Nicosia et al. (2023,
+*Behavior Research Methods* 55(6):2800–2812, DOI 10.3758/s13428-022-01925-1; Hassenstab is the
+senior author, and this document cited it under his name until 2026-09-02) benchmarked 26 popular
+smartphones from under $100 to over $1,000 with a timing robot and found **total device latency —
+display plus touch — ranging from 35 ms to 140 ms**, warning that if unaccounted for it "could be
+misattributed as individual or group differences in response times". Their own design table puts
+the spread across a **full bring-your-own-device study at about 105 ms**, an iOS-only study at
+about 70 ms and a single-model study at about 17 ms. More expensive phones with faster CPUs had
+smaller display latencies (r_s = −0.47 and −0.44, p < .05). **VERIFIED at source** (abstract,
+Results "Device Characteristic and Latency Correlations", and Table 1B), 2026-09-02. Passell et al. (2021, same journal) found that, controlling for age, gender, education
 and performance on an **untimed** anchor test, mobile users — Android smartphone users in particular
 — were significantly slower on reaction-time tests. **VERIFIED.** A 105 ms device-driven spread that
 correlates with handset price, and therefore with income, is construct-irrelevant variance aimed
@@ -380,6 +387,117 @@ here so nobody discovers it independently later.
 half-width is ±0.064 SD (§4). **So any device effect above roughly 0.06 SD is a larger error term
 than our entire sampling error**, and printing the two numbers side by side is the whole argument
 for taking device seriously rather than treating it as a UX detail.
+
+### 6.1 Where a clock can reach a score, checked file by file
+
+The rule "no population score may depend on response latency" is worth nothing unless somebody has
+read the scorers. This is that reading, done on 2026-09-02 over every track's `score()` import
+closure and over the session engine. Each row says what the quantity is, where it lives, and
+whether it feeds points, feeds a diagnostic, or feeds nothing.
+
+| Quantity | Where | What it feeds |
+|---|---|---|
+| `T2Response.latencyMs` | recorded in `packages/tracks/t2-discrimination/src/Runner.tsx`, typed in `types.ts` | **Nothing scored.** `scoreT2` never reads it. It leaves the browser in the research export only (`packages/report/src/exportTiers.ts`) |
+| T2 exposure lapse (`choice = -1`) | `Runner.tsx` countdown; consumed by `scoring.ts` | **Points.** A lapsed item is a miss on a signal item, a false alarm on a noise item, and is excluded from the Brier mean. This is the one place a clock reaches a T2 score — see §6.2 |
+| `T2Item.exposureSeconds` | `types.ts`, set per item type from the snapshot | **Points, by design.** It is a declared measurement decision, identical for every candidate on that item |
+| `T1 promptLog[].clientTs` | T1 artifact | **Nothing.** `processSignal` counts distinct prompts and completed prompt→revise cycles. It never subtracts two timestamps |
+| `T3 transcript[].clientTs` | T3 artifact | **Nothing.** RSR, RAIR and the deliberation rule are SEQUENCE tests: a claim must have been challenged or checked *before* it was accepted. Order, not elapsed time |
+| `T4 drafts[]/finals[].clientTs` | T4 artifact | **Nothing.** Copied through ingest normalisation and never read by `score()` |
+| `activeMs`, `runningSince`, `timedOut` | `packages/session/src/machine.ts` | **Neither.** Budget accounting. `timedOut` is derived from the accounting and refused if the caller disagrees. No scorer sees any of it |
+| `activeSeconds`, `timedOut`, the rushed-run rule | `packages/report/src/insights.ts`, `diagnosis.ts`, `share.ts` | **Diagnostic prose only** ("ended on the clock, not on submission") |
+| `latencyMs`, `tRelMs` in the statement export | `packages/report/src/exportTiers.ts` | **Nothing scored.** Research export tiers |
+| The composite | `packages/session/src/scoring.ts` | **Points, no clock.** Within-cohort z-scores of track points with declared track weights |
+| `PracticeDrill` latency | `apps/web/lib/PracticeDrill.tsx` | **Nothing.** The practice loop carries no score of record |
+
+Two honest residuals, stated rather than buried.
+
+- **The track budget is a clock.** A slower device does less inside a fixed budget. The size is
+  bounded: at 140 ms of device latency per action, twenty T2 actions cost 2.8 s against a T2 budget
+  of several minutes, which is under 1% of the working time. It is not zero, and it is the reason
+  the budget is generous rather than tight.
+- **A lapse is a clock reaching a score.** That is what §6.2 is about.
+
+**This is enforced, not asserted.** `packages/content-tools/test/latencyNeverScored.test.ts` walks
+each track's `score()` import closure — the same walk that builds the audit digest, so a scorer
+that starts delegating to a new module cannot slip out of it — and fails on a read of a timing
+field or a clock. `apps/web/test/latencyNeverScored.test.ts` is the behavioural half: it scores
+each track's fixture artifact, then scores a copy with every latency and every client timestamp
+moved by ±105 ms, ±2 s and ±10 minutes, and demands a byte-identical score. Declaring or recording
+a timing field stays legal. Scoring one does not.
+
+### 6.2 T2's exposure was the sharp case, and it is fixed
+
+T2 shows timed material for a declared number of seconds. If that countdown starts when React
+selects the item, then the exposure a candidate really gets is the declared exposure MINUS however
+long their phone took to paint the picture — and paint time tracks handset price for the same
+reason display latency does. That is not a neutral difference: Swaroop et al. (arXiv:2306.07458,
+IUI 2024) report that with a visible timer "accuracy reduces later in the study", so exposure lost
+to a slow device lands in the score.
+
+Two defects were found on 2026-09-02 and both are fixed in `SwipeDeck.tsx` and `Runner.tsx`:
+
+1. **An image stimulus was reported as visible at DOM commit**, before the picture had loaded, on
+   every path that does not use WebGL — which is the path a low-end handset is most likely to take.
+   The countdown now starts when the image fires `load`, when a WebGL texture decodes, or when the
+   "image failed to load" block replaces it, whichever comes first.
+2. **The 1.5-second safety net that stops a hung item was itself a device effect**: on a phone that
+   needed three seconds to paint, the exposure started on a blank card and 1.5 s of it was spent
+   looking at nothing. The provisional anchor is now UPGRADED when the real signal arrives, which
+   restarts the exposure at its declared length. The upgrade happens at most once per item and
+   never after a verdict is cast, so the exposure can only ever be the declared one — never
+   shorter because the device is slow, never repeatedly extended.
+
+Pinned by `packages/tracks/t2-discrimination/test/exposureAnchor.test.tsx`.
+
+### 6.3 What we record, so a device effect can be detected
+
+Detection needs data, and the data must not become a tracking signal. Two fields per SITTING, and
+nothing per event:
+
+- **A device class**: one of `desktop`, `tablet`, `phone`, `unknown`. A category with four values,
+  derived in the browser from pointer and viewport media queries — not from a user-agent string,
+  and never a fingerprint. Four values cannot single anyone out in a cohort of thousands.
+- **A measured client render latency**: the median milliseconds between item selection and stimulus
+  paint over the sitting, rounded to 10 ms and capped at 5,000 ms. The Runner already measures this
+  to anchor the exposure (§6.2), so it costs nothing to keep. Rounded and capped because an
+  unrounded per-sitting timing distribution is closer to a device fingerprint than to a covariate.
+
+Both belong on the ATTEMPT record in the exam service, which is where exam evidence lives. They do
+**not** go in the funnel: `packages/contract/src/funnel.ts` states that a funnel row may carry no
+user-agent string and no exam evidence, and it has no device field today. Adding one there would
+create a second, conflicting device field on a table that is joined to a rotating client id — the
+worst place to put it. Checked against branch `w/ten-20` on 2026-09-02.
+
+**What separates a device effect from a candidate effect.** In order of strength, and the first
+three need no new instrument:
+
+1. **The untimed anchor.** T2's provenance block is untimed by construction, so it is the anchor
+   this section already asks for: regress the timed components on device class with the untimed
+   block as a covariate. If the timed components move with device and the untimed block does not,
+   that is a device effect, not an ability difference.
+2. **Item-level DIF by device class**, uniform and non-uniform, on the Track A logs.
+3. **Measurement invariance** across device classes: scalar invariance permits comparing means,
+   metric-only invariance permits comparing relationships and not means.
+4. **The within-person crossover** described above. It is the gold standard and it costs a
+   substudy.
+
+### 6.4 What a published statistic must say
+
+Device is **never** a weighting margin. The margins are the ones §9 lists; device is not among
+them, cannot be added to them, and the reason is in this section: weighting fixes composition, not
+measurement.
+
+If the detection above finds a real effect, the published statistic carries this sentence, with the
+numbers filled in and nothing softened:
+
+> AILX was sat on each respondent's own device. A device effect of **X SD** (95% CI a to b) was
+> estimated between phone and desktop sittings, against a sampling half-width of **±0.064 SD** at
+> n = 1,500 (deff 1.6). The effect is reported and not adjusted away: no AILX weight uses device,
+> and the figure above is a measurement of AI fluency as exercised on the respondent's own device.
+
+The ±0.064 SD is OUR arithmetic — `1.96 · sqrt(deff / n)` with the planning deff of 1.6 (§4.2), not
+a published figure. The device-effect estimate must come from one of the designs in §6.3, be
+reported with its interval, and be labelled ESTIMATE until the crossover substudy is run.
 
 **Design decision now, before the data:** the population form is **device-locked to desktop/laptop
 by default**, with the randomised experiment run to test whether that lock is necessary. It is far
@@ -480,8 +598,8 @@ the product.
 | **US** | **NORC AmeriSpeak** (NORC National Frame area probability + USPS address frame, in-person non-response follow-up); **Ipsos KnowledgePanel** (ABS, no self-enrolment); **SSRS Opinion Panel** (ABS from the USPS Delivery Sequence File + RDD cell supplement); **USC Understanding America Study** (academic, ABS, published price list) | Pew's American Trends Panel is ABS probability but is in-house and not sold. **VERIFIED** |
 | **UK** | **Ipsos KnowledgePanel UK** (random unclustered ABS, launched Aug 2020, >25,000 panellists, tablets + data supplied to digitally excluded households); NatCen Opinion Panel | **VERIFIED** |
 | **EU** | Ipsos KnowledgePanel now runs in FR, DE, IT, ES, NL, SE, PL, HR. Academic register-based panels: **LISS** (NL), **GESIS Panel** and **GIP** (DE), **ELIPSS** (FR), Swedish and Norwegian Citizen Panels | The academic panels are research infrastructures with access committees, not vendors — access is by application and the cost model is different. **VERIFIED** |
-| **Japan** | **No commercial probability online panel found.** Rakuten Insight, Macromill, Intage, Cross Marketing are opt-in access panels | The Japanese practice for probability general-population data is **ABS push-to-web mail** using a housing/resident-register address frame. A published example (Ome City, 2024) reports **RR3 = 19.2%**, comparable to Asahi Shimbun's national ABS push-to-web. **VERIFIED** |
-| **Korea** | **No live commercial probability panel.** KAMOS (area-stratified address sampling) stopped adding members after 2019 for budget reasons; the live probability route is an **RDD-with-follow-up-texting** panel (~10,471 members as of Feb 2023). Embrain, Macromill Embrain, Hankook Research access panels are opt-in | **VERIFIED** for KAMOS/RDD; the opt-in status of the commercial panels is asserted from the absence of any probability claim on their methodology pages — **UNVERIFIED at source level** |
+| **Japan** | **No probability online panel is sold.** Macromill, Intage, Rakuten Insight, Cross Marketing and Freeasy are opt-in; Nikkei Research closed its access panel in December 2025. Probability *fieldwork* is on sale: Central Research Services runs a quarterly omnibus drawn from the Basic Resident Register, in person, ~1,100 completes | The route to a fresh web sample is **ABS push-to-web mail**. Ome City, fielded Oct–Nov 2023, reports **RR3 = 19.2%**; the first national Japanese ABS push-to-web (Asahi Shimbun, 2023) got **22%**. **VERIFIED** — see `docs/PANEL-MARKETS.md` §2, §5 |
+| **Korea** | **No probability online panel is sold.** Gallup Panel, Embrain Panel Power and Kantar's mobile panel are self-signup; Hankook Research's Master Sample is opt-in with a proportional quota draw. The probability route is **ad-hoc mobile RDD** (Gallup Korea, Realmeter, Hankook), sold by the project | Korean telephone response has collapsed: Gallup Korea **13.8%** (Jul 2023) → **9.7%** (Aug 2026), Realmeter ARS **3.7%** (May 2026). The one probability web attempt is the KPOP pilot, ~21% of 570 households (N = 112). **VERIFIED** — see `docs/PANEL-MARKETS.md` §3, §5 |
 
 **Consequence for AILX's trilateral (en/ja/ko) framing:** the US and UK can be bought off the shelf.
 **Japan and Korea require commissioning a fresh probability sample, not renting panel time** — ABS
@@ -489,6 +607,13 @@ push-to-web in Japan, RDD phone-to-web recruitment in Korea. That is more expens
 needs a local fieldwork partner. It is also the difference between a cross-national norm and three
 convenience samples wearing country labels, which is exactly the PISA-China failure mode
 (a technically legal, politically fatal sampling frame) in miniature.
+
+Say it precisely, because "nothing exists in Japan" is not true and a reviewer will know it. Japan
+sells probability fieldwork by the omnibus question and Korea sells probability telephone fieldwork
+by the project. **What neither sells is a probability sample you can send a 45–60 minute
+assessment to.** That is the gap AILX has to buy its way across, and the decision that follows —
+first wave US + UK, Japan and Korea as a funded phase with a named condition — is in
+`docs/PANEL-MARKETS.md` §7.
 
 **Why pay for probability at all.** Pew's 2023 methods study compared sample types against 28
 benchmarks: opt-in samples averaged **5.8 points of absolute error**, probability panels **2.6
@@ -903,7 +1028,10 @@ Mitigation, following NAEP's Long-Term Trend pattern: carry a **frozen trend for
 fixed generator vintages — alongside the current form, field both in the same wave, and **report the
 headline trend only on the frozen line**, with the current form reported as a level, not a change.
 The panel budget must therefore include the frozen block in its minutes, which costs form length,
-which costs response rate. That trade is real and should be made deliberately.
+which costs response rate. That trade is real and should be made deliberately. The anchor's contents,
+exposure budget, leak detection, refresh policy, equating method and attribution limits are worked
+out in `docs/TREND-FORM.md`; the short version is that the frozen line is T2 only, so it carries a
+named subscale trend and never a composite one.
 
 **12.2 The composite problem.** AILX sums four heterogeneous tracks to 400 points, and the
 across-track weighting is a design choice, not an estimated parameter. Kreiner and Christensen
@@ -922,6 +1050,16 @@ All figures **ESTIMATE** unless marked. They are built from the one published ra
 market-judgement ranges, and every one of them must be replaced by a real quote before commitment.
 The purpose of this section is to make the decision legible, not to be a budget.
 
+Three labels are used below and they mean different things. **FIRM** is a signed quote from the
+party that will do the work; **no line in this section is FIRM.** **ESTIMATE** is a range with
+reasoning shown, or a market rate read at a primary source. **OURS** is a number we chose and can
+argue for. Anything unlabelled in a table inherits ESTIMATE.
+
+The arithmetic is in `docs/release-cost.mjs`, so a changed assumption can be re-run rather than
+re-argued. It is outside the test run and outside every tsconfig, like `docs/cj-cost.mjs`. Run
+`node docs/release-cost.mjs` for the tables below and `node docs/release-cost.mjs --check` for the
+assertions the numbers in this section rest on.
+
 ### 13.1 Per-country fieldwork
 
 | Country | Route | n | Per complete | Fieldwork |
@@ -932,8 +1070,17 @@ The purpose of this section is to make the decision legible, not to be a budget.
 | Korea | commissioned RDD phone-to-web recruitment | 1,500 | $250 (range $150–500) | **$375k** ($225–750k) |
 
 The asymmetry is the headline finding of §8: **the two countries in AILX's trilingual framing are
-the two that cannot be bought off the shelf**, and they cost roughly twice as much per complete for
-a smaller n.
+the two that cannot be bought off the shelf**, at a smaller n.
+
+**The 2× per-complete premium on the Japan and Korea rows is ours, and nothing supports it.** The
+September 2026 vendor review (`docs/PANEL-MARKETS.md` §6) went looking for the number and found the
+opposite comparison: a Japanese probability omnibus complete costs **$9.37–$11.07** against NORC
+AmeriSpeak's **$9.25**, within two dollars. That does not make Japan cheap — an omnibus ride buys a
+few questions on somebody else's in-person questionnaire, not 45 minutes of assessment, and nobody
+publishes a price for what we actually need, in any of the four countries. It does mean the premium
+here is a planning assumption about building recruitment from nothing, not a rate we were quoted.
+Korea has no published per-complete price at all. **Get three quotes before this table is used to
+commit money.**
 
 ### 13.2 Non-fieldwork costs, per wave
 
@@ -947,24 +1094,159 @@ a smaller n.
 | LLM judging for T3/T4 at panel scale | $10–30k | ~$3–8 per sitting × 3,500–7,000 sittings; small relative to fieldwork, and it is a per-wave recurring cost |
 | Microdata publication, documentation, replication code | $20–40k | |
 
+**Every line above is a contractor or a piece of engineering. None of them runs the release.**
+Panel procurement, vendor contracts, fieldwork scheduling, ethics review and microdata handling are
+one person's job for the length of the wave, and that person was missing from this section until
+2026-09-02. They are costed in §13.4, and §13.3's totals include them.
+
+Translation is charged per non-English country, so a US + UK wave carries **$0** on that line.
+
 ### 13.3 Three release shapes
 
-| Option | Countries | n | Estimated total | What it buys |
-|---|---|---|---|---|
-| **A — minimum credible** | US only | 3,000 | **$0.6–0.9M** | one defensible national estimate, subgroups reportable, an NRBA, and a published method. No comparison, no trend. |
-| **B — recommended first release** | US + UK | 2,000 each | **$0.8–1.2M** | two estimates, one genuine cross-national comparison on a common language, both off-the-shelf frames, lowest execution risk. Establishes the method before spending on hard frames. |
-| **C — the trilateral claim** | US + JP + KR (+UK) | 1,500–2,000 each | **$1.9–2.8M** | the cross-national norming claim in the spec, and the only version that supports "cross-nationally normed" as written. Highest execution risk: two commissioned fresh samples, two translations, and DIF screening across three languages. |
+| Option | Countries | n | Centre | Range | What it buys |
+|---|---|---|---|---|---|
+| **A — minimum credible** | US only | 3,000 | **$1.26M** | $0.92–1.74M | one defensible national estimate, subgroups reportable, an NRBA, and a published method. No comparison, no trend. |
+| **B — recommended first release** | US + UK | 2,000 each | **$1.38M** | $1.00–1.95M | two estimates, one genuine cross-national comparison on a common language, both off-the-shelf frames, lowest execution risk. Establishes the method before spending on hard frames. |
+| **C — the trilateral claim** | US + UK + JP + KR | 1,500–2,000 each | **$2.39M** | $1.61–3.90M | the cross-national norming claim in the spec, and the only version that supports "cross-nationally normed" as written. Highest execution risk: two commissioned fresh samples, two translations, and DIF screening across three languages. |
+
+Each total is §13.1 fieldwork plus §13.2 non-fieldwork plus a §13.4 operator plus a stated 20%
+contingency. The operator here is the **employed** route, which is the dearest of the three; a
+contracted or seconded operator takes about $109k or $235k off shape B's centre, contingency
+included.
+
+**These numbers replace the $0.6–0.9M / $0.8–1.2M / $1.9–2.8M this table carried until
+2026-09-02.** The old figures were the same fieldwork and the same contractors with no operator and
+no contingency line. Run `node docs/release-cost.mjs`: the old lines alone still centre on $0.81M,
+which is where the $0.8M ask came from.
+
+**Shape B, itemised.** Centre column, so the arithmetic can be checked by hand.
+
+| Line | Centre | Range | Label |
+|---|---|---|---|
+| US fieldwork, n = 2,000 at $120 | $240k | $150–400k | ESTIMATE |
+| UK fieldwork, n = 2,000 at $110 | $220k | $140–380k | ESTIMATE |
+| Panel short-form build | $90k | $60–120k | ESTIMATE |
+| Sampling and weighting contractor | $115k | $80–150k | ESTIMATE |
+| NRBA production and publication | $45k | $30–60k | ESTIMATE |
+| Advisory board + external psychometric review | $45k | $30–60k | ESTIMATE |
+| Translation and localisation | $0 | — | OURS: both countries are English |
+| LLM judging at panel scale | $20k | $10–30k | ESTIMATE |
+| Microdata publication, documentation, replication code | $30k | $20–40k | ESTIMATE |
+| **Measurement operator, 18 months, employed (§13.4)** | **$349k** | $310–388k | ESTIMATE |
+| Subtotal | $1,154k | $0.83–1.63M | |
+| **Contingency, 20%** | **$231k** | $0.17–0.33M | OURS |
+| **Total** | **$1.38M** | $1.00–1.95M | |
+
+**The contingency is a line, not a cushion inside the estimates.** 20% is OURS. It is there because
+no line in this section is FIRM: the fieldwork rates are unquoted, the operator's cost depends on a
+person who has not been found, and the panel design effect that drives realised n is UNKNOWN (§15).
+When three vendor quotes replace §13.1, the contingency should fall, and the line should be moved
+rather than deleted.
 
 **Recommendation: B, then C.** Option B proves the pipeline — short form, weighting, plausible
-values, NRBA, publication bundle — on frames that can be bought, at roughly a third of C's cost. Do
+values, NRBA, publication bundle — on frames that can be bought, at roughly 58% of C's cost. Do
 C in wave 2 with the method already public and reviewed, rather than debugging the method and the
 Japanese address frame in the same quarter.
+
+**Japan and Korea are a phase, not a line item in wave 1.** The September 2026 vendor review
+(TEN-23) found that neither country sells a probability panel that a 45–60 minute assessment can be
+sent to, so both need commissioned fieldwork bought through an institution. Shape C therefore costs
+about **$1.01M more than shape B at the centre**, and that difference is the least trustworthy
+number in this section: the 2× per-complete premium on the JP and KR rows is OURS and nothing
+supports it, Korea has no published per-complete price at all, and shape C's operator load is
+heavier than wave 1's because commissioned fieldwork is negotiated country by country. Wave 1 is
+**US + UK**. Japan and Korea field when the money for them is committed and a local partner is
+contracted, and AILX publishes no Japanese or Korean population figure before then.
 
 **What none of these buys.** None of them is PIAAC. PIAAC realised ~5,200 adults per country with
 in-home administration and a $100 incentive, and still reported 27.8% in the US. We are buying a
 smaller, web-delivered, online-population estimate for a fraction of the cost, and the release
 should say so in those words. An honest smaller claim is worth more than a large claim that a
 methodologist can take apart in an afternoon.
+
+### 13.4 The measurement operator
+
+Someone has to own the release: panel procurement, vendor contracts and quotes, fieldwork
+scheduling, ethics review, microdata handling, and the decision to stop when a response rate comes
+in low. This is negotiation and accountability with external counterparties, so it cannot be run by
+an agent and it cannot be bought as a review at the end.
+
+**Duration: 18 months. OURS.** Procurement and contracting, short-form build and pilot, fieldwork,
+weighting and NRBA, then publication. A wave that fields for four months still runs for eighteen.
+The cost is linear in this number, so it is the single assumption most worth arguing with:
+`node docs/release-cost.mjs --months=12`.
+
+| Route | Basis | Loaded cost, 18 months | Governance |
+|---|---|---|---|
+| **Employed** | $140–175k salary, +47.7% employer load | **$310–388k** | We direct the work and we own the conflict. Independence has to come from the §13.2 contractor and the advisory board, because it does not come from the post. Add 3–6 months of search before the clock starts. |
+| **Contracted**, 0.6 FTE | $130–175 per hour, 1,880 h/yr | **$220–296k** | Fastest to start and the easiest to stop. Not independent of us: a contractor we pay and can replace mid-wave is not a check on us, and should never be the person who also signs off the weighting. |
+| **Seconded**, 0.5 FTE | UK Grade 9 £63.6–80.5k, +29% on-costs, +57–67% institutional overhead | **$131–176k** | Cheapest on paper and slowest in practice. Brings the institution's name and its ethics review, and its review process runs on its own calendar. The secondment agreement decides who can publish an unflattering number; settle that before signing, not after fielding. |
+
+**The three routes are not the same amount of person-time.** Employed is 1.0 FTE, contracted is
+0.6 and seconded is 0.5, because that is how each is normally engaged. So the cheaper rows buy less
+attention, not the same job for less money. Compare them on what each covers, then on price.
+
+Sources, each read at the primary source on 2026-09-02:
+
+- Salary band **OURS**, anchored on BLS OEWS May 2025 (released 2026-05-15, USDL-26-0725), SOC
+  15-2041 Statisticians: median $105,650, 75th percentile $141,490, 90th percentile $174,050. SOC
+  19-3022 Survey Researchers sits lower, median $69,460 and 90th percentile $130,860. The public
+  comparator is OPM's 2026 General Schedule with the Washington-Baltimore locality (+33.94%): GS-14
+  step 1 is $143,913 and step 5 is $163,104. The role we are describing is a GS-14, not a GS-13.
+- Employer load **47.7% on wages**, from BLS ECEC March 2026 (released 2026-06-12, USDL-26-0827):
+  for management and professional occupations, benefits are 32.3% of total compensation.
+- Contractor rate band **OURS**, from awarded ceiling rates published by GSA (buy.gsa.gov/pricing,
+  index of 2026-09-02): "Survey Methodologist" n = 6, median $152.20/hr, range $127.79–172.21;
+  "Senior Statistician" n = 18, median $144.88/hr; "Statistician" n = 51, median $122.31/hr. A
+  schedule rate is already loaded, so no overhead multiplier is applied on top.
+- Secondment salary from the UCL 2025/26 non-clinical spine, Grade 9 (Associate Professor / Reader)
+  £63,606–80,525 excluding London allowance; UCEA advised implementation of the 2025-26 spine from
+  2025-08-01. On-costs are employer Class 1 NI at 15% above £5,000 (gov.uk, 2025/26) plus USS
+  employer 14.5% (USS Schedule of Contributions 2023). GBP converted at 1.3531, the ECB reference
+  rate for 2026-09-01.
+- Institutional overhead **OURS**, standing on a US comparator because the UK figure is not
+  published: Georgia Tech's ONR rate agreement of 2024-04-02 sets organized research on-campus F&A
+  at 57.4% capped and 66.5% uncapped on MTDC. **UNVERIFIED:** a UK indirect cost per academic FTE.
+  The OfS Annual TRAC 2024-25 publishes sector cost recovery (66.6% of research fEC) but no rate we
+  can apply per person. A real secondment quote replaces this whole line.
+
+**Which route to take.** Contract first, employ when the panel is funded, and treat a secondment as
+a partnership decision rather than a saving. The order matters more than the money: the widest gap
+between the three routes is $235k on shape B's centre, and the gap between having this person and
+not having them is the release.
+
+**A hire does not remove the §13.2 contractor.** "Nobody marks their own homework" is a governance
+requirement. The operator buys the fieldwork; the independent contractor and the advisory board
+check the numbers. Merging the two roles to save $115k is the cheapest way to lose the release.
+
+### 13.5 What a shortfall does
+
+If the raise lands at the old $0.8M, the release changes shape. The honest answer is not "we do it
+smaller". It is a choice about which country is dropped.
+
+**What $0.8M buys: shape A, cut.** US only, n = 1,500 rather than 3,000, contracted operator for 12
+months rather than 18. That centres on **$0.84M** and spans $0.59–1.15M, so it fits $0.8M only if
+fieldwork prices land below the planning centre. Everything that makes the number defensible
+survives: the independent weighting contractor, the NRBA, the advisory review, the published
+microdata, and n = 1,500 clears the §4 floor of 1,000 realised completes. What is lost is the
+comparison. One country is an estimate, not a cross-national statistic, and the release must say so.
+
+**What $0.8M does not buy: US + UK.** No route in §13.4 brings shape B's centre under $1.0M. Trying
+to run a two-country wave on $0.8M means cutting method lines, and each one is fatal in a different
+way:
+
+- Cut the sampling and weighting contractor ($115k): we mark our own homework, and the first
+  reviewer says so.
+- Cut the NRBA ($45k): §10 makes it mandatory in the same bundle as the estimate. Without it there
+  is no published statistic, only a number.
+- Cut the operator ($220–388k): the release has no owner, and it slips regardless of funding.
+- Cut n below 1,000 realised completes: §4.5 forbids publishing a national mean from it.
+
+**Decide the country count before contracting, not during fieldwork.** A shortfall found in month
+two costs a rescope. The same shortfall found in month ten, with fieldwork running, costs the wave:
+completes already bought cannot be un-bought, and a wave stopped mid-field produces neither an
+estimate nor a refund. This is the specific reason the ask should be the corrected number and not
+the comfortable one.
 
 ---
 
@@ -995,7 +1277,18 @@ methodologist can take apart in an afternoon.
 10. Track A publications carry the §11 hedging block verbatim, and never use "national" or
     "representative".
 11. A frozen trend form is fielded from wave 1, and headline trends are reported only on it (§12).
-12. First release: US + UK, n = 2,000 each, roughly $0.8–1.2M (§13).
+12. First release: US + UK, n = 2,000 each, centring on **$1.4M** and spanning $1.0–2.0M (§13.3).
+    The release is budgeted with a **measurement operator for its full 18 months** (§13.4) and a
+    stated 20% contingency; the older $0.8–1.2M figure was the same fieldwork and contractors with
+    both left out. If the money lands at $0.8M the wave becomes US only at n = 1,500, and no method
+    line is cut to save it (§13.5).
+13. **Japan and Korea are a funded phase, not a date.** Neither country sells a probability panel,
+    so each needs commissioned fieldwork — about $1.1–1.6M on top of wave 1, our estimate. A
+    country fields only when the money is committed, a local partner is contracted with a written
+    sampling design, a pilot has produced a realised response rate and an NRBA, and the realised n
+    clears the §4.5 floor. Until then AILX publishes no Japanese or Korean population figure and
+    says so in the same sentence as "the exam runs in three languages"
+    (`docs/PANEL-MARKETS.md` §7).
 
 ---
 
@@ -1009,11 +1302,17 @@ methodologist can take apart in an afternoon.
   force a two-session panel design, with the §8.3 warning that modularisation can increase total
   non-response.
 - **UNKNOWN:** whether T1 can be fielded on a panel at all (§5).
-- **UNVERIFIED:** the opt-in status of specific Japanese and Korean commercial panels is inferred
-  from the absence of a probability claim, not from a vendor statement. Confirm before publishing
-  the vendor map.
+- **CLOSED (2026-09-02):** the opt-in status of the Japanese and Korean commercial panels was
+  confirmed against the vendors' own recruitment pages, and Nikkei Research's access panel turned
+  out to have closed in December 2025. `docs/PANEL-MARKETS.md` §2–§3 carries the vendor map and its
+  sources; what remains unknown there is pricing, not panel status.
 - **UNVERIFIED:** per-complete pricing for AmeriSpeak, KnowledgePanel and SSRS custom work. Three
   real quotes should replace §13's estimates before any budget decision.
+- **UNVERIFIED:** what a measurement operator actually costs us. §13.4's three routes are built from
+  published wage, schedule-rate and pay-spine data, not from an offer anyone has accepted. The UK
+  institutional overhead per academic FTE is not published at all and stands on a US comparator.
+- **OURS:** 18 months of operator time, and the 20% contingency. Both are planning figures, both
+  are linear in the total, and both are arguments to have before the ask goes out (§13.3, §13.4).
 - **UNVERIFIED:** the clause numbering of NCES Statistical Standard 4-4-A (§10.3).
 - **NOT YET DESIGNED:** the conditioning model for plausible values, and which background variables
   must be in it to support the subgroup breakdowns we intend to publish. This has to be decided

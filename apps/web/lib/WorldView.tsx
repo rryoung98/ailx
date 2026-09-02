@@ -20,8 +20,12 @@
  *    (@ailx/report MIN_COHORT_SIZE), which the page states rather than hides.
  *  - Item exposure is summarized without item ids: publishing per-item counts
  *    would publish the bank inventory (docs/SHARING.md).
+ *  - The cohort is self-selected, and the page says so above the counts
+ *    rather than in a footnote (docs/SAMPLING.md §11). The word "population"
+ *    is not used about these runs, because that document forbids it.
  */
 import Link from "next/link";
+import { apiPath } from "@ailx/contract";
 import { TRACK_META, type WorldAggregates } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { PageError, PageLoading } from "./PageNotice";
@@ -86,7 +90,7 @@ function Suppressed({ have, min }: { have: number; min: number }) {
 
 
 export function WorldView() {
-  const result = useService<{ aggregates: WorldAggregates }>("/aggregates");
+  const result = useService<{ aggregates: WorldAggregates }>(apiPath("aggregates"));
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title="How is the world doing at keeping up with AI?" />;
   }
@@ -108,6 +112,12 @@ export function WorldView() {
           percentiles, no composites and no judged scores here: the judging pipeline is not
           built, so a number implying one would be a lie. What we can honestly show is who is
           playing, what shapes their runs take, and how much of the instrument has been seen.
+        </p>
+        <p className="small faint" style={{ maxWidth: "58ch" }}>
+          Everyone counted here found AILX and chose to run it. That is a self-selected
+          cohort, not a sample of any country, so no figure on this page describes a
+          population. The sample that could is a bought probability panel, and it has not
+          been fielded yet (<code>docs/SAMPLING.md</code>).
         </p>
 
         <section aria-labelledby="participation">
@@ -133,7 +143,7 @@ export function WorldView() {
             </p>
           </div>
           <p className="small faint">
-            Counts over the whole population, so they name nobody. {a.cohortSize} run
+            Counts over every stored run, so they name nobody. {a.cohortSize} run
             {a.cohortSize === 1 ? " has" : "s have"} all four tracks scored — that is the cohort
             every distribution below is computed over.
           </p>

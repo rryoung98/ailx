@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Annotation } from "../lib/Annotation";
+import { FunnelStep } from "../lib/FunnelStep";
 import { HeroCanvas } from "../lib/HeroCanvas";
 import { PillCTA } from "../lib/PillCTA";
 import { PracticeDrill } from "../lib/PracticeDrill";
@@ -18,14 +19,14 @@ import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
 function HeroArtifacts() {
   return (
     <div className="hero-artifacts" aria-hidden="true">
-      <svg className="hero-artifact artifact-scrap" viewBox="0 0 120 90" focusable="false">
+      <svg className="hero-artifact artifact-scrap" viewBox="0 0 120 90" focusable="false" aria-hidden="true">
         <path
           d="M8 14 L34 6 L61 12 L88 4 L112 16 L108 42 L114 68 L86 82 L52 76 L24 86 L10 60 Z"
           fill="var(--card)" stroke="var(--border-strong)" strokeWidth="1.5" strokeLinejoin="round"
         />
         <path d="M26 34 H92 M26 48 H80 M26 62 H88" stroke="var(--border)" strokeWidth="2" strokeLinecap="round" fill="none" />
       </svg>
-      <svg className="hero-artifact artifact-pencil" viewBox="0 0 220 40" focusable="false">
+      <svg className="hero-artifact artifact-pencil" viewBox="0 0 220 40" focusable="false" aria-hidden="true">
         <path
           d="M4 30 C 40 6, 90 38, 128 18 S 200 10, 216 24"
           fill="none" stroke="var(--accent-dim)" strokeWidth="2.5" strokeLinecap="round"
@@ -199,6 +200,9 @@ function CastStrip() {
 export default function Home() {
   return (
     <main className="page">
+      {/* Step 2 of docs/KPI.md. Silent in the static export, which has no
+          backend to post to. */}
+      <FunnelStep step="landing_viewed" />
       <div className="hero-cinema">
         <div className="hero-stage">
           <section className="hero hero-phase-a">

@@ -83,7 +83,7 @@ const FIXTURES = {
         { seq: 1, verb: "assisted", object: "assist:1", claimIds: ["pe-g", "ca-g"], clientTs: "2026-01-01T00:00:01.000Z" },
         { seq: 2, verb: "challenged", object: "claim:pe-g", clientTs: "2026-01-01T00:00:02.000Z" },
         // Verification names the claim it checked (F5): an unattributed
-        // `verified` event buys no process points and no RAIR credit.
+        // `verified` event buys no process points and no adoption credit.
         { seq: 3, verb: "verified", object: "claim:ca-g", claimIds: ["ca-g"], clientTs: "2026-01-01T00:00:03.000Z" },
         { seq: 4, verb: "accepted", object: "claim:ca-g", clientTs: "2026-01-01T00:00:04.000Z" },
       ],

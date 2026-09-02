@@ -49,6 +49,7 @@ import {
   type ProgressReport,
   type SittingPoint,
 } from "@ailx/report";
+import { apiPath } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 import { hasAuthTokenSource } from "./authHeaders";
 import { ForgetBrowser } from "./ForgetBrowser";
@@ -268,7 +269,7 @@ export function ProgressView() {
   // `claimedDays` is a SIBLING of the report, never a field inside it: a
   // claimed day is a fact about provenance, and `ProgressReport` is the pure
   // derivation both repos share.
-  const result = useService<{ progress: ProgressReport; claimedDays?: string[] }>("/progress", {
+  const result = useService<{ progress: ProgressReport; claimedDays?: string[] }>(apiPath("progress"), {
     identified: true,
   });
   if (result.state === "loading") {

@@ -16,7 +16,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { DEV_USER_HEADER, FORBIDDEN_RESULT, type ModerationCaseDetail, type ModerationComment } from "@ailx/contract";
+import {
+  API_ROUTES,
+  apiPath,
+  DEV_USER_HEADER,
+  FORBIDDEN_RESULT,
+  type ModerationCaseDetail,
+  type ModerationComment,
+} from "@ailx/contract";
 import { sharePayloadFrom } from "@ailx/report";
 import {
   installMemoryStorage,
@@ -286,9 +293,18 @@ describe("what the candidate sees", () => {
     await act(async () => {
       container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
-    const post = fetchMock.mock.calls.find((c) => c[1]?.method === "POST")!;
-    expect(String(post[0])).toContain(`/attempts/${ATTEMPT}/moderation`);
+    // Both taken from the manifest's `candidateReply` entry, not spelled here:
+    // the write must follow the POST route, not the GET one it shares a URL with.
+    const post = fetchMock.mock.calls.find((c) => c[1]?.method === API_ROUTES.candidateReply.method)!;
+    expect(String(post[0])).toContain(apiPath("candidateReply", { id: ATTEMPT }));
     expect(JSON.parse(post[1].body)).toEqual({ body: "The script is my own, self-hosted." });
+  });
+
+  it("reads through the GET route and writes through the POST route", async () => {
+    await render();
+    const read = fetchMock.mock.calls[0]!;
+    expect(read[1]?.method).toBe(API_ROUTES.candidateThread.method);
+    expect(String(read[0])).toContain(apiPath("candidateThread", { id: ATTEMPT }));
   });
 
   it("never posts an empty response", async () => {

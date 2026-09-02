@@ -4,7 +4,7 @@
  * choosing a verdict stops the countdown (reflection is untimed), so users
  * can set confidence without timing out. Latency is anchored at the swipe.
  */
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // The countdown tick logic: mirrors Runner's interval guard.
 function tick(secondsLeft: number | null, choice: number | null): number | null {

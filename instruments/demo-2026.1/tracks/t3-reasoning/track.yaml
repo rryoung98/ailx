@@ -8,7 +8,7 @@ config:
   seeded_errors:                      # known-incorrect outputs at predetermined points
     kinds: [misattributed-figure, false-causal-claim, fabricated-citation, wrong-calculation]
     count_per_form: 4
-  reliance_constructs: [RSR, RAIR]    # objective, model-free
+  reliance_constructs: [over-reliance, under-reliance]   # objective, model-free
   jury:
     kind: heterogeneous-three-model   # three models from three families
     calibration: human-labelled-set   # ~200 examples; locked rubric + evidence anchoring

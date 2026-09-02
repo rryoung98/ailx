@@ -22,7 +22,7 @@
  */
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { GalleryListing, GalleryQuery } from "@ailx/contract";
+import { apiPath, type GalleryListing, type GalleryQuery } from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { PageError, PageLoading } from "./PageNotice";
 import { firstValueQuery, useService } from "./serviceFetch";
@@ -53,7 +53,7 @@ const SORTS: { key: GalleryQuery["sort"]; label: string }[] = [
 
 export function GalleryView() {
   const search = useSearchParams();
-  const result = useService<{ gallery: GalleryListing }>(`/gallery${firstValueQuery(search)}`);
+  const result = useService<{ gallery: GalleryListing }>(apiPath("gallery", {}, firstValueQuery(search)));
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title={TITLE} />;
   // The wall is public and unauthenticated, so a non-200 is an outage, not a
   // state with a story. Saying "nobody has published a card yet" because the

@@ -184,6 +184,8 @@ One diagnostic report. Four track scores, then the three things nobody has ever 
 
 “So the claim is narrow and I will say it precisely: the first cross-nationally normed, annually re-versioned, task-performance-based AI literacy examination for adults. Every word there is doing work.”
 
+“One caveat before you ask for it. The exam runs in three languages. The first population number will cover two countries, the United States and the United Kingdom, because those are the two where a probability sample can be bought. Japan and Korea have no panel to rent — the fieldwork has to be commissioned, and that is another one to one point six million dollars we have not raised. Until we raise it, nothing we publish describes adults in Japan or Korea.”
+
 “And if you are about to say PISA — yes. PISA 2029 fields Media and AI Literacy, and its draft framework puts about half the assessment time on analyse, evaluate and create. It is performance-based too. It tests fifteen-year-olds, once every three years, starting 2029. We test adults, every year. That is the part nobody else is building.”
 
 **Objection 2 — “You are using AI to grade AI literacy”**
@@ -277,7 +279,7 @@ Never cut: the cold open, the replay, the planted error, or the ask. Those four 
 - A pre-loaded fallback number for the cold open, in case submissions are thin.
 - One chosen card for the replay — a shadow or reflection inconsistency, not hands or text.
 - Recorded fallback clips for all four demo blocks.
-- The narrowed positioning sentence, word for word: *the first cross-nationally normed, annually re-versioned, task-performance-based AI literacy examination for adults.*
+- The narrowed positioning sentence, word for word: *the first cross-nationally normed, annually re-versioned, task-performance-based AI literacy examination for adults.* Followed, unprompted, by which countries the norm covers: US and UK first, Japan and Korea when the fieldwork is funded.
 - Two numbers you will be asked for and should not have to look up: **80 of 400** points exposed to model judging by design — **180 of 400** as the system is built today, because the unbuilt gates and the unbuilt human panel fall back to the judge path — and **\$750** a month for the pilot. (`pointsByResolution()` in `packages/core/src/allocation.ts` is the source; AILX-Spec-2026.1.md §04 states both columns.)
 
 ## Questions you will get
@@ -286,6 +288,7 @@ Never cut: the cold open, the replay, the planted error, or the ask. Those four 
 |-----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Is forty-five people enough?                  | No, and we say so. It calibrates items to within one logit, which is enough to rank difficulty and cull bad items. Certification needs two hundred and fifty. Year one reports percentiles. |
 | Does this just measure English?               | Every item ships in all three languages with recorded translation provenance, and we analyse difficulty by language from the first cohort. If there is a language effect we publish it.     |
+| When do we get a number for Japan or Korea?   | When the fieldwork is funded. Neither country has a probability panel to rent, so each needs a commissioned sample — one to one point six million dollars on top of the US and UK wave. The exam is trilingual today; the statistic is not.                                              |
 | What stops someone gaming the aesthetic vote? | Self-exclusion is mandatory, work is anonymous, and per-rater bias is estimated and corrected. That correction alone removes about ninety-five percent of the recoverable error.            |
 | Where does the data live?                     | Tokyo. Named transfers disclosed in a single table. No face capture, no webcam proctoring, ever — that would pull us into Korea's high-impact AI category.                                  |
 | Why should a lab care?                        | Human sensitivity numbers on 2026-current synthetic media, and human rejection rates for planted model errors. Neither exists anywhere at this quality.                                     |

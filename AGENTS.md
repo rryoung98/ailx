@@ -50,6 +50,7 @@ somebody makes in front of a reviewer.
 
 ## Commands
 - `pnpm install` · `pnpm test` · `pnpm -r build` (both must pass before any commit)
+- `pnpm lint` — Biome. An error fails the run and the CI `lint` job; a warning is carried debt, and every carried rule has a reason in `docs/DEBT.md`.
 - `pnpm test` is ONE vitest for the whole monorepo (`vitest-workspace.ts`), with one worker pool capped at 4 forks — the ceiling is memory, not CPU. Raise it with `AILX_TEST_FORKS=8 pnpm test` on a big machine. `pnpm -r test` still works and still runs the same tests, but it starts a vitest per package, so it costs more RAM and more time.
 - `vitest run` inside a package is the way to debug one package.
 - `pnpm test:reap` — kill vitest workers orphaned by an interrupted run (reparented to pid 1, each still holding its heap). The capped pool and the per-file PGlite close make this rare rather than routine.
@@ -64,6 +65,13 @@ somebody makes in front of a reviewer.
   how it upgrades to a scored claim without reissuing, and why a revoked
   credential still resolves while a revoked share token 404s.
 
+## Comparative judgement (T1)
+- `docs/COMPARATIVE-JUDGEMENT.md` — what T1's pairwise judging costs at N = 100 to 10,000,
+  which quantity is flat in N and which is not, who judges and what that costs in bias, and
+  why the reported reliability is a split-panel correlation rather than SSR. Both source
+  citations are quoted from documents fetched in-session. Re-run the cost model with
+  `node docs/cj-cost.mjs`.
+
 ## Sampling and the population statistic
 - `docs/SAMPLING.md` — the two-track design that separates the self-selected web
   cohort (item calibration, individual credentials) from a bought probability
@@ -72,6 +80,29 @@ somebody makes in front of a reviewer.
   minimum n and precision, weighting, coverage limits, device effects, the
   non-response bias analysis we publish unprompted, the exact hedging language
   for convenience-sample findings, and the cost of a first release.
+- `docs/PANEL-MARKETS.md` — the vendor evidence behind the country plan: no
+  probability online panel is sold in Japan or Korea, what each country does
+  sell instead, the published response rates and rate cards with their sources,
+  why the 2× per-complete premium we assumed has no source, and the decision
+  that follows — the exam is trilingual, the first population statistic covers
+  the US and the UK, and Japan and Korea field on a named funding condition.
+- `docs/TREND-FORM.md` — the frozen anchor form that makes a trend statement
+  possible on an annually re-versioned instrument: what is in the anchor and
+  what is excluded, its exposure budget and leak detection, how long it is held
+  and how a replacement links to it, the equating method and its assumptions,
+  and the list of things a change in the number may and may not be attributed
+  to. The manifest field that marks a form as an anchor is validated in
+  `packages/content-tools`.
+
+## Funnel and KPIs
+- `docs/KPI.md` — the eight funnel steps, the exact event that marks each,
+  how D1/D7 return is derived from `firstSeenDay`/`dayIndex` (never in the
+  browser), what the numbers cannot tell us, and what would count as no
+  traction. The schema is `packages/contract/src/funnel.ts`, the emitter is
+  `apps/web/lib/funnel.ts`, and it is SILENT with no backend. The exam
+  surface emits ONE funnel step of its own, `sitting_started`, and nothing
+  inside a sitting is instrumented; the session's own `visit_started` still
+  rides along when the sitting is the first thing a browser does.
 
 ## Frontend/backend separation
 - `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
@@ -85,6 +116,19 @@ somebody makes in front of a reviewer.
   storage on Vercel Blob, Neon connection pooling, platform body-size limits,
   and why staging should use Clerk rather than assert-only dev auth. The
   default GitHub Pages static export is unaffected by any of it.
+
+## Scale, concurrency and the idle bill
+- `docs/LOAD-TEST.md` — what the exam service's Cloud Run is set to today and which
+  values are defaults rather than decisions, what one request costs on each path, the
+  load-test plan with its pass/fail thresholds fixed in advance, and the price of every
+  min-instances option. Cloud Run concurrency is 80 while the pg pool is 3, so an
+  instance can serve 3 database requests at once; §8 costs the two ways out and
+  records the pair this branch carries. Serving is inside the free tier at every
+  traffic level we can foresee. The bill is idle.
+  `packages/core/test/serviceSizing.test.ts` reads §8.3's table and fails when
+  concurrency exceeds the pool. It checks what this repo decided, not what is
+  deployed: the Terraform half of the check is in the private repo and §8.4
+  quotes it.
 
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.

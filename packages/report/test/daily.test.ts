@@ -322,7 +322,9 @@ describe("the grid does not leak the day's answers", () => {
       for (const choices of allChoiceVectors(deck.length)) {
         const grid = dailyGrid(gradeDailyRound(dayDeck, choices));
         const seen = grids.get(grid) ?? deck.map(() => new Set<number>());
-        keys.forEach((k, i) => seen[i].add(k));
+        keys.forEach((k, i) => {
+          seen[i].add(k);
+        });
         grids.set(grid, seen);
       }
     }

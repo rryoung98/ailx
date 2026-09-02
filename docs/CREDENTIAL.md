@@ -39,7 +39,7 @@ read time (`credentialDocument`). Two consequences, both deliberate:
 
 ## 3. Format: Open Badges 3.0 shape, hosted verification, no crypto
 
-A neutral examiner should not invent a credential format
+An examiner nobody has audited yet should not invent a credential format
 (`docs/POSITIONING.md`), so the document uses W3C VC 2.0 / Open Badges 3.0
 field names: `@context`, `type: ["VerifiableCredential","OpenBadgeCredential"]`,
 `issuer`, `credentialSubject.achievement`, `validFrom`, `credentialStatus`.

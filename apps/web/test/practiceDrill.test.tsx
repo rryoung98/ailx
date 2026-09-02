@@ -165,9 +165,8 @@ async function playSlowly(): Promise<void> {
  */
 const NOW = Date.parse("2026-03-11T12:00:00.000Z");
 let clock = NOW;
+// biome-ignore lint/suspicious/noAssignInExpressions: advancing the test clock IS the expression; a block body says nothing extra.
 const advance = (ms: number) => void (clock += ms);
-/** The browser's own calendar day, read the way the drill reads it. */
-const today = () => localDay(clock, -new Date().getTimezoneOffset());
 const daysAgo = (n: number) => localDay(clock - n * 86_400_000, -new Date().getTimezoneOffset());
 
 beforeEach(() => {

@@ -1,7 +1,7 @@
 /**
  * T3 · Calibrated Reliance — types.
  * Spec §T3: instrumented assistant seeded with known-incorrect outputs;
- * RSR / RAIR reliance constructs; xAPI-shaped transcript with revision_of.
+ * over-/under-reliance components; xAPI-shaped transcript with revision_of.
  */
 import { trackPoints, weightsFor } from "@ailx/core";
 
@@ -18,7 +18,7 @@ export interface T3PlantedError {
 export interface T3CorrectAdvice {
   id: string;
   topic: string;
-  /** Correct, source-grounded claim — adopting it after resistance is RAIR. */
+  /** Correct, source-grounded claim — refusing it is under-reliance. */
   claim: string;
 }
 
@@ -85,6 +85,20 @@ export interface T3PresentationConfig {
   /** Primary-source excerpt (demo-scale stand-in for the 50-70 page doc). */
   sourceExcerpt: string;
   minWords: number;
+  /**
+   * TIME CONDITION (TEN-30). Minutes this form gives the candidate: 90 in the
+   * shipped design, 30 in the pressure condition. Absent means the form
+   * declares no condition, which is every form before this parameter existed;
+   * the sitting then keeps whatever budget the session config carries and the
+   * record says 0.
+   *
+   * It is a declared form parameter and not a hard-coded timer so the two
+   * conditions are the SAME task, and so a sitting's record names the
+   * condition it ran under. What may be concluded from a comparison is
+   * bounded: see `AILX-Spec-2026.1.md` §T3, "Verification under a declared
+   * time budget".
+   */
+  timeBudgetMinutes?: number;
   /** Static/released-practice only — the answer key, published on purpose. */
   plantedErrors?: ReadonlyArray<T3PlantedError>;
   correctAdvice?: ReadonlyArray<T3CorrectAdvice>;
@@ -94,10 +108,10 @@ export interface T3PresentationConfig {
 }
 
 export interface T3Weights {
-  /** Planted-error detection — appropriate NON-reliance. */
-  rsr: number;
-  /** Deliberate adoption of correct advice — appropriate reliance. */
-  rair: number;
+  /** Planted-error detection — the over-reliance tail. */
+  overReliance: number;
+  /** Deliberate adoption of correct advice — the under-reliance tail. */
+  underReliance: number;
   /** Transcript process quality. */
   process: number;
   /** Judged analysis quality — the track's only LLM-jury points. */

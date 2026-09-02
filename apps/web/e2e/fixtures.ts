@@ -1,7 +1,7 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { ATTEMPT_KEY, TRACK_IDS, append, type SequencedEntry, type SessionConfig, type TrackId } from "@ailx/session";
-import { DEV_USER_HEADER } from "@ailx/contract";
+import { apiPath, DEV_USER_HEADER } from "@ailx/contract";
 import { fixtureArtifact } from "../lib/sampleAttempt";
 import { completedLog } from "../test/helpers/completedAttempt";
 import { DEV_USER_KEY, syncKey } from "../lib/persistence";
@@ -287,7 +287,7 @@ export const test = base.extend<AilxFixtures>({
   },
 
   attemptId: async ({ request, devUser }, use) => {
-    const res = await request.post(`${apiRoot()}/attempts`, {
+    const res = await request.post(`${apiRoot()}${apiPath("createAttempt")}`, {
       headers: { [DEV_USER_HEADER]: devUser, "content-type": "application/json" },
       data: { locale: "en", decks: true },
     });
@@ -300,13 +300,16 @@ export const test = base.extend<AilxFixtures>({
     await use(async () => {
       const headers = { [DEV_USER_HEADER]: devUser, "content-type": "application/json" };
       for (const entry of completedLog()) {
-        const res = await request.post(`${apiRoot()}/attempts/${attemptId}/responses`, {
+        const res = await request.post(`${apiRoot()}${apiPath("appendResponse", { id: attemptId })}`, {
           headers,
           data: { seq: entry.seq, payload: entry, clientTs: new Date(entry.ts).toISOString() },
         });
         expect(res.status(), await res.text()).toBe(201);
       }
-      const res = await request.post(`${apiRoot()}/attempts/${attemptId}/share`, { headers, data: {} });
+      const res = await request.post(`${apiRoot()}${apiPath("createShare", { id: attemptId })}`, {
+        headers,
+        data: {},
+      });
       expect(res.status(), await res.text()).toBe(201);
       const body = (await res.json()) as { share: { token: string } };
       return body.share.token;
@@ -315,7 +318,8 @@ export const test = base.extend<AilxFixtures>({
 
   publishSite: async ({ request, devUser, attemptId }, use) => {
     await use(async (files) => {
-      const res = await request.post(`${apiRoot()}/attempts/${attemptId}/site?seq=${T1_SITE_SEQ}`, {
+      const url = apiPath("uploadSite", { id: attemptId }, `?seq=${T1_SITE_SEQ}`);
+      const res = await request.post(`${apiRoot()}${url}`, {
         headers: {
           [DEV_USER_HEADER]: devUser,
           "content-type": "application/zip",

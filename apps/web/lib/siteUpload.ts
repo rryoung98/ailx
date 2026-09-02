@@ -14,7 +14,7 @@
 import { writeStoredZip, type ZipFile } from "@ailx/core";
 import { isServerMode } from "./mode";
 import type { StorageLike } from "@ailx/session";
-import { canonicalSitePath, siteUrlPath } from "@ailx/contract";
+import { apiPath, canonicalSitePath, siteUrlPath } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";
 import {
   browserApiOptions,
@@ -160,7 +160,7 @@ async function requestUploadTicket(
 ): Promise<UploadTicket | null> {
   let res: Response;
   try {
-    res = await opts.fetchFn(`${opts.baseUrl}/attempts/${serverAttemptId}/site/upload-ticket`, {
+    res = await opts.fetchFn(`${opts.baseUrl}${apiPath("siteUploadTicket", { id: serverAttemptId })}`, {
       method: "POST",
       headers: await authHeaders(storage),
     });
@@ -225,7 +225,7 @@ async function uploadSiteZipDirect(
 
   let res: Response;
   try {
-    res = await opts.fetchFn(`${opts.baseUrl}/attempts/${serverAttemptId}/site/finalize`, {
+    res = await opts.fetchFn(`${opts.baseUrl}${apiPath("finalizeSiteUpload", { id: serverAttemptId })}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -278,7 +278,7 @@ export async function uploadSiteZip(
   let res: Response;
   try {
     res = await opts.fetchFn(
-      `${opts.baseUrl}/attempts/${serverAttemptId}/site?seq=${T1_SITE_SEQ}`,
+      `${opts.baseUrl}${apiPath("uploadSite", { id: serverAttemptId }, `?seq=${T1_SITE_SEQ}`)}`,
       {
         method: "POST",
         headers: {

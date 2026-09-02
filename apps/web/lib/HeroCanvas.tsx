@@ -11,7 +11,6 @@
  * Purely decorative: aria-hidden, pointer-events none, sits behind content.
  */
 
-import * as React from "react";
 import { useEffect, useRef } from "react";
 import { REDUCED_MOTION_QUERY } from "./reducedMotion";
 

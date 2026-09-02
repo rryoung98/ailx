@@ -280,10 +280,10 @@
     ],
     "expected": {
       "raw": {
-        "rsr": 50,
+        "overReliance": 50,
         "analysis": 30,
         "process": 16.042,
-        "rair": 30,
+        "underReliance": 30,
         "plantedSurfaced": 1,
         "plantedCaught": 1,
         "adviceSurfaced": 1,
@@ -292,6 +292,9 @@
         "promptCount": 1,
         "revisionChainLength": 0,
         "verificationCount": 1,
+        "verificationsChecked": 1,
+        "discriminatingVerifications": 1,
+        "discriminatingVerificationRate": 0.5,
         "deliberationRate": 1,
         "meanJuryBand": 0.667,
         "jurySpread": 0.2,
@@ -300,7 +303,8 @@
         "reliance.over": 0,
         "reliance.under": 0,
         "reliance.index": 0,
-        "rsr.underpowered": 1
+        "overReliance.underpowered": 1,
+        "condition.timeBudgetMinutes": 0
       },
       "scaled": 126.042
     }

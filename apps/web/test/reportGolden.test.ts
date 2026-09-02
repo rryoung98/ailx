@@ -119,9 +119,22 @@ describe("report golden", () => {
    * moved — and no SCORE moved, which is the load-bearing half: the
    * aggregation these rows feed is order-invariant by construction now, so
    * re-ordering the evidence must not, and did not, change the number.
+   *
+   * It MOVED a sixth time for two T3 changes merged together on
+   * w/t3-integration. TEN-38 renamed T3's `rsr`/`rair` components to
+   * `overReliance`/`underReliance`: 6 renamed T3 raw keys, each carrying the
+   * same value as before (50, 30, 1), and T3's `rubricVersion` in two places,
+   * because the criterion names moved with them. TEN-30 added four T3 raw
+   * keys (`verificationsChecked`, `discriminatingVerifications`,
+   * `discriminatingVerificationRate`, `condition.timeBudgetMinutes`) under
+   * `participant.tracks[2].rawSubscores` and under `research.scores[2].raw`.
+   * The sample attempt's T3 process points did not move: its one check was
+   * already a check it resolved. No composite, no other track raw, no
+   * insight, no narrative, no player type, no calibration bin and no export
+   * field moved.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("073bc1592b708918a26e0dc8f2739fd655f0284b23de666eac5e0243ec1e2e3a");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("7b0efa759f0ef5d583cf9f2175e6c0f77a2a621e0c6633bee62ab3b9d4d680fd");
   });
 
   it("is stable across repeated derivation", () => {

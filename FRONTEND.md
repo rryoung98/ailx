@@ -90,11 +90,17 @@ The repo already has the right convention. It is now a rule.
 4. **Build-mode branching goes through `lib/mode.ts`.** One spelling of
    `NEXT_PUBLIC_AILX_BACKEND`, one truth. Never re-test the raw env var at a call site
    ([Next.js dual-mode drift is invisible unless both builds run in CI](https://nextjs.org/docs/app/guides/static-exports)).
-5. **`"use client"` is a module-graph boundary, not a runtime one**
+5. **Every exam-service URL comes from the route manifest.** `apiPath()` in
+   `@ailx/contract` owns the path; `lib/mode.ts` `apiBase()` owns the host prefix. A path
+   spelled at a call site is how a browser once called a route the deployed service did not
+   have, so `test/routeManifest.test.ts` parses every source in `apps/web` and fails the build
+   when a request call — `fetch`, a `fetchFn`, `serviceFetch`/`useService`, an HTTP verb method
+   or `new URL` — is given a literal path that starts with a manifest segment.
+6. **`"use client"` is a module-graph boundary, not a runtime one**
    ([Next.js](https://nextjs.org/docs/app/guides/server-and-client-boundary)). Anything a client
    component imports enters the browser bundle. Push `"use client"` to leaves; pass `children`
    to keep server subtrees out of the client graph. `lib/NavLink.tsx` is the pattern.
-6. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
+7. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
    endpoint, and static export does not support Server Actions anyway. Use `route.api.ts`.
 
 Three mechanisms, deliberately overlapping, because they fail at different times: directory
@@ -736,6 +742,13 @@ person recognises them:
   passes on dev output that a production bundle would have failed. The secrecy scan reads
   BUILD output: stop the dev server (and do not run a second build in `apps/web`) before
   trusting it, since `next build` and `next dev` fight over the same directory.
+- **A suite that resolves `dist/` measures the last build, not this tree.** Every
+  `@ailx/*` package has `main: dist/index.js`, so an unaliased vitest project read build
+  output: on a clean clone 75 test files failed to collect ("Failed to resolve entry for
+  package @ailx/core"), and with a stale build the run passed on code nobody had
+  rebuilt. `vitest.shared.ts` holds one alias table pointing every package at its `src`,
+  every project uses it, and `packages/core/test/workspaceWiring.test.ts` fails if a
+  package stops. The Next builds still consume `dist/`.
 - **A surface that cannot be reached is not a surface that passes.** T4's finish step has
   no contract, because in hosted mode the T4 runner deals its content from
   `GET /attempts/:id/track/t4` and this app serves no such route: the track opens on a
@@ -811,6 +824,7 @@ Run this on every frontend PR. Each item is checkable in under a minute.
 - [ ] No new barrel/`index.ts` in `apps/web`; no `utils.ts`.
 - [ ] Value imports do not cross the client boundary where a `type` import would do.
 - [ ] Build-mode branching goes through `lib/mode.ts`.
+- [ ] Every exam-service URL comes from `apiPath()`; no path spelled at a call site.
 
 **Security**
 - [ ] No secret in `NEXT_PUBLIC_*`; no new public env var.

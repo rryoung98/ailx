@@ -75,7 +75,7 @@ function click(b: HTMLButtonElement) {
 /** The one live region that reports verification. */
 function statusText(): string {
   const el = [...host.querySelectorAll('[role="status"]')].find((n) =>
-    /Verification|Checked against the source/.test(n.textContent ?? ""),
+    /Press Check source|Checked against the source/.test(n.textContent ?? ""),
   );
   expect(el, "verification status region").toBeTruthy();
   return el!.textContent ?? "";
@@ -88,10 +88,13 @@ afterEach(() => {
 });
 
 describe("T3 verification feedback", () => {
-  it("tells the candidate verification is per claim, and that opening the source is not", () => {
+  it("tells the candidate what verification scores: the claim, not the click count", () => {
     mount();
-    expect(statusText()).toContain("per claim");
     expect(statusText()).toContain("Opening the source is not scored");
+    // TEN-30: the copy must not promise credit for the number of checks, and
+    // must say the stance has to be the right one.
+    expect(statusText()).toContain("A check counts when you go on to challenge or accept that claim");
+    expect(statusText()).toContain("your call on it is right");
   });
 
   it("attributes the emitted event to the claim that was checked", () => {
@@ -106,7 +109,7 @@ describe("T3 verification feedback", () => {
     mount();
     click(checkBtn(CLAIM));
     expect(statusText()).toBe(
-      "Checked against the source: 1 claim. Re-checking the same claim adds nothing.",
+      "Checked against the source: 1 claim. Re-checking one claim adds nothing. A check counts once you challenge or accept that claim, and only if your call on it is right.",
     );
   });
 

@@ -182,7 +182,6 @@ export function Runner(props: TrackUIProps) {
   // BYOK OpenRouter vibe coding — key lives ONLY in the candidate's browser.
   const [orKey, setOrKey] = useState("");
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
-  const [ssoBusy, setSsoBusy] = useState(false);
   const [model, setModel] = useState<string>(CURATED_MODELS[0]);
   const [customModel, setCustomModel] = useState("");
   const [modelOptions, setModelOptions] = useState<ReadonlyArray<string>>(CURATED_MODELS);
@@ -250,7 +249,6 @@ export function Runner(props: TrackUIProps) {
     }
     if (!verifier) return;
     let cancelled = false;
-    setSsoBusy(true);
     exchangeCodeForKey(fetch, code, verifier)
       .then((key) => {
         if (cancelled) return;
@@ -265,7 +263,6 @@ export function Runner(props: TrackUIProps) {
       })
       .finally(() => {
         if (cancelled) return;
-        setSsoBusy(false);
         try {
           window.localStorage.removeItem(PKCE_VERIFIER_STORAGE);
         } catch {

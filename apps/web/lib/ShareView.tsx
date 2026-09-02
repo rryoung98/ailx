@@ -19,10 +19,11 @@
  */
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { shareUrlPath } from "@ailx/contract";
+import { apiPath, shareUrlPath } from "@ailx/contract";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "./CharacterPortrait";
+import { FunnelStep } from "./FunnelStep";
 import { siteHref } from "./mode";
 import { PageError, PageLoading } from "./PageNotice";
 import { ShareTargets } from "./ShareTargets";
@@ -40,7 +41,7 @@ export function ShareView() {
   const params = useParams<{ token: string }>();
   const token = typeof params?.token === "string" ? params.token : null;
   const result = useService<{ share: SharedView }>(
-    token === null ? null : `/share/${encodeURIComponent(token)}`,
+    token === null ? null : apiPath("shareView", { token }),
   );
   if (result.state === "loading") return <PageLoading title="Opening this card" />;
   if (result.state === "error") return <PageError title="Opening this card" />;
@@ -62,6 +63,10 @@ export function ShareView() {
 
   return (
     <main className="page">
+      {/* The click-through step: a shared link was opened AND the card
+          resolved. A 404 or an outage above is not a click-through. No token
+          travels with it, so this counts opens, never whose link. */}
+      <FunnelStep step="share_opened" />
       <div className="container" style={{ maxWidth: 820 }}>
         <section className="card ptype-card" style={{ marginBottom: "1.6rem" }}>
           <p className="eyebrow" style={{ margin: 0 }}>{p.instrument.toUpperCase()} · PLAYER TYPE</p>

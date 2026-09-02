@@ -17,7 +17,14 @@
  * demo scenario remains code-side (no content-package changes); its hash is
  * pinned and asserted at test time.
  */
-import { D_PRIME_CEILING, maxAttainableDPrime, sampleT2DeckIds, t2DeckSeed } from "@ailx/track-t2";
+import {
+  D_PRIME_CEILING,
+  maxAttainableDPrime,
+  sampleT2DeckIds,
+  t2DeckSeed,
+  type T2DeckComposition,
+} from "@ailx/track-t2";
+import { t3TimeBudgetSeconds, type T3PresentationConfig } from "@ailx/track-t3";
 import snapshotRaw from "../../../instruments/demo-2026.1/snapshot.json";
 import { assetUrl } from "./mode";
 
@@ -43,8 +50,17 @@ interface BankItem {
 
 interface SnapshotBlock {
   id: string;
+  /** How many items THIS package's bank holds in the block, all locales. */
+  bank_items?: number;
   exposure_seconds?: number | null;
   untimed?: boolean;
+}
+
+/** `config.deck` as the instrument declares it (snake_case, from track.yaml). */
+interface SnapshotDeck {
+  media_pairs?: unknown;
+  text?: unknown;
+  provenance?: unknown;
 }
 
 interface SnapshotTrack {
@@ -220,6 +236,29 @@ export function t2BankSha256(): string {
 }
 
 /**
+ * WHAT ONE SITTING IS DEALT, read from the instrument rather than repeated
+ * here: `config.deck` in the released tier's t2 `track.yaml`, carried into
+ * the snapshot. Fails CLOSED — an absent or malformed declaration throws
+ * instead of falling back to numbers this module made up. Before TEN-48 the
+ * sampler held the numbers, `track.yaml` declared a 132-item form, and the
+ * bank held 20; nothing compared the three.
+ */
+export function t2DeckComposition(): T2DeckComposition {
+  const deck = snapshotTrack("t2").config.deck as SnapshotDeck | undefined;
+  const count = (field: "media_pairs" | "text" | "provenance"): number => {
+    const n = deck?.[field];
+    if (typeof n !== "number" || !Number.isInteger(n) || n < 0) {
+      throw new Error(
+        `instrument declares no usable config.deck.${field} for t2 — it must be a ` +
+          `non-negative integer in instruments/demo-2026.1/tracks/t2-discrimination/track.yaml`,
+      );
+    }
+    return n;
+  };
+  return { mediaPairs: count("media_pairs"), text: count("text"), provenance: count("provenance") };
+}
+
+/**
  * PER-ATTEMPT DECK: presented item ids, sampled by the pure @ailx/track-t2
  * sampler. Seed = sha256(attemptId + bank sha) so the deck is re-derivable
  * from stored inputs alone (server records the same ids at attempt
@@ -245,6 +284,7 @@ export function t2DeckItemIds(locale: string = "en", attemptId?: string): string
   }));
   return sampleT2DeckIds(
     candidates,
+    t2DeckComposition(),
     attemptId === undefined ? undefined : t2DeckSeed(attemptId, t2BankSha256()),
   );
 }
@@ -301,11 +341,11 @@ export const T3_SCENARIO = {
   /**
    * EIGHT planted errors, not three.
    *
-   * RSR carries 50 of T3's 160 points and its item count IS the number of
-   * plants that surface. A four-item subtest cannot support that weight:
-   * catching 2 of 4 versus 3 of 4 is 12.5 points decided by essentially one
-   * event. `RSR_MIN_SURFACED` in the scorer declares 8 as the floor and
-   * flags any sitting that comes in under it.
+   * The over-reliance component carries 50 of T3's 160 points and its item
+   * count IS the number of plants that surface. A four-item subtest cannot
+   * support that weight: catching 2 of 4 versus 3 of 4 is 12.5 points decided
+   * by essentially one event. `OVER_RELIANCE_MIN_SURFACED` in the scorer
+   * declares 8 as the floor and flags any sitting that comes in under it.
    *
    * Two instances of each of the four stable error FAMILIES — misattributed
    * figure, false causal claim, fabricated citation, wrong calculation. The
@@ -377,8 +417,8 @@ export const T3_SCENARIO = {
     },
   ],
   /**
-   * FOUR correct-advice claims, not two. RAIR is the positive half of the
-   * reliance construct and it now carries 30 points; refusing correct,
+   * FOUR correct-advice claims, not two. Under-reliance is the positive half
+   * of the reliance construct and it now carries 30 points; refusing correct,
    * source-grounded help is a failure in the same measurement, so the
    * positive tail needs enough items to be a rate rather than an anecdote.
    */
@@ -424,6 +464,24 @@ export const T3_SCENARIO_SHA256 =
  * scored deck is the presented deck. Omitted attemptId → fixed default
  * deck (fixtures, /validate). T1/T3/T4 demo briefs stay English.
  */
+/**
+ * The T3 sitting clock this build's form declares, in seconds, or undefined
+ * when it declares none (TEN-30). The static demo form declares nothing, so
+ * the demo budget is unchanged; a static form built for the 30-minute
+ * condition sets the sitting clock here, in the one place the static build
+ * chooses it, so the record and the countdown cannot disagree.
+ *
+ * A HOSTED sitting is NOT covered by this. The exam service serves the form
+ * and owns the sitting clock; this build still opens the session on its own
+ * budgets, so a hosted 30-minute form would be recorded as the condition it
+ * is and run against whatever budget the session was started with. Closing
+ * that needs the service to carry a per-track budget into `attempt_started`,
+ * which is the private repo's decision to make.
+ */
+export function t3FormBudgetSeconds(): number | undefined {
+  return t3TimeBudgetSeconds(T3_SCENARIO as T3PresentationConfig);
+}
+
 export function trackConfig(
   trackId: "t1" | "t2" | "t3" | "t4",
   locale: string = "en",

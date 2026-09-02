@@ -11,12 +11,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { describe, expect, it } from "vitest";
+import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import RootLayout from "../app/layout";
-
-(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 const cssPath = join(dirname(fileURLToPath(import.meta.url)), "..", "app", "globals.css");
 const css = readFileSync(cssPath, "utf8");
