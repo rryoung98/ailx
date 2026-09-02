@@ -903,7 +903,10 @@ Mitigation, following NAEP's Long-Term Trend pattern: carry a **frozen trend for
 fixed generator vintages — alongside the current form, field both in the same wave, and **report the
 headline trend only on the frozen line**, with the current form reported as a level, not a change.
 The panel budget must therefore include the frozen block in its minutes, which costs form length,
-which costs response rate. That trade is real and should be made deliberately.
+which costs response rate. That trade is real and should be made deliberately. The anchor's contents,
+exposure budget, leak detection, refresh policy, equating method and attribution limits are worked
+out in `docs/TREND-FORM.md`; the short version is that the frozen line is T2 only, so it carries a
+named subscale trend and never a composite one.
 
 **12.2 The composite problem.** AILX sums four heterogeneous tracks to 400 points, and the
 across-track weighting is a design choice, not an estimated parameter. Kreiner and Christensen

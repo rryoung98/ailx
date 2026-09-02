@@ -72,6 +72,13 @@ somebody makes in front of a reviewer.
   minimum n and precision, weighting, coverage limits, device effects, the
   non-response bias analysis we publish unprompted, the exact hedging language
   for convenience-sample findings, and the cost of a first release.
+- `docs/TREND-FORM.md` — the frozen anchor form that makes a trend statement
+  possible on an annually re-versioned instrument: what is in the anchor and
+  what is excluded, its exposure budget and leak detection, how long it is held
+  and how a replacement links to it, the equating method and its assumptions,
+  and the list of things a change in the number may and may not be attributed
+  to. The manifest field that marks a form as an anchor is validated in
+  `packages/content-tools`.
 
 ## Frontend/backend separation
 - `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
