@@ -6,6 +6,7 @@ import { Fraunces, Caveat } from "next/font/google";
 const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable", variable: "--font-serif", display: "swap" });
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
+import { TOTAL_POINTS } from "@ailx/core";
 import { Loader } from "../components/Loader";
 import { NavLink } from "../components/ui/NavLink";
 import { assetUrl, footerModeCopy, isClerkEnabled, isServerMode } from "../lib/mode";
@@ -16,7 +17,7 @@ import { AuthNav } from "../lib/auth/AuthNav";
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
   description:
-    "Four playable tracks — build, detect, reason, direct. 400 raw points, and every score recomputable from what you did. Built to the AILX 2026.1 specification. Live demo build.",
+    `Four playable tracks — build, detect, reason, direct. ${TOTAL_POINTS} raw points, and every score recomputable from what you did. Built to the AILX 2026.1 specification. Live demo build.`,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -92,7 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p>AILX plays like a game and is built like an instrument.</p>
               <p>
                 Instrument spec: <span className="mono">AILX-Spec-2026.1</span> · four tracks,
-                400 raw points, re-versioned annually · scoring and item banks are public.
+                {" "}{TOTAL_POINTS} raw points, re-versioned annually · scoring and item banks are public.
               </p>
             </div>
           </footer>

@@ -13,6 +13,7 @@
  *  - mobile pill guard: teaser + connect panel are [data-pill-clear] zones
  *    and the CSS hides .pill-cta-cleared under 640px.
  */
+import { TOTAL_POINTS } from "@ailx/core";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -80,9 +81,10 @@ describe("landing proof showcase", () => {
     // the three mini motifs all appear somewhere in the section
     // The score mini shows the SCALE, never a result: the invented "206.6 /
     // 400 · Merit" was a judged-looking number on the page that sells the
-    // instrument, and no judged number exists yet.
+    // instrument, and no judged number exists yet. The scale is READ from the
+    // allocation table, because it moved (400 -> 375, TEN-80).
     const scoreMini = h.querySelector(".mini-card-score")!;
-    expect(scoreMini.querySelector(".mini-card-num")!.textContent).toBe("?/400");
+    expect(scoreMini.querySelector(".mini-card-num")!.textContent).toBe(`?/${TOTAL_POINTS}`);
     expect(scoreMini.querySelector(".mini-card-band")!.textContent).toBe("your score");
     for (const band of ["Merit", "Distinction", "Pass"]) {
       expect(scoreMini.textContent).not.toContain(band);

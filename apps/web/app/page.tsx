@@ -10,6 +10,7 @@ import { CampusJourney } from "../features/landing/track3d/CampusJourney";
 import { TrackBands } from "../features/landing/track3d/TrackBands";
 import { assetUrl, isServerMode } from "../lib/mode";
 import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
+import { TOTAL_POINTS } from "@ailx/core";
 
 /**
  * Decorative paper artifacts drifting at different scroll rates behind the
@@ -93,13 +94,17 @@ function StepVizReport() {
  * band "Merit" — an invented result on the page that sells the instrument,
  * next to pages that say plainly no judged number exists yet. The denominator
  * is a published fact of the spec; the numerator is deliberately blank.
+ *
+ * It reads `TOTAL_POINTS` rather than printing a number, because the total
+ * moved (400 -> 375, TEN-80) and a hardcoded denominator in front of a
+ * visitor is a number that survives a re-weighting and lies.
  */
 function MiniScoreCard() {
   return (
     <span className="mini-card mini-card-score showcase-float-1">
       <span className="mini-card-eyebrow mono">AILX 2026.1</span>
       <span className="mini-card-band">your score</span>
-      <span className="mini-card-num mono">?<span className="mini-card-denom">/400</span></span>
+      <span className="mini-card-num mono">?<span className="mini-card-denom">/{TOTAL_POINTS}</span></span>
     </span>
   );
 }

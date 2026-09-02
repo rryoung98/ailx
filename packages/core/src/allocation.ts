@@ -82,18 +82,34 @@ export interface TrackAllocation {
 }
 
 /**
- * T1 · Creative Build — 160 pts, the flagship.
+ * T1 · Creative Build — 135 pts, the flagship.
  *
- * `process` is new and it is the point of the promotion: the prompt-log
- * signal `score.ts` already computed was reported and then discarded, so the
- * only evidence separating "directed a model well" from "already knew how to
- * build a website" earned nothing.
+ * It was 160 for one day. The extra 25 were a `process` component scoring the
+ * prompt log, and TEN-80's evidence spike killed it: no published study
+ * validates a volume-monotone process score of AI-assisted work against an
+ * independent outcome, and where volume HAS been measured against a real
+ * outcome it is null-to-negative (Copilot raw completions r = 0.01 n.s.
+ * against a ratio measure rho = 0.24; dialogue turns r = -0.01 against
+ * expert-rated artefact quality; help-seeking volume r = -0.46 with learning
+ * gain). The two operational programmes that score process — PISA 2012
+ * problem solving and USMLE Step 3 CCS — score volume NON-monotonically,
+ * removing credit for excess actions, which is the inverse of what we did.
+ *
+ * The points were REMOVED, not redistributed. The evidence supports deleting
+ * a scored component; it says nothing about the other four being worth more,
+ * and re-weighting them would have smuggled an unevidenced change in behind
+ * an evidenced one. So T1 is 135 and the instrument is 375.
+ *
+ * `processSignal()` is still computed and still reported in `raw` as
+ * `process.signal`. Collecting process data is defensible — NAEP and PIAAC
+ * both collect it and neither scores it. Scoring it is the trap.
  */
 const T1: TrackAllocation = {
   code: "T1",
   construct: "Directed creative build — take a brief to a shipped artefact with a model",
   scored: true,
-  compositeWeight: 0.4,
+  // 135/375. Proportional to points, like every other track.
+  compositeWeight: 135 / 375,
   components: [
     {
       key: "functional",
@@ -134,14 +150,6 @@ const T1: TrackAllocation = {
       resolvedBy: "llm-judge",
       implemented: true,
     },
-    {
-      key: "process",
-      rubricId: "process-signal",
-      label: "Prompt-log process signal",
-      points: 25,
-      resolvedBy: "model-free",
-      implemented: true,
-    },
   ],
 };
 
@@ -159,7 +167,8 @@ const T2: TrackAllocation = {
   construct:
     "Synthetic-media discrimination — sensitivity AND criterion, not AI literacy",
   scored: true,
-  compositeWeight: 0.2,
+  // 80/375.
+  compositeWeight: 80 / 375,
   components: [
     {
       key: "sensitivity",
@@ -219,7 +228,8 @@ const T3: TrackAllocation = {
   construct:
     "Calibrated reliance — when to use the model and when not to, measured two-tailed",
   scored: true,
-  compositeWeight: 0.4,
+  // 160/375.
+  compositeWeight: 160 / 375,
   components: [
     {
       key: "overReliance",

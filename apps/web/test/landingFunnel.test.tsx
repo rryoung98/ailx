@@ -13,6 +13,7 @@
  *    do (the static export records nothing and has no /progress);
  *  - nothing on the page states a score, a band, a percentile or a norm.
  */
+import { TOTAL_POINTS } from "@ailx/core";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -180,11 +181,16 @@ describe("nothing on the front door implies a score", () => {
     }
   });
 
-  it("shows the 400-point scale without inventing a result", async () => {
+  /**
+   * The denominator is READ from the allocation table (TEN-80 moved it from
+   * 400 to 375), so this asserts the live total rather than a literal.
+   */
+  it("shows the instrument's point scale without inventing a result", async () => {
     const h = await render();
     const mini = h.querySelector(".mini-card-score")!;
-    expect(mini.textContent).toContain("?/400");
-    expect(mini.textContent).not.toMatch(/\d+\.\d\s*\/\s*400/);
+    expect(TOTAL_POINTS).toBe(375);
+    expect(mini.textContent).toContain(`?/${TOTAL_POINTS}`);
+    expect(mini.textContent).not.toMatch(/\d+\.\d\s*\/\s*\d/);
   });
 
   it("says plainly that the credential is not a grade", async () => {

@@ -81,7 +81,7 @@
         },
         "rubric": {
           "track": "t1-creative-build",
-          "total_points": 160,
+          "total_points": 135,
           "criteria": [
             {
               "id": "functional-gates",
@@ -110,18 +110,11 @@
               "points": 15,
               "scored_by": "judge",
               "judged": true
-            },
-            {
-              "id": "process-signal",
-              "name": "Prompt-log process signal",
-              "points": 25,
-              "scored_by": "arithmetic",
-              "judged": false
             }
           ]
         },
         "prompts": [],
-        "rubricVersion": "81ff5ad77d2a639a1e65bba8ea466bbbf5791e416047784824b6079decd92af1"
+        "rubricVersion": "3d340041ab0f1765a5e623ed03797f1605504462c4eaf9ebdac7b58bf1c32543"
       },
       {
         "trackId": "t2-discrimination",
@@ -873,7 +866,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "a6645a15664e2f34e4f84213ec57190580941cdee11f4c58a9ba7ecf48511bc1"
+          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -897,17 +890,17 @@
         },
         {
           "path": "src/score.ts",
-          "sha256": "06b193ad1fcfe118f6745260ec0e23367c500e968db8d283bd3a580a2c885c28"
+          "sha256": "fdce4ff1b52841a8442333f1b79b6ede5259bea13ab0905e202ce76af031e762"
         },
         {
           "path": "src/types.ts",
-          "sha256": "886aa536f10d668b9597f28bdb1e6ca287705f4794586e24127b3135dbba31e7"
+          "sha256": "69e4a0b960533ae1697000f937152d6c098c89255456cda021a0948b357108e6"
         }
       ],
       "externals": [
-        "@ailx/core@0.3.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "2ee0fbc8ded5cf83e7cb0eff69e7f2796d06f635cc42af0a837e3e0017e32ca8"
+      "digest": "5e5abfdb8a1dc9220aec1d13d80ce9bfc026bbf5e10425dea5281f15a521d906"
     },
     {
       "trackId": "t2",
@@ -916,7 +909,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "a6645a15664e2f34e4f84213ec57190580941cdee11f4c58a9ba7ecf48511bc1"
+          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -944,9 +937,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.3.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "44c6f8dae3fa1af8b4e6bd3037c8c0bfb797e5e8bcfc3ac6928011c26a04d33f"
+      "digest": "4ac4a4584c622fb9c2ac37781dbdb56bfbce9b1089556fcf573c33175a14f511"
     },
     {
       "trackId": "t3",
@@ -955,7 +948,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "a6645a15664e2f34e4f84213ec57190580941cdee11f4c58a9ba7ecf48511bc1"
+          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -987,9 +980,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.3.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "c56ed5a8a4f8f51b3a27bb6fa1a2dd7900efe6362ee36f1bcc832dcc62858f5b"
+      "digest": "049db8670e4190a0b6b0356df5fdee328714e6f21f585bd9198896851409eed8"
     },
     {
       "trackId": "t4",
@@ -1026,9 +1019,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.3.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "6f5f5a3343019e049c0986f4223e67ec6714eccdd6dd210251395509d61c6672"
+      "digest": "e42beeeb13006c950338b2dc6d80569da42048b74548f78f574f7234903f6561"
     }
   ]
 }

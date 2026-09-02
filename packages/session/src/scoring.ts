@@ -55,7 +55,11 @@ export const JUDGE_RESOLVED_TRACKS: readonly TrackId[] = ["t1", "t3", "t4"];
  * dropping T4 and keeping "equal weighting" would have RAISED T2 from a
  * quarter of the composite to a third — the exact opposite of the demotion
  * the point allocation just made. Weighting by declared points is what makes
- * the two agree: T1 .40, T2 .20, T3 .40.
+ * the two agree: T1 135/375, T2 80/375, T3 160/375.
+ *
+ * The same mechanism is why removing T1's 25-point process component (TEN-80)
+ * moved all three weights and not just T1's: a share of a smaller instrument
+ * is a bigger share. Nothing was re-weighted by hand.
  *
  * It stays a policy choice, restated annually. It is now a policy choice that
  * says the same thing twice instead of two things at once.
