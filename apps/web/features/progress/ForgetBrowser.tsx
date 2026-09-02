@@ -10,7 +10,7 @@
  * browser simply stops claiming that identity, and the next round of practice
  * mints a new one.
  */
-import { clearDevUser } from "./persistence";
+import { clearDevUser } from "../../lib/persistence";
 
 export function ForgetBrowser() {
   return (

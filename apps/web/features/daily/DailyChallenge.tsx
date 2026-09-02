@@ -16,7 +16,7 @@
  * that was exported, and on the first day after a deploy it would be the
  * WRONG day.
  *
- * IT NEEDS NO ACCOUNT AND NO NETWORK. State is `lib/dailyState.ts`, which is
+ * IT NEEDS NO ACCOUNT AND NO NETWORK. State is `features/daily/dailyState.ts`, which is
  * localStorage; nothing here reads an identity, and the round plays offline.
  *
  * IT IS NOT A SITTING. No answer here reaches `score()`, a report figure or a
@@ -40,12 +40,12 @@ import {
   type DailyResult,
   type DailyRound,
 } from "@ailx/report";
-import { DAILY_POOL } from "./demoItems";
+import { DAILY_POOL } from "../../lib/demoItems";
 import { readDailyLedger, recordDailyRoundLocally } from "./dailyState";
-import { funnel } from "./funnel";
-import { assetUrl, basePath } from "./mode";
-import { ShareTargets } from "../components/ShareTargets";
-import styles from "./PracticeDrill.module.css";
+import { funnel } from "../../lib/funnel";
+import { assetUrl, basePath } from "../../lib/mode";
+import { ShareTargets } from "../../components/ShareTargets";
+import styles from "../practice/PracticeDrill.module.css";
 
 /** Minutes EAST of UTC — the sign convention `dailyDay` expects. */
 function utcOffsetMinutes(): number {

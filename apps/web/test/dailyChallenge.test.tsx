@@ -20,6 +20,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { BROWSER_ROOTS } from "./helpers/browserSources";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -33,14 +34,15 @@ import {
   parseDailyLedger,
   serializeDailyLedger,
 } from "@ailx/report";
-import { DailyChallenge } from "../lib/DailyChallenge";
+import { DailyChallenge } from "../features/daily/DailyChallenge";
 import { DAILY_POOL } from "../lib/demoItems";
 import { ATTEMPT_KEY, LOCAL_PRACTICE_KEY } from "./helpers/keys";
 
 const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * The app's own import graph, over `app/` and `lib/`.
+ * The app's own import graph, over every directory in BROWSER_ROOTS:
+ * `app/`, `components/`, `features/` and `lib/`.
  *
  * Specifiers come from the TypeScript parser — `import`, `export … from` and
  * dynamic `import()` — so one written in a comment or a string is not one, and
@@ -153,7 +155,7 @@ function resolveImport(from: string, spec: string): string | null {
 }
 
 const MODULE_GRAPH = new Map<string, { imports: ParsedImport[]; files: string[] }>(
-  [...sourceFiles(join(WEB_ROOT, "app")), ...sourceFiles(join(WEB_ROOT, "lib"))].map((rel) => {
+  BROWSER_ROOTS.flatMap((root) => sourceFiles(join(WEB_ROOT, root))).map((rel) => {
     const imports = fileImports(rel);
     const files = imports
       .map((i) => resolveImport(rel, i.specifier))
@@ -400,7 +402,7 @@ describe("the pool is published material and nothing else", () => {
  */
 describe("the daily never touches the credential", () => {
   /** The daily's own modules. */
-  const DAILY_MODULES = ["lib/dailyState.ts", "lib/DailyChallenge.tsx"];
+  const DAILY_MODULES = ["features/daily/dailyState.ts", "features/daily/DailyChallenge.tsx"];
   /** The modules that score a sitting, keep its log, or show a credential. */
   const SCORING_MODULES = [
     "lib/registry.ts",

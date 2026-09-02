@@ -6,7 +6,7 @@
  * day, a spoiler-free grid, and a streak. Everything that decides WHICH cards
  * and WHAT the grid says is here, pure and injectable; the words that travel
  * with the grid are in `./shareText.ts` (one module owns share copy), the
- * browser state is `apps/web/lib/dailyState.ts`, and the page is
+ * browser state is `apps/web/features/daily/dailyState.ts`, and the page is
  * `apps/web/app/daily`.
  *
  * FOUR RULES THIS MODULE EXISTS TO HOLD.

@@ -10,7 +10,7 @@ import {
   ARTEFACT_FAMILIES,
   FAMILY_META,
 } from "@ailx/report";
-import { PracticeDrill } from "../../lib/PracticeDrill";
+import { PracticeDrill } from "../../features/practice/PracticeDrill";
 import { isServerMode } from "../../lib/mode";
 
 /**

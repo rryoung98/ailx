@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { GalleryView } from "../../lib/GalleryView";
+import { GalleryView } from "../../features/gallery/GalleryView";
 import { PageLoading } from "../../components/PageNotice";
 
 /**
@@ -11,7 +11,7 @@ import { PageLoading } from "../../components/PageNotice";
  * and the static build links to the T4 community wall at /wall instead.
  *
  * The file is now a server shell for `metadata` alone — a client component
- * cannot export it. The page is `lib/GalleryView.tsx`, which fetches
+ * cannot export it. The page is `features/gallery/GalleryView.tsx`, which fetches
  * `apiBase()/gallery` over HTTP (docs/ARCHITECTURE.md §10.1). The Suspense
  * boundary is what `useSearchParams` requires; the page is force-dynamic, so
  * it is a formality rather than a render path.

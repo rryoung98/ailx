@@ -35,7 +35,7 @@ They are not funnel metrics and must never be copied into one.
 |---|---|---|---|---|
 | 1 | Session | `visit_started` | the emitter, on the first event of a browsing session | a browser opened AILX. Carries `newClient`. |
 | 2 | Landing | `landing_viewed` | `app/page.tsx` | somebody was on the front page. |
-| 3 | Play started | `play_started` | `lib/PracticeDrill.tsx`, `lib/DailyChallenge.tsx` | a person called their FIRST card of a round. |
+| 3 | Play started | `play_started` | `features/practice/PracticeDrill.tsx`, `features/daily/DailyChallenge.tsx` | a person called their FIRST card of a round. |
 | 4 | Play completed | `play_completed` | the same two components | the last card of that round was called. Carries `answered`. |
 | 5 | Return D1/D7 | derived, see below | (none) | the same client id came back. |
 | 6 | Identity | `signed_in` | `lib/auth/FunnelIdentity.tsx` | an account exists and this browser holds it. |

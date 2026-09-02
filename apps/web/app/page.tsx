@@ -3,7 +3,7 @@ import { Annotation } from "../components/ui/Annotation";
 import { FunnelStep } from "../components/FunnelStep";
 import { HeroCanvas } from "../features/landing/HeroCanvas";
 import { PillCTA } from "../components/ui/PillCTA";
-import { PracticeDrill } from "../lib/PracticeDrill";
+import { PracticeDrill } from "../features/practice/PracticeDrill";
 import { Reveal } from "../components/ui/Reveal";
 import { CharacterPortrait } from "../components/CharacterPortrait";
 import { CampusJourney } from "../features/landing/track3d/CampusJourney";

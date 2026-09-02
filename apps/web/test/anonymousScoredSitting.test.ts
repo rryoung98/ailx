@@ -166,7 +166,7 @@ describe("the practice ledger is nowhere near a sitting", () => {
 
 describe("the drill's own separation holds for an anonymous player", () => {
   it("keeps practice out of every scored surface, in the drill and in the ledger", () => {
-    for (const file of ["lib/PracticeDrill.tsx", "lib/localPractice.ts"]) {
+    for (const file of ["features/practice/PracticeDrill.tsx", "lib/localPractice.ts"]) {
       const code = read(file).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
       // The drill may not reach the scored bank, the attempt log, or score().
       expect(code, file).not.toMatch(/bank\.jsonl|demoItems|scoreTrack|track_scored|\/attempts/);

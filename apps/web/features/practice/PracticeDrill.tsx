@@ -41,9 +41,9 @@ import {
   type ProgressReport,
   type StreakSummary,
 } from "@ailx/report";
-import { authHeaders } from "./authHeaders";
-import { useIdentity } from "./auth/identityState";
-import { funnel } from "./funnel";
+import { authHeaders } from "../../lib/authHeaders";
+import { useIdentity } from "../../lib/auth/identityState";
+import { funnel } from "../../lib/funnel";
 import {
   localStreakSummary,
   readLastClaim,
@@ -51,8 +51,8 @@ import {
   subscribeLocalPractice,
   utcOffsetMinutes,
   type ClaimOutcome,
-} from "./localPractice";
-import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "./mode";
+} from "../../lib/localPractice";
+import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
 
 import styles from "./PracticeDrill.module.css";
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ModerationCaseView } from "../../../lib/ModerationCaseView";
+import { ModerationCaseView } from "../../../features/review/ModerationCaseView";
 
 /**
  * /review/<share id> — one moderation case.
@@ -7,7 +7,7 @@ import { ModerationCaseView } from "../../../lib/ModerationCaseView";
  * Still `page.api.tsx`: the extension keeps a database-backed page out of the
  * static GitHub Pages export, and it does not oblige the file to be
  * server-only. This shell exists to export `metadata`, which a client
- * component cannot; the page is `lib/ModerationCaseView.tsx`,
+ * component cannot; the page is `features/review/ModerationCaseView.tsx`,
  * which fetches `apiBase()/moderation/<id>` with the reviewer's identity in
  * the header (docs/ARCHITECTURE.md §10.1).
  */

@@ -37,7 +37,7 @@ import {
   type StubbedCall,
 } from "./helpers/clientPage";
 import { setAuthTokenSource } from "../lib/authHeaders";
-import { ProgressView } from "../lib/ProgressView";
+import { ProgressView } from "../features/progress/ProgressView";
 import { metadata } from "../app/progress/page.api";
 
 installMemoryStorage();

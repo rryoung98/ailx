@@ -57,7 +57,7 @@ let search = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({ useSearchParams: () => search }));
 
-const { GalleryView } = await import("../lib/GalleryView");
+const { GalleryView } = await import("../features/gallery/GalleryView");
 const { metadata } = await import("../app/gallery/page.api");
 
 /** Stand in for GET /gallery: parse the query the way the handler does. */

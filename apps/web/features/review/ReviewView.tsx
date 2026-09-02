@@ -34,10 +34,10 @@ import {
   type CaseListing,
   type ModerationCase,
 } from "@ailx/contract";
-import { GalleryCard } from "../components/GalleryCard";
-import { PageError, PageLoading } from "../components/PageNotice";
+import { GalleryCard } from "../../components/GalleryCard";
+import { PageError, PageLoading } from "../../components/PageNotice";
 import { ReviewActions } from "./ReviewActions";
-import { firstValueQuery, useService } from "./serviceFetch";
+import { firstValueQuery, useService } from "../../lib/serviceFetch";
 
 const EYEBROW = "AILX MODERATION · STAFF ONLY";
 const TITLE = "What is waiting, and what we decided.";

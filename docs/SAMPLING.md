@@ -408,7 +408,7 @@ it feeds points, feeds a diagnostic, or feeds nothing.
 | `activeSeconds`, `timedOut`, the rushed-run rule | `packages/report/src/insights.ts`, `diagnosis.ts`, `share.ts` | **Diagnostic prose only** ("ended on the clock, not on submission") |
 | `latencyMs`, `tRelMs` in the statement export | `packages/report/src/exportTiers.ts` | **Nothing scored.** Research export tiers |
 | The composite | `packages/session/src/scoring.ts` | **Points, no clock.** Within-cohort z-scores of track points with declared track weights |
-| `PracticeDrill` latency | `apps/web/lib/PracticeDrill.tsx` | **Nothing.** The practice loop carries no score of record |
+| `PracticeDrill` latency | `apps/web/features/practice/PracticeDrill.tsx` | **Nothing.** The practice loop carries no score of record |
 
 Two honest residuals.
 

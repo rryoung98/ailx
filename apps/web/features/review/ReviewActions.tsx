@@ -13,8 +13,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiPath, REJECT_REASON_MAX } from "@ailx/contract";
-import { authHeaders } from "./authHeaders";
-import { apiBase } from "./mode";
+import { authHeaders } from "../../lib/authHeaders";
+import { apiBase } from "../../lib/mode";
 
 
 type Busy = "approve" | "reject" | null;

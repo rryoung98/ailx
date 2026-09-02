@@ -153,7 +153,7 @@ describe("landing", () => {
 describe("the practice drill", () => {
   /** Play every card of the dealt round. */
   async function playRound(): Promise<void> {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     if (host === null) await render(PracticeDrill);
     for (let i = 0; ; i++) {
       const call = buttons().find((b) => PRACTICE_OPTIONS.includes((b.textContent ?? "") as never));
@@ -167,13 +167,13 @@ describe("the practice drill", () => {
   }
 
   it("counts no play until a card is actually called", async () => {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     await render(PracticeDrill);
     expect(await steps()).not.toContain("play_started");
   });
 
   it("counts one start and one completion for one round", async () => {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     await render(PracticeDrill);
     await playRound();
     const seen = await events();
@@ -189,7 +189,7 @@ describe("the practice drill", () => {
   });
 
   it("counts a second round in the same day as a second play", async () => {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     await render(PracticeDrill);
     await playRound();
     await click(/Another round/i);
@@ -212,7 +212,7 @@ describe("the daily", () => {
   }
 
   it("counts one start on the first card and one completion on the last", async () => {
-    const { DailyChallenge } = await import("../lib/DailyChallenge");
+    const { DailyChallenge } = await import("../features/daily/DailyChallenge");
     await render(DailyChallenge);
     expect(await steps()).not.toContain("play_started");
     await playDaily();

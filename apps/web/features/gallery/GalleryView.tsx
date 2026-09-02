@@ -23,9 +23,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiPath, type GalleryListing, type GalleryQuery } from "@ailx/contract";
-import { GalleryCard } from "../components/GalleryCard";
-import { PageError, PageLoading } from "../components/PageNotice";
-import { firstValueQuery, useService } from "./serviceFetch";
+import { GalleryCard } from "../../components/GalleryCard";
+import { PageError, PageLoading } from "../../components/PageNotice";
+import { firstValueQuery, useService } from "../../lib/serviceFetch";
 
 const EYEBROW = "PUBLIC GALLERY · PUBLISHED BY THEIR OWNERS";
 const TITLE = "What people can actually do with AI.";

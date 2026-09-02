@@ -51,13 +51,13 @@ import {
 } from "@ailx/report";
 import { apiPath } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
-import { hasAuthTokenSource } from "./authHeaders";
+import { hasAuthTokenSource } from "../../lib/authHeaders";
 import { ForgetBrowser } from "./ForgetBrowser";
-import { PageError, PageLoading } from "../components/PageNotice";
-import { useService } from "./serviceFetch";
+import { PageError, PageLoading } from "../../components/PageNotice";
+import { useService } from "../../lib/serviceFetch";
 // The stylesheet stays co-located with the route it dresses (and is pinned
 // there by test/practiceDrill.test.tsx); only the markup moved out of app/.
-import styles from "../app/progress/progress.module.css";
+import styles from "../../app/progress/progress.module.css";
 
 const EYEBROW = "YOUR PROGRESS";
 

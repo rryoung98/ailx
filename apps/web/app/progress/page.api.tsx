@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ProgressView } from "../../lib/ProgressView";
+import { ProgressView } from "../../features/progress/ProgressView";
 
 /**
  * /progress — one person's trajectory.
@@ -7,7 +7,7 @@ import { ProgressView } from "../../lib/ProgressView";
  * Still `page.api.tsx`: the extension is what keeps a database-backed page
  * out of the static GitHub Pages export (next.config.mjs `pageExtensions`).
  * It does not oblige the file to be server-only, so this is now a shell
- * around `lib/ProgressView.tsx` whose only job is `metadata` — including the
+ * around `features/progress/ProgressView.tsx` whose only job is `metadata` — including the
  * `noindex` that matters most here, because the page is one person's history.
  *
  * The view fetches `apiBase()/progress` and carries its identity in the

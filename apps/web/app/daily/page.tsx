@@ -6,7 +6,7 @@ import {
   DAILY_STREAK_MEANING,
   PRACTICE_EFFICACY_NOTE_SHORT,
 } from "@ailx/report";
-import { DailyChallenge } from "../../lib/DailyChallenge";
+import { DailyChallenge } from "../../features/daily/DailyChallenge";
 import { DAILY_POOL } from "../../lib/demoItems";
 
 /**
