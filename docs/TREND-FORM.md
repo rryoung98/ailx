@@ -9,6 +9,8 @@ Companion documents: `docs/SAMPLING.md` §12.1 (the basket problem, which this f
 `AILX-Spec-2026.1.md` §09 (three-tier item pool, cross-year comparability) and §14 (re-versioning).
 
 Marking follows `docs/SAMPLING.md`. **VERIFIED** means a primary source was read and is cited.
+**QUALIFIED** means the source was read and says something narrower than the claim it was cited for;
+the narrower reading is written out.
 **ESTIMATE** means an engineering judgement with the reasoning shown. **DECLARED** means a threshold
 we chose rather than derived, which is not the same as a finding. **UNKNOWN** means we do not know
 and have not pretended to.
@@ -163,13 +165,33 @@ thresholds so the analysis is not read backwards.
    or group differences in response times" (Hassenstab et al. 2023, via `docs/SAMPLING.md` §6).
    **VERIFIED.** A 105 ms spread is small against a 25-second item and large against nothing else we
    log, so this is a screen, not a verdict.
-2. **Near-perfect clustering.** In a 2,000-person synthetic-media detection study, **0.1% got
-   everything right** (`AILX-Spec-2026.1.md` §09). **VERIFIED.** Flag: more than **1%** of a wave's
-   sittings above the previous wave's 99th percentile of anchor accuracy. DECLARED.
+2. **Near-perfect clustering.** The base rate for a perfect score on this task is close to zero.
+   The number the spec quotes — "In a 2,000-person study, 0.1% correctly classified every item"
+   (`AILX-Spec-2026.1.md` §09) — traces to an iProov press release of 12 February 2025: "The study
+   tested 2,000 UK and US consumers ... only 0.1% of participants could accurately distinguish real
+   from fake content across all stimuli"
+   (https://www.iproov.com/press/study-reveals-deepfake-blindspot-detect-ai-generated-content).
+   **QUALIFIED, and weakly.** iProov sells anti-deepfake products, the release names no sampling
+   frame, item count or method, there is no peer-reviewed write-up, and participants were "primed to
+   look for deepfakes". It is a rate of *perfect scores*, not mean accuracy. Treat it as an order of
+   magnitude, not a figure. The flag does not rest on it in any case, because it is set against our
+   own previous wave: more than **1%** of a wave's sittings above the previous wave's 99th percentile
+   of anchor accuracy. DECLARED.
 3. **Item-level drift on the canary subset.** The 8 canary items go to a one-in-eight random
    subsample and so accumulate an eighth of the core's exposure. A core-minus-canary gap that opens
-   over waves is therefore contamination telemetry rather than population change. This is ARC-AGI's public-vs-secure gap method, which the spec already adopts,
-   applied inside the anchor. The cost is that the canary items carry an eighth of the sample and so
+   over waves is therefore contamination telemetry rather than population change. This is ARC-AGI's
+   public-vs-secure gap method, which the spec already adopts, applied inside the anchor. ARC Prize
+   states it directly: "We also monitor for overfitting by tracking the performance gap between
+   Public and Semi-Private tasks over time. Because Public tasks are openly available and therefore
+   more susceptible to overfitting, the gap between Public and Semi-Private performance is
+   informative" (*ARC Prize Verified Testing Policy*, https://arcprize.org/policy). **VERIFIED.**
+   Read the direction carefully, because ours is the mirror image of theirs. ARC's exposed set is
+   the *public* one, so ARC reads a **narrowing** gap as the held-out set leaking. Our exposed set
+   is the *core*, which carries eight times the canary's exposure, so we read a **widening**
+   core-minus-canary gap as the core leaking. Same logic, opposite sign, and the sign is easy to
+   copy wrongly. ARC also fixes numeric agreement bands (±10 pp for ARC-AGI-1, ±3 pp for ARC-AGI-2,
+   ±15 pp for ARC-AGI-3, same page); we have no equivalent band, which is the same gap as the
+   unknown detection floor below. The cost is that the canary items carry an eighth of the sample and so
    detect only a gross leak; **we do not know the smallest gap this design can detect**, and what
    would tell us is a simulation on wave-1 response data.
 4. **Person fit.** High accuracy on the hardest anchor items with chance-level accuracy on the
@@ -188,8 +210,8 @@ Pre-decided, so that nobody argues about it while holding the result:
 2. **Rebuild the line on the surviving items.** Drop every item that is known-leaked or that flagged
    on two of the four signals, and recompute the whole back series on that reduced set so the
    comparison stays like-for-like. If **fewer than 20 items survive**, or the media/message balance
-   collapses, there is no trend statement for that wave — publish the level only. The 20 is the
-   standard common-item floor (§4.2).
+   collapses, there is no trend statement for that wave — publish the level only. The 20 is
+   **ours, DECLARED**, set against Angoff's common-item rule of thumb rather than derived (§4.2).
 3. **Start the successor** and run it beside the incumbent for the following wave, accepting that the
    bridge is contaminated on one side and reporting the linking error as unbounded.
 4. **Do not quietly patch the form.** An anchor that gained four replacement items in 2029 is a
@@ -210,7 +232,12 @@ about that number.
 - **Planned replacement runs an overlap wave.** The successor anchor is fielded in the same wave as
   the incumbent, on the same respondents, before the incumbent retires. That wave produces the link
   between the two frozen lines, and it is the only thing that makes the series survive the change.
-  NAEP calls this a bridge study.
+  NAEP calls this a bridge study, and runs it on randomly equivalent groups rather than on the
+  same people: in 2004 "students were randomly assigned to take either the original assessment or
+  the revised assessment" (NCES, *2004 Bridge Study*,
+  https://nces.ed.gov/nationsreportcard/ltt/bridge_study.aspx). **VERIFIED.** Ours is a
+  single-group design (§4.1, link 2), which is the stronger of the two and only available because
+  our anchor is short.
 - **The link is reported, never assumed.** The overlap wave publishes the transformation and its
   linking error. If the two anchors do not correlate at a pre-registered floor, the series is
   reported as two series with a break, not as one line.
@@ -226,21 +253,77 @@ about that number.
 | A media format stops rendering in shipped browsers | A codec deprecation is a silent form change. This is the trigger people forget. |
 | The renderer changes | See §5.3. A UI change is a form change. |
 
-**NAEP is the reference, and we differ from it in four ways.** NAEP runs a Long-Term Trend
-assessment beside main NAEP: substantially unchanged items, first fielded in the early 1970s,
-administered to fixed ages rather than grades, on a less frequent cycle, with bridge studies when
-anything must change. **UNVERIFIED at source level** — written from the standard account of the
-design, not from a re-read of the NCES documentation. The dates and the cycle must be checked
-before publication. The differences that matter for us:
+**NAEP Long-Term Trend is the reference.** NCES runs LTT beside main NAEP, and describes the
+frozen-instrument idea in its own words: "Because the long-term trend program uses substantially the
+same assessments decade after decade, it has been possible to chart educational progress since 1971
+in reading and 1973 in mathematics" (NCES, *More About the NAEP Long-Term Trend Assessment*,
+https://nces.ed.gov/nationsreportcard/ltt/moreabout.aspx), and "the LTT instruments do not evolve
+based on changes in curricula or in educational practices and the students assessed are sampled by
+age, not grade" (NCES, *Interpreting NAEP Long-Term Trend Results*,
+https://nces.ed.gov/nationsreportcard/ltt/interpreting_results.aspx). Ages 9, 13 and 17.
+**VERIFIED.**
+
+Two things we had wrong about it, both read the same way: a frozen instrument buys less than the
+standard account implies.
+
+- **The cycle is irregular, not merely slower.** NCES's rule is "since 2004, typically long-term
+  trend NAEP has measured student performance in mathematics and reading every four years"
+  (https://nces.ed.gov/nationsreportcard/about/ltt_main_diff.aspx). The record is not that: 2020,
+  2022 at age 9 only, 2023 at age 13 only, 2025 at ages 9 and 13, nothing in 2024, and the next LTT
+  on NCES's published calendar is **2033** (https://nces.ed.gov/nationsreportcard/about/calendar.aspx).
+  Age 17 was last assessed in 2012. Freezing a form does not keep a cadence; funding does.
+- **LTT is not frozen, it is bridged.** The 2004 revision replaced outdated material, dropped the
+  blocks for discontinued subjects, and changed administration, and the results are still published
+  in two eras: "Results for 1971–99 are from the original assessment format, and results for 2004–25
+  are from the revised assessment format" (2025 report card,
+  https://www.nationsreportcard.gov/ltt/2025/). The most-cited frozen instrument in the world was
+  replaced once and says so on the chart. §3's overlap wave is the same admission made in advance.
+
+The differences that matter for us:
 
 1. **NAEP's construct does not rot; ours does.** Reading in 1971 is reading in 2026. Detecting
    2026-vintage synthetic media in 2036 is a period piece. Our hold is measured in a handful of
    years, not fifty.
-2. **NAEP has a probability sample of schools and compulsory attendance behind it.** We buy a panel,
-   and our anchor rides in a form respondents may abandon (`docs/SAMPLING.md` §8.3).
-3. **NAEP's items are paper-equivalent and device-neutral.** Ours are rendered media, and the
-   renderer is part of the instrument.
-4. **NAEP publishes its trend as the main event.** Ours is explicitly a subscale, not the index.
+2. **NAEP LTT rides a probability sample of schools; we buy a panel.** NCES: "the selection process
+   utilizes a probability sample design in which every school and student has a chance to be
+   selected" (NAEP Technical Documentation, *Sample Design*,
+   https://nces.ed.gov/nationsreportcard/tdw/sample_design/). **VERIFIED.** Our anchor rides in a
+   form respondents may abandon (`docs/SAMPLING.md` §8.3). **An earlier draft of this document said
+   NAEP has "compulsory attendance" behind it. That is wrong and is now deleted.** Student
+   participation in NAEP is voluntary — "Does my child have to take NAEP? No. Unlike your state's
+   assessment, which is mandatory for students, NAEP is voluntary"
+   (https://nces.ed.gov/nationsreportcard/parents/) — and the Title I mandate covers state NAEP in
+   reading and mathematics at grades 4 and 8, not LTT, which is a national-only sample. What NAEP
+   gets is a compulsory-schooling sampling frame and a high response rate on top of it: 91% at age 9
+   and 89% at age 13 in 2025 (https://www.nationsreportcard.gov/ltt/2025/about/?age=9). That is the
+   real gap between NAEP and a bought panel, and it is a response-rate gap, not a legal one.
+3. **NAEP LTT is paper; ours is rendered media.** "Since its inception, the long-term trend
+   assessment has been administered in a paper-and-pencil format" (2025 report card, About tab,
+   https://www.nationsreportcard.gov/ltt/2025/about/?age=9). **VERIFIED — of LTT only.** Do not say
+   this about NAEP: main NAEP is digital, and "In 2017, the NAEP program officially transitioned
+   from paper-based assessments (PBAs) to digitally based assessments (DBAs) in mathematics and
+   reading" (NAEP Technical Documentation, *NAEP Instruments*,
+   https://nces.ed.gov/nationsreportcard/tdw/instruments/), on tablets and laptops with multimedia
+   items. NCES treats the mode change as a threat to the trend and bridges it. So does §5.3.
+
+**A fourth difference we claimed is not a difference.** An earlier draft said NAEP publishes its
+trend as the main event while ours is a subscale. NCES does not frame LTT that way. LTT sits under
+"Special Reports" in NCES's own navigation, reports for the nation only, carries no achievement
+levels ("There are no NAEP achievement levels to correspond with those used in main NAEP",
+https://nces.ed.gov/nationsreportcard/about/ltt_main_diff.aspx), and next runs in 2033, against main
+NAEP's two-year cadence with state and district results. NCES calls the two programmes "two major
+objectives" and ranks neither. NAEP agrees with us: the slow frozen line is a named special series,
+not the headline. That supports §1.2 and changes nothing in the design.
+
+**One place NAEP is not a precedent for us: secrecy.** §2.2 and §2.3 keep the anchor unreleased.
+NCES does close to the opposite with LTT. It publishes the instrument's shape — for 2025, "There
+were 78 questions at age 9 and 94 questions at age 13" (2025 report card, About tab) — and invites
+readers to "Explore long-term trend questions in the NAEP Questions Tool"
+(https://nces.ed.gov/nationsreportcard/ltt/what_measure_reading.aspx). We looked for an NCES
+statement that LTT items are held secure and **found none**. **The non-release rule in §2 is ours,
+not NAEP's**, and so is the argument for it: a paper booklet handed out and collected in a
+proctored school session is a different exposure surface from keyed media served to a panellist's
+own browser. Nobody has to agree with that argument, but it cannot be won by pointing at NCES.
 
 ---
 
@@ -276,15 +359,56 @@ observed-score linear equating as the published sensitivity check.** Reasons, in
 - It does not require an IRT fit. T2's response data has a documented distributional problem — a
   large fraction of a general population lands at or near chance (`docs/TRACK-REVIEW.md` §2.1) — and
   a lump at the bottom is exactly what breaks an IRT scaling.
-- Chained methods are the standard choice when the groups differ in ability, which two matrix blocks
-  or two panel years may. Levine's assumptions fail differently from chained ones, so the gap between
-  them is informative; publish both.
-- Standard guidance is that a common-item set should be **at least 20 items or 20% of the form,
-  whichever is larger**, and should mirror the full form in content and difficulty (Kolen & Brennan,
-  *Test Equating, Scaling, and Linking*). **UNVERIFIED at source level** — written from the standard
-  guidance, not from a re-read; confirm the exact wording before publication. The anchor core is 32
-  items and is itself the common set, so the floor is met with margin, and the 20-item figure is what
-  §2.5 falls back to after a leak.
+- Chained methods carry **less equating bias than poststratification (frequency estimation, Tucker)
+  when the groups differ appreciably in ability**, which two matrix blocks or two panel years may.
+  Brennan and Kolen's own simulation: "we recommend the frequency estimation method when group
+  differences are small, and the chained equipercentile method when group differences are large"
+  (Wang, Lee, Brennan & Kolen, 2006, CASMA Research Report No. 17, p. 8,
+  https://education.uiowa.edu/sites/education.uiowa.edu/files/2026-04/casma-research-report-17-archived.pdf).
+  ETS reaches the same conclusion (Sinharay & Holland, 2009, ETS RR-09-16, pp. 2–3,
+  https://files.eric.ed.gov/fulltext/ED507841.pdf). **QUALIFIED: an earlier draft called chained
+  "the standard choice", which is too strong.** Chained buys the lower bias with a **larger standard
+  error of equating** — the same report conjectures this is because "the frequency estimation
+  methods utilize two bivariate distributions while the chained methods only uses two pairs of
+  marginal distribution". Neither method's assumptions can be checked against the data: "there are
+  no data to allow us to contradict or help us choose between either set of assumptions" (Dorans,
+  Moses & Eignor, 2010, ETS RR-10-29, p. 22, https://files.eric.ed.gov/fulltext/ED523737.pdf).
+- Levine observed-score linear equating is Levine (1955, ETS RB-55-23). Its assumptions are stated
+  on true scores — true-score correlations of 1 with the anchor, equal true-score regression
+  coefficients, and equal measurement-error variance across populations (Albano, 2016, *Journal of
+  Statistical Software* 74(8) §4.3) — and it is "the true score analogue of the Tucker equating
+  method" (Dorans, Moses & Eignor, 2010, pp. 24–25). So its assumptions fail differently from
+  chained ones, and running both is recommended practice: "to uncover problems that might not reveal
+  themselves otherwise, it is important for operational testing programs to apply multiple equating
+  methods and study the differences among their results" (Sinharay & Holland, 2009, p. i).
+  **VERIFIED.** A gap between the two says an assumption set is strained. It does not say which
+  method is right, and we must not report it as if it did.
+- **The common-item floor, and who actually said it.** An earlier draft attributed "at least 20
+  items or 20% of the form, whichever is larger" to Kolen & Brennan. **That attribution is wrong.**
+  The "20 items or 20% ... whichever is larger" phrasing is **Angoff's** (1971/1984), quoted that
+  way by later writers who cite Angoff and Kolen & Brennan together (Michaelides, 2010, *Frontiers
+  in Psychology* 1:167, p. 4). Kolen & Brennan's own rule of thumb, as quoted with a page number by
+  others, is different and has no "whichever is larger": "a common-item set should be at least 20%
+  of the length of a total test containing 40 or more items" (*Test Equating, Scaling, and Linking*,
+  2nd ed. 2004, p. 271; the 3rd ed. 2014 states it in ch. 8, "Characteristics of Common-Item Sets",
+  pp. 287–289, adding "unless the test is very long, in which case 30 common items might suffice").
+  Note the relaxation runs the **opposite way** from "whichever is larger": for a long test they
+  allow proportionally fewer. **We did not read the book.** It is a Springer monograph, not open
+  access, and it is not on the Internet Archive in either edition; both quotations above are
+  second-hand, from Cao (2011, Univ. of Maryland dissertation, p. 38) and Sansivieri (2017, Univ.
+  of Bologna thesis, p. 10). **QUALIFIED, and cite it that way until somebody holds the book.**
+  What Kolen & Brennan are directly credited with in peer-reviewed work is the content rule:
+  "anchoring items should be proportionally representative of the total test in content and
+  statistical characteristics" (Wang et al., 2019, *Phys. Rev. Phys. Educ. Res.* 15, 010122, citing
+  the 3rd edition).
+- **And the "miniature" rule has been challenged.** Sinharay & Holland (2007, *Journal of
+  Educational Measurement*) find that "requiring an anchor test to mimic the statistical
+  characteristics of the total test may be too restrictive and need not be optimal". We read the
+  ERIC abstract (record EJ772961); the article is paywalled at Wiley and we did not read it.
+  **QUALIFIED, from the abstract only.**
+- The anchor core is 32 items and is itself the common set, so any of these floors is met with
+  margin. The 20-item figure §2.5 falls back to after a leak is therefore **ours, DECLARED, taking
+  Angoff's rule of thumb as the reference point** — it is not a Kolen & Brennan number.
 
 **Equate on item-level correct/incorrect responses, not on the reported T2 points.** The reported
 score passes through d′ with a declared floor of `D_PRIME_FLOOR = −1.0`, a criterion term and a
@@ -299,11 +423,49 @@ form id.
 
 ### 4.3 The assumptions
 
-1. The anchor items measure the same construct in both waves.
-2. Item parameters are invariant across the two groups: an item is as hard in 2027 as in 2026.
-3. The groups differ only in ability, not in what ability means.
-4. The anchor is a miniature of the form it links, in content and difficulty spread.
-5. Administration is identical: same exposure time, same order, same rendering, same instructions.
+An earlier draft ran these together as one list of five. They are two lists, and the difference
+matters: the first is what makes a linking an *equating* at all, and it is the literature's; the
+second is what our design and our chosen method add on top.
+
+**(a) The five requirements for a linking to be an equating.** Quoted from Dorans, Moses & Eignor
+(2010), ETS RR-10-29, pp. 4–5, restating Holland & Dorans (2006):
+
+> "1. The Equal Construct Requirement: The two tests should both be measures of the same construct
+> (latent trait, skill, ability). 2. The Equal Reliability Requirement: The two tests should have
+> the same level of reliability. 3. The Symmetry Requirement: The equating transformation for
+> mapping the scores of Y to those of X should be the inverse of the equating transformation for
+> mapping the scores of X to those of Y. 4. The Equity Requirement: It should be a matter of
+> indifference to an examinee as to which of two tests the examinee actually takes. 5. The
+> Population Invariance Requirement: The equating function used to link the scores of X and Y should
+> be the same regardless of the choice of (sub) population from which it is derived."
+
+**VERIFIED.** The same page records that Dorans and Holland (2000) say the five "can be criticized
+as being vague, irrelevant, impractical, trivial, or hopelessly stringent", and that Livingston
+(2004) holds requirements 4 and 5 to be unattainable in practice. They are a bar to be argued
+against, not a checklist to be ticked.
+
+**Our earlier list carried only requirement 1.** Requirements 2 to 5 were missing. Two of them have
+teeth here, and §10 flags what they would change:
+
+- **Equal reliability** binds the *successor* anchor (§3). A successor with a different reliability
+  from the incumbent does not equate to it, however well the overlap wave is run.
+- **Population invariance** is the cross-country claim. §4.4 already commits to DIF screening before
+  any cross-country trend statement; this is the requirement that screening serves.
+
+**(b) What our design and method add.** These are not equating requirements and should not be
+presented as if they were:
+
+1. Item parameters are invariant across the two groups: an item is as hard in 2027 as in 2026. This
+   is an IRT model assumption, and §4.4 says it is the one that fails here.
+2. The missing-data assumption of the method actually chosen. "The groups differ only in ability" is
+   too loose to be an assumption: chained commits us to the two chained links being population
+   invariant, poststratification to the conditional distributions being invariant, Levine to
+   congeneric true scores with equal error variances (Dorans, Moses & Eignor, 2010, pp. 22–25).
+   Picking a method picks one of these, and the pick is not testable against the data.
+3. The anchor is content-representative of the form it links. Design guidance rather than a
+   requirement, and its statistical half is contested (§4.2).
+4. Administration is identical: same exposure time, same order, same rendering, same instructions.
+   Ours, and stronger than the literature's, because our renderer is part of the instrument (§5.3).
 
 ### 4.4 What breaks them here
 
@@ -367,8 +529,17 @@ While one anchor is live there is no linking error, because there is no link: th
 bytes. The term enters the series **once per anchor generation**, at the overlap wave (§4.1, link 2),
 and from then on it sits inside every comparison that spans the replacement. It does not shrink with
 sample size. PIAAC Cycle 2's cross-cycle linking error is **3.27 for literacy and 2.95 for numeracy**
-on a 500-point scale, roughly ±0.07 SD — larger than our entire sampling error at n = 1,500.
-**VERIFIED** (`docs/SAMPLING.md` §4.2). Ours is unknown until an anchor is replaced. Guessing it
+— "The actual value of the linking error is 3.27 for literacy and 2.95 for numeracy" (OECD, 2024,
+*Do Adults Have the Skills They Need to Thrive in a Changing World? Survey of Adult Skills 2023*,
+Annex A, https://doi.org/10.1787/368bf665-en; repeated in *Education at a Glance 2025*).
+**VERIFIED**, with two qualifications. The PIAAC scale has mean 250 and SD 50, so 3.27 is roughly
+±0.07 SD, larger than our entire sampling error at n = 1,500; "a 500-point scale" is shorthand for
+the 0–500 reporting range, not a maximum. And the 2023 *Technical Report* prints **3.42** for
+literacy in Table 10.8 (p. 294) while giving the same 2.95 for numeracy, so cite the results report
+rather than the technical report for 3.27, and expect a reviewer to notice the pair. OECD adds the
+term in quadrature to the SE of a cross-cycle difference and explicitly does **not** apply it to
+changes in subgroup gaps, "as the associated uncertainty cancels out" — a rule we should copy when
+we report a subgroup trend on the anchor (`docs/SAMPLING.md` §4.2). Ours is unknown until an anchor is replaced. Guessing it
 before then would be inventing a number. `docs/SAMPLING.md` §4.2 requires the term in any trend
 interval; on a live anchor that requirement is satisfied by a term of zero, and the release must say
 which of the two cases it is in.
@@ -377,7 +548,16 @@ which of the two cases it is in.
 
 Freezing the items is not freezing the form. Exposure time is a measurement decision that AILX
 already declares — human accuracy on synthetic-image detection moves from **72% at 1 second to 82%
-at 20 seconds** (`AILX-Spec-2026.1.md` §04). **VERIFIED.** A 15% faster image decode, a new swipe
+at 20 seconds** (`AILX-Spec-2026.1.md` §04). The source is Kamali et al., *Characterizing
+Photorealism and Artifacts in Diffusion Model-Generated Images*, CHI '25, 749,828 observations from
+50,444 participants: "With just 1 second of display time, participants are 72% accurate ... While
+accuracy on real images appears to plateau by 5 seconds of display time, accuracy on AI-generated
+images increases up to 80% ... at 10 seconds and 82% ... at 20 seconds"
+(https://www.projects.science.uu.nl/ics-vig/uploads/Bibtex/Kamali2025Characterizing.pdf).
+**VERIFIED, and narrower than the spec's sentence implies:** the climb to 82% is on **AI-generated
+images only**, and accuracy on real images plateaus near 77%. Exposure time therefore moves the
+false-negative rate, not the whole accuracy figure. The sample is self-selected online, not a
+probability sample. A 15% faster image decode, a new swipe
 animation, a changed confidence control or a different default zoom is a change of the same kind.
 The anchor's renderer is therefore pinned by digest with its items, and a renderer change forces the
 same bridge wave a content change would.
@@ -391,7 +571,7 @@ Per cycle, per country, unless stated.
 | Line | Quantity | Note |
 |---|---|---|
 | Items authored, once | **56 units**: 32 media authored once, plus 8 message items × 3 languages = 24 | Media items carry no text of their own, so they are authored once and reused across locales; only the message items are written three times. Weighting the form toward media is partly a translation-cost decision. |
-| Items drafted to ship those | **~170** | Three drafted per one shipped; SWE-bench Verified filtered **68.3%** of candidates (`AILX-Spec-2026.1.md` §09). **VERIFIED** as their figure, **ESTIMATE** as ours. |
+| Items drafted to ship those | **~170** | Three drafted per one shipped. OpenAI: "our annotation process resulted in 68.3% of SWE-bench samples being filtered out due to underspecification, unfair unit tests, or other issues" (https://openai.com/index/introducing-swe-bench-verified/). **VERIFIED as their figure, QUALIFIED on its denominator:** 68.3% is of the **1,699** samples 93 annotators screened, not of SWE-bench's 2,294-item test set, and the 500-item Verified set was drawn from the ~539 survivors. The survival rate that matters to us, 1 in 3.2, is unchanged. **ESTIMATE** as ours. |
 | Human rater burden | **0** | No judged items. This is the strongest cost argument for a T2-only anchor. |
 | LLM judge calls | **0** | A judged anchor would instead need ~200 labelled calibration examples per language and a paired 20-item severity monitor per wave (`EVIDENCE-JUDGE-AGREEMENT.md` §1, §2). |
 | Testing minutes | **~14 min** for the 32-item core; **~17 min** for the one-in-eight who also get the canary items | 25 s per item, from T2's 120 items in 50 minutes. 23–31% of a 45–60 minute panel form, traded against response rate (`docs/SAMPLING.md` §8.3). **ESTIMATE.** |
@@ -464,3 +644,34 @@ findable.
   serving cost. That is the only route to a frozen line for 0.40 of the composite.
 - **The 30% / 5 pp / 1% / 10 pp / 20% thresholds in §2.4 and §3 are DECLARED, not derived.** Wave 1 gives the
   first baseline against which they can be re-set, and they should be re-set in public.
+- **The 20-item post-leak floor should be computed, not quoted.** Zhang & Kolen (2013, CASMA
+  Research Report No. 37) set out a procedure for choosing the number of common items needed for a
+  target equating precision rather than applying a fixed proportion; the string "20%" does not
+  appear in that report. Wave-1 response data is what makes that computation possible. Until then
+  the 20 is a placeholder (§4.2, §10).
+
+---
+
+## 10. What the citation check changed, and the one design decision it touches
+
+This revision corrected the sources, not the design, with one exception that a reviewer must decide.
+
+Corrected and now cited: NAEP LTT's dates, cadence and paper administration (§3); that NAEP
+participation is **voluntary**, not compulsory (§3); that NAEP does not treat LTT as its headline,
+so our "subscale, not the index" position agrees with NCES rather than differing from it (§3); that
+NCES does **not** keep LTT items secure, so §2's non-release rule is ours alone (§3); that
+"20 items or 20%, whichever is larger" is Angoff's rule of thumb and not Kolen & Brennan's (§4.2);
+that chained equipercentile is the lower-bias choice under large group differences rather than "the
+standard choice", and pays for it in standard error (§4.2); the PIAAC linking-error figures, their
+scale and the 3.42/3.27 discrepancy between two OECD publications (§5.2); the Kamali et al. source
+behind 72%→82%, and that the climb is on AI-generated images only (§5.3); the denominator behind
+SWE-bench's 68.3% (§6); and the iProov press release behind the 0.1% figure, which is a vendor claim
+and is marked as one (§2.4).
+
+**The decision a reviewer must take: the equal-reliability requirement at anchor replacement.**
+§4.3 now records that equating requires the two forms to have the same reliability. §3 and decision
+7 do not require this of a successor anchor; they require an overlap wave and a pre-registered
+correlation floor, which is a weaker test. If the requirement is accepted, decision 7 would have to
+become: *a successor anchor must match the incumbent's reliability, estimated on the overlap wave,
+and a mismatch is a break in the series rather than a link.* That is a real constraint on authoring
+a successor, and it is not being adopted here by an agent editing citations. Left open on purpose.
