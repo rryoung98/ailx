@@ -18,7 +18,7 @@ import Link from "next/link";
 import { TRACK_LIST } from "@ailx/report";
 import { TrackScene } from "./TrackScene";
 import { supportLine } from "./TrackBands";
-import { assetUrl } from "../mode";
+import { assetUrl } from "../../../lib/mode";
 
 export function CampusJourney() {
   return (

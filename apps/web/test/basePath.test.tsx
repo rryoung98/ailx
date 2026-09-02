@@ -79,8 +79,8 @@ describe.each(CONFIGS)("asset URLs under the $name basePath", ({ env, prefix }) 
     }
   });
 
-  it("track visuals resolve under the basePath (lib/TrackVisuals.tsx)", async () => {
-    const { t2VisualMedia } = await import("../lib/TrackVisuals");
+  it("track visuals resolve under the basePath (features/landing/TrackVisuals.tsx)", async () => {
+    const { t2VisualMedia } = await import("../features/landing/TrackVisuals");
     const media = t2VisualMedia();
     expect(media.length).toBeGreaterThan(0);
     for (const m of media) {

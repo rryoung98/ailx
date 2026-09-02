@@ -251,8 +251,8 @@ describe("header play pill", () => {
 
 describe("pill guard + scrub shortening", () => {
   it("teaser, connect panel and the landing CTAs are marked [data-pill-clear]", () => {
-    const teaser = readFileSync(join(appDir, "..", "lib", "Teaser.tsx"), "utf8");
-    const connect = readFileSync(join(appDir, "..", "lib", "ConnectPanel.tsx"), "utf8");
+    const teaser = readFileSync(join(appDir, "..", "features", "landing", "Teaser.tsx"), "utf8");
+    const connect = readFileSync(join(appDir, "..", "features", "exam", "ConnectPanel.tsx"), "utf8");
     expect(teaser).toContain("data-pill-clear");
     expect(connect).toContain("data-pill-clear");
     // The landing page is where the fixed pill actually sat on top of copy.

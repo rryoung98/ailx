@@ -169,7 +169,7 @@ nothing imported them.
 
 ## Runner faults and the clock (2026-08, exam-integrity fix)
 
-`apps/web/lib/RunnerErrorBoundary.tsx` now catches a track Runner that throws.
+`apps/web/features/exam/RunnerErrorBoundary.tsx` now catches a track Runner that throws.
 The route-level `app/error.tsx` / `app/global-error.tsx` also catches these errors.
 Before this change, one uncaught render error unmounted the tree. It left the
 candidate on a white page while their own clock continued to run.

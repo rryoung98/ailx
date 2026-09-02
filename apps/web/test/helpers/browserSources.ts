@@ -7,14 +7,14 @@ export const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", ".."
 
 /**
  * The directories a browser's own code lives in: `app/` routes,
- * `components/` and `lib/`.
+ * `components/`, `features/` and `lib/`.
  *
  * Guards that scan "the frontend" must scan all of them. Before this list
  * existed each guard walked `app/` and `lib/` by hand, so a component moved
  * out of `lib/` would leave every one of those guards without a word. A
  * missing directory throws rather than shrinking the scan in silence.
  */
-export const BROWSER_ROOTS = ["app", "components", "lib"] as const;
+export const BROWSER_ROOTS = ["app", "components", "features", "lib"] as const;
 
 /**
  * Every source file under BROWSER_ROOTS, as an absolute path.

@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { REDUCED_MOTION_QUERY } from "./reducedMotion";
+import { REDUCED_MOTION_QUERY } from "../../lib/reducedMotion";
 
 interface Particle {
   x: number;

@@ -8,7 +8,7 @@ import {
   FALLBACK_WIDTH_PX, MAX_ROTATION_DEG, ROTATION_GAIN, SWIPE_COMMIT_FRACTION,
   commitThresholdPx, isCommitted, stampOpacity, swipeDir, swipeRotation,
   transitionFor,
-} from "../lib/useSwipeCard";
+} from "../features/landing/useSwipeCard";
 
 describe("swipe math", () => {
   it("commit threshold is 35% of the card width", () => {

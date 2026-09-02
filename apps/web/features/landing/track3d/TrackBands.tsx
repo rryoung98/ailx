@@ -10,7 +10,7 @@
 import Link from "next/link";
 import { TRACK_LIST } from "@ailx/report";
 import { TrackScene } from "./TrackScene";
-import { Reveal } from "../../components/ui/Reveal";
+import { Reveal } from "../../../components/ui/Reveal";
 
 /** "T2 — can you spot the fakes?" -> "Can you spot the fakes?" */
 export function supportLine(hype: string): string {

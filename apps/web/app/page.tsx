@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Annotation } from "../components/ui/Annotation";
 import { FunnelStep } from "../components/FunnelStep";
-import { HeroCanvas } from "../lib/HeroCanvas";
+import { HeroCanvas } from "../features/landing/HeroCanvas";
 import { PillCTA } from "../components/ui/PillCTA";
 import { PracticeDrill } from "../lib/PracticeDrill";
 import { Reveal } from "../components/ui/Reveal";
 import { CharacterPortrait } from "../components/CharacterPortrait";
-import { CampusJourney } from "../lib/track3d/CampusJourney";
-import { TrackBands } from "../lib/track3d/TrackBands";
+import { CampusJourney } from "../features/landing/track3d/CampusJourney";
+import { TrackBands } from "../features/landing/track3d/TrackBands";
 import { assetUrl, isServerMode } from "../lib/mode";
 import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
 

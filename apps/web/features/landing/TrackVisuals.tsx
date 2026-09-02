@@ -6,7 +6,7 @@
  * preview uses REAL images from the committed instrument snapshot.
  *
  * Since the 3D landing pass these serve as the NON-WEBGL FALLBACK for the
- * track3d scenes (see lib/track3d/TrackScene.tsx, TRACK_VIZ below); the
+ * track3d scenes (see track3d/TrackScene.tsx, TRACK_VIZ below); the
  * TrackCards grid remains as a self-contained embed used by tests and any
  * surface that wants the compact card presentation.
  *
@@ -18,8 +18,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { snapshotTrack } from "./instrument";
-import { assetUrl } from "./mode";
+import { snapshotTrack } from "../../lib/instrument";
+import { assetUrl } from "../../lib/mode";
 
 export interface VizMedia {
   src: string;

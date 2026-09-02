@@ -14,12 +14,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { TEASER_ITEMS, type TeaserItem } from "./demoItems";
+import { TEASER_ITEMS, type TeaserItem } from "../../lib/demoItems";
 import {
   stampOpacity, swipeDir, swipeRotation, transitionFor,
   useSwipeCard, type SwipeDir,
 } from "./useSwipeCard";
-import { prefersReducedMotion } from "./reducedMotion";
+import { prefersReducedMotion } from "../../lib/reducedMotion";
 
 export const AUTO_DEMO_DELAY_MS = 4000;
 export const AUTO_DEMO_REPEAT_MS = 5500;

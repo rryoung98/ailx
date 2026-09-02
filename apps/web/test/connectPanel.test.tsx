@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ConnectPanel } from "../lib/ConnectPanel";
+import { ConnectPanel } from "../features/exam/ConnectPanel";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
