@@ -3,9 +3,9 @@
 Status: **rejected for the wire contract; a cheaper follow-up proposed** (§8).
 Date: 2026-09-02. Issue: TEN-37. Branch: `w/ten-37`.
 Spike: `packages/spike-orpc`, deleted on this branch after the ADR was accepted.
-Every measurement below was taken from it before it went. It is recoverable
-from branch `w/ten-37`, and reverting the commit that deleted it brings the
-package back — that revert also needs a `packages/spike-orpc/vitest.config.ts`,
+Every measurement below was taken from it before it went. The package is in
+commit `0ad6468`, the merge that brought it in, and reverting the commit that
+deleted it brings the package back — that revert also needs a `packages/spike-orpc/vitest.config.ts`,
 because `packages/core/test/workspaceWiring.test.ts` (TEN-14) requires one from
 every workspace package that has tests.
 

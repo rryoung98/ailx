@@ -71,13 +71,19 @@ const files = [
  */
 const ALLOWED_CLAIM = /independent under published governance/gi;
 
-/**
- * A banned adjective asserted OF US: "AILX is neutral", "we remain impartial".
- * A DENIAL is not a claim: "we are not neutral" is the sentence the correction
- * asks us to write, so the verb may not be followed by a negator.
- */
+/** A banned adjective asserted OF US: "AILX is neutral", "we remain impartial". */
 const SELF_CLAIM =
-  /\b(AILX|we|our examination|the examiner)\b[^.\n]{0,60}?\b(is|are|remains?|stays?|becomes?)\s+(?!(?:not|never|no longer|nobody's|no)\b)(an?\s+|the\s+)?(?:[\w-]+[,]?\s+){0,2}(neutral|impartial|unbiased|disinterested|objective|independent)\b/gi;
+  /\b(AILX|we|our examination|the examiner)\b[^.\n]{0,60}?\b(is|are|remains?|stays?|becomes?)\s+(an?\s+|the\s+)?(?:[\w-]+[,]?\s+){0,2}(neutral|impartial|unbiased|disinterested|objective|independent)\b/gi;
+
+/**
+ * A DENIAL is not a claim. "We are not neutral" is the sentence the 2026-09-01
+ * correction asks us to write, and "AILX is emphatically not neutral" is the
+ * same sentence with an adverb in it, so the negator is looked for anywhere in
+ * the match rather than only straight after the verb. "not only neutral" and
+ * "no ordinary neutral examiner" are CLAIMS wearing a negator, so those three
+ * continuations are excluded by name.
+ */
+const DENIAL = /\b(?:not|never)\b(?!\s+(?:only|merely|just)\b)|\bno longer\b/i;
 
 /** The examiner role dressed in a banned adjective, whoever the subject is. */
 const ROLE_CLAIM =
@@ -86,8 +92,8 @@ const ROLE_CLAIM =
 /** The noun. There is no innocent use of it in public copy. */
 const NOUN_CLAIM = /\bneutralit(?:y|ies)\b/gi;
 
-const RULES: readonly { name: string; pattern: RegExp }[] = [
-  { name: "claims a banned adjective about AILX", pattern: SELF_CLAIM },
+const RULES: readonly { name: string; pattern: RegExp; deniable?: true }[] = [
+  { name: "claims a banned adjective about AILX", pattern: SELF_CLAIM, deniable: true },
   { name: "attaches a banned adjective to the examiner role", pattern: ROLE_CLAIM },
   { name: 'uses the noun "neutrality"', pattern: NOUN_CLAIM },
 ];
@@ -96,7 +102,9 @@ const RULES: readonly { name: string; pattern: RegExp }[] = [
 function findClaims(text: string): string[] {
   const stripped = text.replace(ALLOWED_CLAIM, "");
   return RULES.flatMap((rule) =>
-    [...stripped.matchAll(rule.pattern)].map((m) => `${rule.name}: ${m[0].trim()}`),
+    [...stripped.matchAll(rule.pattern)]
+      .filter((m) => !(rule.deniable && DENIAL.test(m[0])))
+      .map((m) => `${rule.name}: ${m[0].trim()}`),
   );
 }
 
@@ -121,6 +129,8 @@ describe("the pattern separates the claim from the innocent word", () => {
     "The strategic asset is NEUTRALITY.",
     "Formation playbook (how neutral examiners actually got built)",
     "AILX is an independent, non-profit examiner.",
+    "AILX is not only neutral but impartial.",
+    "AILX is no ordinary neutral examiner.",
     "we are objective about our own product",
   ];
   const innocent = [
@@ -140,6 +150,7 @@ describe("the pattern separates the claim from the innocent word", () => {
     "AILX is not neutral.",
     "The examiner is never impartial.",
     "We are no longer independent of the labs.",
+    "AILX is emphatically not neutral.",
     "The claim is independent under published governance, once it is provable.",
   ];
 
