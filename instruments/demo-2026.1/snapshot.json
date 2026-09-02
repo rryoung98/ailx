@@ -906,9 +906,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "476d0dd90f41678628dc97c16c78eb412eee1b627332898e6d6df773a6ca8ff5"
+      "digest": "2ee0fbc8ded5cf83e7cb0eff69e7f2796d06f635cc42af0a837e3e0017e32ca8"
     },
     {
       "trackId": "t2",
@@ -945,9 +945,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "85a16e71697c354c8afb3ea1ec502ceee3f231c76a16f7214057706414329c66"
+      "digest": "44c6f8dae3fa1af8b4e6bd3037c8c0bfb797e5e8bcfc3ac6928011c26a04d33f"
     },
     {
       "trackId": "t3",
@@ -988,9 +988,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "848753edbadfa1b2a6d30f8301f68cf9bf24e80427f2c8b75a769181ed6c5bd2"
+      "digest": "c56ed5a8a4f8f51b3a27bb6fa1a2dd7900efe6362ee36f1bcc832dcc62858f5b"
     },
     {
       "trackId": "t4",
@@ -1027,9 +1027,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "ebf5d2302b56005c2f68ffac96e0f4780d18786550211cd1efa1c7dce8fce129"
+      "digest": "6f5f5a3343019e049c0986f4223e67ec6714eccdd6dd210251395509d61c6672"
     }
   ]
 }
