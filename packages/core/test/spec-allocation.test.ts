@@ -83,6 +83,17 @@ describe("AILX-Spec-2026.1 §04 agrees with the allocation table", () => {
    * resolves through the stored-judge path today, whatever mechanism it is
    * designed for, because score() cannot tell a stored human comparison from
    * a stored model judgment.
+   *
+   * What this assertion does NOT do is check the metadata against the code.
+   * It reads `implemented` / `resolvedBy` — the same flags the spec sentence
+   * was derived from — so it proves the prose agrees with the table and
+   * nothing more. A component mislabelled `model-free` while its points come
+   * from a stored judgment passes here. That gap is closed empirically by
+   * `apps/web/test/allocationResolution.test.ts`, which runs the REAL plugin
+   * score() over a fixture, varies only the stored judgments, and asserts
+   * that the components which MOVE are exactly the ones this table calls
+   * judge-resolved. It lives in apps/web because core is what the track
+   * plugins import, so core may not import them back.
    */
   it("states an implemented LLM-jury exposure that matches the unimplemented set", () => {
     const spec = specMechanismTable();
