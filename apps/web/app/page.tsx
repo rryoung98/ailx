@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Annotation } from "../lib/Annotation";
+import { Annotation } from "../components/ui/Annotation";
 import { FunnelStep } from "../lib/FunnelStep";
 import { HeroCanvas } from "../lib/HeroCanvas";
-import { PillCTA } from "../lib/PillCTA";
+import { PillCTA } from "../components/ui/PillCTA";
 import { PracticeDrill } from "../lib/PracticeDrill";
-import { Reveal } from "../lib/Reveal";
+import { Reveal } from "../components/ui/Reveal";
 import { CharacterPortrait } from "../lib/CharacterPortrait";
 import { CampusJourney } from "../lib/track3d/CampusJourney";
 import { TrackBands } from "../lib/track3d/TrackBands";

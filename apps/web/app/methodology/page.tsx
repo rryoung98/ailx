@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Annotation } from "../../lib/Annotation";
+import { Annotation } from "../../components/ui/Annotation";
 import { assetUrl } from "../../lib/mode";
 
 export const metadata: Metadata = { title: "Methodology — AILX" };

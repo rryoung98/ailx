@@ -259,7 +259,7 @@ describe("pill guard + scrub shortening", () => {
     const landing = readFileSync(join(appDir, "page.tsx"), "utf8");
     expect(landing).toContain('className="hero-cta hero-fade" data-pill-clear=""');
     expect(landing).toContain('className="wyg-steps" data-pill-clear=""');
-    const pill = readFileSync(join(appDir, "..", "lib", "PillCTA.tsx"), "utf8");
+    const pill = readFileSync(join(appDir, "..", "components", "ui", "PillCTA.tsx"), "utf8");
     expect(pill).toContain("[data-pill-clear]");
     expect(pill).toContain("pill-cta-cleared");
     // The guard is deliberately NOT width-gated any more: a fixed pill covers
@@ -322,7 +322,7 @@ describe("parent dogfood follow-ups", () => {
     // (/gallery, /world), the static-export /wall that replaces them, and the
     // one slot that is /progress in the hosted build and /practice in the export.
     expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(10);
-    const navSrc = readFileSync(join(appDir, "..", "lib", "NavLink.tsx"), "utf8");
+    const navSrc = readFileSync(join(appDir, "..", "components", "ui", "NavLink.tsx"), "utf8");
     expect(navSrc).toContain("usePathname");
     expect(navSrc).toContain('aria-current={current ? "page" : undefined}');
     expect(css).toMatch(/\.site-nav a\[aria-current="page"\] \{[^}]*var\(--accent\)/s);

@@ -24,14 +24,14 @@ import { t3FormBudgetSeconds, trackConfig } from "../../lib/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
 // stays in the frozen data contract (always "en" at attempt start).
 import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META } from "@ailx/report";
-import { Annotation } from "../../lib/Annotation";
+import { Annotation } from "../../components/ui/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
 import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
 import { PersistWarning } from "../../lib/PersistWarning";
 import { RunnerErrorBoundary } from "../../lib/RunnerErrorBoundary";
-import { PillCTA } from "../../lib/PillCTA";
-import { Reveal } from "../../lib/Reveal";
-import { SiteLink } from "../../lib/SiteLink";
+import { PillCTA } from "../../components/ui/PillCTA";
+import { Reveal } from "../../components/ui/Reveal";
+import { SiteLink } from "../../components/ui/SiteLink";
 import { eventLogCopy } from "../../lib/mode";
 import { funnel } from "../../lib/funnel";
 

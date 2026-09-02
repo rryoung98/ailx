@@ -18,8 +18,8 @@
  * fallback, whichever fires first. Scroll is never locked.
  */
 import { useEffect, useState } from "react";
-import { assetUrl } from "./mode";
-import { prefersReducedMotion } from "./reducedMotion";
+import { assetUrl } from "../lib/mode";
+import { prefersReducedMotion } from "../lib/reducedMotion";
 
 const KEY = "ailx:loaded";
 /** Two-tone wordmark asset (public/), shares its traced paths with logo.svg. */

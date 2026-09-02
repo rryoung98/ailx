@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core/dist/purity.js";
 import { calibrationBins } from "@ailx/report";
 import config from "../vitest.config";
+import { BROWSER_ROOTS } from "./helpers/browserSources";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
@@ -109,7 +110,7 @@ function ailxSpecifiers(): string[] {
     }
   };
   // e2e/ is Playwright's and never runs under this config.
-  for (const dir of ["app", "lib", "test"]) walk(join(webRoot, dir));
+  for (const dir of [...BROWSER_ROOTS, "test"]) walk(join(webRoot, dir));
   return [...found].sort();
 }
 

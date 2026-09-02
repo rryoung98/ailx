@@ -10,12 +10,13 @@
  * "/ailx" Pages export) plus the no-var fallback — and forbids the inline
  * expression from coming back.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { browserSources } from "./helpers/browserSources";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -159,20 +160,9 @@ describe.each(CONFIGS)("route media under the $name basePath", ({ env, prefix })
 
 // ---- 3. the inline expression may not come back --------------------------
 
-function sourceFiles(dir: string, acc: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === ".next" || name === "out") continue;
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) sourceFiles(full, acc);
-    else if (/\.(ts|tsx)$/.test(name)) acc.push(full);
-  }
-  return acc;
-}
-
 describe("NEXT_PUBLIC_BASE_PATH has exactly one reader", () => {
   it("is read only by lib/mode.ts (and next.config.mjs, which bakes it)", () => {
-    const offenders = [join(webDir, "app"), join(webDir, "lib")]
-      .flatMap((d) => sourceFiles(d))
+    const offenders = browserSources(/\.(ts|tsx)$/)
       .filter((f) => readFileSync(f, "utf8").includes("NEXT_PUBLIC_BASE_PATH"))
       .map((f) => relative(webDir, f).split(sep).join("/"));
     expect(offenders).toEqual(["lib/mode.ts"]);

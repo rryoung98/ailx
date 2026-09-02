@@ -14,12 +14,13 @@
  *     exactly one place.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
 import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { DEV_USER_HEADER } from "@ailx/contract";
+import { browserSources } from "./helpers/browserSources";
 
 const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -214,17 +215,7 @@ describe("AuthShell", () => {
 
 // ---- the static export must not carry an auth SDK -----------------------
 
-function sources(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === ".next" || name === "out" || name === "dist") continue;
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) sources(full, out);
-    else if (/\.(ts|tsx|mjs)$/.test(name)) out.push(full);
-  }
-  return out;
-}
-
-const appAndLib = sources(join(webDir, "lib")).concat(sources(join(webDir, "app")));
+const appAndLib = browserSources();
 const CLERK_IMPORT = /(?:from|import|require)\s*\(?\s*["']@clerk\/[^"']*["']/;
 
 /** Every name `lib/auth/*` imports from @clerk/nextjs, read from the source. */

@@ -10,12 +10,13 @@
  * under every shipped configuration AND forbids the raw variable from being
  * read anywhere but `lib/mode.ts`.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apiPath } from "@ailx/contract";
 import { apiBase, apiOrigin, siteApiRoot, siteHref } from "../lib/mode";
+import { browserSources } from "./helpers/browserSources";
 
 const SERVICE = "https://ailx-backend-932932410694.us-central1.run.app";
 const DIGEST = "sha256:abc";
@@ -131,20 +132,9 @@ describe("siteApiRoot / siteHref — the served-site space", () => {
 
 const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-function sources(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === ".next" || name === "out" || name === "dist") continue;
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) sources(full, out);
-    else if (/\.(ts|tsx|mjs)$/.test(name)) out.push(full);
-  }
-  return out;
-}
-
 describe("one seam, not seven", () => {
   it("only lib/mode.ts reads NEXT_PUBLIC_AILX_API_BASE", () => {
-    const offenders = sources(join(webDir, "lib"))
-      .concat(sources(join(webDir, "app")))
+    const offenders = browserSources()
       // A READ of the variable, not a doc comment naming it.
       .filter((f) => readFileSync(f, "utf8").includes("process.env.NEXT_PUBLIC_AILX_API_BASE"))
       .map((f) => relative(webDir, f))
@@ -157,11 +147,11 @@ describe("one seam, not seven", () => {
       join("lib", "mode.ts"), // the seam itself
       join("lib", "persistence.ts"), // doc comment on ApiPersistenceOptions
       join("lib", "origin.ts"), // doc comment
-      join("lib", "SiteLink.tsx"), // doc comment about the visible text
+      join("components", "ui", "SiteLink.tsx"), // doc comment about the visible text
       join("lib", "Moderation.tsx"), // doc comment naming the route
     ]);
     const offenders: string[] = [];
-    for (const file of sources(join(webDir, "lib")).concat(sources(join(webDir, "app")))) {
+    for (const file of browserSources()) {
       const rel = relative(webDir, file);
       if (allowed.has(rel) || rel.startsWith(`app${sep}api${sep}`)) continue;
       const src = readFileSync(file, "utf8");

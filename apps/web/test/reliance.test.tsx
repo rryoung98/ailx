@@ -11,13 +11,14 @@
  * interval, without the band, or through any path other than the pure
  * derivation in @ailx/track-t3.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { clearAttempt, saveAttempt } from "@ailx/session";
 import { formatInterval, relianceReportFromRaw, wilsonInterval } from "@ailx/track-t3";
+import { browserSources } from "./helpers/browserSources";
 import { completedLog, completedState, memoryStorage } from "./helpers/completedAttempt";
 import { RelianceCard } from "../lib/RelianceCard";
 import ReportPage from "../app/report/page";
@@ -157,16 +158,7 @@ describe("RelianceCard on its own", () => {
  * would get lost again.
  */
 describe("no frontend module reads a reliance rate out of the raw record", () => {
-  const roots = ["app", "lib"].map((d) => join(__dirname, "..", d));
-  const files: string[] = [];
-  const walk = (dir: string) => {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (/\.tsx?$/.test(p)) files.push(p);
-    }
-  };
-  for (const r of roots) walk(r);
+  const files = browserSources(/\.tsx?$/);
 
   it("scans a real file list", () => {
     expect(files.length).toBeGreaterThan(20);
