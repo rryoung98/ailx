@@ -1,61 +1,29 @@
 /**
- * The ROUTE MANIFEST — every URL of the exam service a browser may call,
- * declared once: method, path template, and the name of the success body.
+ * The route manifest: every URL of the exam service a browser may call, with
+ * its method, its path template and the name of its success body.
  *
- * WHY IT EXISTS. The frontend and the exam service live in different
- * repositories and build independently. In 2026 a browser called
- * `POST /attempts/:id/score` on a deployed service that did not have it
- * (`packages/core/test/frontendOnly.test.ts`, file header). A shared wire
- * TYPE does not catch that: nothing compiles both sides, and the request path
- * was a string in a component. So the paths live here, and
- * `apps/web/test/routeManifest.test.ts` fails the build if any module in
- * `apps/web` spells one by hand again.
+ * The frontend and the service build in separate repositories, and nothing
+ * compiles both sides. In 2026 a browser called `POST /attempts/:id/score` on
+ * a deployed service that did not have it, because the path was a string in a
+ * component (`packages/core/test/frontendOnly.test.ts`, file header).
+ * `apps/web/test/routeManifest.test.ts` fails the build on one now.
  *
- * WHAT A PATH HERE IS. The path BELOW the versioned root, never including it.
- * The root is spelled differently by the two hosts — `/api` for this app's own
- * origin, `<origin>/v1` for the standalone service — and translating it is
- * `apps/web/lib/mode.ts` `apiBase()`'s job, which stays the only reader of
- * `NEXT_PUBLIC_AILX_API_BASE`.
+ * A path here sits below the versioned root and never includes it. `apiBase()`
+ * in `apps/web/lib/mode.ts` owns "/api" against "<origin>/v1". Left out on
+ * purpose are the served-site space (`./site-url.js` owns that spelling), the
+ * share view and its card (`./share-url.js`), and `/livez` and `/readyz`,
+ * which no browser calls.
  *
- * WHAT IS NOT HERE, on purpose:
- *  - the SERVED-SITE space, `/api/site/<digest>/index.html`. It is not
- *    versioned, it is frozen into stored share payloads and credential claims,
- *    and `./site-url.js` `siteUrlPath()` already owns that one spelling.
- *  - the share VIEW and its card, `/s/<token>` and `/s/<token>/card.png`.
- *    Those are pages of the FRONTEND, not routes of the service;
- *    `./share-url.js` owns them.
- *  - `/livez` and `/readyz`. The platform calls them; no browser does.
+ * Only the service knows which routes it mounts, and the private repo vendors
+ * this file, so the check it owes there runs both ways. Every entry must be
+ * mounted at `/v1${path}` for its method, and every mounted `/v1` route must
+ * appear here. Neither direction reads a response body, so `response` is a
+ * name a reader can check, not a type a compiler enforces (docs/ADR-orpc.md
+ * §8, TEN-43). `getAttempt` and `countShareView` have no caller in `apps/web`;
+ * they stay listed because that second check is an equality.
  *
- * WHAT THIS DOES NOT DO, AND WHO MUST FINISH IT. This table proves nothing on
- * its own: it names routes, and only the service knows which routes it mounts.
- * The private repo vendors this file byte for byte (`pnpm sync:shared:check`),
- * so the assertion it owes is a loop over `API_ROUTES`, and it is TWO
- * directions:
- *
- *  1. every entry here is mounted. For each `[key, route]`, the Hono app must
- *     have a handler for `route.method` at `/v1${route.path}` — the template
- *     compared literally, `:id` against `:id`. A manifest entry with no
- *     handler is the 2026 failure, one release earlier.
- *  2. every mounted `/v1` route appears here. Enumerate the app's routes
- *     (`app.routes` gives method and path), drop `/livez`, `/readyz` and the
- *     `/api/site/*` space, and the remainder must equal this table exactly.
- *     A route the manifest does not name is a route the browser cannot reach
- *     through `apiPath()`, so it is either dead or it is drift.
- *
- * Neither direction checks a response BODY. Enumerating routes cannot prove
- * what a handler returns, so `response` below is a NAME a reader can check,
- * not a type a compiler enforces. Closing that half means making the private
- * repo's `apiRoute` wrapper generic in `ApiRouteKey`; that is a separate
- * decision (docs/ADR-orpc.md §8, TEN-43).
- *
- * TWO ENTRIES HAVE NO CALLER in `apps/web` today: `getAttempt` and
- * `countShareView`. They stay listed because direction 2 above is an equality,
- * and a service route missing from this table would fail it. Delete the route
- * and the entry together, or neither.
- *
- * ORDER IS NOT DECLARED. This is a table, not a router. `/practice/claim` must
- * still be mounted before `/practice/:id` — Hono matches in registration order
- * and "claim" is a valid-looking session id — and nothing here says so.
+ * Order is not declared. `/practice/claim` must still be mounted before
+ * `/practice/:id`, and nothing here says so.
  */
 import { parseCaseQuery } from "./moderation.js";
 import { parseGalleryQuery } from "./gallery.js";
@@ -146,9 +114,9 @@ export const API_QUERY_PARSERS = {
 } as const satisfies Record<ApiQueryParserName, (raw: Record<string, string | undefined>) => unknown>;
 
 /**
- * A path built from the manifest. BRANDED so the type system says what the
- * grep guard says: `apiPath()` is the only way to make one, and a hand-written
- * string is not one.
+ * A path built from the manifest. Branded, so the type system says what the
+ * guard in `apps/web` says. `apiPath()` is the only way to make one, and a
+ * hand-written string is not one.
  */
 export type ApiPath = string & { readonly __brand: "ApiPath" };
 

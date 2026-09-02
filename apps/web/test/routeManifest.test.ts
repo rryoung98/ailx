@@ -1,23 +1,18 @@
 /**
- * No hand-spelled service URL in `apps/web`.
+ * No hand-spelled service URL in `apps/web`. `@ailx/contract`'s route manifest
+ * holds every path a browser may call, and this test stops a second copy
+ * appearing (`packages/contract/src/routes.ts`, file header).
  *
- * A browser once called `POST /attempts/:id/score` on a deployed service that
- * did not have it, because the path was a string in a component and nothing
- * compiled both sides (`packages/core/test/frontendOnly.test.ts`, file
- * header). `@ailx/contract`'s route manifest holds those paths now, and this
- * test stops a second copy appearing.
- *
- * The rule it enforces, exactly: in a call that builds or issues a request —
- * `fetch`, a `fetchFn`, `serviceFetch`/`useService`, an HTTP verb method such
- * as Playwright's `request.post`, or `new URL` — no argument may contain a
- * string literal or template chunk starting with `/` and a first segment the
+ * The rule, exactly. In a call that builds or issues a request (`fetch`, a
+ * `fetchFn`, `serviceFetch`/`useService`, an HTTP verb method such as
+ * Playwright's `request.post`, or `new URL`), no argument may contain a string
+ * literal or template chunk that starts with `/` and a first segment the
  * manifest uses. The check parses TypeScript, so the shape of the call does
- * not matter: concatenation, a nested `new URL`, and a template all read the
- * same. It says nothing about literals outside such a call: `<Link
- * href="/gallery">` and `router.push("/gallery")` are frontend pages.
+ * not matter. A literal outside such a call passes, because
+ * `<Link href="/gallery">` and `router.push("/gallery")` are frontend pages.
  *
  * `offences()` is fed each shape it exists to catch, so a regression in the
- * detector fails here rather than going quiet.
+ * detector fails here instead of going quiet.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
