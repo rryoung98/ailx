@@ -11,12 +11,12 @@ track: t3-reasoning
 total_points: 160
 criteria:
   - id: planted-error-detection
-    name: Planted-error detection (RSR)
+    name: Planted-error detection (over-reliance tail)
     points: 50
     scored_by: arithmetic
     judged: false
   - id: appropriate-reliance
-    name: Deliberate adoption of correct advice (RAIR)
+    name: Deliberate adoption of correct advice (under-reliance tail)
     points: 30
     scored_by: arithmetic
     judged: false

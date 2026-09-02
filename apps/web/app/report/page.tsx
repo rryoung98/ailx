@@ -46,8 +46,9 @@ function ScoreReplayLine({ trackId, stored, locale, attemptId }: {
   );
 }
 import {
-  AXES, calibrationBins, candidateComposite, DEMO_SCORE_NOTE, formatTrackScore, participantExport,
-  playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
+  AXES, calibrationBins, candidateComposite, componentValue, DEMO_SCORE_NOTE, formatTrackScore,
+  participantExport, playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact,
+  TRACK_META, trackInsights,
 } from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
 import { CharacterPortrait, CharacterVoice } from "../../lib/CharacterPortrait";
@@ -484,14 +485,10 @@ export default function ReportPage() {
                 <span className="mono">{formatTrackScore(score, ts.judgments, t)}</span>
               </div>
               {meta.components.map((c) => {
-                const ALIASES: Record<string, string[]> = {
-                  gates: ["gates", "functional"],
-                  dprime: ["dprime", "sensitivity"],
-                  brief: ["brief", "brief-fit"],
-                  direction: ["direction", "craft"],
-                };
-                const keys = ALIASES[c.key] ?? [c.key];
-                const v = keys.map((k) => score.raw[k]).find((x) => typeof x === "number") ?? 0;
+                // One alias table, in @ailx/report: a raw record is a stored
+                // wire surface, so a component key that was renamed in the
+                // scorer must still be found in an older attempt.
+                const v = componentValue(score.raw, c.key);
                 return (
                   <div key={c.key} style={{ display: "grid", gridTemplateColumns: "minmax(10rem, 1fr) 2fr 6.5rem", gap: "0.8rem", alignItems: "center", margin: "0.35rem 0" }}>
                     <span className="small muted">{c.label}</span>

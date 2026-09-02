@@ -84,7 +84,7 @@ function validate(raw: unknown, secrets: boolean): T3PresentationConfig {
   };
   if (!secrets && cfg.plantedErrors === undefined) return base;
   const w = (cfg.weights ?? T3_DEFAULT_WEIGHTS) as Record<string, unknown>;
-  for (const k of ["rsr", "rair", "process", "analysis"] as const) {
+  for (const k of ["overReliance", "underReliance", "process", "analysis"] as const) {
     if (typeof w[k] !== "number" || (w[k] as number) < 0) fail(`weights.${k} must be a non-negative number`);
   }
   return {
@@ -92,8 +92,8 @@ function validate(raw: unknown, secrets: boolean): T3PresentationConfig {
     plantedErrors: cfg.plantedErrors as T3Config["plantedErrors"],
     correctAdvice: (cfg.correctAdvice ?? []) as T3Config["correctAdvice"],
     weights: {
-      rsr: w.rsr as number,
-      rair: w.rair as number,
+      overReliance: w.overReliance as number,
+      underReliance: w.underReliance as number,
       process: w.process as number,
       analysis: w.analysis as number,
     },

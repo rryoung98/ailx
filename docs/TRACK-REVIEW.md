@@ -297,10 +297,13 @@ T3 is the only track that measures **behaviour in the presence of a model** rath
 or an artefact. The planted-error mechanism is the design's best idea: an assistant seeded with a
 misattributed figure, a false causal claim, a fabricated citation and a wrong calculation, and the
 score is whether the candidate caught them. That is a direct measurement with no judge in it, and
-`packages/tracks/t3-reasoning/src/scoring.ts` implements it as such — 25 points RSR, 10 points RAIR,
-20 points process quality from the transcript, all model-free; 45 points routed to a stored jury.
+`packages/tracks/t3-reasoning/src/scoring.ts` implements it as such — 25 points over-reliance, 10
+points under-reliance, 20 points process quality from the transcript, all model-free; 45 points
+routed to a stored jury. (Those two components were called `rsr` and `rair` until 2026-09-02; see
+TEN-38.)
 
-The implementation is more careful than the spec. RAIR requires *deliberation before acceptance*: a
+The implementation is more careful than the spec. The under-reliance component requires
+*deliberation before acceptance*: a
 claim must have been challenged, or checked against the source after it surfaced, before its
 acceptance earns full credit; a blind instant accept of correct advice earns half, because "the
 candidate happened to be right, but exhibited the same behaviour that swallows planted errors."

@@ -1,7 +1,8 @@
 /**
  * T3 pure scoring — spec §T3 "Score allocation". 160 points.
- *   50 RSR    planted-error detection: caught & rejected seeded wrong outputs
- *   30 RAIR   deliberate adoption of correct advice
+ *   50 overReliance   planted-error detection: caught & rejected seeded wrong
+ *                     outputs
+ *   30 underReliance  deliberate adoption of correct advice
  *   35        process quality from the transcript
  *   45        analysis quality from STORED jury judgments (never called here)
  * 115 of 160 points are model-free measurement of behaviour.
@@ -27,14 +28,25 @@
  * The design that survives all three is not to ask but to make the model
  * genuinely asymmetric and measure what the candidate did. On a planted-error
  * claim the assistant is actively harmful, so rejecting it is appropriate
- * NON-reliance (RSR). On a correct-advice claim it is right and faster, so
- * adopting it is appropriate reliance (RAIR). The key is then an empirical
+ * NON-reliance (the `overReliance` component). On a correct-advice claim it
+ * is right and faster, so adopting it is appropriate reliance (the
+ * `underReliance` component). The key is then an empirical
  * one — did the model make the answer better — not a normative one, and it is
  * two-tailed by construction. {@link relianceIndex} reports both tails.
  *
- * HONESTY NOTE ON THE EVIDENCE. RSR and RAIR are named after the appropriate-
- * reliance literature, but the two-tailed INDEX below is AILX's own
- * construction: we have found no published index or scoring scheme for
+ * HONESTY NOTE ON THE EVIDENCE. The two components were called `rsr` and
+ * `rair` until 2026-09-02, after Schemmer, Kühl, Benz, Bartos and Satzger
+ * (IUI '23, doi:10.1145/3581641.3584066). We do not compute those two
+ * statistics. Both condition on an independent first answer the candidate
+ * commits BEFORE the model speaks, and T3 has no such first stage: every
+ * denominator here is surfaced claims. What this file measures is the pair
+ * the wider literature calls over- and under-reliance (Passi & Vorvoreanu,
+ * Overreliance on AI: Literature Review, MSR-TR-2022-12), so the components
+ * carry those names. Spec §T3, "Stated against our own case", states this
+ * in full; `docs/TRANSFER-STUDY.md` §3.1 is the block that would let us
+ * report the published RSR and RAIR beside them.
+ *
+ * The two-tailed INDEX below is AILX's own construction: we have found no published index or scoring scheme for
  * calibrated reliance to inherit, and no published validity evidence for this
  * one. It is defended here on design grounds — it is behavioural, keyless,
  * un-gameable by verbal sophistication and symmetric — and it is reported
@@ -42,7 +54,7 @@
  * would hide which failure a candidate made. Treat it as descriptive until it
  * has been validated against something external.
  *
- * RAIR (F5): appropriate reliance is a SEQUENCE, not a final stance. A claim
+ * UNDER-RELIANCE (F5): appropriate reliance is a SEQUENCE, not a final stance. A claim
  * must first be deliberated — challenged, or THAT claim checked against the
  * source after it surfaced — before its acceptance earns full credit. A blind
  * instant accept of correct advice earns half credit: the candidate happened
@@ -63,17 +75,17 @@ import type { T3Artifact, T3Config, T3Turn } from "./types.js";
 export const RUBRIC_BAND_MAX = 5;
 
 /**
- * Planted errors a form must SURFACE before its RSR rate is worth reporting
- * as a rate.
+ * Planted errors a form must SURFACE before the over-reliance rate is worth
+ * reporting as a rate.
  *
  * Four was the shipped number and 50 points now ride on it. A four-item
  * subtest cannot have usable reliability: catching 2 of 4 versus 3 of 4 is a
  * 12.5-point difference decided by essentially one event. Eight is the floor
- * this file will report against; `raw['rsr.underpowered']` is 1 when a
- * sitting came in under it, so an underpowered RSR is visible in the record
- * rather than inferred from the form.
+ * this file will report against; `raw['overReliance.underpowered']` is 1 when
+ * a sitting came in under it, so an underpowered rate is visible in the
+ * record rather than inferred from the form.
  */
-export const RSR_MIN_SURFACED = 8;
+export const OVER_RELIANCE_MIN_SURFACED = 8;
 
 /**
  * |relianceIndex| within this band is reported as CALIBRATED. Declared
@@ -136,16 +148,16 @@ export function relianceIndex(
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
 export interface T3Raw {
-  rsr: number;
+  overReliance: number;
   analysis: number;
   process: number;
-  rair: number;
+  underReliance: number;
   /** Diagnostics */
   plantedSurfaced: number;
   plantedCaught: number;
   adviceSurfaced: number;
   adviceAdopted: number;
-  /** Advice claims accepted only after deliberation (full RAIR credit). */
+  /** Advice claims accepted only after deliberation (full adoption credit). */
   adviceDeliberated: number;
   promptCount: number;
   revisionChainLength: number;
@@ -166,8 +178,8 @@ export interface T3Raw {
   "reliance.over": number;
   "reliance.under": number;
   "reliance.index": number;
-  /** 1 when the form surfaced fewer than RSR_MIN_SURFACED planted errors. */
-  "rsr.underpowered": number;
+  /** 1 when the form surfaced fewer than OVER_RELIANCE_MIN_SURFACED plants. */
+  "overReliance.underpowered": number;
 }
 
 /** Final stance per claim id: last challenged/accepted turn wins. */
@@ -227,11 +239,13 @@ export function revisionChainLength(transcript: ReadonlyArray<T3Turn>): number {
 }
 
 /**
- * RAIR credit for one correct-advice claim, in {0, 0.5, 1} — F5.
+ * Adoption credit for one correct-advice claim, in {0, 0.5, 1} — F5.
+ * This is what the `underReliance` component pays: 1 for a deliberated
+ * adoption, 0.5 for a blind instant accept, 0 for a refusal.
  * Order is read from transcript array position (the transcript is
  * append-only; array order is event order).
  */
-export function rairCreditForClaim(
+export function adoptionCreditForClaim(
   transcript: ReadonlyArray<T3Turn>,
   claimId: string,
 ): number {
@@ -293,24 +307,24 @@ export function scoreT3(
     if (t.verb === "assisted" && t.claimIds) for (const id of t.claimIds) surfacedIds.add(id);
   }
 
-  // --- RSR (25): reject the seeded wrong outputs ---------------------------
+  // --- Over-reliance (50): reject the seeded wrong outputs -----------------
   const plantedIds = cfg.plantedErrors.map((e) => e.id);
   const plantedSurfaced = plantedIds.filter((id) => surfacedIds.has(id));
   const plantedCaught = plantedSurfaced.filter((id) => stance.get(id) === "challenged");
-  const rsr =
+  const overReliance =
     plantedSurfaced.length > 0
-      ? cfg.weights.rsr * (plantedCaught.length / plantedSurfaced.length)
+      ? cfg.weights.overReliance * (plantedCaught.length / plantedSurfaced.length)
       : 0;
 
-  // --- RAIR (10): deliberate adoption of correct advice — F5 ---------------
+  // --- Under-reliance (30): deliberate adoption of correct advice — F5 -----
   const adviceIds = cfg.correctAdvice.map((a) => a.id);
   const adviceSurfaced = adviceIds.filter((id) => surfacedIds.has(id));
   const adviceAdopted = adviceSurfaced.filter((id) => stance.get(id) === "accepted");
-  const credits = adviceSurfaced.map((id) => rairCreditForClaim(transcript, id));
+  const credits = adviceSurfaced.map((id) => adoptionCreditForClaim(transcript, id));
   const adviceDeliberated = credits.filter((c) => c === 1).length;
-  const rair =
+  const underReliance =
     adviceSurfaced.length > 0
-      ? cfg.weights.rair * (credits.reduce((s, c) => s + c, 0) / adviceSurfaced.length)
+      ? cfg.weights.underReliance * (credits.reduce((s, c) => s + c, 0) / adviceSurfaced.length)
       : 0;
 
   // --- Process (20): decomposition, iteration, verification, deliberation --
@@ -346,10 +360,10 @@ export function scoreT3(
   );
 
   const raw: T3Raw = {
-    rsr: round3(rsr),
+    overReliance: round3(overReliance),
     analysis: round3(analysis),
     process: round3(process),
-    rair: round3(rair),
+    underReliance: round3(underReliance),
     plantedSurfaced: plantedSurfaced.length,
     plantedCaught: plantedCaught.length,
     adviceSurfaced: adviceSurfaced.length,
@@ -366,11 +380,12 @@ export function scoreT3(
     "reliance.over": round3(reliance.over),
     "reliance.under": round3(reliance.under),
     "reliance.index": round3(reliance.index),
-    "rsr.underpowered": plantedSurfaced.length < RSR_MIN_SURFACED ? 1 : 0,
+    "overReliance.underpowered":
+      plantedSurfaced.length < OVER_RELIANCE_MIN_SURFACED ? 1 : 0,
   };
   return {
     raw,
-    scaled: round3(raw.rsr + raw.analysis + raw.process + raw.rair),
+    scaled: round3(raw.overReliance + raw.analysis + raw.process + raw.underReliance),
     reliance,
   };
 }

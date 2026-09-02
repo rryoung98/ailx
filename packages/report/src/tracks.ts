@@ -52,9 +52,9 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
   t3: {
     id: "t3", code: "T3", pluginId: "instrumented-assistant@2", name: "Calibrated Reliance",
     packageName: "@ailx/track-t3", points: trackPoints("t3"), scored: SCORE_ALLOCATION.t3.scored,
-    // Eight, and the count is pinned by apps/web/test/wiring.test.ts. RSR
-    // carries 50 of T3's 160 points, and a four-item subtest cannot support
-    // that weight.
+    // Eight, and the count is pinned by apps/web/test/wiring.test.ts. The
+    // over-reliance component carries 50 of T3's 160 points, and a four-item
+    // subtest cannot support that weight.
     hype: "T3 — the assistant plants eight errors. Catch them.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t3, demoBudgetSeconds: 10 * 60,
     brief:
@@ -77,3 +77,49 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
 };
 
 export const TRACK_LIST = [TRACK_META.t1, TRACK_META.t2, TRACK_META.t3, TRACK_META.t4];
+
+/**
+ * Older spellings of a component key, newest first.
+ *
+ * A `raw` record is a STORED wire surface. A key renamed in the scorer does
+ * not rename itself in an attempt scored last month, so the report reads
+ * every spelling a component has ever had and takes the first one present.
+ * `rsr`/`rair` became `overReliance`/`underReliance` on 2026-09-02 (TEN-38):
+ * the old names are Schemmer et al.'s published statistics (IUI '23), which
+ * T3 does not compute.
+ */
+const COMPONENT_KEY_ALIASES: Readonly<Record<string, ReadonlyArray<string>>> = {
+  // Inherited unchanged from the inline table this replaced. These four are
+  // keyed by allocation keys that no longer exist (the current keys are
+  // `functional`, `sensitivity`, `brief-fit`, `craft`), so they never fire.
+  // Flagged here, not deleted: a rename commit is the wrong place to decide
+  // whether a stored record still needs them.
+  gates: ["functional"],
+  dprime: ["sensitivity"],
+  brief: ["brief-fit"],
+  direction: ["craft"],
+  overReliance: ["rsr"],
+  underReliance: ["rair"],
+};
+
+/** Every spelling of a component key, current first. */
+export function componentKeys(key: string): ReadonlyArray<string> {
+  return [key, ...(COMPONENT_KEY_ALIASES[key] ?? [])];
+}
+
+/**
+ * One component's points out of a stored `raw` record, 0 when absent.
+ * A non-numeric or non-finite stored value is treated as absent: a report
+ * prints 0 rather than NaN.
+ */
+export function componentValue(
+  raw: Readonly<Record<string, unknown>> | undefined,
+  key: string,
+): number {
+  if (!raw) return 0;
+  for (const k of componentKeys(key)) {
+    const v = raw[k];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return 0;
+}
