@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { itemId, rubricVersion } from "../src/content-address.js";
 import { canonicalJson } from "../src/hash.js";
-import { runPure } from "../src/purity.js";
 
 describe("canonicalJson", () => {
   it("is stable under key order", () => {
@@ -26,15 +25,4 @@ describe("rubricVersion", () => {
   });
 });
 
-describe("runPure", () => {
-  it("throws when score code calls Date.now", () => {
-    expect(() => runPure(() => Date.now())).toThrow(/Purity violation/);
-  });
-  it("throws when score code calls Math.random", () => {
-    expect(() => runPure(() => Math.random())).toThrow(/Purity violation/);
-  });
-  it("restores globals", () => {
-    try { runPure(() => Math.random()); } catch {}
-    expect(typeof Math.random()).toBe("number");
-  });
-});
+// The purity harness has its own suite: test/purity.test.ts.
