@@ -59,7 +59,14 @@ database-touching requests at once. The 4th waits on `connectionTimeoutMillis` a
 10 seconds with a generic 500.
 
 Cloud Run is told it may put 80 requests on that instance. The gap between 80 and 3 is not a
-tuning question, it is a queue with a 10-second fuse. Nothing has fallen over yet because
+tuning question, it is a queue with a 10-second fuse.
+
+Nor does the autoscaler rescue the instance early. Metrics-based scaling "sets a 60% threshold
+for CPU utilization and request concurrency targets", and "at lower instance counts, the
+autoscaler might wait longer to scale" (cloud.google.com/run/docs/about-instance-autoscaling,
+read 2026-09-02). At concurrency 80 that is roughly 48 average concurrent requests over a
+minute before a second instance is asked for. The pool wall is at 3. Requests 4 to about 48
+fail on one instance while the autoscaler sees a revision that is not busy yet. Nothing has fallen over yet because
 staging traffic is a handful of requests at a time.
 
 This is the single most useful thing the reading produced, and it is worth being blunt about:
@@ -153,9 +160,10 @@ is written to the object store in a sequential PUT. Estimate for a maximum-size 
 **about 75 MiB of live buffers for one request**, plus up to 501 external PUTs inside the
 request.
 
-That number, not the sitting path, is what should set memory and concurrency. On a 512 MiB
-instance, four concurrent maximum-size uploads is an OOM, and a Cloud Run OOM kills the
-instance and every request on it. The direct-to-blob upload path that would avoid this returns
+That number, not the sitting path, is what should set memory and concurrency. Four concurrent
+maximum-size uploads is about 300 MiB of live buffers, 59% of a 512 MiB instance before the
+Node baseline is counted, and the baseline has never been measured. A Cloud Run OOM kills the
+instance and every request on it, so the headroom is the whole point. The direct-to-blob upload path that would avoid this returns
 501 in this deployment (`makeUploadStaging` returns null), so today every large T1 site goes
 through the function body.
 
@@ -199,6 +207,10 @@ moves p50 by the round-trip time and the two numbers are not comparable.
 Six scenarios. The mix is weighted by what real traffic looks like during a campaign, where
 most people take a practice drill and few sit the full exam.
 
+Weight the scenarios by REQUESTS, not by iterations. One `sitting_write` iteration is 252
+requests and one `report_read` iteration is three, so equal iteration rates give a mix nothing
+like the table below.
+
 | Scenario | Share of requests | What it does |
 | --- | --- | --- |
 | `sitting_write` | 60% | Create an attempt, then post 250 log entries at a realistic pace, then finalize |
@@ -218,10 +230,12 @@ Four stages, one run, about 40 minutes.
 
 1. **Warm-up, 2 min.** `GET /livez` at 1 rps. No database, no auth. It proves the harness and
    the target agree before anything is measured.
-2. **Cold start probe, 5 min.** Scale the service to zero, wait past the Neon 5-minute
-   autosuspend, then send one `POST /v1/attempts` and record the full wall clock. Repeat 20
-   times. This is the number the whole min-instances decision turns on, and it needs a
-   distribution, not one sample.
+2. **Cold start probe, a run of its own, about 2.5 hours.** Scale the service to zero, wait
+   past the Neon 5-minute autosuspend, then send one `POST /v1/attempts` and record the full
+   wall clock. Repeat 20 times. Each sample costs its own idle wait, so 20 samples is over 100
+   minutes plus scale-down and startup; it does not fit inside a 40-minute mixed run and should
+   not be attempted there. This is the number the whole min-instances decision turns on, and it
+   needs a distribution, not one sample.
 3. **Steady state, 20 min.** Ramp virtual users 0 to 50 over 5 minutes, hold 50 for 15. Fifty
    VUs against `concurrency x max_instances` is deliberately modest: with the pool at 3 the
    service can serve 12 database requests at once, so 50 concurrent VUs already tests the queue.
@@ -439,3 +453,4 @@ Said plainly, so nobody cites an estimate as a measurement.
   assumes it does not, which is the conservative direction.
 - The Neon autosuspend setting is not in any repository. Read it in the Neon console, or with
   `GET /projects/<id>` and `suspend_timeout_seconds`, before trusting section 4.4.
+
