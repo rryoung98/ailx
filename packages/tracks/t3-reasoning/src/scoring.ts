@@ -56,7 +56,7 @@
  * 'analysis.lengthGate'. The component is clamped to [0, weights.analysis].
  */
 import type { Judgment } from "@ailx/core";
-import { meanValue, validatedValues } from "@ailx/core";
+import { meanValue, round3, validatedValues } from "@ailx/core";
 import type { T3Artifact, T3Config, T3Turn } from "./types.js";
 
 /** Demo jury band scale — DemoJudge normalizes bands 0..5 to [0,1] by /5. */
@@ -134,7 +134,6 @@ export function relianceIndex(
 }
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const round3 = (x: number) => Math.round(x * 1000) / 1000;
 
 export interface T3Raw {
   rsr: number;

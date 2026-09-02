@@ -54,6 +54,7 @@
  *
  * Raw accuracy is reported as a diagnostic only.
  */
+import { round3 } from "@ailx/core";
 import type { T2Artifact, T2Config, T2Item, T2Response } from "./types.js";
 export { T2_DEFAULT_WEIGHTS, T2_TOTAL_POINTS } from "./types.js";
 
@@ -285,6 +286,3 @@ export function scoreT2(artifact: T2Artifact, cfg: T2Config): { raw: T2Raw; scal
   };
 }
 
-function round3(x: number): number {
-  return Math.round(x * 1000) / 1000;
-}

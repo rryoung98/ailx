@@ -2,6 +2,7 @@ import type { Judgment, ScoreInputs } from "@ailx/core";
 import {
   medianForDimension as medianForDimensionCore,
   orderedDimensionValues,
+  round3,
 } from "@ailx/core";
 import type { T4Artifact, T4Config, T4Final, T4Score } from "./types.js";
 
@@ -53,9 +54,6 @@ function clamp01(x: number): number {
   return x < 0 ? 0 : x > 1 ? 1 : x;
 }
 
-function round3(x: number): number {
-  return Math.round(x * 1000) / 1000;
-}
 
 /**
  * Median across judge samples — robust to a single outlier sample, and

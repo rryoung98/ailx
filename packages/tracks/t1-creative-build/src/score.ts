@@ -1,5 +1,5 @@
 import type { Judgment, ScoreInputs } from "@ailx/core";
-import { medianForDimension as medianForDimensionCore } from "@ailx/core";
+import { medianForDimension as medianForDimensionCore, round3 } from "@ailx/core";
 import { T1_DIMENSIONS, T1_WEIGHTS } from "./types.js";
 import type { T1Artifact, T1Config, T1Score } from "./types.js";
 
@@ -122,6 +122,3 @@ export function scoreT1(
   return { raw, scaled: round3(scaled) };
 }
 
-function round3(x: number): number {
-  return Math.round(x * 1000) / 1000;
-}
