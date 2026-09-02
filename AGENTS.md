@@ -86,6 +86,13 @@ somebody makes in front of a reviewer.
   why the 2× per-complete premium we assumed has no source, and the decision
   that follows — the exam is trilingual, the first population statistic covers
   the US and the UK, and Japan and Korea field on a named funding condition.
+- `docs/TREND-FORM.md` — the frozen anchor form that makes a trend statement
+  possible on an annually re-versioned instrument: what is in the anchor and
+  what is excluded, its exposure budget and leak detection, how long it is held
+  and how a replacement links to it, the equating method and its assumptions,
+  and the list of things a change in the number may and may not be attributed
+  to. The manifest field that marks a form as an anchor is validated in
+  `packages/content-tools`.
 
 ## Funnel and KPIs
 - `docs/KPI.md` — the eight funnel steps, the exact event that marks each,

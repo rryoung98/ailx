@@ -2,6 +2,31 @@
 
 export type Locale = "en" | "ja" | "ko";
 
+/**
+ * A FROZEN TREND FORM (docs/TREND-FORM.md). The operational form re-versions
+ * every year against a moving frontier, so a year-over-year change on it
+ * cannot be told apart from a change in the generators. The anchor form is
+ * held constant instead, and the headline trend is reported on it.
+ *
+ * A frozen form is only worth carrying while it is unburned, so the budget
+ * that bounds its exposure is declared HERE, next to the form, rather than in
+ * a policy note nobody loads.
+ */
+export interface AnchorForm {
+  /**
+   * Stable id of the frozen form, e.g. `ltt-2026a`. It outlives the
+   * instrument version: the whole point is that 2027.1 carries the same
+   * anchor id as 2026.1.
+   */
+  id: string;
+  /**
+   * The most administrations of this form allowed in one cycle, counting
+   * every sitting that sees any anchor item. Exceeding it is a decision, not
+   * an accident, and it ends with a replacement anchor (docs/TREND-FORM.md §3).
+   */
+  exposure_budget: number;
+}
+
 export interface InstrumentManifest {
   id: string;
   version: string;
@@ -23,6 +48,13 @@ export interface InstrumentManifest {
   effective_from: string;
   locales: Locale[];
   tracks: string[];
+  /**
+   * This package carries a frozen trend form. Absent on an ordinary
+   * operational package. NEVER present with `redacted: true`: a redacted
+   * package publishes its keys, and a published anchor is a burned anchor
+   * that still looks comparable (docs/TREND-FORM.md §2).
+   */
+  anchor?: AnchorForm;
 }
 
 export interface RubricCriterion {
