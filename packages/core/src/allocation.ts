@@ -200,10 +200,19 @@ const T2: TrackAllocation = {
  * T3 · Calibrated Reliance — 160 pts, the centre of the instrument.
  *
  * The named construct is knowing when NOT to use the model, measured
- * two-tailed: RSR is the non-reliance half (did you reject seeded wrong
- * output), RAIR is the positive half (did you adopt correct advice after
- * deliberating). Over-reliance and under-reliance are both failures, so the
- * reported index is signed and the two halves carry points separately.
+ * two-tailed: `overReliance` is the non-reliance half (did you reject seeded
+ * wrong output), `underReliance` is the positive half (did you adopt correct
+ * advice after deliberating). Over-reliance and under-reliance are both
+ * failures, so the reported index is signed and the two halves carry points
+ * separately.
+ *
+ * These two keys were called `rsr` and `rair` until 2026-09-02. Those are
+ * Schemmer et al.'s published statistics (IUI '23,
+ * doi:10.1145/3581641.3584066), which condition on an independent first-stage
+ * answer T3 never collects, so the names claimed a design this instrument
+ * does not have. The rates T3 does measure are over- and under-reliance
+ * (Passi & Vorvoreanu, MSR-TR-2022-12). See spec §T3, "Stated against our
+ * own case".
  */
 const T3: TrackAllocation = {
   code: "T3",
@@ -213,17 +222,17 @@ const T3: TrackAllocation = {
   compositeWeight: 0.4,
   components: [
     {
-      key: "rsr",
+      key: "overReliance",
       rubricId: "planted-error-detection",
-      label: "Planted-error detection (RSR)",
+      label: "Planted-error detection (over-reliance tail)",
       points: 50,
       resolvedBy: "model-free",
       implemented: true,
     },
     {
-      key: "rair",
+      key: "underReliance",
       rubricId: "appropriate-reliance",
-      label: "Deliberate adoption of correct advice (RAIR)",
+      label: "Deliberate adoption of correct advice (under-reliance tail)",
       points: 30,
       resolvedBy: "model-free",
       implemented: true,

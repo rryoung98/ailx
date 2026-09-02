@@ -20,7 +20,7 @@ import {
   checkpointToArtifact, loadTrackModule, scoreTrack, trackModelManifest,
   trackScoredEntry, type TrackModule,
 } from "../../lib/registry";
-import { trackConfig } from "../../lib/instrument";
+import { t3FormBudgetSeconds, trackConfig } from "../../lib/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
 // stays in the frozen data contract (always "en" at attempt start).
 import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META } from "@ailx/report";
@@ -43,7 +43,10 @@ function demoConfig(locale: "en"): SessionConfig {
     budgets: {
       t1: TRACK_META.t1.demoBudgetSeconds,
       t2: TRACK_META.t2.demoBudgetSeconds,
-      t3: TRACK_META.t3.demoBudgetSeconds,
+      // TEN-30: the T3 form may declare its own time condition (90 or 30
+      // minutes). It declares none in the static demo, so this is the demo
+      // budget as before.
+      t3: t3FormBudgetSeconds() ?? TRACK_META.t3.demoBudgetSeconds,
       t4: TRACK_META.t4.demoBudgetSeconds,
     },
     demo: true,

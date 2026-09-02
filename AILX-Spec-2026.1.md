@@ -388,16 +388,18 @@ Candidates receive a long, dense primary source — a technical or policy docume
 
 > **The mechanism that makes this track work**
 >
-> The assistant's environment is **seeded with known-incorrect outputs** at predetermined points — a misattributed figure, a plausible but false causal claim, a fabricated citation, a subtly wrong calculation. Scoring then uses two established human–AI-interaction constructs: **RSR** (relative self-reliance — correctly rejecting wrong AI advice) and **RAIR** (relative AI reliance — adopting correct AI advice after initial disagreement). These are objective, have a survey literature behind them, and cannot be gamed by writing prettier prose.
+> The assistant's environment is **seeded with known-incorrect outputs** at predetermined points — a misattributed figure, a plausible but false causal claim, a fabricated citation, a subtly wrong calculation. Scoring then measures two behavioural rates: how often the candidate accepted a seeded wrong output (**over-reliance**) and how often the candidate refused correct, source-grounded advice (**under-reliance**). Both are objective and cannot be gamed by writing prettier prose. The two components are named `overReliance` and `underReliance` in the code. They were named `rsr` and `rair` until 2026-09-02, after the appropriate-reliance literature, and that was wrong: they are **not** the published statistics of that literature. See "Stated against our own case" below.
 
 ### Score allocation
 
 **160 points, and the track has a new named construct: calibrated reliance — knowing when to use the model and when not to.**
 
-- **50 pts — Planted-error detection (RSR).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
-- **30 pts — Deliberate adoption of correct advice (RAIR).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
-- **35 pts — Process quality.** From the transcript: decomposition, prompt iteration, verification behaviour, whether the candidate went back to the primary source
+- **50 pts — Planted-error detection (the `overReliance` component).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
+- **30 pts — Deliberate adoption of correct advice (the `underReliance` component).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
+- **35 pts — Process quality.** From the transcript, in four equal quarters: decomposition into prompts, an iterative revision chain, **discriminating verification** (see below), and taking a deliberate stance on the claims the assistant raised
 - **45 pts — Analysis quality.** *[Not implemented in 2026.1 — one stub returning three seeded samples that band on answer length; the ~200-example calibration set does not exist. See §04.]* Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
+
+> **The 50/30 split is declared, not measured.** RSR's 50 points and RAIR's 30 are a design judgement about what these behaviours are worth. They are not a weighting derived from data, and nothing here should be read as a measurement claim. No Cronbach α, ICC, split-half or test–retest figure has been published for any behavioural reliance measure. The one direct test–retest study of advice taking put most of its measures in the poor range, ICC below 0.5 (Karvelis et al., *PLoS ONE* 19(11):e0312255, 2024), and behavioural difference scores — the shape of `reliance.index` — are less reliable than the rates they are built from (Hedge, Powell & Sumner, *Behav. Res. Methods* 50:1166–1186, 2018; Enkavi et al., *PNAS* 2019, median contrast ICC 0.174). Eight planted errors cannot pin a rate either: 5 of 8 is 0.63 with a 95% interval of 0.31 to 0.86, and 7 of 8 is 0.88 with 0.53 to 0.98, so two candidates 12.5 points apart sit inside each other's noise. The point allocation is unchanged and the *reporting* is what carries the uncertainty: both rates and the index are shown with 95% intervals and a coarse band, and a sitting under the eight-plant floor says so on the report. A reliability figure for this instrument would replace this paragraph.
 
 **115 of the 160 points are model-free measurement of behaviour** — up from 35 of 100. That is the design's answer to the obvious objection, that scoring reasoning with a language model is scoring the wrong thing, and it is also how §04's LLM-jury exposure is held at 45 points in this track.
 
@@ -411,7 +413,7 @@ The obvious designs for it all fail, and it is worth writing down why before def
 2. **Asking destroys the measurement.** On an exam called *the AI Literacy Examination*, a candidate asked whether they would use AI learns within two items that the sophisticated answer is "not here, and I would verify". A situational-judgement item on this construct measures test-wiseness.
 3. **Under-use is a failure too.** A person who refuses the model where it would have helped is also failing. A one-directional "abstained = correct" key scores Luddism as literacy.
 
-The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — that is RSR. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — that is RAIR. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour under time pressure rather than from anything the candidate says about themselves.
+The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — the `overReliance` component. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — the `underReliance` component. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour rather than from anything the candidate says about themselves. The behaviour is observed under a declared time budget, which is not the same as observing it *under time pressure* — see "Verification under a declared time budget" below.
 
 **The reliance index is reported two-tailed and never collapsed to one number.**
 
@@ -424,11 +426,74 @@ The design that survives all three is **not to ask, but to make the assistant ge
 
 The band reads both tails on purpose. A candidate who swallowed every planted error *and* refused every correct suggestion has over = 1, under = 1 and index = 0 — arithmetically "calibrated" and behaviourally the worst run in the cohort. When both tails are large the band names the larger failure.
 
-> **Stated against our own case.** RSR and RAIR are named after the appropriate-reliance literature, but this two-tailed *index* is AILX's own construction. We have found no published index or scoring scheme for calibrated reliance to inherit, and there is no published validity evidence for this one. It is defended on design grounds — behavioural, keyless, un-gameable by verbal sophistication, symmetric — and it is reported descriptively until it has been validated against something external. Saying so here is cheaper than being asked.
+**Every rate is reported with a 95% interval, never on its own.** `reliance.over` and `reliance.under` carry Wilson score intervals; `reliance.index` carries a Newcombe hybrid-score interval for the difference of two rates (Newcombe, *Statistics in Medicine* 17:857–872 and 17:873–890, 1998). Wilson rather than Wald, because the Wald interval under-covers at small n and has zero width at 0 and 1, which is where an eight-event rate usually lands. The report prints the interval next to the rate and the band next to both, and `apps/web/test/reliance.test.tsx` fails if a rate is rendered without them. The interval assumes the events are independent, and they are not: people form one policy about trusting the assistant rather than judging each claim on its own (Buçinca, Malaya & Gajos, CSCW 2021), so the true interval is wider than the printed one. The report says that too. A tail with no events reports no rate and withholds the band, because `relianceBand(0, 0)` reads "calibrated" and a sitting that surfaced nothing has shown no such thing.
+
+**The 0.25 calibrated band is arbitrary.** `RELIANCE_CALIBRATED_BAND = 0.25` is a declared cutline, not a fitted one: no cohort has sat this instrument, so there is nothing to fit it on. Deriving it needs two things — reliance rates from a cohort that sat this form, and a second sitting on a parallel form at least 14 days later. The cutline should then be set no narrower than the measurement error it has to survive: the interval width on one candidate's rate, and ICC(2,1) for `reliance.over` and `reliance.under` across the two sittings. Until that data exists the band is a presentation device and moves no points.
+
+> **Stated against our own case.** The two halves of this measure are named after the appropriate-reliance literature. Schemmer, Kühl, Benz, Bartos and Satzger (*Appropriate Reliance on AI Advice: Conceptualization and the Effect of Explanations*, IUI '23, doi:10.1145/3581641.3584066) define **relative AI reliance (RAIR)** as the share of instances where a decision-maker who was initially wrong switches to correct AI advice, and **relative self-reliance (RSR)** as the share of instances where a decision-maker who was initially right rejects incorrect AI advice. The pair is reported as a tuple, *Appropriateness of Reliance*, and is never collapsed into one number. A 2026 review of the area (Raees & Papangelis, arXiv:2604.23896) records this as one of three competing views and concludes that constructs for appropriate reliance are "still fragmented" with "limited consensus on common measurements".
+>
+> **AILX does not compute those two statistics, and must not claim to.** Both require a two-stage judge–advisor design in which the candidate commits an independent answer *before* the model speaks. T3 has no such first stage, so its denominators are all surfaced claims rather than the claims the candidate got right or wrong on their own. What T3 measures is the pair the wider literature calls over- and under-reliance: `reliance.over` is agreement with incorrect recommendations out of all incorrect recommendations shown (Passi & Vorvoreanu, *Overreliance on AI: Literature Review*, MSR-TR-2022-12), and `reliance.under` is its mirror on correct advice — the share of surfaced correct advice the candidate did not adopt. Those two rates are established measures and may be published under those names. Deliberation is not in either rate: it gates the `underReliance` **points** component, where a blind instant accept earns half credit, and it is the behavioural stand-in for the first-stage disagreement the published RAIR conditions on. `docs/TRANSFER-STUDY.md` §3.1 is the block that would let us report real RAIR and RSR beside them.
+>
+> **The setting is ours too.** The earlier conceptualisation from the same group (Schemmer, Hemmer, Nitsche, Kühl & Vössing, 2022) states that the concept "is limited to classification tasks". Every appropriate-reliance study found in the 2026-09-02 spike is binary classification with a few dozen instances. T3 is a 90-minute open-ended writing task, and nothing found validates the transfer.
+>
+> **The two-tailed index has no external validity evidence.** A spike that searched the two standing reviews (Eckhardt, Kühl, Dolata & Schwabe, *A Survey of AI Reliance*, ACM Computing Surveys 2025, doi:10.1145/3776528; Raees & Papangelis 2026), the two Microsoft syntheses (MSR-TR-2022-12, MSR-TR-2024-7) and the decision-theoretic reformulation (Guo, Wu, Hartline & Hullman, arXiv:2401.15356) found no published signed index of reliance calibration. Every source keeps the two rates apart on purpose. `reliance.index = under − over` is therefore AILX's own construct. It is reported descriptively, always beside both tails, the band is derived from both tails, and **it is never used alone to rank, gate or z-score a candidate.** That last sentence is enforced as far as a grep can enforce it: `packages/tracks/t3-reasoning/test/indexIsNeverConsumed.test.ts` fails if any module outside the T3 track reads `reliance.index`, with the composite named explicitly. It cannot see a destructured read, and it says so.
+>
+> **Reliability is untested as well.** No α, ICC, split-half or test–retest figure has been published for any behavioural over-, under- or appropriate-reliance measure. The one direct test–retest study of advice taking (Karvelis et al., *PLoS ONE* 19(11):e0312255, 2024; 39 participants, 153 trials) put advice taking in the poor range, ICC < 0.5. Behavioural difference scores are less reliable than the components they are built from (Hedge, Powell & Sumner, *Behav. Res. Methods* 50:1166–1186, 2018; Enkavi et al., *PNAS* 2019, median ICC 0.174 for contrast measures). On eight planted errors the binomial 95% interval on a reliance rate is about ±0.35. Until this instrument has a reliability figure, the rates are reported with intervals and coarse bands, and the 50/30-point split is a declared design choice, not a measured one.
+
+#### What this track cannot claim
+
+The list a reviewer should be able to find without reading the evidence base. It is drawn from
+the 2026-09-02 spike on the reliance literature; the full 14-item version, with sources, is in
+the private repo's `docs/EVIDENCE-CALIBRATED-RELIANCE.md` §8.
+
+1. **Not "T3 measures RSR and RAIR".** It measures over- and under-reliance rates. The published
+   statistics need an independent first-stage answer T3 never collects.
+2. **Not "RSR and RAIR are established constructs with a survey literature behind them".** Two
+   reviews (2025, 2026) call the constructs fragmented with no consensus metric, and the
+   Appropriateness-of-Reliance tuple was used by 2 of the ~65 studies in the ACM CSUR census.
+3. **Not "the reliance index is validated".** It is unpublished and unvalidated, and its
+   difference-score form is the least reliable shape in this literature.
+4. **Not "reliance is reliably measurable for one person".** No α, ICC or test–retest exists for
+   any behavioural reliance measure; the one direct test found ICC < 0.5 over 153 trials.
+5. **Not "50 + 30 points is a measurement".** Eight planted errors give a rate with a ±0.35
+   interval. The rates are reported as bands with intervals until the retest in
+   `docs/TRANSFER-STUDY.md` §3.2 has been run.
+6. **Not "the 0.25 calibrated band means something".** It is declared, not fitted. The
+   literature's only threshold is a chance baseline, and an open-ended task has none.
+7. **Not "the construct transfers from the published setting".** Every study found in the spike
+   is classification, and the source conceptualisation says it is limited to classification tasks.
+8. **Not "the index is a trait".** Published over-reliance moves with task difficulty, payoff,
+   explanation cost, when the assistant speaks, and Need for Cognition.
+9. **Not "time pressure raises the rate of error adoption".** The one study that tested it
+   (Rosbach et al., arXiv:2411.00998, 28 pathology experts) found the rate unchanged
+   (p = 0.19) and only the severity raised. Our timer is also confounded with
+   our interface until §3.5 of the transfer study varies them apart.
+
+### Verification under a declared time budget
+
+The verification quarter of Process scores **discriminating** verification, not the number of checks. A check counts when the candidate checked a claim the assistant had raised, the form knows whether that claim was true, the check happened before the answer was final, and the candidate's stance on that claim came after the check, before the answer was final, and got it right — challenged a planted error, accepted correct advice. Repeat checks of one claim count once. The scored value is `discriminating / max(checked, 2)`. Every check the candidate does not resolve, or resolves the wrong way, stays in that denominator, so checking more claims raises the rate only when the extra checks are resolved correctly.
+
+The reason is the obvious attack. A candidate who knows the transcript is scored can press Check source on every claim and learn nothing. Volume is what performative checking produces, so volume is not what is paid. The raw record still reports `verificationCount` beside `discriminatingVerifications`, because the difference between the two is itself a finding.
+
+**What the transcript cannot show.** It records that a claim was checked, not what the candidate read. So "discriminating" means *the check was followed by the right call on that claim*, not *the candidate found the discrepancy in the source*. A lucky call after an idle press scores the same as a real one. Separating those needs an event the runner does not emit — which passage was opened, and whether the candidate marked a mismatch — and that event is not worth designing before the study in `docs/TRANSFER-STUDY.md` §3.5 runs.
+
+**The manipulation.** A T3 form may declare `timeBudgetMinutes` — whole minutes, at least one: the same task, the same source, the same planted errors, at 90 minutes or at 30. It is copied into the record as `condition.timeBudgetMinutes`, so an analysis can compare conditions instead of guessing, and in the static build it sets the sitting clock. A HOSTED sitting's clock belongs to the exam service, which serves the form; the frontend records the condition and does not decide it. A form that declares nothing behaves as before and records 0.
+
+**What a comparison of the two conditions may claim, and what it may not.**
+
+| May say | May not say |
+|---|---|
+| Verification behaviour differs between the 90- and 30-minute forms, if it does | That time pressure raises the **rate** of error adoption |
+| Reliance on the assistant may rise under time stress, citing the source below | Any effect size of our own that we have not measured |
+| The finding describes **this form and this interface** | That it describes time pressure as a construct |
+
+The evidence, by name and number. Rosbach, Ammeling, Ganz, Bertram, Conrad, Riener and Aubreville (MELBA 2026, DOI 10.59275/j.melba.2026-87b1, arXiv:2603.11821) measured normalised weight-of-advice in 28 pathology experts: 0.48 without time pressure, 0.54 with it, t(27) = 2.55, p = .017, and accuracy was worse under pressure (mean absolute deviation 19.42 against 27.79). That supports the direction, on a modest effect in a small expert sample. The earlier study by the same group (arXiv:2411.00998) found the **frequency** of automation bias unchanged under a 10-second countdown, p = 0.19; only its severity moved. So AILX may not say that a clock makes candidates adopt more errors. Swaroop, Buçinca, Gajos and Doshi-Velez (arXiv:2306.07458) found that **when** the assistant speaks moved over-reliance more than how long the participant had, and Buçinca, Malaya and Gajos (arXiv:2102.09692, n = 199) found verification effort is a property of the interface as much as of the person.
+
+**The confound, stated before anyone else states it.** AILX varies the clock and the interface together. Until the timed/untimed arm in `docs/TRANSFER-STUDY.md` §3.5 runs — same document, same assistant, same planted-error set, timer the only thing that moves — every "under time pressure" sentence in a report describes this form, not the construct. The report may name the condition a sitting ran under. It may not attribute the difference to time pressure alone.
 
 ### Why eight planted errors, not four
 
-RSR carries 50 of 160 points and **its item count is the number of planted errors the form surfaces.** Four cannot support that weight: catching 2 of 4 versus 3 of 4 is a 12.5-point difference decided by essentially one event, and a four-item subtest cannot have usable reliability at any weight. Eight is the declared floor (`RSR_MIN_SURFACED`), and a sitting that surfaces fewer is flagged in the record as `rsr.underpowered` rather than being silently reported as a rate.
+The over-reliance component carries 50 of 160 points and **its item count is the number of planted errors the form surfaces.** Four cannot support that weight: catching 2 of 4 versus 3 of 4 is a 12.5-point difference decided by essentially one event, and a four-item subtest cannot have usable reliability at any weight. Eight is the declared floor (`OVER_RELIANCE_MIN_SURFACED`), and a sitting that surfaces fewer is flagged in the record as `overReliance.underpowered` rather than being silently reported as a rate. The report says so in words as well: it names how many plants the sitting surfaced, names the floor, and tells the candidate to treat the rate and the band as provisional.
 
 Eight also fits the re-versioning economics. The plants are two instances of each of four stable error **families** — misattributed figure, false causal claim, fabricated citation, wrong calculation. Families are stable even as instances burn, so a re-version is new instances of known families, which is the cheapest possible refresh in the instrument.
 
@@ -1178,8 +1243,15 @@ Everything below is unverified or unresolved. It is listed because a document th
 #### Human–AI interaction & reliance
 
 - Microsoft Research & CMU, [The Impact of Generative AI on Critical Thinking](https://dl.acm.org/doi/abs/10.1145/3706598.3713778), CHI 2025
-- [Survey of appropriate-reliance constructs (RAIR, RSR)](https://arxiv.org/html/2604.23896v1)
-- [Appropriate reliance conceptualisation](https://dl.acm.org/doi/10.1145/3581641.3584066), IUI 2023
+- Raees & Papangelis, [Survey of appropriate-reliance constructs (RAIR, RSR)](https://arxiv.org/html/2604.23896v1), 2026 — three competing views, "limited consensus on common measurements"
+- Schemmer, Kühl, Benz, Bartos & Satzger, [Appropriate Reliance on AI Advice: Conceptualization and the Effect of Explanations](https://dl.acm.org/doi/10.1145/3581641.3584066), IUI 2023 — the definitions of RAIR and RSR AILX names its components after and does **not** compute ([preprint](https://arxiv.org/abs/2302.02187))
+- Passi & Vorvoreanu, [Overreliance on AI: Literature Review](https://www.microsoft.com/en-us/research/publication/overreliance-on-ai-literature-review/), MSR-TR-2022-12 — the over-/under-reliance rates T3 does compute
+- Eckhardt, Kühl, Dolata & Schwabe, [A Survey of AI Reliance](https://doi.org/10.1145/3776528), ACM Computing Surveys 2025
+- Guo, Wu, Hartline & Hullman, [A Decision Theoretic Framework for Measuring AI Reliance](https://arxiv.org/abs/2401.15356)
+- Karvelis et al., [Test–retest reliability of behavioural and computational measures of advice taking](https://doi.org/10.1371/journal.pone.0312255), *PLoS ONE* 19(11):e0312255, 2024 — advice taking in the poor range, ICC < 0.5
+- Hedge, Powell & Sumner, [The reliability paradox](https://doi.org/10.3758/s13428-017-0935-1), *Behav. Res. Methods* 50:1166–1186, 2018 · Enkavi et al., [Large-scale analysis of test–retest reliabilities of self-regulation measures](https://doi.org/10.1073/pnas.1818430116), *PNAS* 2019 — why a difference score is less reliable than its parts
+- Vasconcelos et al., [Explanations can reduce overreliance if they reduce the cost of engaging](https://arxiv.org/abs/2212.06823) · Swaroop, Buçinca, Gajos & Doshi-Velez, [Accuracy-Time Tradeoffs in AI-Assisted Decision Making under Time Pressure](https://arxiv.org/abs/2306.07458) — over-reliance moves with difficulty, payoff and when the assistant speaks
+- Rosbach et al., [Automation Bias in AI-Assisted Medical Decision-Making under Time Pressure](https://arxiv.org/abs/2411.00998), 2024 — time pressure raised the severity of automation bias, not its rate (p = 0.19)
 - [Information-theoretic measurement of human contribution](https://arxiv.org/abs/2408.14792)
 - [On the insecurity of keystroke-based AI authorship detection](https://arxiv.org/abs/2601.17280)
 - [Why Johnny Can't Prompt](https://dl.acm.org/doi/10.1145/3544548.3581388), CHI 2023

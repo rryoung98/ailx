@@ -761,8 +761,8 @@
             "count_per_form": 4
           },
           "reliance_constructs": [
-            "RSR",
-            "RAIR"
+            "over-reliance",
+            "under-reliance"
           ],
           "jury": {
             "kind": "heterogeneous-three-model",
@@ -777,14 +777,14 @@
           "criteria": [
             {
               "id": "planted-error-detection",
-              "name": "Planted-error detection (RSR)",
+              "name": "Planted-error detection (over-reliance tail)",
               "points": 50,
               "scored_by": "arithmetic",
               "judged": false
             },
             {
               "id": "appropriate-reliance",
-              "name": "Deliberate adoption of correct advice (RAIR)",
+              "name": "Deliberate adoption of correct advice (under-reliance tail)",
               "points": 30,
               "scored_by": "arithmetic",
               "judged": false
@@ -806,7 +806,7 @@
           ]
         },
         "prompts": [],
-        "rubricVersion": "e0bb0b7b8889fc8e00212a780c8a88a0ee1a8413e180f2287791423c2f557194"
+        "rubricVersion": "1c0b2fc5eff7f47b6a94fd80214f8044a03745497351bd60666afcf30dca7ebf"
       },
       {
         "trackId": "t4-generative",
@@ -873,7 +873,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "191267be875ece15e0d245483b7f6f1d66a9c6e973a243458539132ec5f40c69"
+          "sha256": "a6645a15664e2f34e4f84213ec57190580941cdee11f4c58a9ba7ecf48511bc1"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -905,9 +905,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "19f926e1c119bcb8c5667cb4cc81a183740780e531132a82a10831829b7afa06"
+      "digest": "2ee0fbc8ded5cf83e7cb0eff69e7f2796d06f635cc42af0a837e3e0017e32ca8"
     },
     {
       "trackId": "t2",
@@ -916,7 +916,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "191267be875ece15e0d245483b7f6f1d66a9c6e973a243458539132ec5f40c69"
+          "sha256": "a6645a15664e2f34e4f84213ec57190580941cdee11f4c58a9ba7ecf48511bc1"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -944,9 +944,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "d90a249adaf18406087c40e59c7f0eb86b62d253953a2d6c36dc7cd380205ce7"
+      "digest": "44c6f8dae3fa1af8b4e6bd3037c8c0bfb797e5e8bcfc3ac6928011c26a04d33f"
     },
     {
       "trackId": "t3",
@@ -955,7 +955,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "191267be875ece15e0d245483b7f6f1d66a9c6e973a243458539132ec5f40c69"
+          "sha256": "a6645a15664e2f34e4f84213ec57190580941cdee11f4c58a9ba7ecf48511bc1"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -975,21 +975,21 @@
         },
         {
           "path": "src/plugin.ts",
-          "sha256": "01c0556a8841e718e7bdaeeb3158733e2da3fa3321d34aa46eeaf2f56b075082"
+          "sha256": "95e088f0be6b5b49a9c3bd9dd59703e62f76d1e4c3f3a621366b885b0c06409c"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "c286c1dbde6264506c812ab2d0f44615e8af8850ff747cc785bca434b37239cd"
+          "sha256": "3d686bf19e5111f7684ca416ee3ea6122188265d9dadbabe1e95e51644de33e8"
         },
         {
           "path": "src/types.ts",
-          "sha256": "250ca873296d60a29bd0f6be35c7c08af08e9396f07d13fe693080d190e12796"
+          "sha256": "b689942581c83b729d30916dd3d0298e69d2322023803ab49871ecef84de1800"
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "877496c93061b84fec51dbd977d184936c7519ed98282acab53cbb26cec91d0b"
+      "digest": "c56ed5a8a4f8f51b3a27bb6fa1a2dd7900efe6362ee36f1bcc832dcc62858f5b"
     },
     {
       "trackId": "t4",
@@ -1026,9 +1026,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.2.0"
+        "@ailx/core@0.3.0"
       ],
-      "digest": "ebf5d2302b56005c2f68ffac96e0f4780d18786550211cd1efa1c7dce8fce129"
+      "digest": "6f5f5a3343019e049c0986f4223e67ec6714eccdd6dd210251395509d61c6672"
     }
   ]
 }

@@ -300,17 +300,37 @@ score is whether the candidate caught them. That is a direct measurement with no
 `packages/tracks/t3-reasoning/src/scoring.ts` implements it as such — 25 points RSR, 10 points RAIR,
 20 points process quality from the transcript, all model-free; 45 points routed to a stored jury.
 
+> Read after 2026-09-02: this review predates two changes and its numbers are the numbers at the
+> time of review. T3 was re-weighted to 160 points, and the two components were renamed from `rsr`
+> and `rair` to `overReliance` (50 pts) and `underReliance` (30 pts) in TEN-38, because RSR and RAIR
+> are Schemmer et al.'s published statistics and T3 does not compute them. Every "RSR"/"RAIR" below
+> that names an AILX component means those two. The allocation table in
+> `packages/core/src/allocation.ts` is the live source.
+
 The implementation is more careful than the spec. RAIR requires *deliberation before acceptance*: a
 claim must have been challenged, or checked against the source after it surfaced, before its
 acceptance earns full credit; a blind instant accept of correct advice earns half, because "the
 candidate happened to be right, but exhibited the same behaviour that swallows planted errors."
 That is a genuine measurement insight and it is in the code, not the spec.
 
-T3's construct also has the best external warrant. The Microsoft/CMU study of 319 knowledge workers
+T3's construct has a partial external warrant. The Microsoft/CMU study of 319 knowledge workers
 found generative AI shifts critical thinking toward **verification, integration and stewardship** —
 which is exactly what the process component scores — and that higher confidence in the AI goes with
-less critical thinking. RSR/RAIR come with a survey literature. Nothing in T2's evidence base is
-this aligned.
+less critical thinking. Nothing in T2's evidence base is this aligned.
+
+The reliance half is weaker than this section said before (corrected 2026-09-02, TEN-32). RSR and
+RAIR are real names with a real source — Schemmer et al., IUI '23, doi:10.1145/3581641.3584066 —
+but **AILX does not compute either statistic.** Both are defined on a two-stage judge–advisor
+design where the human answers first and the model advises second, and T3 collects no first-stage
+answer. What T3 measures is over- and under-reliance as Passi & Vorvoreanu define them
+(MSR-TR-2022-12): agreement with incorrect advice, and refusal of correct advice. Those rates are
+established; the RSR/RAIR conditioning is not ours to claim. Two reviews (Eckhardt et al., ACM
+CSUR 2025; Raees & Papangelis, arXiv:2604.23896) describe the appropriate-reliance construct as
+fragmented with no consensus metric, and the published concept is defined for classification tasks
+only, so its use on a 90-minute writing task is ours as well. No reliability figure exists for any
+behavioural reliance measure. The full trace is in the private repo's
+`docs/EVIDENCE-CALIBRATED-RELIANCE.md`; the limits a reviewer should see are listed in spec §T3,
+"What this track cannot claim"; the study that would fix it is `docs/TRANSFER-STUDY.md` §3.
 
 The weakness: **45 of 100 points are an LLM jury**, and the evidence for that is conditional — and
 weaker than this paragraph originally said (corrected 2026-09-02, TEN-34). Naive LLM essay scoring
@@ -718,7 +738,9 @@ in spec §T3. The same check found no corroboration for the QWK 0.708–0.712 fi
 for a calibrated jury; what the base contains is one small study (n = 67) with a low,
 non-significant result. A follow-up spike (2026-09-02, TEN-32) then traced the figure itself to one
 unreviewed preprint, arXiv:2601.08654 — one model family, one dataset — and measured human–human
-QWK on ASAP at 0.63–0.85, median 0.76, which puts 0.71 below the median human pair. Those 45 points are marked unimplemented for more reasons than one.
+QWK on ASAP at 0.63–0.85, median 0.76, which puts 0.71 below the median human pair. The same spike
+reached the wider literature this base had missed: RSR and RAIR **are** defined, by Schemmer et al.
+(IUI '23), and AILX computes neither of them. See §4.1. Those 45 points are marked unimplemented for more reasons than one.
 
 Two other citation corrections: Verhavert's bands are SSR .70 at ~13 comparisons, .80 at 19–20,
 .90 at **26–37** — so r = 30 is inside the .90 band, as §3.3 says. Diel et al. is k = 137 across
@@ -754,3 +776,23 @@ three are now marked `implemented: false` in `packages/core/src/allocation.ts`, 
 and flagged inline at each score allocation. `packages/core/test/spec-allocation.test.ts` fails the
 build if the spec and the allocation table stop agreeing, which is the guard whose absence let the
 original §04 claim go wrong by a factor of five.
+
+### 9.5 §7.2 shipped, minus the claim it was written with (2026-09-02, TEN-30)
+
+The verification measure §7.2 asked for is built. The verification quarter of T3's Process component
+now scores **discriminating** verification — a claim checked before the answer was final, resolved
+afterwards the right way — and pays nothing for volume, so the performative-checking attack §7.2
+names is priced out. T3's points did not move.
+
+The manipulation is a form parameter, `timeBudgetMinutes`, recorded on every sitting as
+`condition.timeBudgetMinutes`. Forms that declare nothing behave exactly as before.
+
+Two corrections to §7.2's framing. First, the transcript cannot tell a check that found the
+discrepancy from a lucky call after an idle press; it records that a claim was checked, not what was
+read. The measure is defined on the stance that follows the check and the spec says so. Second,
+§7.2 assumes the slope is the finding. The evidence base is thinner than that: reliance rose 0.48 →
+0.54 under time pressure in 28 experts (Rosbach et al., MELBA 2026, t(27) = 2.55, p = .017), but the
+**rate** of error adoption did not move (arXiv:2411.00998, p = 0.19), and *when* the assistant
+speaks moved over-reliance more than the clock did (Swaroop et al., arXiv:2306.07458). Our timer and
+our interface still vary together, so until the arm in `docs/TRANSFER-STUDY.md` §3.5 runs, a
+condition comparison describes this form and not the construct.
