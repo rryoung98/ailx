@@ -203,6 +203,10 @@ describe("createApiPersistence", () => {
     expect(finalizes).toHaveLength(1);
     const responsePosts = server.calls.filter((c) => c.path.endsWith("/responses"));
     expect(responsePosts).toHaveLength(log.length);
+    // One request per log entry, plus the create and the finalize. The load-test
+    // cost model bills a sitting at that ratio (docs/LOAD-TEST.md 2.1 and 4.1), so
+    // a batching change here moves a dollar figure and should fail this line first.
+    expect(server.calls).toHaveLength(log.length + 2);
   });
 
   it("clear drops local state + sync bookkeeping but never touches the server", async () => {
