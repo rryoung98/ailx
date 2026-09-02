@@ -73,6 +73,16 @@ somebody makes in front of a reviewer.
   non-response bias analysis we publish unprompted, the exact hedging language
   for convenience-sample findings, and the cost of a first release.
 
+## Funnel and KPIs
+- `docs/KPI.md` — the eight funnel steps, the exact event that marks each,
+  how D1/D7 return is derived from `firstSeenDay`/`dayIndex` (never in the
+  browser), what the numbers cannot tell us, and what would count as no
+  traction. The schema is `packages/contract/src/funnel.ts`, the emitter is
+  `apps/web/lib/funnel.ts`, and it is SILENT with no backend. The exam
+  surface emits ONE funnel step of its own, `sitting_started`, and nothing
+  inside a sitting is instrumented; the session's own `visit_started` still
+  rides along when the sitting is the first thing a browser does.
+
 ## Frontend/backend separation
 - `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
   the exam: why content custody (a private, digest-pinned item bank plus a
