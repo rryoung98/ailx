@@ -91,8 +91,13 @@ somebody makes in front of a reviewer.
   values are defaults rather than decisions, what one request costs on each path, the
   load-test plan with its pass/fail thresholds fixed in advance, and the price of every
   min-instances option. Cloud Run concurrency is 80 while the pg pool is 3, so an
-  instance can serve 3 database requests at once; that gap is the first thing to fix.
-  Serving is inside the free tier at every traffic level we can foresee. The bill is idle.
+  instance can serve 3 database requests at once; §8 costs the two ways out and
+  records the pair this branch carries. Serving is inside the free tier at every
+  traffic level we can foresee. The bill is idle.
+  `packages/core/test/serviceSizing.test.ts` reads §8.3's table and fails when
+  concurrency exceeds the pool. It checks what this repo decided, not what is
+  deployed: the Terraform half of the check is in the private repo and §8.4
+  quotes it.
 
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
