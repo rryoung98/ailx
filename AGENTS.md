@@ -64,6 +64,13 @@ somebody makes in front of a reviewer.
   how it upgrades to a scored claim without reissuing, and why a revoked
   credential still resolves while a revoked share token 404s.
 
+## Comparative judgement (T1)
+- `docs/COMPARATIVE-JUDGEMENT.md` — what T1's pairwise judging costs at N = 100 to 10,000,
+  which quantity is flat in N and which is not, who judges and what that costs in bias, and
+  why the reported reliability is a split-panel correlation rather than SSR. Both source
+  citations are quoted from documents fetched in-session. Re-run the cost model with
+  `node docs/cj-cost.mjs`.
+
 ## Sampling and the population statistic
 - `docs/SAMPLING.md` — the two-track design that separates the self-selected web
   cohort (item calibration, individual credentials) from a bought probability
