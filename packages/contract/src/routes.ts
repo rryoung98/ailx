@@ -19,14 +19,13 @@
  * mounted at `/v1${path}` for its method, and every mounted `/v1` route must
  * appear here. Neither direction reads a response body, so `response` is a
  * name a reader can check, not a type a compiler enforces (docs/ADR-orpc.md
- * §8, TEN-43). `getAttempt` and `countShareView` have no caller in `apps/web`;
+ * §8, TEN-43) — unless the route also has a schema in `API_RESPONSE_SCHEMAS`,
+ * which the browser validates the body against (docs/ADR-zod-tanstack.md). `getAttempt` and `countShareView` have no caller in `apps/web`;
  * they stay listed because that second check is an equality.
  *
  * Order is not declared. `/practice/claim` must still be mounted before
  * `/practice/:id`, and nothing here says so.
  */
-import { parseCaseQuery } from "./moderation.js";
-import { parseGalleryQuery } from "./gallery.js";
 
 export type ApiMethod = "GET" | "POST" | "DELETE";
 
@@ -41,7 +40,11 @@ export interface ApiRoute {
   readonly method: ApiMethod;
   /** Template below the versioned root; `:name` marks a parameter. */
   readonly path: string;
-  /** The success body, as the browser reads it. A name, not a checked type. */
+  /**
+   * The success body, as the browser reads it. A name, not a checked type —
+   * except where `API_RESPONSE_SCHEMAS` holds a schema for the same key, and
+   * then the seam checks it (`apps/web/lib/serviceFetch.ts`).
+   */
   readonly response: string;
   /**
    * The shared parser that normalizes this route's query string, when one
@@ -103,15 +106,6 @@ export const API_ROUTES = {
 } as const satisfies Record<string, ApiRoute>;
 
 export type ApiRouteKey = keyof typeof API_ROUTES;
-
-/**
- * The pure query normalizer each `queryParser` name refers to. One object, so a new
- * parser cannot be added to the package without a route being able to name it.
- */
-export const API_QUERY_PARSERS = {
-  gallery: parseGalleryQuery,
-  case: parseCaseQuery,
-} as const satisfies Record<ApiQueryParserName, (raw: Record<string, string | undefined>) => unknown>;
 
 /**
  * A path built from the manifest. Branded, so the type system says what the

@@ -81,7 +81,12 @@ describe("@ailx/contract is pure", () => {
       expect(deps).not.toContain(server);
       expect(Object.keys(pkg.devDependencies ?? {})).not.toContain(server);
     }
-    // What it MAY depend on: pure derivation the browser already ships.
-    expect(deps).toEqual(["@ailx/report"]);
+    // What it MAY depend on: pure derivation the browser already ships, and
+    // `zod`, which IS how the wire shapes are declared here — the types are
+    // inferred from the schemas, so it is not an extra layer over them
+    // (docs/ADR-zod-tanstack.md). It reaches for no runtime either: the source
+    // rules above run over this package, and zod's own dist imports no
+    // `node:` builtin.
+    expect(deps).toEqual(["@ailx/report", "zod"]);
   });
 });

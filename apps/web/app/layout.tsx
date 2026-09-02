@@ -10,6 +10,7 @@ import { Loader } from "../components/Loader";
 import { NavLink } from "../components/ui/NavLink";
 import { assetUrl, footerModeCopy, isClerkEnabled, isServerMode } from "../lib/mode";
 import { AuthShell } from "../lib/auth/AuthShell";
+import { QueryProvider } from "../lib/QueryProvider";
 import { AuthNav } from "../lib/auth/AuthNav";
 
 export const metadata: Metadata = {
@@ -24,6 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* Clerk, or nothing at all — the static export has no auth and must
             keep rendering without one (docs/ARCHITECTURE.md §10.2). */}
+        {/* One query cache for the whole app, outside the auth shell so a
+            sign-in does not throw away a page's data (lib/QueryProvider.tsx). */}
+        <QueryProvider>
         <AuthShell>
           <Loader />
           <a href="#main" className="skip-link">Skip to main content</a>
@@ -93,6 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </footer>
         </AuthShell>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { API_QUERY_PARSERS, API_RESPONSE_SCHEMAS } from "../src/tables.js";
 import {
-  API_QUERY_PARSERS,
   API_ROUTES,
   type ApiRoute,
   type ApiRouteKey,
@@ -98,6 +98,36 @@ describe("apiPath — refusals", () => {
 });
 
 
+describe("response-schema coupling", () => {
+  it("keys every schema by a route that exists", () => {
+    for (const key of Object.keys(API_RESPONSE_SCHEMAS)) {
+      expect(Object.keys(API_ROUTES)).toContain(key);
+    }
+  });
+
+  it("validates the body the route's `response` line names", () => {
+    expect(API_ROUTES.gallery.response).toBe("{ gallery: GalleryListing }");
+    const parsed = API_RESPONSE_SCHEMAS.gallery.safeParse({
+      gallery: { entries: [], total: 0, facets: [], query: parsedQuery() },
+    });
+    expect(parsed.success).toBe(true);
+    // The envelope is checked too: a bare listing is not this route's body.
+    expect(API_RESPONSE_SCHEMAS.gallery.safeParse({ entries: [], total: 0, facets: [], query: parsedQuery() }).success).toBe(false);
+  });
+
+  it("covers one route of the manifest, and says so rather than implying more", () => {
+    expect(Object.keys(API_RESPONSE_SCHEMAS)).toEqual(["gallery"]);
+    expect(Object.keys(API_ROUTES).length).toBeGreaterThan(30);
+  });
+});
+
+/** The default query, through the parser, so no test hand-spells the shape. */
+function parsedQuery() {
+  const result = parseGalleryQuery();
+  if (!result.ok) throw new Error(result.message);
+  return result.query;
+}
+
 describe("query-parser coupling", () => {
   it("names a parser that exists, for the two routes a shared parser covers", () => {
     const named = entries.filter(([, r]) => r.queryParser !== undefined);
@@ -121,11 +151,15 @@ describe("query-parser coupling", () => {
     expect(API_QUERY_PARSERS.case).toBe(parseCaseQuery);
   });
 
-  it("normalizes through the named parser, so a hostile query is clamped once", () => {
+  it("goes through the named parser, so a hostile query is judged once", () => {
+    // The two parsers no longer answer the same way, and that is the open
+    // half of this work: `gallery` REFUSES what `case` still clamps
+    // (docs/ADR-zod-tanstack.md §4). One seam was converted, not both.
     const gallery = API_QUERY_PARSERS[API_ROUTES.gallery.queryParser] as typeof parseGalleryQuery;
-    expect(gallery({ limit: "1000000000", sort: "sideways" })).toMatchObject({
-      limit: GALLERY_MAX_PAGE_SIZE,
-      sort: "recent",
+    expect(gallery({ limit: "1000000000", sort: "sideways" }).ok).toBe(false);
+    expect(gallery({ limit: String(GALLERY_MAX_PAGE_SIZE) })).toMatchObject({
+      ok: true,
+      query: { limit: GALLERY_MAX_PAGE_SIZE, sort: "recent" },
     });
     const cases = API_QUERY_PARSERS[API_ROUTES.moderationCases.queryParser] as typeof parseCaseQuery;
     expect(cases({ limit: "-4", lane: "sideways" })).toMatchObject({

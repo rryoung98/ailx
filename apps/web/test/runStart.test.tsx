@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { withQueryClient } from "./helpers/clientPage";
 import ExamPage from "../app/exam/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -47,7 +48,7 @@ describe("run start screen", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
 
     const connect = host.querySelector('section[aria-label="AI connection"]');
     expect(connect, "ConnectPanel must render on the start screen").not.toBeNull();
@@ -75,7 +76,7 @@ describe("run start screen", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
 
     const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
     expect(pill.textContent).toContain("Connect a model to start");
@@ -94,7 +95,7 @@ describe("run start screen", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
 
     const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
     expect(pill.textContent).toContain("Start your run");
@@ -110,7 +111,7 @@ describe("run start screen", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
     const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
     expect(pill.textContent).toContain("Start your run");
   });

@@ -12,7 +12,13 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { parseGalleryQuery, type GalleryEntry, type GalleryListing } from "@ailx/contract";
+import {
+  parseGalleryQuery,
+  publicEntry,
+  type GalleryEntry,
+  type GalleryListing,
+  type PublicGalleryEntry,
+} from "@ailx/contract";
 import { ALL_SHARE_SECTIONS, sharePayloadFrom, type SharePayload } from "@ailx/report";
 import {
   renderClient,
@@ -28,7 +34,22 @@ const payloadWith = (over: Partial<SharePayload> = {}): SharePayload => ({
     instrument: "ailx 2026.1",
     sections: ALL_SHARE_SECTIONS,
     completedOn: "2026-03-01",
-    process: { totalActiveSeconds: 1800, tracks: [] },
+    // A per-track row is required: `parseSharePayload` reads a process block
+    // with no tracks as no process at all, and the seam now returns what that
+    // parser produced rather than the object that arrived.
+    process: {
+      totalActiveSeconds: 1800,
+      tracks: [
+        {
+          track: "t1",
+          activeSeconds: 1800,
+          budgetSeconds: 3600,
+          timedOut: false,
+          iterationRatio: null,
+          verificationEvents: 0,
+        },
+      ],
+    },
   }),
   ...over,
 });
@@ -69,20 +90,35 @@ function stubGalleryService(): void {
     const qs = String(url).split("?")[1] ?? "";
     for (const [k, v] of new URLSearchParams(qs)) raw[k] = v;
     seen.push(raw);
+    // The service refuses a query it will not act on, so this stub does too:
+    // `?limit=1000000000` is a 400 now, not a silently clamped 200
+    // (docs/ADR-zod-tanstack.md §4).
+    const parsed = parseGalleryQuery(raw);
+    if (!parsed.ok) {
+      return new Response(JSON.stringify({ error: { code: "bad_request", message: parsed.message } }), {
+        status: 400,
+      });
+    }
     const body =
       status === 200
-        ? { gallery: { ...listing, query: parseGalleryQuery(raw) } }
+        ? { gallery: { ...listing, query: parsed.query } }
         : { error: { code: "internal", message: "no" } };
     return new Response(JSON.stringify(body), { status });
   });
 }
 
-function listingOf(entries: GalleryEntry[], over: Partial<GalleryListing> = {}): GalleryListing {
+function defaultQuery() {
+  const parsed = parseGalleryQuery();
+  if (!parsed.ok) throw new Error(parsed.message);
+  return parsed.query;
+}
+
+function listingOf(entries: PublicGalleryEntry[], over: Partial<GalleryListing> = {}): GalleryListing {
   return {
     entries,
     total: entries.length,
     facets: [{ code: payload.playerType.code, name: payload.playerType.name, count: entries.length }],
-    query: parseGalleryQuery(),
+    query: defaultQuery(),
     ...over,
   };
 }
@@ -108,7 +144,7 @@ beforeEach(() => {
   urls.length = 0;
   identity.length = 0;
   status = 200;
-  listing = listingOf([entry()]);
+  listing = listingOf([publicEntry(entry())]);
   stubGalleryService();
 });
 afterEach(() => {
@@ -152,7 +188,7 @@ describe("the wall", () => {
   });
 
   it("links each card to its own share view, and leaks nothing else", async () => {
-    listing = listingOf([entry({ payload: payloadWith({ site: "/api/site/sha256:abc/index.html" }) })]);
+    listing = listingOf([publicEntry(entry({ payload: payloadWith({ site: "/api/site/sha256:abc/index.html" }) }))]);
     const html = await markup();
     // The listed card's own capability URL — its owner published it.
     expect(html).toContain(`href="/s/${TOKEN}"`);
@@ -162,17 +198,17 @@ describe("the wall", () => {
   });
 
   it("shows the sections the owner opted into, and only those", async () => {
-    listing = listingOf([entry({ payload: payloadWith({ note: "I built a co-op site." }) })]);
+    listing = listingOf([publicEntry(entry({ payload: payloadWith({ note: "I built a co-op site." }) }))]);
     expect(await markup()).toContain("I built a co-op site.");
     expect(await markup()).toContain("30 min on task");
-    listing = listingOf([entry({ payload: payloadWith({ note: null, process: null }) })]);
+    listing = listingOf([publicEntry(entry({ payload: payloadWith({ note: null, process: null }) }))]);
     const bare = await markup();
     expect(bare).not.toContain("min on task");
     expect(bare).not.toContain("co-op site");
   });
 
   it("links a built site as a same-origin new-tab link, and says so to a screen reader", async () => {
-    listing = listingOf([entry({ payload: payloadWith({ site: "/api/site/sha256:abc/index.html" }), approvedBy: "human:ada" })]);
+    listing = listingOf([publicEntry(entry({ payload: payloadWith({ site: "/api/site/sha256:abc/index.html" }), approvedBy: "human:ada" }))]);
     const html = await markup();
     expect(html).toContain('href="/api/site/sha256:abc/index.html"');
     expect(html).toContain('rel="noreferrer"');
@@ -180,7 +216,7 @@ describe("the wall", () => {
   });
 
   it("refuses to render a site path that is not one of ours", async () => {
-    listing = listingOf([entry({ payload: payloadWith({ site: "javascript:alert(1)" }) })]);
+    listing = listingOf([publicEntry(entry({ payload: payloadWith({ site: "javascript:alert(1)" }) }))]);
     const html = await markup();
     expect(html).not.toContain("javascript:");
     expect(html).toContain("card only");
@@ -211,15 +247,18 @@ describe("filters", () => {
     expect(seen[0]!.type).toBe("MSVD");
   });
 
-  it("hands a hostile query to the backend parser, which normalizes it", async () => {
+  it("hands a hostile query to the backend parser, which REFUSES it", async () => {
     const html = await markup({ sort: "id; DROP TABLE share_links", limit: "100000", type: "<script>" });
     expect(seen[0]!.sort).toBe("id; DROP TABLE share_links"); // untouched on the way in
+    // A 400 is a non-200, so the page says the wall is unreadable rather than
+    // rendering a listing nobody asked for.
     expect(html).not.toContain("DROP TABLE");
     expect(html).not.toContain("<script>alert");
+    expect(html).toContain("That filter is not one this wall can show");
   });
 
   it("pages forward and back without losing the filter", async () => {
-    listing = listingOf([entry()], { total: 60, query: parseGalleryQuery({ offset: "24" }) });
+    listing = listingOf([publicEntry(entry())], { total: 60, query: { ...defaultQuery(), offset: 24 } });
     const html = await markup({ offset: "24" });
     expect(html).toContain("offset=48");
     expect(html).toContain("offset=0");
@@ -279,5 +318,53 @@ describe("how it reads the service", () => {
     const html = await markup();
     expect(html).toContain("could not reach the AILX service");
     expect(html).not.toContain("Nobody has published a card yet");
+  });
+});
+
+/**
+ * THE SEAM VALIDATES. `useService` is given the route's schema from
+ * `API_RESPONSE_SCHEMAS`, so a body that is not the shape `GET /gallery`
+ * declares is refused at the boundary and nothing on the page is rendered
+ * from it (docs/ADR-zod-tanstack.md §2).
+ */
+describe("a body that is not the shape the route declares", () => {
+  let logged: unknown[][];
+  beforeEach(() => {
+    logged = [];
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => void logged.push(args));
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const bad = (over: Record<string, unknown>) =>
+    ({ ...listingOf([publicEntry(entry())]), ...over }) as unknown as GalleryListing;
+
+  /**
+   * The drift docs/ADR-orpc.md §7 found by reading the code: the browser
+   * declared `approvedBy` on a listing entry and the service has never sent
+   * one. The type is the schema now, so an entry that DOES carry it is the
+   * one refused — nobody's approver reaches a public wall by accident.
+   */
+  it("refuses an entry carrying the approver", async () => {
+    listing = bad({ entries: [entry()] });
+    const html = await markup();
+    expect(html).not.toContain("gallery-card");
+    expect(html).toContain("could not read");
+    expect(logged.length).toBe(1);
+  });
+
+  it("refuses a wrong type, a missing field and an unknown key", async () => {
+    for (const over of [{ total: "1" }, { facets: undefined }, { surprise: true }]) {
+      listing = bad(over);
+      expect(await markup()).toContain("could not read");
+    }
+  });
+
+  it("still renders the wall when the body IS the declared shape", async () => {
+    listing = listingOf([publicEntry(entry())]);
+    const html = await markup();
+    expect(html).toContain("gallery-card");
+    expect(logged.length).toBe(0);
   });
 });
