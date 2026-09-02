@@ -164,8 +164,10 @@ for per wave. **Three real quotes should replace the whole table before any mone
    survive a foreign address frame. `docs/SAMPLING.md` §13.3 option B, at an estimated $0.8–1.2M.
    **ESTIMATE.**
 2. **Japan and Korea are a funded phase, not a date.** The trilateral release is estimated at
-   $1.9–2.8M, i.e. roughly **$1.1–1.6M on top of wave 1**. **ESTIMATE, ours** — §6 above says why no
-   published source supports the JP/KR half of it.
+   $1.9–2.8M against $0.8–1.2M for US + UK, so adding the two countries costs roughly
+   **$1.1–1.6M more** — the low-to-low and high-to-high difference between options B and C in
+   `docs/SAMPLING.md` §13.3, not an interval on a measured quantity. **ESTIMATE, ours** — §6 above
+   says why no published source supports the JP/KR half of it.
 3. **The named condition.** Japan or Korea fields when all four hold: the money is committed; a
    local fieldwork partner is contracted with a written sampling design; a pilot has produced a
    realised response rate and a non-response bias analysis; and the realised n clears the 1,000
