@@ -67,10 +67,20 @@ describe("apiPath — substitution", () => {
 });
 
 describe("apiPath — refusals", () => {
+  // The signature refuses a missing or extra parameter at compile time
+  // (apps/web/test/routeManifest.test.ts proves that, where tests are
+  // typechecked). These calls go through an untyped view of the same function,
+  // because a value can still arrive from JSON, an `any` or a cast.
+  const untyped = apiPath as unknown as (
+    key: string,
+    params?: Readonly<Record<string, string>>,
+    query?: string,
+  ) => string;
+
   it("throws on a missing parameter instead of building /attempts/undefined/items", () => {
-    expect(() => apiPath("attemptItems")).toThrow(/missing parameter "id"/);
-    expect(() => apiPath("attemptItems", {})).toThrow(/missing parameter "id"/);
-    expect(() => apiPath("attemptTrackView", { id: "a1" })).toThrow(/missing parameter "trackId"/);
+    expect(() => untyped("attemptItems")).toThrow(/missing parameter "id"/);
+    expect(() => untyped("attemptItems", {})).toThrow(/missing parameter "id"/);
+    expect(() => untyped("attemptTrackView", { id: "a1" })).toThrow(/missing parameter "trackId"/);
   });
 
   it("treats an empty parameter as missing — an empty id is not an id", () => {
@@ -78,14 +88,15 @@ describe("apiPath — refusals", () => {
   });
 
   it("throws on a parameter the route does not have, which is how a typo shows up", () => {
-    expect(() => apiPath("attemptItems", { id: "a1", attemptId: "a2" })).toThrow(/no parameter "attemptId"/);
-    expect(() => apiPath("gallery", { id: "a1" })).toThrow(/no parameter "id"/);
+    expect(() => untyped("attemptItems", { id: "a1", attemptId: "a2" })).toThrow(/no parameter "attemptId"/);
+    expect(() => untyped("gallery", { id: "a1" })).toThrow(/no parameter "id"/);
   });
 
   it("throws on an unknown route", () => {
-    expect(() => apiPath("scoreAttempt" as ApiRouteKey)).toThrow(/unknown route: scoreAttempt/);
+    expect(() => untyped("scoreAttempt")).toThrow(/unknown route: scoreAttempt/);
   });
 });
+
 
 describe("query-parser coupling", () => {
   it("names a parser that exists, for the two routes a shared parser covers", () => {

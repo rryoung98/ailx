@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
-import { API_ROUTES } from "@ailx/contract";
+import { API_ROUTES, apiPath } from "@ailx/contract";
 
 const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -166,6 +166,24 @@ describe("the detector catches what it exists to catch", () => {
     // and must not be swept in, or the guard would flag every nav link.
     expect(SEGMENTS).not.toContain("s");
     expect(SEGMENTS).not.toContain("verify");
+  });
+});
+
+/**
+ * `apiPath()`'s parameters are typed from the path template. The proof lives
+ * here because `apps/web` is the project whose tests `next build` typechecks;
+ * an unused `@ts-expect-error` below fails that build.
+ */
+describe("apiPath takes exactly the parameters its route declares", () => {
+  it("compiles the right call and refuses the wrong ones", () => {
+    expect(apiPath("attemptItems", { id: "a1" })).toBe("/attempts/a1/items");
+    expect(apiPath("gallery")).toBe("/gallery");
+    // @ts-expect-error attemptItems declares :id
+    expect(() => apiPath("attemptItems")).toThrow(/missing parameter "id"/);
+    // @ts-expect-error attemptTrackView declares :id and :trackId
+    expect(() => apiPath("attemptTrackView", { id: "a1" })).toThrow(/missing parameter "trackId"/);
+    // @ts-expect-error gallery declares no parameter
+    expect(() => apiPath("gallery", { id: "a1" })).toThrow(/no parameter "id"/);
   });
 });
 

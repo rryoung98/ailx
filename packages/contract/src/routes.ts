@@ -154,20 +154,35 @@ export type ApiPath = string & { readonly __brand: "ApiPath" };
 
 const PARAM_RE = /:([A-Za-z][A-Za-z0-9]*)/g;
 
+/** The `:name` parameters of a path template, as a union of their names. */
+type PathParams<P extends string> = P extends `${string}:${infer Name}/${infer Rest}`
+  ? Name | PathParams<Rest>
+  : P extends `${string}:${infer Name}`
+    ? Name
+    : never;
+
+/**
+ * What `apiPath()` takes after the route key. A route with parameters requires
+ * an object holding exactly them; a route without takes none. So
+ * `apiPath("attemptItems")` and `apiPath("gallery", { id })` are compile
+ * errors, not runtime throws.
+ */
+type ApiPathArgs<K extends ApiRouteKey> = [PathParams<(typeof API_ROUTES)[K]["path"]>] extends [never]
+  ? [params?: Readonly<Record<never, string>>, query?: string]
+  : [params: Readonly<Record<PathParams<(typeof API_ROUTES)[K]["path"]>, string>>, query?: string];
+
 /**
  * The path for one route, parameters substituted and percent-encoded.
  *
- * Throws rather than guesses. A missing parameter used to produce
- * `/attempts/undefined/items` — a real request, a 404, and nothing to read in
- * the log. `query` is appended verbatim and must be empty or start with "?";
- * it is not parsed here, because the parser that owns it is named on the route
+ * Still throws rather than guesses, because a value can be empty or arrive
+ * from an `any`: a missing parameter used to produce `/attempts/undefined
+ * /items` — a real request, a 404, and nothing to read in the log. `query` is
+ * appended verbatim and must be empty or start with "?"; it is not parsed
+ * here, because the parser that owns it is named on the route
  * (`API_QUERY_PARSERS`) and runs server-side.
  */
-export function apiPath(
-  routeKey: ApiRouteKey,
-  params: Readonly<Record<string, string>> = {},
-  query = "",
-): ApiPath {
+export function apiPath<K extends ApiRouteKey>(routeKey: K, ...args: ApiPathArgs<K>): ApiPath {
+  const [params = {}, query = ""] = args as [Readonly<Record<string, string>>?, string?];
   const route = API_ROUTES[routeKey] as ApiRoute | undefined;
   if (route === undefined) throw new Error(`unknown route: ${String(routeKey)}`);
   if (query !== "" && !query.startsWith("?")) throw new Error(`query must start with "?": ${query}`);

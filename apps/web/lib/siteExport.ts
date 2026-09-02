@@ -15,7 +15,7 @@
  *
  * There is deliberately no "Open in v0" button: see V0_NOTE below.
  */
-import { apiPath, DEFAULT_REPO_NAME, type ApiRouteKey } from "@ailx/contract";
+import { apiPath, DEFAULT_REPO_NAME } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
 import { isServerMode } from "./mode";
@@ -72,8 +72,11 @@ export interface ExportError {
 
 export type ExportResult<T> = { ok: true; value: T } | { ok: false } & ExportError;
 
+/** The export routes, which all take the attempt id and nothing else. */
+type ExportRoute = "exportSite" | "startGithubExport" | "finishGithubExport";
+
 /** The exam-service URL for one of this attempt's export routes. */
-function exportUrl(opts: ApiPersistenceOptions, serverAttemptId: string, route: ApiRouteKey): string {
+function exportUrl(opts: ApiPersistenceOptions, serverAttemptId: string, route: ExportRoute): string {
   return `${opts.baseUrl}${apiPath(route, { id: serverAttemptId })}`;
 }
 
