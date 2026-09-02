@@ -1,21 +1,29 @@
 /**
- * NO HAND-SPELLED SERVICE URL.
+ * No hand-spelled service URL in `apps/web`.
  *
  * A browser once called `POST /attempts/:id/score` on a deployed service that
  * did not have it, because the path was a string in a component and nothing
  * compiled both sides (`packages/core/test/frontendOnly.test.ts`, file
- * header). `@ailx/contract`'s route manifest now holds every one of those
- * paths, and this test is what stops a second copy appearing: `apps/web` may
- * build a service URL from `apiPath()` and from nothing else.
+ * header). `@ailx/contract`'s route manifest holds those paths now, and this
+ * test stops a second copy appearing.
  *
- * The detector is checked BOTH WAYS. A guard nobody can make fail is a guard
- * that has already rotted, so `offences()` is fed the exact patterns it exists
- * to catch and must report them.
+ * The rule it enforces, exactly: in a call that builds or issues a request —
+ * `fetch`, a `fetchFn`, `serviceFetch`/`useService`, an HTTP verb method such
+ * as Playwright's `request.post`, or `new URL` — no argument may contain a
+ * string literal or template chunk starting with `/` and a first segment the
+ * manifest uses. The check parses TypeScript, so the shape of the call does
+ * not matter: concatenation, a nested `new URL`, and a template all read the
+ * same. It says nothing about literals outside such a call: `<Link
+ * href="/gallery">` and `router.push("/gallery")` are frontend pages.
+ *
+ * `offences()` is fed each shape it exists to catch, so a regression in the
+ * detector fails here rather than going quiet.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import ts from "typescript";
 import { API_ROUTES } from "@ailx/contract";
 
 const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -30,57 +38,103 @@ function sources(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Prose ABOUT a route is not a call to one — the same rule the purity guard uses. */
-function code(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-}
-
 /** First segment of every manifest path: "attempts", "gallery", "practice", … */
 const SEGMENTS = [
   ...new Set(Object.values(API_ROUTES).map((r) => r.path.split("/")[1])),
 ].sort();
 
-const PATTERNS: readonly { readonly what: string; readonly re: RegExp }[] = [
-  {
-    what: "a fetch with a literal service path",
-    re: new RegExp(`fetch(?:Fn)?\\(\\s*[\`"'][^\`"'\\n]*\\/(?:${SEGMENTS.join("|")})\\b`),
-  },
-  {
-    what: "an API root followed by a literal path",
-    re: new RegExp(
-      `\\$\\{[^}]*(?:apiBase\\(\\)|apiRoot\\(\\)|[bB]aseUrl)[^}]*\\}\\/(?:${SEGMENTS.join("|")})\\b`,
-    ),
-  },
-  {
-    what: "serviceFetch/useService given a string instead of an ApiPath",
-    re: /(?:serviceFetch|useService)\s*(?:<[^>]*>)?\(\s*[`"']/,
-  },
-];
+/**
+ * A literal that starts a service path, with or without a versioned root:
+ * `/attempts/…`, `/api/attempts/…`, `/v1/attempts/…`.
+ */
+const SERVICE_PATH_RE = new RegExp(`^(?:/api|/v1)?/(?:${SEGMENTS.join("|")})(?:$|[/?])`);
+
+/** Names whose call arguments are request URLs. */
+const REQUEST_CALLEES = new Set([
+  "fetch",
+  "fetchFn",
+  "serviceFetch",
+  "useService",
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "head",
+]);
+
+function calleeName(node: ts.CallExpression): string | undefined {
+  const callee = node.expression;
+  if (ts.isIdentifier(callee)) return callee.text;
+  if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.name)) return callee.name.text;
+  return undefined;
+}
+
+/** Every literal chunk in a subtree: a string, a whole template, a template span. */
+function literals(node: ts.Node, out: string[] = []): string[] {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) out.push(node.text);
+  else if (ts.isTemplateExpression(node)) {
+    out.push(node.head.text);
+    for (const span of node.templateSpans) out.push(span.literal.text);
+  }
+  // A truthy return stops `forEachChild`, and `out` is always truthy.
+  node.forEachChild((child) => {
+    literals(child, out);
+  });
+  return out;
+}
 
 /** Every rule this source breaks. Empty means the module goes through apiPath(). */
 function offences(src: string): string[] {
-  const text = code(src);
-  return PATTERNS.filter(({ re }) => re.test(text)).map(({ what }) => what);
+  const file = ts.createSourceFile("in.tsx", src, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX);
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    const isRequest =
+      (ts.isCallExpression(node) && REQUEST_CALLEES.has(calleeName(node) ?? "")) ||
+      (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "URL");
+    if (isRequest) {
+      for (const arg of node.arguments ?? []) {
+        for (const text of literals(arg)) {
+          if (SERVICE_PATH_RE.test(text)) found.push(`a request built from the literal path "${text}"`);
+        }
+      }
+    }
+    node.forEachChild(visit);
+  };
+  visit(file);
+  return [...new Set(found)];
 }
 
 describe("the detector catches what it exists to catch", () => {
-  it("flags the three ways a path used to be spelled by hand", () => {
+  it("flags a literal path whatever the call shape", () => {
     expect(offences('const r = await fetch(`${apiBase()}/gallery/review`, {});')).toEqual([
-      "a fetch with a literal service path",
-      "an API root followed by a literal path",
+      'a request built from the literal path "/gallery/review"',
+    ]);
+    expect(offences('await fetch(apiBase() + "/progress");')).toEqual([
+      'a request built from the literal path "/progress"',
+    ]);
+    expect(offences('await fetch(new URL("/progress", apiBase()));')).toEqual([
+      'a request built from the literal path "/progress"',
+    ]);
+    expect(offences('await request.post("/attempts", { data });')).toEqual([
+      'a request built from the literal path "/attempts"',
     ]);
     expect(offences("await opts.fetchFn(`${opts.baseUrl}/attempts/${id}/share`);")).toEqual([
-      "a fetch with a literal service path",
-      "an API root followed by a literal path",
-    ]);
-    expect(offences('await request.post(`${apiRoot()}/attempts`, {});')).toEqual([
-      "an API root followed by a literal path",
+      'a request built from the literal path "/attempts/"',
+      'a request built from the literal path "/share"',
     ]);
     expect(offences('useService<{ progress: Report }>("/progress");')).toEqual([
-      "serviceFetch/useService given a string instead of an ApiPath",
+      'a request built from the literal path "/progress"',
     ]);
     expect(offences('await serviceFetch(`/share/${token}`);')).toEqual([
-      "serviceFetch/useService given a string instead of an ApiPath",
+      'a request built from the literal path "/share/"',
+    ]);
+    expect(offences('await fetch(`${apiRoot()}/practice?seq=1`);')).toEqual([
+      'a request built from the literal path "/practice?seq=1"',
+    ]);
+    // The root is `apiBase()`'s to spell, so a rooted literal is one too.
+    expect(offences('await fetch("/api/attempts/" + id);')).toEqual([
+      'a request built from the literal path "/api/attempts/"',
     ]);
   });
 
@@ -88,12 +142,20 @@ describe("the detector catches what it exists to catch", () => {
     expect(offences('await fetch(`${apiBase()}${apiPath("reviewDecision")}`, {});')).toEqual([]);
     expect(offences('useService<{ gallery: G }>(apiPath("gallery", {}, query));')).toEqual([]);
     expect(offences('await serviceFetch(apiPath("shareView", { token }));')).toEqual([]);
+    expect(offences('await fetch(apiBase() + apiPath("progress"));')).toEqual([]);
   });
 
-  it("ignores a comment and a page link — neither is a service call", () => {
-    expect(offences('/** Reads `${apiBase()}/gallery` over HTTP. */')).toEqual([]);
+  it("ignores what is not a request: a comment, a page link, a page navigation", () => {
+    expect(offences('/** Reads `${apiBase()}/gallery` over HTTP. */ const x = 1;')).toEqual([]);
     expect(offences('// await fetch(`${apiBase()}/practice`)')).toEqual([]);
-    expect(offences('<Link href="/gallery">the wall</Link>')).toEqual([]);
+    expect(offences('const a = <Link href="/gallery">the wall</Link>;')).toEqual([]);
+    expect(offences('router.push("/gallery");')).toEqual([]);
+    expect(offences('const paths = ["/attempts"];')).toEqual([]);
+  });
+
+  it("does not flag a frontend page path that is not a manifest segment", () => {
+    expect(offences('await fetch("/verify/abc");')).toEqual([]);
+    expect(offences('await fetch("/characters/eight.png");')).toEqual([]);
   });
 
   it("derives its segments from the manifest, not from a second list", () => {
@@ -108,17 +170,17 @@ describe("the detector catches what it exists to catch", () => {
 });
 
 describe("apps/web spells no service URL by hand", () => {
-  // e2e too: the Playwright fixtures seed through the same routes, and a
-  // renamed route that only the fixtures spell would go green here and red on
-  // a machine that has a service to talk to.
-  const files = sources(join(webDir, "lib"))
-    .concat(sources(join(webDir, "app")))
-    .concat(sources(join(webDir, "e2e")));
+  // The whole app, tests and Playwright fixtures included: the fixtures seed
+  // through the same routes, and a renamed route that only they spell would go
+  // green here and red on a machine that has a service to talk to.
+  const files = sources(webDir);
 
   it("reads the frontend it is guarding", () => {
     expect(files.length).toBeGreaterThan(50);
-    expect(files.map((f) => relative(webDir, f))).toContain(join("lib", "serviceFetch.ts"));
-    expect(files.map((f) => relative(webDir, f))).toContain(join("e2e", "fixtures.ts"));
+    const rel = files.map((f) => relative(webDir, f));
+    expect(rel).toContain(join("lib", "serviceFetch.ts"));
+    expect(rel).toContain(join("e2e", "fixtures.ts"));
+    expect(rel).toContain(join("test", "routeManifest.test.ts"));
   });
 
   it("has no offender", () => {

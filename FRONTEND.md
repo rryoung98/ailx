@@ -93,7 +93,9 @@ The repo already has the right convention. It is now a rule.
 5. **Every exam-service URL comes from the route manifest.** `apiPath()` in
    `@ailx/contract` owns the path; `lib/mode.ts` `apiBase()` owns the host prefix. A path
    spelled at a call site is how a browser once called a route the deployed service did not
-   have, so `test/routeManifest.test.ts` fails the build on one.
+   have, so `test/routeManifest.test.ts` parses every source in `apps/web` and fails the build
+   when a request call — `fetch`, a `fetchFn`, `serviceFetch`/`useService`, an HTTP verb method
+   or `new URL` — is given a literal path that starts with a manifest segment.
 6. **`"use client"` is a module-graph boundary, not a runtime one**
    ([Next.js](https://nextjs.org/docs/app/guides/server-and-client-boundary)). Anything a client
    component imports enters the browser bundle. Push `"use client"` to leaves; pass `children`
