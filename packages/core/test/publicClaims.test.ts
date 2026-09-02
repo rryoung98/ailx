@@ -34,7 +34,17 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
-const SCOPE = ["docs", "apps/web/app", "apps/web/lib"];
+// The four directories a browser's own code lives in, plus docs. This list
+// is the sibling of apps/web/test/helpers/browserSources.ts BROWSER_ROOTS,
+// which this package cannot import: a claim moved into components/ or
+// features/ must still be caught.
+const SCOPE = [
+  "docs",
+  "apps/web/app",
+  "apps/web/components",
+  "apps/web/features",
+  "apps/web/lib",
+];
 const EXTRA_FILES = ["AILX-Spec-2026.1.md", "README.md"];
 const SKIP_DIRS = new Set(["node_modules", "dist", ".next", "fixtures"]);
 const TEXTUAL = /\.(md|mdx|ts|tsx|json)$/;

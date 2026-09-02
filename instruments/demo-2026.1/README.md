@@ -81,7 +81,7 @@ The private copy is the one that can score; this one is the one a browser gets.
 
 ## Snapshot shape contract
 
-`snapshot.json` is what `apps/web/lib/instrument.ts` imports. It is the same
+`snapshot.json` is what `apps/web/lib/instrument/instrument.ts` imports. It is the same
 `format`, the same four `instrument.tracks[]` entries with the same `config`
 blocks (including t2 `blocks[].exposure_seconds`), and the same `scorers[]`
 audit digests (built with `--scorers ../tracks`). Built with `--public`, so it

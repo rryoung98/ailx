@@ -99,7 +99,7 @@ The repo already uses this convention. It is now required.
 6. **`"use client"` is a module-graph boundary, not a runtime one**
    ([Next.js](https://nextjs.org/docs/app/guides/server-and-client-boundary)). Anything a client
    component imports enters the browser bundle. Push `"use client"` to leaves; pass `children`
-   to keep server subtrees out of the client graph. `lib/NavLink.tsx` is the pattern.
+   to keep server subtrees out of the client graph. `components/ui/NavLink.tsx` is the pattern.
 7. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
    endpoint, and static export does not support Server Actions anyway. Use `route.api.ts`.
 
@@ -174,7 +174,7 @@ apps/web/
     data/                       # service seam + browser storage
     instrument/                 # released-practice tier and the derivation over it
     auth/                       # Clerk mount, identity state
-    server/                     # server-only; importable ONLY from route.api.ts
+    server/                     # server-only; importable ONLY from page.api.tsx / route.api.ts
   styles/
     tokens.css                  # design tokens, one source of truth
     globals.css                 # @layer reset, tokens, base, utilities — nothing route-specific
@@ -186,7 +186,6 @@ packages/
   session/       # event log, projection, StorageLike
   report/        # pure scoring-adjacent + report logic
   tracks/*/      # per-track Runner + score(), shipped together
-  backend/       # persistence, auth, snapshot store, sandbox headers
   content-tools/
 ```
 
@@ -221,16 +220,18 @@ is what the app actually looks like.
 - The rest of `lib/` split in two: `data/` for the service seam and browser
   storage, `instrument/` for the released-practice tier and the derivation
   over it.
-- Guards that scan "the frontend" share `test/helpers/browserSources.ts`.
-  Adding a directory of browser code means adding it to `BROWSER_ROOTS`, or
-  those guards stop seeing it.
+- The `apps/web` guards that scan "the frontend" share
+  `test/helpers/browserSources.ts`. Adding a directory of browser code means
+  adding it to `BROWSER_ROOTS`, or those guards stop seeing it.
+  `packages/core/test/publicClaims.test.ts` cannot import that helper, so it
+  carries the same list by hand and says so.
 
-Two rows of the old plan are still open, and both are tracked in
-docs/PLAN.md: `lib/instrument/instrument.ts` and
+Two rows of the old plan are still open. `lib/instrument/instrument.ts` and
 `lib/instrument/validateChecks.ts` belong in `packages/` by rule 1, blocked
-on `instrument.ts` calling `assetUrl()`; and `scoringDigest()` in
-`lib/instrument/registry.ts` belongs in `packages/core` as a build-time
-source hash. `svgArt.ts` did not go to `features/landing/` as drafted: its
+on `instrument.ts` calling `assetUrl()` — docs/PLAN.md tracks that one.
+`scoringDigest()` in `lib/instrument/registry.ts` belongs in `packages/core`
+as a build-time source hash; PLAN.md says the rest of `registry.ts` stays in
+the app, because it dynamic-imports React Runners. `svgArt.ts` did not go to `features/landing/` as drafted: its
 one caller is `demoItems.ts`, so it sits beside it in `lib/instrument/`
 (rule 6). `useSwipeCard.ts` did go, with its one caller `Teaser.tsx`.
 

@@ -145,7 +145,7 @@ describe("one seam, not seven", () => {
   it("no client module hard-codes an /api call path outside the seam", () => {
     const allowed = new Set([
       join("lib", "mode.ts"), // the seam itself
-      join("lib", "persistence.ts"), // doc comment on ApiPersistenceOptions
+      join("lib", "data", "persistence.ts"), // doc comment on ApiPersistenceOptions
       join("lib", "origin.ts"), // doc comment
       join("components", "ui", "SiteLink.tsx"), // doc comment about the visible text
       join("components", "Moderation.tsx"), // doc comment naming the route
