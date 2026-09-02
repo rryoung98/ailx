@@ -382,14 +382,14 @@ Candidates receive a long, dense primary source — a technical or policy docume
 
 > **The mechanism that makes this track work**
 >
-> The assistant's environment is **seeded with known-incorrect outputs** at predetermined points — a misattributed figure, a plausible but false causal claim, a fabricated citation, a subtly wrong calculation. Scoring then uses two established human–AI-interaction constructs: **RSR** (relative self-reliance — correctly rejecting wrong AI advice) and **RAIR** (relative AI reliance — adopting correct AI advice after initial disagreement). These are objective, have a survey literature behind them, and cannot be gamed by writing prettier prose.
+> The assistant's environment is **seeded with known-incorrect outputs** at predetermined points — a misattributed figure, a plausible but false causal claim, a fabricated citation, a subtly wrong calculation. Scoring then measures two behavioural rates: how often the candidate accepted a seeded wrong output (**over-reliance**) and how often the candidate refused correct, source-grounded advice (**under-reliance**). Both are objective and cannot be gamed by writing prettier prose. The two components are named `rsr` and `rair` in the code after the appropriate-reliance literature, but they are **not** the published statistics of that literature; see "Stated against our own case" below.
 
 ### Score allocation
 
 **160 points, and the track has a new named construct: calibrated reliance — knowing when to use the model and when not to.**
 
-- **50 pts — Planted-error detection (RSR).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
-- **30 pts — Deliberate adoption of correct advice (RAIR).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
+- **50 pts — Planted-error detection (the `rsr` component, over-reliance tail).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
+- **30 pts — Deliberate adoption of correct advice (the `rair` component, under-reliance tail).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
 - **35 pts — Process quality.** From the transcript: decomposition, prompt iteration, verification behaviour, whether the candidate went back to the primary source
 - **45 pts — Analysis quality.** *[Not implemented in 2026.1 — one stub returning three seeded samples that band on answer length; the ~200-example calibration set does not exist. See §04.]* Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
 
@@ -405,7 +405,7 @@ The obvious designs for it all fail, and it is worth writing down why before def
 2. **Asking destroys the measurement.** On an exam called *the AI Literacy Examination*, a candidate asked whether they would use AI learns within two items that the sophisticated answer is "not here, and I would verify". A situational-judgement item on this construct measures test-wiseness.
 3. **Under-use is a failure too.** A person who refuses the model where it would have helped is also failing. A one-directional "abstained = correct" key scores Luddism as literacy.
 
-The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — that is RSR. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — that is RAIR. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour under time pressure rather than from anything the candidate says about themselves.
+The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour in a timed sitting rather than from anything the candidate says about themselves. The timer is fixed in every form, so "under time pressure" describes this form and not the construct until `docs/TRANSFER-STUDY.md` §3.5 varies it.
 
 **The reliance index is reported two-tailed and never collapsed to one number.**
 
@@ -418,7 +418,42 @@ The design that survives all three is **not to ask, but to make the assistant ge
 
 The band reads both tails on purpose. A candidate who swallowed every planted error *and* refused every correct suggestion has over = 1, under = 1 and index = 0 — arithmetically "calibrated" and behaviourally the worst run in the cohort. When both tails are large the band names the larger failure.
 
-> **Stated against our own case.** RSR and RAIR are named after the appropriate-reliance literature, but this two-tailed *index* is AILX's own construction. We have found no published index or scoring scheme for calibrated reliance to inherit, and there is no published validity evidence for this one. It is defended on design grounds — behavioural, keyless, un-gameable by verbal sophistication, symmetric — and it is reported descriptively until it has been validated against something external. Saying so here is cheaper than being asked.
+> **Stated against our own case.** The two halves of this measure are named after the appropriate-reliance literature. Schemmer, Kühl, Benz, Bartos and Satzger (*Appropriate Reliance on AI Advice: Conceptualization and the Effect of Explanations*, IUI '23, doi:10.1145/3581641.3584066) define **relative AI reliance (RAIR)** as the share of instances where a decision-maker who was initially wrong switches to correct AI advice, and **relative self-reliance (RSR)** as the share of instances where a decision-maker who was initially right rejects incorrect AI advice. The pair is reported as a tuple, *Appropriateness of Reliance*, and is never collapsed into one number. A 2026 review of the area (Raees & Papangelis, arXiv:2604.23896) records this as one of three competing views and concludes that constructs for appropriate reliance are "still fragmented" with "limited consensus on common measurements".
+>
+> **AILX does not compute those two statistics, and must not claim to.** Both require a two-stage judge–advisor design in which the candidate commits an independent answer *before* the model speaks. T3 has no such first stage, so its denominators are all surfaced claims rather than the claims the candidate got right or wrong on their own. What T3 measures is the pair the wider literature calls over- and under-reliance: `reliance.over` is agreement with incorrect recommendations out of all incorrect recommendations shown (Passi & Vorvoreanu, *Overreliance on AI: Literature Review*, MSR-TR-2022-12), and `reliance.under` is its mirror on correct advice, with deliberation standing in for the missing first stage. Those two rates are established measures and may be published under those names. `docs/TRANSFER-STUDY.md` §3.1 is the block that would let us report real RAIR and RSR beside them.
+>
+> **The setting is ours too.** Schemmer et al. (2022) state that their concept "is limited to classification tasks". Every published appropriate-reliance study found in the 2026-09-02 spike is binary classification with a few dozen instances. T3 is a 90-minute open-ended writing task, and nothing found validates the transfer.
+>
+> **The two-tailed index has no external validity evidence.** A spike that searched the two standing reviews (Eckhardt, Kühl, Dolata & Schwabe, *A Survey of AI Reliance*, ACM Computing Surveys 2025, doi:10.1145/3776528; Raees & Papangelis 2026), the two Microsoft syntheses (MSR-TR-2022-12, MSR-TR-2024-7) and the decision-theoretic reformulation (Guo, Wu, Hartline & Hullman, arXiv:2401.15356) found no published signed index of reliance calibration. Every source keeps the two rates apart on purpose. `reliance.index = under − over` is therefore AILX's own construct. It is reported descriptively, always beside both tails, the band is derived from both tails, and **it is never used alone to rank, gate or z-score a candidate.** That last sentence is enforced, not asserted: `packages/tracks/t3-reasoning/test/indexIsNeverConsumed.test.ts` fails if any module outside the T3 scorer reads it.
+>
+> **Reliability is the open question, not validity.** No α, ICC, split-half or test–retest figure has been published for any behavioural over-, under- or appropriate-reliance measure. The one direct test–retest study of advice taking (Karvelis et al., *PLoS ONE* 19(11):e0312255, 2024; 39 participants, 153 trials) put advice taking in the poor range, ICC < 0.5. Behavioural difference scores are less reliable than the components they are built from (Hedge, Powell & Sumner, *Behav. Res. Methods* 50:1166–1186, 2018; Enkavi et al., *PNAS* 2019, median ICC 0.174 for contrast measures). On eight planted errors the binomial 95% interval on a reliance rate is about ±0.35. Until this instrument has a reliability figure, the rates are reported with intervals and coarse bands, and the 50/30-point split is a declared design choice, not a measured one.
+
+#### What this track cannot claim
+
+The list a reviewer should be able to find without reading the evidence base. It is drawn from
+the 2026-09-02 spike on the reliance literature; the full 14-item version, with sources, is in
+the private repo's `docs/EVIDENCE-CALIBRATED-RELIANCE.md` §8.
+
+1. **Not "T3 measures RSR and RAIR".** It measures over- and under-reliance rates. The published
+   statistics need an independent first-stage answer T3 never collects.
+2. **Not "RSR and RAIR are established constructs with a survey literature behind them".** Two
+   reviews (2025, 2026) call the constructs fragmented with no consensus metric, and the
+   Appropriateness-of-Reliance tuple was used by 2 of the ~65 studies in the ACM CSUR census.
+3. **Not "the reliance index is validated".** It is unpublished and unvalidated, and its
+   difference-score form is the least reliable shape in this literature.
+4. **Not "reliance is reliably measurable for one person".** No α, ICC or test–retest exists for
+   any behavioural reliance measure; the one direct test found ICC < 0.5 over 153 trials.
+5. **Not "50 + 30 points is a measurement".** Eight planted errors give a rate with a ±0.35
+   interval. Bands and intervals until the retest in `docs/TRANSFER-STUDY.md` §3.2 exists.
+6. **Not "the 0.25 calibrated band means something".** It is declared, not fitted. The
+   literature's only threshold is a chance baseline, and an open-ended task has none.
+7. **Not "the construct transfers from the published setting".** All published work is binary
+   classification, and its authors say so.
+8. **Not "the index is a trait".** Published over-reliance moves with task difficulty, payoff,
+   explanation cost, when the assistant speaks, and Need for Cognition.
+9. **Not "time pressure raises the rate of error adoption".** The one study that tested it found
+   the rate unchanged (p = 0.19) and only the severity raised. Our timer is also confounded with
+   our interface until §3.5 of the transfer study varies them apart.
 
 ### Why eight planted errors, not four
 
