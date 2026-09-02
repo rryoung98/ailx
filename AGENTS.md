@@ -86,6 +86,14 @@ somebody makes in front of a reviewer.
   and why staging should use Clerk rather than assert-only dev auth. The
   default GitHub Pages static export is unaffected by any of it.
 
+## Scale, concurrency and the idle bill
+- `docs/LOAD-TEST.md` — what the exam service's Cloud Run is set to today and which
+  values are defaults rather than decisions, what one request costs on each path, the
+  load-test plan with its pass/fail thresholds fixed in advance, and the price of every
+  min-instances option. Cloud Run concurrency is 80 while the pg pool is 3, so an
+  instance can serve 3 database requests at once; that gap is the first thing to fix.
+  Serving is inside the free tier at every traffic level we can foresee. The bill is idle.
+
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
 
