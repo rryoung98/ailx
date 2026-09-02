@@ -10,13 +10,14 @@ formation histories of CFA / CompTIA / CNCF / ETS).
 AI-literacy examination for adults.** Every qualifier is load-bearing (see spec §01).
 
 **What the norm covers at first release.** The exam runs in three languages. The first
-population statistic covers two countries, the US and the UK, because they are the only
+population statistic covers two countries, the US and the UK. They are the only
 two markets in our framing where a probability panel can be bought (`docs/PANEL-MARKETS.md`).
-Japan and Korea need commissioned fieldwork — address-based push-to-web in Japan, RDD
-phone recruitment in Korea — at roughly double the per-complete cost, so they are a funded
-phase with a price (about $1.1–1.6M on top of the US + UK wave, our estimate) and not a
-date. Say the two-country version in public. A cross-national adult AI-literacy norm over
-two countries is still one more than anybody else has.
+Japan and Korea need commissioned fieldwork. Japan needs address-based push-to-web.
+Korea needs RDD phone recruitment. This would cost roughly double per complete.
+It is a funded phase with a price, about $1.1–1.6M on top of the US + UK wave,
+based on our estimate. It does not have a date. Say the two-country version in public.
+A cross-national adult AI-literacy norm over two countries is still one more than
+anybody else has.
 
 "No precedent" — as heard from strategic-intelligence people at frontier labs — is
 false as a market claim and true at the measurement layer:
@@ -24,29 +25,31 @@ false as a market claim and true at the measurement layer:
 - **Market layer (crowded):** OpenAI Certifications (Sept 2025; goal 10M Americans by
   2030; Walmart, Deere, Lowe's, BCG, Accenture), Google AI Essentials, Microsoft AI-900,
   AWS AI Practitioner, NVIDIA, Salesforce Agentforce, Anthropic Skilljar quizzes,
-  Section, DataCamp, Pluralsight. All of it is MCQ, completion badges, or a vendor
-  adoption funnel.
+  Section, DataCamp, Pluralsight. These are MCQ, completion badges, or vendor
+  adoption funnels.
 - **Measurement layer (empty):** nobody runs a timed, rubric-scored, authentic-task
   exam of human AI fluency, normed across countries, re-cut annually. Academic
-  instruments (GLAT, AICOS, SAIL4ALL) are objectively keyed MCQ, not task performance.
+  instruments (GLAT, AICOS, SAIL4ALL) use objectively keyed MCQ, not task performance.
 
-Incumbents certify *familiarity*. AILX examines *capability*. Different category.
+Incumbents certify *familiarity*. AILX examines *capability*. They are different categories.
 
-**Which qualifier is the moat.** Not "performance-based, not multiple choice". The first
-draft of OECD's PISA 2029 Media & AI Literacy (MAIL) framework recommends that about half
-of assessment time go to "analyse and evaluate" and "create" — the OECD is going
-performance-based on this construct, with 80+ countries of sampling frame behind it. The
-durable differentiators are the other two qualifiers: **adults** (MAIL tests 15-year-olds)
-and **annual cadence** (PISA runs a three-year cycle, first MAIL data 2029). Lead with
-those. Performance-based is a description of the instrument, not a defence of it.
+**Which qualifier is the moat.** It is not "performance-based, not multiple choice".
+The first draft of OECD's PISA 2029 Media & AI Literacy (MAIL) framework recommends
+spending about half of assessment time on "analyse and evaluate" and "create".
+The OECD is moving to performance-based assessment of this construct. It has sampling
+frames across 80+ countries. The durable differentiators are the other two qualifiers:
+**adults** (MAIL tests 15-year-olds) and **annual cadence** (PISA runs a three-year cycle,
+first MAIL data 2029). Lead with those. Performance-based describes the instrument.
+It does not defend it.
 
 ## Why certifications structurally cannot cover the frontier
 
 Certifications test declarative knowledge frozen at authoring time. Frontier practice
-is procedural and moving: harness design, eval discipline, keeping a multi-hour
-autonomous agent run on the rails, orchestrating agent fleets, knowing when to kill
-versus steer. The gap between the median user (shallow chat) and frontier operators
-(persistent, thousand-agent workloads) is now a named hiring market with no credential:
+is procedural and changes quickly. It includes harness design, eval discipline, keeping
+a multi-hour autonomous agent run on the rails, orchestrating agent fleets, and knowing
+when to kill rather than steer. The gap between the median user, who uses shallow chat,
+and frontier operators running persistent, thousand-agent workloads is now a named
+hiring market with no credential:
 
 - MIT "GenAI Divide" (Aug 2025): 95% of enterprise pilots yield zero P&L return
   despite $30–40B spend — explicitly not a model-quality problem.
@@ -55,50 +58,50 @@ versus steer. The gap between the median user (shallow chat) and frontier operat
   cited as the differentiator.
 - Shopify and Duolingo grade employees on AI use in performance reviews with no
   measurement instrument. EU AI Act Art. 4 has applied to providers and deployers
-  since 2 Feb 2025, and Regulation (EU) 2026/1744 (Digital Omnibus on AI, 8 July 2026)
+  since 2 Feb 2025. Regulation (EU) 2026/1744 (Digital Omnibus on AI, 8 July 2026)
   replaced it with a weaker duty to "support the development of" AI literacy that
-  "does not require providers or deployers to guarantee any specific level". No measure
-  is attached either way: the Commission's AI literacy Q&A says Art. 4 "does not entail
+  "does not require providers or deployers to guarantee any specific level". Neither
+  version includes a measure. The Commission's AI literacy Q&A says Art. 4 "does not entail
   an obligation to measure the knowledge of AI of employees". See docs/POLICY-BRIEF.md §2.
 
-AILX answers this by construction: authentic task scoring (unfakeable by cramming)
-and annual re-versioning (the item bank chases the frontier).
+AILX addresses this through authentic task scoring, which cramming cannot fake,
+and annual re-versioning, which keeps the item bank aligned with frontier practice.
 
 ## The examiner seat is empty
 
 Every serious incumbent is vendor-captive. A lab cannot credibly grade fluency on its
-own product. Its certification is a distribution play, and that caps its value as a
-measure. Labs benefit from an examiner that sells no model, the same way rival vendors
+own product. Its certification distributes that product, which limits the certification's
+value as a measure. Labs benefit from an examiner that sells no model, as rival vendors
 benefited from CompTIA, CNCF, and ETS. Anthropic's published "AI Fluency" 4D framework
-maps nearly one-to-one onto AILX's four tracks. That is an observation about a public
-document, not a relationship, and not an endorsement. OpenAI's certification push
+maps nearly one-to-one onto AILX's four tracks. This is an observation about a public
+document. It is not a relationship or an endorsement. OpenAI's certification push
 legitimises the category and cannot fill the seat itself.
 
 AILX does not claim to be neutral. The next section says what it claims instead.
 
 ## What we can claim today
 
-An examiner is funded by somebody. Editorial independence does not cure who selected
-the donors, who set the agenda, or the fact that the next cheque can be withheld. A
-funded body that calls itself neutral hands a critic the easiest line there is.
+Someone funds every examiner. Editorial independence does not change who selected
+the donors or set the agenda. It also does not prevent the next cheque from being
+withheld. A funded body that calls itself neutral hands a critic the easiest line there is.
 
-So we claim facts about the method, because a reader can check them:
+We claim facts about the method because readers can check them:
 
-- **The practice keys are published.** `instruments/demo-2026.1` ships 20 T2 items with
-  their keys and rationales in the open, on purpose. It carries no score of record.
-- **Every score is recomputable from stored inputs, byte for byte.** `score()` is pure,
-  and `runPure` (`packages/core/src/purity.ts`) fails the build if it reads a clock,
+- **The practice keys are published.** `instruments/demo-2026.1` includes 20 T2 items with
+  their keys and rationales in public by design. It carries no score of record.
+- **Every score is recomputable from stored inputs, byte for byte.** `score()` is pure.
+  `runPure` (`packages/core/src/purity.ts`) fails the build if it reads a clock,
   a random number or the network. For a score the browser issued, the report recomputes
-  each track in front of the reader (`replayTrackScore`). A score issued by the exam
+  each track for the reader (`replayTrackScore`). A score issued by the exam
   service is marked `scoredBy: "server"` and claims no local replay.
-- **A judge's output is a stored input.** Re-scoring is reproducible; re-judging is not,
-  and we say both halves. No model call sits on the recompute path.
+- **A judge's output is a stored input.** Re-scoring is reproducible; re-judging is not.
+  We state both. No model call runs on the recompute path.
 - **Items are content-addressed.** An edit creates a new item. It never mutates one.
 - **No score of record has been issued yet.** The judging pipeline is not built. The
-  credential asserts a completed sitting and nothing about ability.
+  credential asserts a completed sitting and makes no claim about ability.
 
-The claim we are not allowed to make yet is **"independent under published governance"**.
-It becomes available when all of this is published and true, not before:
+We cannot yet claim **"independent under published governance"**. We can make that claim
+only when all of the following are published and true:
 
 1. A diversified funding pool with a contribution cap per donor.
 2. No donor veto over methods, staffing, publication, or timing.
@@ -107,63 +110,63 @@ It becomes available when all of this is published and true, not before:
 5. Mandatory publication of negative results.
 6. Funding committed before results are known.
 
-None of the six is in place today. Publishing the bar we have not met is worth more
-than an adjective we have not earned.
+None of the six is in place today. Publishing an unmet standard has more value
+than claiming an adjective we have not earned.
 
 ## OECD is a resource, not a competitor
 
 An earlier draft of this document called PISA 2029 MAIL "the biggest strategic threat".
-That was a category error, and it is worth stating plainly because it changes who we
-treat as a rival and who we treat as a source.
+That was a category error. Correcting it changes who we treat as a rival and who we
+treat as a source.
 
-**PISA, PIAAC and ICILS ship reports.** They do not ship a product or a service. No
-individual sits PISA to receive anything: PISA returns no individual scores at all, by
-design. There is no credential, no consumer surface, no continuous availability, and no
-mechanism by which a person can choose to be measured. OECD produces a national
-statistic on a multi-year cycle for ministries. That is a different object from an
-examination an adult can sit on a Tuesday and carry the result of.
+**PISA, PIAAC and ICILS ship reports.** They do not ship a product or service. No
+individual sits PISA to receive anything. PISA returns no individual scores, by
+design. It has no credential, consumer product, continuous availability, or way
+for a person to choose to be measured. OECD produces a national statistic on a
+multi-year cycle for ministries. An examination that an adult can take on a Tuesday
+and carry the result of is a different product.
 
-So OECD cannot take our users, because it has none. What it has is precisely what we
-lack, and can borrow:
+OECD cannot take our users because it has none. It has resources we lack and can use:
 
 - **Methodology we should copy rather than reinvent** — probability sampling frames,
   weighting, trend items linked by IRT onto a common metric with an explicit
   linking-error term, and published non-response analysis. Our sampling gap is the most
-  dangerous thing on our roadmap; PISA and PIAAC have already made and documented the
+  dangerous part of our roadmap. PISA and PIAAC have already made and documented the
   mistakes.
 - **Construct legitimacy.** OECD-EC *AILit* (finalised 18 June 2026, 4 domains, 19
   competences) and the MAIL draft framework are becoming the reference definition of
-  this construct. Alignment is an asset. Being legibly compatible with the definition
-  everyone else uses is how a young instrument avoids looking idiosyncratic.
+  this construct. Alignment helps. Compatibility with the definition
+  everyone else uses prevents a young instrument from looking idiosyncratic.
 - **People.** Stuart Elliott (OECD, AI capability indicators) and Julian Fraillon
-  (IEA/ICILS) are advisors to court, not opponents to out-manoeuvre.
+  (IEA/ICILS) are potential advisors, not opponents.
 
 **The residual risks are real but different from competition:**
 
 1. **Definitional capture.** If AILit/MAIL becomes the standard vocabulary and our
-   construct is incompatible with it, we look non-serious to exactly the policy audience
+   construct is incompatible with it, we will look unserious to the policy audience
    we need. Mitigant: map our four tracks onto the AILit competences explicitly and
    publish the mapping.
 2. **The "we already have PISA" objection**, which a ministry will raise. The answer is
-   short and true: PISA measures 15-year-olds every three years and returns no
-   individual result. It cannot tell a government what its *workforce* can do this year,
-   and it cannot give a person anything to carry.
+   short and accurate. PISA measures 15-year-olds every three years and returns no
+   individual result. It cannot tell a government what its *workforce* can do this year.
+   It cannot give a person anything to carry.
 
 ## Competitive risks — the entities that actually ship something
 
 1. **ETS** — psychometric infrastructure, Futurenav Adapt AI (June 2025), already
    OpenAI's psychometrics partner. Mitigant: ETS was already disrupted by the exact
-   playbook AILX runs (Duolingo English Test vs TOEFL: $65, 1 hour, gamified funnel);
-   its metabolism is years-per-item-cycle, AILX's must be months.
+   playbook AILX runs (Duolingo English Test vs TOEFL: $65, 1 hour, gamified funnel).
+   Its item cycle takes years. AILX's must take months.
 3. **CodeSignal** — simulation-based AI assessments, 13M+ evaluations, but B2B hiring
    tool with no public credential or norming.
 4. **Workera** — enterprise AI-readiness scores (Andrew Ng), quiz-leaning, B2B only.
 
-Proof the components work: HackTheBox CPTS (consumer-priced hands-on exams at 4.3M-member
-scale), Duolingo English Test (cheap normed exam accepted by every Ivy), Lakera Gandalf
-(one authentic AI task, 1M+ players), Linux Foundation CKA (performance exams scale
-commercially), Immersive Labs / Secure Code Warrior (enterprises pay for benchmarked
-org-level scores). AILX is an assembly play, not a physics bet.
+Several products show that the components work. HackTheBox CPTS sells consumer-priced
+hands-on exams at 4.3M-member scale. Duolingo English Test is a cheap normed exam accepted
+by every Ivy. Lakera Gandalf has one authentic AI task and 1M+ players. Linux Foundation
+CKA shows that performance exams can scale commercially. Immersive Labs / Secure Code Warrior
+show that enterprises pay for benchmarked org-level scores. AILX combines established
+components. It does not depend on an unproven mechanism.
 
 ## Formation playbook (how cross-vendor examiners actually got built)
 
@@ -175,97 +178,98 @@ org-level scores). AILX is an assembly play, not a physics bet.
 
 Load-bearing details:
 
-- **CFA:** the 1963 exam was sat by 284 *already-eminent* analysts — the credential
-  borrowed its sitters' reputations, not the reverse.
-- **CompTIA:** certified the commodity layer *below* vendor differentiation, so IBM
-  and Microsoft joined rather than fought; demand came from the org-level badge
+- **CFA:** 284 *already-eminent* analysts sat the 1963 exam. The credential
+  borrowed the sitters' reputations, not the reverse.
+- **CompTIA:** certified the commodity layer *below* vendor differentiation. IBM
+  and Microsoft therefore joined rather than fought. Demand came from the org-level badge
   (Authorized Service Center: 50% certified staff).
-- **CNCF/CKA:** rival vendors pay identical dues; money never buys technical control;
+- **CNCF/CKA:** rival vendors pay identical dues. Money never buys technical control.
   CKA launched simultaneously with the org badge (KCSP: ≥3 CKAs, 22 firms day one).
-  Fastest path on record.
-- **Warning labels:** CFP/PMI had to painfully retrofit examiner/training separation;
+  It is the fastest path on record.
+- **Warning labels:** CFP/PMI had to retrofit examiner/training separation.
   CompTIA's cert cashflow was eventually sold to private equity.
 
 ## Go-big sequence
 
-AILX's fit is a **CNCF-consortium + CFA-eminent-cohort hybrid**. In order:
+AILX fits a **CNCF-consortium + CFA-eminent-cohort hybrid**. Follow this order:
 
 1. **Founding cohorts as the "class of 1963."** Seed early sittings with named,
-   credible frontier practitioners (the people running persistent, thousand-agent
-   workloads). Their names launder legitimacy into the instrument.
-2. **Convene rival labs as equal founding members.** Identical dues, board seats,
-   an exam board whose decisions dues cannot buy. The pitch to each lab: your own
-   cert is a sales funnel; an examiner none of you owns grows the whole market.
+   credible frontier practitioners who run persistent, thousand-agent
+   workloads. Their reputations give the instrument legitimacy.
+2. **Convene rival labs as equal founding members.** Give them identical dues and board seats.
+   Create an exam board whose decisions dues cannot buy. The pitch to each lab is direct.
+   Its own certification is a sales funnel. An examiner that none of the labs owns grows
+   the whole market.
 3. **Org-level "AILX-Assessed Team" badge at launch.** Individual certs follow org
    mandates, not the reverse (KCSP, CompTIA ASC). This is the enterprise product:
    benchmarked org capability scores, sold into the 95%-pilot-failure problem.
-4. **One anchor mandate.** One employer requiring AILX in hiring, or one
-   ministry/procurement pilot. The exam is worthless until someone requires it and
-   compounds fast after. EU AI Act Art. 4 is a weaker hook than it looks: it requires
-   no measurement and carries no EU-level fine, only whatever national penalties Member States
-   set under Art. 99(1) (docs/POLICY-BRIEF.md §2.2, §2.3).
-5. **Structural hygiene from day one.** Nonprofit examiner owns the trademark and the
-   secure anchor block; training/prep lives in a separate entity. That separation is
+4. **One anchor mandate.** Secure one employer requiring AILX in hiring or one
+   ministry/procurement pilot. The exam has no value until someone requires it.
+   Its value compounds quickly afterward. EU AI Act Art. 4 is a weaker hook than it looks.
+   It requires no measurement and carries no EU-level fine. It carries only the national
+   penalties Member States set under Art. 99(1) (docs/POLICY-BRIEF.md §2.2, §2.3).
+5. **Structural hygiene from day one.** The nonprofit examiner owns the trademark and the
+   secure anchor block. Training/prep belongs to a separate entity. That separation is
    one of the governance conditions listed above. Audit-grade score recomputability
-   (spec core invariant) is the part that already exists: anyone holding the stored
-   inputs recomputes a score and gets the same bytes.
+   (spec core invariant) already exists. Anyone holding the stored
+   inputs can recompute a score and get the same bytes.
 
-Sequencing of value capture: (1) enterprise performance assessment is the wedge,
-(2) the frontier/agentic talent signal is the moat, (3) Art. 4 compliance is a
-distribution hook, (4) the mass consumer credential is the long game.
+Sequence value capture as follows: (1) enterprise performance assessment opens the market,
+(2) the frontier/agentic talent signal protects the position, (3) Art. 4 compliance provides
+a distribution hook, and (4) the mass consumer credential is the long-term product.
 
-Historical base rate for this path: **3–7 years to industry default** — with the
-Art. 4 vacuum and the FDE hiring boom as the kind of external demand shock that
+The historical base rate for this path is **3–7 years to industry default**. The
+Art. 4 vacuum and the FDE hiring boom are the kind of external demand shocks that
 compressed CNCF's timeline to two.
 
 ## The research flywheel — and the governance it requires
 
-The quarterly research cadence (see `docs/FUTURE-TRACKS.md`) is the technical and research
-moat. Nobody else is systematically studying what frontier practice looks like and then
-turning it into a measurable instrument every quarter.
+Quarterly research (see `docs/FUTURE-TRACKS.md`) is the technical and research
+moat. Nobody else systematically studies frontier practice and turns
+it into a measurable instrument every quarter.
 
-That research needs domain expertise from people at the edge, which suggests an advisory
-relationship with frontier startups and labs. The exchange is real in both directions:
-AILX gets expertise it cannot buy, and advisors get visibility and credibility from being
+This research needs knowledge from people working at the frontier. That supports advisory
+relationships with frontier startups and labs. Both sides receive something concrete.
+AILX gets expertise it cannot buy. Advisors gain visibility and credibility by being
 named in the methodology behind the instrument that defines AI fluency.
 
-Historical precedent supports it. CompTIA was founded by competing vendors; CNCF has rival
-companies fund a hands-on exam none of them controls; ETS was created by institutions
-donating their own tests. Competitors cooperate on a body none of them owns when it
-grows the whole market.
+Historical precedent supports this structure. CompTIA was founded by competing vendors.
+CNCF has rival companies fund a hands-on exam that none of them controls. Institutions
+created ETS by donating their own tests. Competitors cooperate through a body none of
+them owns when doing so grows the whole market.
 
 ### The risk, stated plainly
 
 The strategic asset is that nobody who sells a model decides what the exam measures.
-Every incumbent credential is vendor-captive, and the "ETS of AI" seat is empty because
-of it. If advisory participation reads as sponsorship, meaning "advise us and get
-advertising", the instrument becomes the thing it was built to replace. A single visible
-instance of a vendor's product appearing in a challenge they advised on is enough to do
-it, and no rule written afterwards repairs it.
+Every incumbent credential is vendor-captive. The "ETS of AI" seat remains empty
+because of it. Advisory participation becomes sponsorship if it means
+"advise us and get advertising". At that point, the instrument becomes what it was
+built to replace. One visible case in which a vendor's product appears in a challenge
+that vendor advised on is enough. No later rule can repair the damage.
 
 ### Rules that keep it defensible
 
-Adopt before the first advisor is signed, not after:
+Adopt these rules before signing the first advisor:
 
-1. **Test the skill, not the tool.** Challenges must be model- and vendor-agnostic:
-   a candidate should be able to score well using any frontier stack. Anything that only
+1. **Test the skill, not the tool.** Challenges must be model- and vendor-agnostic.
+   A candidate should be able to score well using any frontier stack. Anything that only
    works with one vendor's product is a defect, not a feature.
-2. **Disclosed membership.** Publish who advises, and what they contributed. Undisclosed
-   influence is the thing that ends credibility.
+2. **Disclosed membership.** Publish who advises and what they contributed. Undisclosed
+   influence destroys credibility.
 3. **Recusal.** An advisor may not shape, review, or approve any challenge or item where
    their product or company is materially advantaged.
 4. **No placement, ever.** Advisors receive credit and credibility, never product
    placement, logo positioning inside challenges, or preferential treatment of their tools.
    If it functions as advertising, it is sponsorship and it needs a firewall.
-5. **Separation of powers.** Advisors inform research inputs; the examiner function
-   owns the final instrument. Keep the decision rights explicit and separate, as the
-   CNCF model does with technical control never following the money.
-6. **Say no publicly.** The ability to reject an advisor's suggestion, on the record, is
-   what makes the rest of it believable.
+5. **Separation of powers.** Advisors inform research inputs. The examiner function
+   owns the final instrument. State and separate the decision rights, as the
+   CNCF model does by preventing money from buying technical control.
+6. **Say no publicly.** Rejecting an advisor's suggestion on the record
+   makes the other rules credible.
 
 ### Why this is worth the discipline
 
-The advisory network compounds: better research produces a better instrument, which
-attracts better advisors, which improves the research. But it only compounds while the
-scores mean something. The rules above are not a tax on the flywheel. They are what keeps
-a score worth having.
+The advisory network creates a reinforcing cycle. Better research produces a better
+instrument. A better instrument attracts better advisors. Better advisors improve the
+research. This works only while the scores mean something. The rules above do not burden
+the cycle. They preserve the value of the score.
