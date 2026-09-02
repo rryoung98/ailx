@@ -17,7 +17,13 @@
  * demo scenario remains code-side (no content-package changes); its hash is
  * pinned and asserted at test time.
  */
-import { D_PRIME_CEILING, maxAttainableDPrime, sampleT2DeckIds, t2DeckSeed } from "@ailx/track-t2";
+import {
+  D_PRIME_CEILING,
+  maxAttainableDPrime,
+  sampleT2DeckIds,
+  t2DeckSeed,
+  type T2DeckComposition,
+} from "@ailx/track-t2";
 import snapshotRaw from "../../../instruments/demo-2026.1/snapshot.json";
 import { assetUrl } from "./mode";
 
@@ -43,8 +49,17 @@ interface BankItem {
 
 interface SnapshotBlock {
   id: string;
+  /** How many items THIS package's bank holds in the block, all locales. */
+  bank_items?: number;
   exposure_seconds?: number | null;
   untimed?: boolean;
+}
+
+/** `config.deck` as the instrument declares it (snake_case, from track.yaml). */
+interface SnapshotDeck {
+  media_pairs?: unknown;
+  text?: unknown;
+  provenance?: unknown;
 }
 
 interface SnapshotTrack {
@@ -220,6 +235,29 @@ export function t2BankSha256(): string {
 }
 
 /**
+ * WHAT ONE SITTING IS DEALT, read from the instrument rather than repeated
+ * here: `config.deck` in the released tier's t2 `track.yaml`, carried into
+ * the snapshot. Fails CLOSED — an absent or malformed declaration throws
+ * instead of falling back to numbers this module made up. Before TEN-48 the
+ * sampler held the numbers, `track.yaml` declared a 132-item form, and the
+ * bank held 20; nothing compared the three.
+ */
+export function t2DeckComposition(): T2DeckComposition {
+  const deck = snapshotTrack("t2").config.deck as SnapshotDeck | undefined;
+  const count = (field: "media_pairs" | "text" | "provenance"): number => {
+    const n = deck?.[field];
+    if (typeof n !== "number" || !Number.isInteger(n) || n < 0) {
+      throw new Error(
+        `instrument declares no usable config.deck.${field} for t2 — it must be a ` +
+          `non-negative integer in instruments/demo-2026.1/tracks/t2-discrimination/track.yaml`,
+      );
+    }
+    return n;
+  };
+  return { mediaPairs: count("media_pairs"), text: count("text"), provenance: count("provenance") };
+}
+
+/**
  * PER-ATTEMPT DECK: presented item ids, sampled by the pure @ailx/track-t2
  * sampler. Seed = sha256(attemptId + bank sha) so the deck is re-derivable
  * from stored inputs alone (server records the same ids at attempt
@@ -245,6 +283,7 @@ export function t2DeckItemIds(locale: string = "en", attemptId?: string): string
   }));
   return sampleT2DeckIds(
     candidates,
+    t2DeckComposition(),
     attemptId === undefined ? undefined : t2DeckSeed(attemptId, t2BankSha256()),
   );
 }

@@ -1,14 +1,23 @@
 /**
  * Per-attempt T2 deck sampling — pure and deterministic (F16 recomputability):
- * the SAME (candidates, seed) pair always yields the SAME item-id list, so a
- * presented deck can be byte-identically re-derived from stored inputs alone
- * (attempt id + content-addressed bank). No I/O, clock, or Math.random.
+ * the SAME (candidates, deck, seed) triple always yields the SAME item-id
+ * list, so a presented deck can be byte-identically re-derived from stored
+ * inputs alone (attempt id + content-addressed bank). No I/O, clock, or
+ * Math.random.
  *
- * Composition rules (mirrors the demo deck contract):
- *   6 items = 2 media (1 AI + 1 real, difficulty-matched pair, leading the
- *   deck) + 2 text/message (1 signal + 1 benign) + 2 provenance. Both binary
- *   blocks stay class-balanced so d\u2032 stays measurable, and the single media
- *   pair is difficulty-matched so class is never confounded with difficulty.
+ * WHAT ONE SITTING IS DEALT IS DECLARED, NOT HARDCODED. The caller passes the
+ * composition it read from the instrument (`config.deck` in the track's
+ * `track.yaml`). This module used to hold the numbers itself — one media pair,
+ * two text, two provenance — while `track.yaml` declared a 132-item form and
+ * the bank held neither. Three descriptions of one track, disagreeing, with
+ * nothing to notice (TEN-48). There is now one statement of the deck and this
+ * sampler reads it.
+ *
+ * The composition rules the sampler still owns, because they are measurement
+ * and not policy: a media pair is one signal item and one authentic item,
+ * difficulty-matched, and it leads the deck; text is class-balanced. Both
+ * binary strata stay class-balanced so d\u2032 stays measurable, and a
+ * difficulty-matched pair keeps class from being confounded with difficulty.
  *
  * Without a seed the FIXED default deck is returned (fixtures, /validate):
  * first-in-bank-order picks, same composition rules.
@@ -24,6 +33,20 @@ export interface T2DeckCandidate {
   signal: boolean;
   /** 0..1 difficulty used for class-vs-difficulty matching. */
   difficulty: number;
+}
+
+/**
+ * What ONE sitting is dealt, as the instrument declares it (`config.deck` in
+ * the track's `track.yaml`, carried into the snapshot). Counts, not items: the
+ * sampler decides WHICH items meet them.
+ */
+export interface T2DeckComposition {
+  /** Media pairs. Each pair is one signal item and one authentic item. */
+  mediaPairs: number;
+  /** Text/message items, class-balanced. */
+  text: number;
+  /** Provenance items. */
+  provenance: number;
 }
 
 /**
@@ -47,16 +70,31 @@ function seededShuffle<T>(arr: readonly T[], seed: string, salt: string): T[] {
 
 /**
  * Sample a deck from `candidates` and return the presented item ids in
- * order. `seed` (from {@link t2DeckSeed}) selects a per-attempt deck; omit
- * it for the fixed default deck. Thin strata degrade gracefully: a missing
- * media class drops the media pair (never an unmatched half-pair), a missing
- * text class back-fills from the remaining text pool, and short provenance
- * pools shrink that block \u2014 the deck is always well-formed, just smaller.
+ * order. `deck` is the declared composition (see {@link T2DeckComposition});
+ * `seed` (from {@link t2DeckSeed}) selects a per-attempt deck, and omitting it
+ * returns the fixed default deck. Thin strata degrade gracefully: a missing
+ * media class drops that pair (never an unmatched half-pair), a missing text
+ * class back-fills from the remaining text pool, and a short provenance pool
+ * shrinks that block \u2014 the deck is always well-formed, just smaller.
+ *
+ * A negative or non-integer count throws rather than dealing a deck nobody
+ * declared: the composition comes from an instrument file, and a malformed
+ * one must stop the sitting, not quietly change what is measured.
  */
 export function sampleT2DeckIds(
   candidates: readonly T2DeckCandidate[],
+  deck: T2DeckComposition,
   seed?: string,
 ): string[] {
+  // The three named fields, by name: iterating the object's own keys would
+  // pass a declaration that is MISSING one (and would check a field the
+  // sampler never reads).
+  for (const field of ["mediaPairs", "text", "provenance"] as const) {
+    const n = deck?.[field];
+    if (!Number.isInteger(n) || (n as number) < 0) {
+      throw new Error(`t2 deck ${field} must be a non-negative integer, got ${String(n)}`);
+    }
+  }
   const mediaAi = candidates.filter((c) => c.kind === "media" && c.signal);
   const mediaReal = candidates.filter((c) => c.kind === "media" && !c.signal);
   const textAi = candidates.filter((c) => c.kind === "text" && c.signal);
@@ -74,39 +112,44 @@ export function sampleT2DeckIds(
       }
       return realPool.splice(best, 1)[0];
     });
-  // Back-fill a missing text class from the remaining text pool so the deck
-  // size stays content-independent.
+  // Half the declared text items from each class, then back-fill a thin or
+  // odd class from the remaining text pool so the deck size stays
+  // content-independent.
+  const perTextClass = Math.floor(deck.text / 2);
   const backfillText = (picked: T2DeckCandidate[]) => {
     const pool = [...textAi, ...textReal].filter((c) => !picked.includes(c));
-    while (picked.length < 2 && pool.length > 0) picked.push(pool.shift()!);
+    while (picked.length < deck.text && pool.length > 0) picked.push(pool.shift()!);
     return picked;
   };
-  // A media pair needs BOTH classes; otherwise present no media at all.
-  const pairCount = Math.min(1, mediaAi.length, mediaReal.length);
+  // A media pair needs BOTH classes; otherwise present that pair not at all.
+  const pairCount = Math.min(deck.mediaPairs, mediaAi.length, mediaReal.length);
 
   if (seed === undefined) {
     const aiPick = mediaAi.slice(0, pairCount);
     const realPick = matchByDifficulty(aiPick, [...mediaReal]);
     const media = aiPick.flatMap((a, k) => [a, realPick[k]]);
-    const text = backfillText([textAi[0], textReal[0]].filter(Boolean));
-    return [...media, ...text, ...prov.slice(0, 2)].map((c) => c.id);
+    const text = backfillText([
+      ...textAi.slice(0, perTextClass),
+      ...textReal.slice(0, perTextClass),
+    ]);
+    return [...media, ...text, ...prov.slice(0, deck.provenance)].map((c) => c.id);
   }
 
-  // 1 AI item, then 1 real item difficulty-matched to it; seeded order per
-  // pair so the AI item never has a fixed slot.
+  // Per pair: 1 AI item, then 1 real item difficulty-matched to it; seeded
+  // order per pair so the AI item never has a fixed slot.
   const aiPick = seededShuffle(mediaAi, seed, "media-ai").slice(0, pairCount);
   const realPick = matchByDifficulty(aiPick, seededShuffle(mediaReal, seed, "media-real"));
   const media = aiPick.flatMap((a, k) => {
     const pair = [a, realPick[k]];
     return seededUniform(`${seed}:pair-order`, k) < 0.5 ? pair : pair.reverse();
   });
-  // 1 signal (AI/hostile) + 1 benign text, seeded pick and seeded order.
+  // Half signal (AI/hostile) and half benign text, seeded pick and seeded order.
   const textPair = backfillText([
-    seededShuffle(textAi, seed, "text-ai")[0],
-    seededShuffle(textReal, seed, "text-real")[0],
-  ].filter(Boolean));
+    ...seededShuffle(textAi, seed, "text-ai").slice(0, perTextClass),
+    ...seededShuffle(textReal, seed, "text-real").slice(0, perTextClass),
+  ]);
   const textPick =
     seededUniform(`${seed}:text-order`, 0) < 0.5 ? textPair : [...textPair].reverse();
-  const provPick = seededShuffle(prov, seed, "prov").slice(0, 2);
+  const provPick = seededShuffle(prov, seed, "prov").slice(0, deck.provenance);
   return [...media, ...textPick, ...provPick].map((c) => c.id);
 }

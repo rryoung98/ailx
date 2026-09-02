@@ -132,48 +132,47 @@
           "blocks": [
             {
               "id": "media-image",
-              "items": 36,
-              "split": "18 synthetic / 18 authentic",
+              "bank_items": 8,
               "exposure_seconds": 6,
               "response": "binary+confidence"
             },
             {
               "id": "media-video",
-              "items": 14,
-              "split": "7 / 7",
+              "bank_items": 0,
               "exposure_seconds": 12,
               "response": "binary+confidence"
             },
             {
               "id": "media-audio",
-              "items": 10,
-              "split": "5 / 5",
+              "bank_items": 0,
               "exposure_seconds": 10,
               "response": "binary+confidence"
             },
             {
               "id": "message-email",
-              "items": 40,
-              "split": "20 hostile / 20 legitimate",
+              "bank_items": 4,
               "exposure_seconds": 25,
               "response": "binary+confidence"
             },
             {
               "id": "message-page",
-              "items": 20,
-              "split": "10 / 10",
+              "bank_items": 4,
               "exposure_seconds": 25,
               "response": "binary+confidence"
             },
             {
               "id": "provenance",
-              "items": 12,
-              "split": null,
+              "bank_items": 4,
               "exposure_seconds": null,
               "response": "structured-selection+short-text",
               "untimed": true
             }
           ],
+          "deck": {
+            "media_pairs": 1,
+            "text": 2,
+            "provenance": 2
+          },
           "scoring": {
             "sensitivity_model": "signal-detection",
             "correction": "log-linear",
