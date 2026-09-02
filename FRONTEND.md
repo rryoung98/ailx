@@ -161,18 +161,19 @@ apps/web/
     exam/
       page.tsx
       error.tsx                 # REQUIRED: exam-scoped, offers checkpoint resume
-    api/**/route.api.ts         # server mode only; thin adapters over @ailx/backend
+    s/[token]/card.png/route.api.ts   # the ONE route handler (AGENTS.md)
   features/                     # one folder per product surface; no cross-feature imports
-    exam/                       # runner host, phase machine, clock, checkpoint resume
-    report/                     # report rendering (data comes from @ailx/report)
-    landing/                    # hero, teaser, scroll cinema, track visuals
-    connect/                    # model connection panel
-  components/                   # cross-feature presentational only; zero domain knowledge
-    ui/                         # PillCTA, NavLink, SiteLink, Reveal, Annotation
-    Loader.tsx
+    daily/  exam/  gallery/  landing/  practice/  progress/
+    report/  review/  share/  verify/  world/
+  components/                   # used by two or more surfaces
+    ui/                         # zero domain knowledge: Annotation, NavLink, PillCTA, Reveal, SiteLink
+    CharacterPortrait.tsx  FunnelStep.tsx  GalleryCard.tsx  Loader.tsx
+    Moderation.tsx  PageNotice.tsx  PlaceholderRunner.tsx  ShareTargets.tsx  TrackRadar.tsx
   lib/                          # cross-cutting, non-visual, browser-safe
     mode.ts                     # THE build-mode seam
-    persistence.ts  checkpoints.ts  registry.ts
+    data/                       # service seam + browser storage
+    instrument/                 # released-practice tier and the derivation over it
+    auth/                       # Clerk mount, identity state
     server/                     # server-only; importable ONLY from route.api.ts
   styles/
     tokens.css                  # design tokens, one source of truth
@@ -208,24 +209,33 @@ separate from `test/` because the runners, speed, and flake budgets differ (§6)
 5. **Is it non-visual and used by 2+ features?** → `lib/`.
 6. **Otherwise** → colocate next to its only caller. It is not shared yet.
 
-### Today's `apps/web/lib` grab-bag, mapped
+### What moved, and what has not (TEN-63, 2026-09-02)
 
-| Today | Goes to | Because |
-|---|---|---|
-| `composite.ts` `insights.ts` `playerType.ts` `calibration.ts` `exportTiers.ts` `judging.ts` | `packages/report` | Feeds scores/report figures → rule 1. Gains the purity sandbox; backend can reuse. |
-| `instrument.ts` `validateChecks.ts` | `packages/core` (or `content-tools`) | Instrument/content validation is content-addressing territory, not app territory. |
-| `demoItems.ts` `sampleAttempt.ts` `demo.ts` `fixtures/` | `packages/report/fixtures` or `test/fixtures` | Fixtures are data; they must be reachable from package tests. |
-| `registry.ts` | split: plugin wiring stays in `lib/`; `scoringDigest()` moves to `packages/core` as a build-time source hash | The digest is the audit artifact (§2.1). |
-| `HeroCanvas.tsx` `Teaser.tsx` `TrackVisuals.tsx` `Reveal.tsx` `svgArt.ts` `track3d/` | `features/landing/` | One surface only. |
-| `ConnectPanel.tsx` | `features/connect/` | One surface. |
-| `PlaceholderRunner.tsx` `useSwipeCard.ts` `checkpoints.ts` | `features/exam/` | Exam-only. |
-| `CalibrationCurve.tsx` `Annotation.tsx` | `features/report/` | Report-only. |
-| `Loader.tsx` `NavLink.tsx` `PillCTA.tsx` `SiteLink.tsx` | `components/ui/` | Used by the shell. Loader's 14.2 kB inline SVG path moves to `public/media/` (§9). |
-| `mode.ts` `persistence.ts` `siteUpload.ts` `redirect404.ts` | stay in `lib/` | Cross-cutting, non-visual, browser-safe. |
-| `server/` | stays | Already correct. |
+`apps/web/lib` held 37 components and 24 modules in one directory. It now
+holds `mode.ts`, three small helpers and four directories, and the tree above
+is what the app actually looks like.
 
-Move by `git mv` in one PR per column group, tests updated in the same commit. No barrels are
-created on the way.
+- Everything that renders left `lib/`. One surface → `features/<surface>/`.
+  Two or more → `components/`, and `components/ui/` when it also has zero
+  domain knowledge.
+- The rest of `lib/` split in two: `data/` for the service seam and browser
+  storage, `instrument/` for the released-practice tier and the derivation
+  over it.
+- Guards that scan "the frontend" share `test/helpers/browserSources.ts`.
+  Adding a directory of browser code means adding it to `BROWSER_ROOTS`, or
+  those guards stop seeing it.
+
+Two rows of the old plan are still open, and both are tracked in
+docs/PLAN.md: `lib/instrument/instrument.ts` and
+`lib/instrument/validateChecks.ts` belong in `packages/` by rule 1, blocked
+on `instrument.ts` calling `assetUrl()`; and `scoringDigest()` in
+`lib/instrument/registry.ts` belongs in `packages/core` as a build-time
+source hash. `svgArt.ts` did not go to `features/landing/` as drafted: its
+one caller is `demoItems.ts`, so it sits beside it in `lib/instrument/`
+(rule 6). `useSwipeCard.ts` did go, with its one caller `Teaser.tsx`.
+
+Move by `git mv`, one coherent group per commit, tests updated in the same
+commit. No barrels are created on the way.
 
 ---
 
