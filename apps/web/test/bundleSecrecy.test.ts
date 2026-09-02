@@ -386,15 +386,23 @@ describe("no operational answer key reaches a built client bundle", () => {
     }
   });
 
-  it("scanned at least one build output", () => {
-    // Skipping every mode would turn this guard into a green light. The static
-    // export under apps/web/out is committed, so an empty list means the tree
-    // is broken or the paths moved — either way, say so.
-    expect(
-      present.map((m) => m.name),
-      "no build output found; run `pnpm --filter @ailx/web build` (and the AILX_BACKEND=1 build) first",
-    ).not.toEqual([]);
-  });
+  // Skipping every mode would turn this guard into a green light, so CI must
+  // find output: `.github/workflows/ci.yml` runs both builds before the test
+  // step, and an empty list there means the tree is broken or the paths moved.
+  //
+  // Neither output is committed, and a test cannot make one, so on a clean
+  // clone this assertion only said "you forgot to build". That made a green
+  // `pnpm test` depend on a build step nothing runs for you. It is skipped
+  // where there is nothing to scan and no CI to have built it.
+  it.skipIf(present.length === 0 && process.env.CI === undefined)(
+    "scanned at least one build output",
+    () => {
+      expect(
+        present.map((m) => m.name),
+        "no build output found; run `pnpm --filter @ailx/web build` (and the AILX_BACKEND=1 build) first",
+      ).not.toEqual([]);
+    },
+  );
 
   for (const mode of MODES) {
     const run = existsSync(mode.dir) ? describe : describe.skip;
