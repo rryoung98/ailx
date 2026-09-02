@@ -38,6 +38,8 @@
  */
 import Link from "next/link";
 import {
+  CLAIMED_DAYS_BASIS,
+  CLAIM_PROMISE,
   MIN_TREND_DAYS,
   PRACTICE_ACCURACY_CAVEAT,
   REST_WINDOW_DAYS,
@@ -246,7 +248,7 @@ function Unrecognised({ accounts }: { accounts: boolean }) {
           <>
             Sign in and come back, or{" "}
             <Link href="/practice">play a round of practice</Link> — the drill itself works
-            either way.
+            either way. {CLAIM_PROMISE}
           </>
         ) : (
           <>
@@ -263,7 +265,12 @@ function Unrecognised({ accounts }: { accounts: boolean }) {
 }
 
 export function ProgressView() {
-  const result = useService<{ progress: ProgressReport }>("/progress", { identified: true });
+  // `claimedDays` is a SIBLING of the report, never a field inside it: a
+  // claimed day is a fact about provenance, and `ProgressReport` is the pure
+  // derivation both repos share.
+  const result = useService<{ progress: ProgressReport; claimedDays?: string[] }>("/progress", {
+    identified: true,
+  });
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title={PAGE_TITLE} />;
   }
@@ -280,6 +287,7 @@ export function ProgressView() {
   }
   const progress = result.data.progress;
   const scoredDays = progress.practice.filter((d) => d.accuracy !== null);
+  const claimedDays = new Set(result.data.claimedDays ?? []);
 
   return (
     <main className="page">
@@ -319,6 +327,7 @@ export function ProgressView() {
               <table className="trend-table">
                 <caption className="small faint">
                   Every practice day, as the server graded it.
+                  {claimedDays.size > 0 ? ` ${CLAIMED_DAYS_BASIS}` : ""}
                 </caption>
                 <thead>
                   <tr>
@@ -331,7 +340,15 @@ export function ProgressView() {
                 <tbody>
                   {scoredDays.map((d) => (
                     <tr key={d.day}>
-                      <th scope="row" className="mono">{d.day}</th>
+                      <th scope="row" className="mono">
+                        {d.day}
+                        {claimedDays.has(d.day) ? (
+                          // Said in words, not by a colour or a symbol: a
+                          // screen reader gets the same provenance a sighted
+                          // reader does.
+                          <span className="small faint"> · brought from a browser</span>
+                        ) : null}
+                      </th>
                       <td className="mono">{d.sessions}</td>
                       <td className="mono">{d.answered}</td>
                       <td className="mono">{Math.round((d.accuracy ?? 0) * 100)}%</td>

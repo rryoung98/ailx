@@ -126,20 +126,34 @@ describe("funnel order", () => {
     expect(stepHrefs[3]).toBe("/report");
   });
 
-  it("static export: promises no recording and never links /progress", async () => {
+  it("static export: the streak step is there, and never links /progress", async () => {
     const h = await render();
-    expect(h.textContent).toContain("nothing is recorded");
+    const step = h.querySelectorAll(".wyg-step")[1];
+    // The static export keeps a streak too — in the visitor's own browser —
+    // so the step is no longer a different promise in the two builds.
+    expect(step.querySelector(".wyg-title")!.textContent).toBe("Come back tomorrow.");
+    expect(step.textContent).toContain("kept in this browser");
+    expect(step.querySelector("a")!.getAttribute("href")).toBe("/practice");
     expect(hrefs(h)).not.toContain("/progress");
   });
 
-  it("hosted build: the second step is the streak and links /progress", async () => {
+  it("hosted build: the same step, linking /progress", async () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubGlobal("fetch", async () => new Response("{}", { status: 500 }));
     const h = await render();
     const step = h.querySelectorAll(".wyg-step")[1];
     expect(step.querySelector(".wyg-title")!.textContent).toBe("Come back tomorrow.");
     expect(step.querySelector("a")!.getAttribute("href")).toBe("/progress");
-    expect(h.textContent).not.toContain("nothing is recorded");
+  });
+
+  it("never asks for an account before the game", async () => {
+    // The front door is the game. The one sign-in affordance in the app is a
+    // nav link (lib/auth/AuthNav.tsx); the landing page itself must not put
+    // an account between a visitor and the first card.
+    const h = await render();
+    expect(hrefs(h)).not.toContain("/sign-in");
+    expect(hrefs(h)).not.toContain("/sign-up");
+    expect(h.textContent).toMatch(/no account/i);
   });
 });
 

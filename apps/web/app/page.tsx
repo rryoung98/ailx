@@ -312,28 +312,23 @@ export default function Home() {
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizStreak />
-            {isServerMode() ? (
-              <>
-                <h2 className="wyg-title">Come back tomorrow.</h2>
-                <p className="wyg-line">
-                  Finish a round and the day counts. The streak is worked out on the server, so
-                  the progress page shows the days you did, not a number you told it.
-                </p>
-                <p className="wyg-more"><Link href="/progress">See your progress →</Link></p>
-              </>
-            ) : (
-              <>
-                {/* "Meet", not "Learn": whether the round teaches anybody
-                    anything is the open question (PRACTICE_EFFICACY_NOTE),
-                    and a funnel step is a bad place to prejudge it. */}
-                <h2 className="wyg-title">Meet the families.</h2>
-                <p className="wyg-line">
-                  Physics, anatomy, culture: the same three families come round again and again.
-                  This is the static demo build, so rounds play and nothing is recorded.
-                </p>
-                <p className="wyg-more"><Link href="/practice">Practise the tells →</Link></p>
-              </>
-            )}
+            {/* One step in both builds, because the streak now works in both:
+                a finished round is a day, kept in the visitor's own browser
+                when no account is recording it. The link is the only thing
+                that differs — the static export has no /progress. */}
+            <h2 className="wyg-title">Come back tomorrow.</h2>
+            <p className="wyg-line">
+              Finish a round and the day counts. No account: the days are kept in this browser,
+              and the streak is counted from what you actually finished, never a number you told
+              it.
+            </p>
+            <p className="wyg-more">
+              {isServerMode() ? (
+                <Link href="/progress">See your progress →</Link>
+              ) : (
+                <Link href="/practice">Practise the tells →</Link>
+              )}
+            </p>
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizTracks />
