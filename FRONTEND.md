@@ -90,11 +90,15 @@ The repo already has the right convention. It is now a rule.
 4. **Build-mode branching goes through `lib/mode.ts`.** One spelling of
    `NEXT_PUBLIC_AILX_BACKEND`, one truth. Never re-test the raw env var at a call site
    ([Next.js dual-mode drift is invisible unless both builds run in CI](https://nextjs.org/docs/app/guides/static-exports)).
-5. **`"use client"` is a module-graph boundary, not a runtime one**
+5. **Every exam-service URL comes from the route manifest.** `apiPath()` in
+   `@ailx/contract` owns the path; `lib/mode.ts` `apiBase()` owns the host prefix. A path
+   spelled at a call site is how a browser once called a route the deployed service did not
+   have, so `test/routeManifest.test.ts` fails the build on one.
+6. **`"use client"` is a module-graph boundary, not a runtime one**
    ([Next.js](https://nextjs.org/docs/app/guides/server-and-client-boundary)). Anything a client
    component imports enters the browser bundle. Push `"use client"` to leaves; pass `children`
    to keep server subtrees out of the client graph. `lib/NavLink.tsx` is the pattern.
-6. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
+7. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
    endpoint, and static export does not support Server Actions anyway. Use `route.api.ts`.
 
 Three mechanisms, deliberately overlapping, because they fail at different times: directory
@@ -811,6 +815,7 @@ Run this on every frontend PR. Each item is checkable in under a minute.
 - [ ] No new barrel/`index.ts` in `apps/web`; no `utils.ts`.
 - [ ] Value imports do not cross the client boundary where a `type` import would do.
 - [ ] Build-mode branching goes through `lib/mode.ts`.
+- [ ] Every exam-service URL comes from `apiPath()`; no path spelled at a call site.
 
 **Security**
 - [ ] No secret in `NEXT_PUBLIC_*`; no new public env var.

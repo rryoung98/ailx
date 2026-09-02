@@ -14,6 +14,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiPath } from "@ailx/contract";
 import { apiBase, apiOrigin, siteApiRoot, siteHref } from "../lib/mode";
 
 const SERVICE = "https://ailx-backend-932932410694.us-central1.run.app";
@@ -80,11 +81,14 @@ describe("apiBase — the versioned root", () => {
     expect(apiBase()).toBe(`${SERVICE}/v1`);
   });
 
-  it("composes into the real call shapes", () => {
+  it("composes with a manifest path into the real call shapes", () => {
     stub(SERVICE);
-    expect(`${apiBase()}/attempts`).toBe(`${SERVICE}/v1/attempts`);
-    expect(`${apiBase()}/practice`).toBe(`${SERVICE}/v1/practice`);
-    expect(`${apiBase()}/gallery/review`).toBe(`${SERVICE}/v1/gallery/review`);
+    expect(`${apiBase()}${apiPath("createAttempt")}`).toBe(`${SERVICE}/v1/attempts`);
+    expect(`${apiBase()}${apiPath("startPractice")}`).toBe(`${SERVICE}/v1/practice`);
+    expect(`${apiBase()}${apiPath("reviewDecision")}`).toBe(`${SERVICE}/v1/gallery/review`);
+    expect(`${apiBase()}${apiPath("attemptItems", { id: "a1" })}`).toBe(
+      `${SERVICE}/v1/attempts/a1/items`,
+    );
   });
 });
 

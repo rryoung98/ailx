@@ -19,7 +19,7 @@
  */
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { shareUrlPath } from "@ailx/contract";
+import { apiPath, shareUrlPath } from "@ailx/contract";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "./CharacterPortrait";
@@ -40,7 +40,7 @@ export function ShareView() {
   const params = useParams<{ token: string }>();
   const token = typeof params?.token === "string" ? params.token : null;
   const result = useService<{ share: SharedView }>(
-    token === null ? null : `/share/${encodeURIComponent(token)}`,
+    token === null ? null : apiPath("shareView", { token }),
   );
   if (result.state === "loading") return <PageLoading title="Opening this card" />;
   if (result.state === "error") return <PageError title="Opening this card" />;

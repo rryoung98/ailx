@@ -19,6 +19,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
+  apiPath,
   COMMENT_BODY_MAX,
   type CandidateComment,
   type CandidateThread as Thread,
@@ -152,7 +153,7 @@ export function ModeratorThread({ shareId, trail }: { shareId: string; trail: Mo
     try {
       // Header identity, not the cookie: cross-origin to the exam service a
       // SameSite=Lax cookie never travels (docs/DEPLOY.md §4.1).
-      const res = await fetch(`${apiBase()}/moderation/${shareId}`, {
+      const res = await fetch(`${apiBase()}${apiPath("moderationComment", { id: shareId })}`, {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({ body, visibility: shared ? "shared" : "internal" }),
@@ -219,7 +220,12 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
   const endpoint = useCallback(() => {
     const opts = browserApiOptions();
     const serverId = getServerAttemptId(window.localStorage, attemptId) ?? attemptId;
-    return { url: `${opts.baseUrl}/attempts/${serverId}/moderation`, fetchFn: opts.fetchFn };
+    // GET and POST are one URL; the manifest declares them as two routes
+    // because the service mounts two handlers.
+    return {
+      url: `${opts.baseUrl}${apiPath("candidateThread", { id: serverId })}`,
+      fetchFn: opts.fetchFn,
+    };
   }, [attemptId]);
 
   const load = useCallback(async () => {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { shareCardPath, shareUrlPath } from "@ailx/contract";
+import { apiPath, shareCardPath, shareUrlPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
 import { pageOrigin, serverApiBase } from "../../../lib/server/page";
 import { ShareView, type SharedView } from "../../../lib/ShareView";
@@ -27,7 +27,7 @@ type ShareParams = { params: Promise<{ token: string }> };
 /** The same anonymous read the page makes. Never counts a view (see below). */
 async function readShare(token: string): Promise<SharedView | null> {
   try {
-    const res = await fetch(`${await serverApiBase()}/share/${encodeURIComponent(token)}`, {
+    const res = await fetch(`${await serverApiBase()}${apiPath("shareView", { token })}`, {
       cache: "no-store",
     });
     if (res.status !== 200) return null;

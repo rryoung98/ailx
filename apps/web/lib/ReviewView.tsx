@@ -27,7 +27,13 @@
  */
 import Link from "next/link";
 import { notFound, useSearchParams } from "next/navigation";
-import { CASE_LANES, type CaseLane, type CaseListing, type ModerationCase } from "@ailx/contract";
+import {
+  apiPath,
+  CASE_LANES,
+  type CaseLane,
+  type CaseListing,
+  type ModerationCase,
+} from "@ailx/contract";
 import { GalleryCard } from "./GalleryCard";
 import { PageError, PageLoading } from "./PageNotice";
 import { ReviewActions } from "./ReviewActions";
@@ -83,7 +89,7 @@ function CaseRow({ item }: { item: ModerationCase }) {
 export function ReviewView() {
   const search = useSearchParams();
   const result = useService<{ listing: CaseListing }>(
-    `/moderation/cases${firstValueQuery(search)}`,
+    apiPath("moderationCases", {}, firstValueQuery(search)),
     { identified: true },
   );
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title={TITLE} />;

@@ -29,6 +29,7 @@ import {
   type PracticeQualification,
   type StreakSummary,
 } from "@ailx/report";
+import { apiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
 import { apiBase } from "./mode";
@@ -159,7 +160,7 @@ export async function claimLocalPractice(
   const days: PracticeDayCounts[] = claimableDays(ledger);
   if (days.length === 0) return null;
   try {
-    const res = await fetchFn(`${apiBase()}/practice/claim`, {
+    const res = await fetchFn(`${apiBase()}${apiPath("claimPractice")}`, {
       method: "POST",
       headers: { "content-type": "application/json", ...(await authHeaders(storage)) },
       body: JSON.stringify({ days }),
