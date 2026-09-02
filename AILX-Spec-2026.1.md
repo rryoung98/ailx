@@ -390,7 +390,7 @@ Candidates receive a long, dense primary source — a technical or policy docume
 
 - **50 pts — Planted-error detection (RSR).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
 - **30 pts — Deliberate adoption of correct advice (RAIR).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
-- **35 pts — Process quality.** From the transcript: decomposition, prompt iteration, verification behaviour, whether the candidate went back to the primary source
+- **35 pts — Process quality.** From the transcript, in four equal quarters: decomposition into prompts, an iterative revision chain, **discriminating verification** (see below), and taking a deliberate stance on the claims the assistant raised
 - **45 pts — Analysis quality.** *[Not implemented in 2026.1 — one stub returning three seeded samples that band on answer length; the ~200-example calibration set does not exist. See §04.]* Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
 
 **115 of the 160 points are model-free measurement of behaviour** — up from 35 of 100. That is the design's answer to the obvious objection, that scoring reasoning with a language model is scoring the wrong thing, and it is also how §04's LLM-jury exposure is held at 45 points in this track.
@@ -405,7 +405,7 @@ The obvious designs for it all fail, and it is worth writing down why before def
 2. **Asking destroys the measurement.** On an exam called *the AI Literacy Examination*, a candidate asked whether they would use AI learns within two items that the sophisticated answer is "not here, and I would verify". A situational-judgement item on this construct measures test-wiseness.
 3. **Under-use is a failure too.** A person who refuses the model where it would have helped is also failing. A one-directional "abstained = correct" key scores Luddism as literacy.
 
-The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — that is RSR. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — that is RAIR. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour under time pressure rather than from anything the candidate says about themselves.
+The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — that is RSR. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — that is RAIR. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour rather than from anything the candidate says about themselves. The behaviour is observed under a declared time budget, which is not the same as observing it *under time pressure* — see "Verification under a declared time budget" below.
 
 **The reliance index is reported two-tailed and never collapsed to one number.**
 
@@ -419,6 +419,28 @@ The design that survives all three is **not to ask, but to make the assistant ge
 The band reads both tails on purpose. A candidate who swallowed every planted error *and* refused every correct suggestion has over = 1, under = 1 and index = 0 — arithmetically "calibrated" and behaviourally the worst run in the cohort. When both tails are large the band names the larger failure.
 
 > **Stated against our own case.** RSR and RAIR are named after the appropriate-reliance literature, but this two-tailed *index* is AILX's own construction. We have found no published index or scoring scheme for calibrated reliance to inherit, and there is no published validity evidence for this one. It is defended on design grounds — behavioural, keyless, un-gameable by verbal sophistication, symmetric — and it is reported descriptively until it has been validated against something external. Saying so here is cheaper than being asked.
+
+### Verification under a declared time budget
+
+The verification quarter of Process scores **discriminating** verification, not the number of checks. A check counts when the candidate checked a claim the assistant had raised, the form knows whether that claim was true, the check happened before the answer was final, and the candidate's final stance on that claim came after the check and got it right — challenged a planted error, accepted correct advice. Repeat checks of one claim count once. The scored value is `discriminating / max(checked, 2)`, so checking everything lowers the rate rather than raising it.
+
+The reason is the obvious attack. A candidate who knows the transcript is scored can press Check source on every claim and learn nothing. Volume is what performative checking produces, so volume is not what is paid. The raw record still reports `verificationCount` beside `discriminatingVerifications`, because the difference between the two is itself a finding.
+
+**What the transcript cannot show.** It records that a claim was checked, not what the candidate read. So "discriminating" means *the check was followed by the right call on that claim*, not *the candidate found the discrepancy in the source*. A lucky call after an idle press scores the same as a real one. Separating those needs an event the runner does not emit — which passage was opened, and whether the candidate marked a mismatch — and that event is not worth designing before the study in `docs/TRANSFER-STUDY.md` §3.5 runs.
+
+**The manipulation.** A T3 form may declare `timeBudgetMinutes`: the same task, the same source, the same planted errors, at 90 minutes or at 30. The declaration sets the sitting clock and is copied into the record as `condition.timeBudgetMinutes`, so an analysis can compare conditions instead of guessing. A form that declares nothing behaves as before and records 0.
+
+**What a comparison of the two conditions may claim, and what it may not.**
+
+| May say | May not say |
+|---|---|
+| Verification behaviour differs between the 90- and 30-minute forms, if it does | That time pressure raises the **rate** of error adoption |
+| Reliance on the assistant may rise under time stress, citing the source below | Any effect size of our own that we have not measured |
+| The finding describes **this form and this interface** | That it describes time pressure as a construct |
+
+The evidence, by name and number. Rosbach, Ammeling, Ganz, Bertram, Conrad, Riener and Aubreville (MELBA 2026, DOI 10.59275/j.melba.2026-87b1, arXiv:2603.11821) measured normalised weight-of-advice in 28 pathology experts: 0.48 without time pressure, 0.54 with it, t(27) = 2.55, p = .017, and accuracy was worse under pressure (mean absolute deviation 19.42 against 27.79). That supports the direction, on a modest effect in a small expert sample. The earlier study by the same group (arXiv:2411.00998) found the **frequency** of automation bias unchanged under a 10-second countdown, p = 0.19; only its severity moved. So AILX may not say that a clock makes candidates adopt more errors. Swaroop, Buçinca, Gajos and Doshi-Velez (arXiv:2306.07458) found that **when** the assistant speaks moved over-reliance more than how long the participant had, and Buçinca, Malaya and Gajos (arXiv:2102.09692, n = 199) found verification effort is a property of the interface as much as of the person.
+
+**The confound, stated before anyone else states it.** AILX varies the clock and the interface together. Until the timed/untimed arm in `docs/TRANSFER-STUDY.md` §3.5 runs — same document, same assistant, same planted-error set, timer the only thing that moves — every "under time pressure" sentence in a report describes this form, not the construct. The report may name the condition a sitting ran under. It may not attribute the difference to time pressure alone.
 
 ### Why eight planted errors, not four
 

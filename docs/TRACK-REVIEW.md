@@ -754,3 +754,23 @@ three are now marked `implemented: false` in `packages/core/src/allocation.ts`, 
 and flagged inline at each score allocation. `packages/core/test/spec-allocation.test.ts` fails the
 build if the spec and the allocation table stop agreeing, which is the guard whose absence let the
 original §04 claim go wrong by a factor of five.
+
+### 9.5 §7.2 shipped, minus the claim it was written with (2026-09-02, TEN-30)
+
+The verification measure §7.2 asked for is built. The verification quarter of T3's Process component
+now scores **discriminating** verification — a claim checked before the answer was final, resolved
+afterwards the right way — and pays nothing for volume, so the performative-checking attack §7.2
+names is priced out. T3's points did not move.
+
+The manipulation is a form parameter, `timeBudgetMinutes`, recorded on every sitting as
+`condition.timeBudgetMinutes`. Forms that declare nothing behave exactly as before.
+
+Two corrections to §7.2's framing. First, the transcript cannot tell a check that found the
+discrepancy from a lucky call after an idle press; it records that a claim was checked, not what was
+read. The measure is defined on the stance that follows the check and the spec says so. Second,
+§7.2 assumes the slope is the finding. The evidence base is thinner than that: reliance rose 0.48 →
+0.54 under time pressure in 28 experts (Rosbach et al., MELBA 2026, t(27) = 2.55, p = .017), but the
+**rate** of error adoption did not move (arXiv:2411.00998, p = 0.19), and *when* the assistant
+speaks moved over-reliance more than the clock did (Swaroop et al., arXiv:2306.07458). Our timer and
+our interface still vary together, so until the arm in `docs/TRANSFER-STUDY.md` §3.5 runs, a
+condition comparison describes this form and not the construct.
