@@ -26,27 +26,39 @@ export function RelianceCard({ raw }: { raw: Record<string, number> }) {
         Calibrated reliance
       </h4>
       <p className="small muted" style={{ margin: "0.2rem 0 0.6rem" }} data-testid="reliance-band">
-        Band: <strong>{r.band}</strong>. The band is read from both tails, never from the index.
-        It moves no points.
+        {r.band ? (
+          <>
+            Band: <strong>{r.band}</strong>. The band is read from both tails, never from the
+            index. It moves no points.
+          </>
+        ) : (
+          <>No band: one side of the measure had no events in this sitting.</>
+        )}
       </p>
       {r.rows.map((row) => (
         <div
           key={row.key}
           data-reliance-row={row.key}
           style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(9rem, 1fr) 3.5rem 11rem",
-            gap: "0.6rem",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "0.2rem 0.6rem",
             alignItems: "baseline",
-            margin: "0.3rem 0",
+            margin: "0.4rem 0",
           }}
         >
-          <span className="small muted">{row.label}</span>
-          <span className="small mono" style={{ textAlign: "right" }}>{formatRate(row.point)}</span>
-          <span className="small mono faint" data-reliance-interval="">
-            {formatInterval(row.interval)}
-          </span>
-          <span className="faint small" style={{ gridColumn: "1 / -1" }}>{row.detail}</span>
+          <span className="small muted" style={{ minWidth: "9rem" }}>{row.label}</span>
+          {row.defined ? (
+            <>
+              <span className="small mono">{formatRate(row.point)}</span>
+              <span className="small mono faint" data-reliance-interval="">
+                {formatInterval(row.interval)}
+              </span>
+            </>
+          ) : (
+            <span className="small mono faint">no rate</span>
+          )}
+          <span className="faint small" style={{ flexBasis: "100%" }}>{row.detail}</span>
         </div>
       ))}
       {r.underpoweredNote ? (
@@ -59,6 +71,7 @@ export function RelianceCard({ raw }: { raw: Record<string, number> }) {
         </p>
       ) : null}
       <p className="faint small" style={{ margin: "0.6rem 0 0" }}>{r.precisionNote}</p>
+      <p className="faint small" style={{ margin: "0.3rem 0 0" }}>{r.independenceNote}</p>
       <p className="faint small" style={{ margin: "0.3rem 0 0" }}>{r.reliabilityNote}</p>
     </section>
   );

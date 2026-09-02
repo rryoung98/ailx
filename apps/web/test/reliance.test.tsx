@@ -100,7 +100,8 @@ describe("the report never shows a reliance rate without its interval", () => {
     const warned = host.querySelector('[data-testid="reliance-underpowered"]');
     expect(Boolean(warned)).toBe(raw["rsr.underpowered"] === 1);
     if (warned) {
-      expect(warned.textContent).toContain(`surfaced ${raw.plantedSurfaced} planted errors`);
+      expect(warned.textContent).toBe(relianceReportFromRaw(raw)!.underpoweredNote);
+      expect(warned.textContent).toContain(`surfaced ${raw.plantedSurfaced} planted error`);
       expect(warned.textContent).toContain("floor for reporting a rate is 8");
     }
   });
@@ -131,6 +132,18 @@ describe("RelianceCard on its own", () => {
     expect(host.querySelector('[data-testid="t3-reliance"]')).toBeTruthy();
   });
 
+  it("shows no rate and no band when a side surfaced nothing", async () => {
+    await render(createElement(RelianceCard, {
+      raw: { plantedSurfaced: 0, plantedCaught: 0, adviceSurfaced: 0, adviceAdopted: 0 },
+    }));
+    const section = host.querySelector('[data-testid="t3-reliance"]')!;
+    expect(section.querySelectorAll("[data-reliance-interval]")).toHaveLength(0);
+    expect(section.textContent).toContain("no rate");
+    expect(host.querySelector('[data-testid="reliance-band"]')!.textContent).toBe(
+      "No band: one side of the measure had no events in this sitting.",
+    );
+  });
+
   it("renders nothing for a raw record with no reliance counts", async () => {
     await render(createElement(RelianceCard, { raw: { gates: 10 } }));
     expect(host.querySelector('[data-testid="t3-reliance"]')).toBeNull();
@@ -159,8 +172,22 @@ describe("no frontend module reads a reliance rate out of the raw record", () =>
     expect(files.length).toBeGreaterThan(20);
   });
 
-  it("finds no raw reliance key outside the derivation", () => {
-    const offenders = files.filter((f) => /reliance\.(over|under|index)/.test(readFileSync(f, "utf8")));
+  /**
+   * Both the stored rate keys and the counts a rate could be recomputed from.
+   * RelianceCard is the one allowed reader, and it only calls the derivation.
+   */
+  const FORBIDDEN = /reliance\.(over|under|index)|plantedSurfaced|plantedCaught|adviceSurfaced|adviceAdopted/;
+
+  it("finds no reliance rate or count read outside RelianceCard", () => {
+    const offenders = files
+      .filter((f) => !f.endsWith("RelianceCard.tsx"))
+      .filter((f) => FORBIDDEN.test(readFileSync(f, "utf8")));
     expect(offenders, "read reliance rates through relianceReportFromRaw instead").toEqual([]);
+  });
+
+  it("and RelianceCard itself computes no rate", () => {
+    const card = readFileSync(join(__dirname, "..", "lib", "RelianceCard.tsx"), "utf8");
+    expect(card).not.toMatch(FORBIDDEN);
+    expect(card).toContain("relianceReportFromRaw");
   });
 });

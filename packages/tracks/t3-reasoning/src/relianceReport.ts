@@ -24,7 +24,9 @@
  *
  * The band is the coarse reading, and it is the pair's band from
  * {@link relianceBand}. Per-tail bands were considered and dropped: they
- * would need a second cutline nobody has data for.
+ * would need a second cutline nobody has data for. A tail with no events
+ * withholds the band, because relianceBand(0, 0) reads "calibrated" and a
+ * sitting that surfaced nothing has not shown that.
  */
 import {
   proportionDifferenceInterval, relianceBand, RSR_MIN_SURFACED, wilsonInterval,
@@ -34,6 +36,8 @@ import {
 export interface RelianceRow {
   key: "over" | "under" | "index";
   label: string;
+  /** False when a denominator is 0: the rate is undefined, not zero. */
+  defined: boolean;
   /** The point estimate. Never rendered without {@link RelianceRow.interval}. */
   point: number;
   /** Two-sided 95% interval. Wilson for a rate, Newcombe for the index. */
@@ -44,7 +48,8 @@ export interface RelianceRow {
 
 export interface RelianceReport {
   rows: RelianceRow[];
-  band: RelianceBand;
+  /** Null when either tail has no events: the band would be a guess. */
+  band: RelianceBand | null;
   plantedSurfaced: number;
   adviceSurfaced: number;
   /** True when the form surfaced fewer than RSR_MIN_SURFACED planted errors. */
@@ -52,6 +57,7 @@ export interface RelianceReport {
   /** Set only when {@link RelianceReport.underpowered}. */
   underpoweredNote: string | null;
   precisionNote: string;
+  independenceNote: string;
   reliabilityNote: string;
 }
 
@@ -65,8 +71,22 @@ export function formatInterval(i: Interval): string {
   return `95% CI ${formatRate(i.lo)} to ${formatRate(i.hi)}`;
 }
 
-const num = (raw: Record<string, number>, k: string): number =>
-  typeof raw[k] === "number" ? raw[k] : 0;
+/**
+ * A count from a stored raw record, as a non-negative integer. A record that
+ * arrived over the wire can carry anything; a fabricated rate is worse than a
+ * missing one, so anything that is not a finite number reads as 0 and a
+ * numerator is clamped to its denominator.
+ */
+const count = (raw: Record<string, number>, k: string, max = Number.POSITIVE_INFINITY): number => {
+  const v = raw[k];
+  if (typeof v !== "number" || !Number.isFinite(v)) return 0;
+  return Math.min(Math.max(0, Math.floor(v)), max);
+};
+
+/** "1 planted error", "8 planted errors". */
+const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
+
+const UNDEFINED_DETAIL = "nothing of this kind surfaced, so there is no rate to report";
 
 /**
  * Build the reliance lines from a stored T3 raw record. Pure.
@@ -78,60 +98,84 @@ export function relianceReportFromRaw(raw: Record<string, number>): RelianceRepo
   if (typeof raw.plantedSurfaced !== "number" || typeof raw.adviceSurfaced !== "number") {
     return null;
   }
-  const plantedSurfaced = num(raw, "plantedSurfaced");
-  const plantedCaught = num(raw, "plantedCaught");
-  const adviceSurfaced = num(raw, "adviceSurfaced");
-  const adviceAdopted = num(raw, "adviceAdopted");
+  const plantedSurfaced = count(raw, "plantedSurfaced");
+  const plantedCaught = count(raw, "plantedCaught", plantedSurfaced);
+  const adviceSurfaced = count(raw, "adviceSurfaced");
+  const adviceAdopted = count(raw, "adviceAdopted", adviceSurfaced);
   // The two tails count FAILURES: errors swallowed, correct advice refused.
   const overCount = plantedSurfaced - plantedCaught;
   const underCount = adviceSurfaced - adviceAdopted;
-  const over = plantedSurfaced > 0 ? overCount / plantedSurfaced : 0;
-  const under = adviceSurfaced > 0 ? underCount / adviceSurfaced : 0;
-  const underpowered = num(raw, "rsr.underpowered") === 1;
+  const overDefined = plantedSurfaced > 0;
+  const underDefined = adviceSurfaced > 0;
+  const over = overDefined ? overCount / plantedSurfaced : 0;
+  const under = underDefined ? underCount / adviceSurfaced : 0;
+  // Derived, not trusted: a stored record with the flag missing or stale must
+  // not silence the warning. The flag agreeing is asserted in the T3 scorer.
+  const underpowered =
+    raw["rsr.underpowered"] === 1 || plantedSurfaced < RSR_MIN_SURFACED;
   return {
     rows: [
       {
         key: "over",
         label: "Over-reliance",
+        defined: overDefined,
         point: over,
         interval: wilsonInterval(overCount, plantedSurfaced),
-        detail: `${overCount} of ${plantedSurfaced} surfaced planted errors went unchallenged`,
+        detail: overDefined
+          ? `${overCount} of ${plural(plantedSurfaced, "surfaced planted error", "surfaced planted errors")} went unchallenged`
+          : UNDEFINED_DETAIL,
       },
       {
         key: "under",
         label: "Under-reliance",
+        defined: underDefined,
         point: under,
         interval: wilsonInterval(underCount, adviceSurfaced),
-        detail: `${underCount} of ${adviceSurfaced} correct suggestions were not adopted`,
+        detail: underDefined
+          ? `${underCount} of ${plural(adviceSurfaced, "correct suggestion", "correct suggestions")} was not adopted`
+          : UNDEFINED_DETAIL,
       },
       {
         key: "index",
         label: "Index (under − over)",
+        defined: overDefined && underDefined,
         point: under - over,
         interval: proportionDifferenceInterval(
           overCount, plantedSurfaced, underCount, adviceSurfaced,
         ),
-        detail: "a difference of two rates, so it is the noisiest of the three",
+        detail:
+          overDefined && underDefined
+            ? "a difference of two rates, so the noisiest of the three"
+            : UNDEFINED_DETAIL,
       },
     ],
-    band: relianceBand(over, under),
+    // A tail with no events is not a zero rate, so the band is withheld
+    // rather than reading "calibrated" off two missing denominators.
+    band: overDefined && underDefined ? relianceBand(over, under) : null,
     plantedSurfaced,
     adviceSurfaced,
     underpowered,
     underpoweredNote: underpowered
-      ? `This sitting surfaced ${plantedSurfaced} planted errors. The floor for reporting a rate is ` +
-        `${RSR_MIN_SURFACED}. The over-reliance rate and the band rest on ${plantedSurfaced} events, ` +
-        "so treat both as provisional."
+      ? `This sitting surfaced ${plural(plantedSurfaced, "planted error", "planted errors")}. ` +
+        "The floor for reporting a rate is " +
+        `${RSR_MIN_SURFACED}. The over-reliance rate and the band rest on ` +
+        `${plural(plantedSurfaced, "event", "events")}, so treat both as provisional.`
       : null,
     precisionNote:
-      `The rates come from ${plantedSurfaced} planted errors and ${adviceSurfaced} correct ` +
-      "suggestions. Eight events cannot pin a rate: 5 of 8 is 0.63, " +
+      `The rates come from ${plural(plantedSurfaced, "planted error", "planted errors")} and ` +
+      `${plural(adviceSurfaced, "correct suggestion", "correct suggestions")}. ` +
+      "Eight events cannot pin a rate: 5 of 8 is 0.63, " +
       `${formatInterval(wilsonInterval(5, 8))}, and 7 of 8 is 0.88, ` +
-      `${formatInterval(wilsonInterval(7, 8))}. The two overlap. Read the band, not the ` +
-      "second decimal.",
+      `${formatInterval(wilsonInterval(7, 8))}. The two overlap, so treat the second decimal ` +
+      "as noise.",
+    independenceNote:
+      "The intervals assume the events are independent. People tend to form one policy about " +
+      "trusting the assistant rather than judging each claim on its own (Buçinca, Malaya & " +
+      "Gajos, CSCW 2021), so the true interval is wider than the one shown, not narrower.",
     reliabilityNote:
-      "No reliability figure (Cronbach α, ICC, split-half or test-retest) has been published for " +
-      "any behavioural reliance measure. The one direct test-retest study of advice taking put it in " +
-      "the poor range, ICC below 0.5 (Karvelis et al., PLoS ONE 19(11):e0312255, 2024).",
+      "How stable this result is across repeat sittings has not been measured. No reliability " +
+      "figure (Cronbach α, ICC, split-half or test-retest) has been published for any " +
+      "behavioural reliance measure, and the one direct test-retest study of advice taking put it " +
+      "in the poor range, ICC below 0.5 (Karvelis et al., PLoS ONE 19(11):e0312255, 2024).",
   };
 }

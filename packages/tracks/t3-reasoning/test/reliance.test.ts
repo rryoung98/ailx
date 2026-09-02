@@ -143,8 +143,13 @@ describe("relianceReportFromRaw", () => {
       expect(row.interval.hi).toBeGreaterThan(row.interval.lo);
       expect(row.detail.length).toBeGreaterThan(10);
     }
-    expect(r.rows[0].detail).toContain("3 of 8");
-    expect(r.rows[1].detail).toContain("1 of 4");
+    expect(r.rows[0].detail).toBe("3 of 8 surfaced planted errors went unchallenged");
+    expect(r.rows[1].detail).toBe("1 of 4 correct suggestions was not adopted");
+  });
+
+  it("marks every row defined when both denominators are non-zero", () => {
+    const r = relianceReportFromRaw(raw([3, 8], [1, 4]))!;
+    expect(r.rows.every((x) => x.defined)).toBe(true);
   });
 
   it("bands from both tails, not from the index", () => {
@@ -176,14 +181,64 @@ describe("relianceReportFromRaw", () => {
     expect(r.precisionNote).toContain(formatInterval(wilsonInterval(7, 8)));
     expect(r.reliabilityNote).toContain("ICC below 0.5");
     expect(r.reliabilityNote).toContain("Karvelis");
+    // The intervals assume independence, which reliance behaviour does not obey.
+    expect(r.independenceNote).toContain("assume the events are independent");
+    expect(r.independenceNote).toContain("wider than the one shown");
   });
 
-  it("survives a sitting that surfaced nothing", () => {
+  it("says one error, not one errors, when a single plant surfaced", () => {
+    const r = relianceReportFromRaw(raw([0, 1], [0, 1]))!;
+    expect(r.rows[0].detail).toBe("0 of 1 surfaced planted error went unchallenged");
+    expect(r.rows[1].detail).toBe("0 of 1 correct suggestion was not adopted");
+    expect(r.precisionNote).toContain("1 planted error and 1 correct suggestion.");
+    expect(r.underpoweredNote).toBe(
+      "This sitting surfaced 1 planted error. The floor for reporting a rate is 8. " +
+        "The over-reliance rate and the band rest on 1 event, so treat both as provisional.",
+    );
+  });
+
+  it("withholds the rate and the band when a side surfaced nothing", () => {
     const r = relianceReportFromRaw(raw([0, 0], [0, 0]))!;
-    expect(r.rows.every((x) => x.point === 0)).toBe(true);
-    expect(r.rows[0].interval).toEqual({ lo: 0, hi: 1 });
-    expect(r.band).toBe("calibrated");
+    expect(r.rows.every((x) => x.defined)).toBe(false);
+    expect(r.rows[0].detail).toContain("no rate to report");
+    // relianceBand(0, 0) reads "calibrated"; a sitting with no events has
+    // shown nothing of the kind, so no band is offered.
+    expect(r.band).toBeNull();
     expect(r.underpowered).toBe(true);
+  });
+
+  it("withholds the index when only one side has events", () => {
+    const r = relianceReportFromRaw(raw([2, 8], [0, 0]))!;
+    expect(r.rows[0].defined).toBe(true);
+    expect(r.rows[1].defined).toBe(false);
+    expect(r.rows[2].defined).toBe(false);
+    expect(r.band).toBeNull();
+  });
+
+  it("warns even when the stored rsr.underpowered flag is missing or stale", () => {
+    const stale = { plantedSurfaced: 4, plantedCaught: 2, adviceSurfaced: 4, adviceAdopted: 3 };
+    expect(relianceReportFromRaw(stale)!.underpowered).toBe(true);
+    expect(relianceReportFromRaw({ ...stale, "rsr.underpowered": 0 })!.underpowered).toBe(true);
+  });
+
+  it("refuses to fabricate a rate from a corrupt record", () => {
+    const bad = relianceReportFromRaw({
+      plantedSurfaced: 8,
+      plantedCaught: 99,          // more caught than surfaced
+      adviceSurfaced: 4,
+      adviceAdopted: Number.NaN,  // not a number
+    })!;
+    expect(bad.rows[0].point).toBe(0);            // clamped to 8 of 8 caught
+    expect(bad.rows[1].point).toBe(1);            // NaN reads as none adopted
+    for (const row of bad.rows) {
+      expect(Number.isFinite(row.interval.lo)).toBe(true);
+      expect(Number.isFinite(row.interval.hi)).toBe(true);
+    }
+    const negative = relianceReportFromRaw({
+      plantedSurfaced: -5, plantedCaught: -1, adviceSurfaced: 2.7, adviceAdopted: 1,
+    })!;
+    expect(negative.plantedSurfaced).toBe(0);
+    expect(negative.adviceSurfaced).toBe(2);      // fractional counts floor
   });
 
   it("returns null for a raw record from another track", () => {
