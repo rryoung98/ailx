@@ -19,6 +19,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
+  API_ROUTES,
   apiPath,
   COMMENT_BODY_MAX,
   type CandidateComment,
@@ -154,7 +155,7 @@ export function ModeratorThread({ shareId, trail }: { shareId: string; trail: Mo
       // Header identity, not the cookie: cross-origin to the exam service a
       // SameSite=Lax cookie never travels (docs/DEPLOY.md §4.1).
       const res = await fetch(`${apiBase()}${apiPath("moderationComment", { id: shareId })}`, {
-        method: "POST",
+        method: API_ROUTES.moderationComment.method,
         headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({ body, visibility: shared ? "shared" : "internal" }),
       });
@@ -217,20 +218,22 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const endpoint = useCallback(() => {
+  // The read and the write are two manifest entries over one URL today. Each
+  // caller names its own entry and takes the method from it, so a path or a
+  // method that moves on one of them moves here too.
+  const endpoint = useCallback((route: "candidateThread" | "candidateReply") => {
     const opts = browserApiOptions();
     const serverId = getServerAttemptId(window.localStorage, attemptId) ?? attemptId;
-    // GET and POST are one URL; the manifest declares them as two routes
-    // because the service mounts two handlers.
     return {
-      url: `${opts.baseUrl}${apiPath("candidateThread", { id: serverId })}`,
+      url: `${opts.baseUrl}${apiPath(route, { id: serverId })}`,
+      method: API_ROUTES[route].method,
       fetchFn: opts.fetchFn,
     };
   }, [attemptId]);
 
   const load = useCallback(async () => {
-    const { url, fetchFn } = endpoint();
-    const res = await fetchFn(url, { headers: await authHeaders(window.localStorage) });
+    const { url, method, fetchFn } = endpoint("candidateThread");
+    const res = await fetchFn(url, { method, headers: await authHeaders(window.localStorage) });
     if (!res.ok) {
       setThread(null);
       return;
@@ -256,9 +259,9 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
     setBusy(true);
     setError(null);
     try {
-      const { url, fetchFn } = endpoint();
+      const { url, method, fetchFn } = endpoint("candidateReply");
       const res = await fetchFn(url, {
-        method: "POST",
+        method,
         headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
         body: JSON.stringify({ body }),
       });
