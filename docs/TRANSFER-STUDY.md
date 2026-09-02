@@ -168,7 +168,8 @@ telemetry, and it never reaches `score()`.
 
 Not a decision this document makes. The case, so it can be decided:
 
-**For.** AILX's entire positioning is "a neutral examiner" (`docs/POSITIONING.md`).
+**For.** AILX's positioning rests on checkable facts about the method rather than on
+an adjective about ourselves (`docs/POSITIONING.md`, "What we can claim today").
 The single cheapest way to be believed is to publish a result against our own
 product. If the drill turns out not to transfer and we say so first, with the
 pre-registration to prove we did not go looking for the answer afterwards, we

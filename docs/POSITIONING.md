@@ -51,15 +51,51 @@ versus steer. The gap between the median user (shallow chat) and frontier operat
 AILX answers this by construction: authentic task scoring (unfakeable by cramming)
 and annual re-versioning (the item bank chases the frontier).
 
-## The neutral-third-party seat is empty
+## The examiner seat is empty
 
 Every serious incumbent is vendor-captive. A lab cannot credibly grade fluency on its
-own product — its certification is a distribution play, which caps its value as a
-measure. Labs therefore benefit from a neutral, non-sales examiner the same way rival
-vendors benefited from CompTIA, CNCF, and ETS. Anthropic's "AI Fluency" 4D framework
-maps nearly one-to-one onto AILX's four tracks: a natural endorser, not a competitor.
-OpenAI's certification push *legitimizes the category* while creating the exact
-neutrality vacuum it cannot fill itself.
+own product. Its certification is a distribution play, and that caps its value as a
+measure. Labs benefit from an examiner that sells no model, the same way rival vendors
+benefited from CompTIA, CNCF, and ETS. Anthropic's published "AI Fluency" 4D framework
+maps nearly one-to-one onto AILX's four tracks. That is an observation about a public
+document, not a relationship, and not an endorsement. OpenAI's certification push
+legitimises the category and cannot fill the seat itself.
+
+AILX does not claim to be neutral. The next section says what it claims instead.
+
+## What we can claim today
+
+An examiner is funded by somebody. Editorial independence does not cure who selected
+the donors, who set the agenda, or the fact that the next cheque can be withheld. A
+funded body that calls itself neutral hands a critic the easiest line there is.
+
+So we claim facts about the method, because a reader can check them:
+
+- **The practice keys are published.** `instruments/demo-2026.1` ships 20 T2 items with
+  their keys and rationales in the open, on purpose. It carries no score of record.
+- **Every score is recomputable from stored inputs, byte for byte.** `score()` is pure,
+  and `runPure` (`packages/core/src/purity.ts`) fails the build if it reads a clock,
+  a random number or the network. For a score the browser issued, the report recomputes
+  each track in front of the reader (`replayTrackScore`). A score issued by the exam
+  service is marked `scoredBy: "server"` and claims no local replay.
+- **A judge's output is a stored input.** Re-scoring is reproducible; re-judging is not,
+  and we say both halves. No model call sits on the recompute path.
+- **Items are content-addressed.** An edit creates a new item. It never mutates one.
+- **No score of record has been issued yet.** The judging pipeline is not built. The
+  credential asserts a completed sitting and nothing about ability.
+
+The claim we are not allowed to make yet is **"independent under published governance"**.
+It becomes available when all of this is published and true, not before:
+
+1. A diversified funding pool with a contribution cap per donor.
+2. No donor veto over methods, staffing, publication, or timing.
+3. An independent board, and a conflict register anyone can read.
+4. Preregistered methods.
+5. Mandatory publication of negative results.
+6. Funding committed before results are known.
+
+None of the six is in place today. Publishing the bar we have not met is worth more
+than an adjective we have not earned.
 
 ## OECD is a resource, not a competitor
 
@@ -116,7 +152,7 @@ scale), Duolingo English Test (cheap normed exam accepted by every Ivy), Lakera 
 commercially), Immersive Labs / Secure Code Warrior (enterprises pay for benchmarked
 org-level scores). AILX is an assembly play, not a physics bet.
 
-## Formation playbook (how neutral examiners actually got built)
+## Formation playbook (how cross-vendor examiners actually got built)
 
 | Pattern | Example | Time to industry default |
 |---|---|---|
@@ -145,8 +181,8 @@ AILX's fit is a **CNCF-consortium + CFA-eminent-cohort hybrid**. In order:
    credible frontier practitioners (the people running persistent, thousand-agent
    workloads). Their names launder legitimacy into the instrument.
 2. **Convene rival labs as equal founding members.** Identical dues, board seats,
-   an independent exam board money cannot touch. The pitch to each lab: your own
-   cert is a sales funnel; a neutral examiner grows the whole market.
+   an exam board whose decisions dues cannot buy. The pitch to each lab: your own
+   cert is a sales funnel; an examiner none of you owns grows the whole market.
 3. **Org-level "AILX-Assessed Team" badge at launch.** Individual certs follow org
    mandates, not the reverse (KCSP, CompTIA ASC). This is the enterprise product:
    benchmarked org capability scores, sold into the 95%-pilot-failure problem.
@@ -154,9 +190,10 @@ AILX's fit is a **CNCF-consortium + CFA-eminent-cohort hybrid**. In order:
    ministry/procurement pilot. The exam is worthless until someone requires it and
    compounds fast after. EU AI Act Art. 4 is the distribution hook.
 5. **Structural hygiene from day one.** Nonprofit examiner owns the trademark and the
-   secure anchor block; training/prep lives in a separate entity. This makes the
-   neutrality claim legally credible — and is why audit-grade score recomputability
-   (spec core invariant) is a strategic asset, not just engineering discipline.
+   secure anchor block; training/prep lives in a separate entity. That separation is
+   one of the governance conditions listed above. Audit-grade score recomputability
+   (spec core invariant) is the part that already exists: anyone holding the stored
+   inputs recomputes a score and gets the same bytes.
 
 Sequencing of value capture: (1) enterprise performance assessment is the wedge,
 (2) the frontier/agentic talent signal is the moat, (3) Art. 4 compliance is a
@@ -178,16 +215,18 @@ AILX gets expertise it cannot buy, and advisors get visibility and credibility f
 named in the methodology behind the instrument that defines AI fluency.
 
 Historical precedent supports it. CompTIA was founded by competing vendors; CNCF has rival
-companies fund a vendor-neutral hands-on exam; ETS was created by institutions donating
-their own tests. Competitors cooperate on a neutral body when it grows the whole market.
+companies fund a hands-on exam none of them controls; ETS was created by institutions
+donating their own tests. Competitors cooperate on a body none of them owns when it
+grows the whole market.
 
 ### The risk, stated plainly
 
-The strategic asset is NEUTRALITY (see the positioning above: every incumbent credential is
-vendor-captive, and the "ETS of AI" seat is empty). If advisory participation reads as
-sponsorship — "advise us and get advertising" — the instrument becomes exactly the thing
-it was built to replace, and the neutrality claim dies quietly. A single visible instance
-of a vendor's product appearing in a challenge they advised on is enough to do it.
+The strategic asset is that nobody who sells a model decides what the exam measures.
+Every incumbent credential is vendor-captive, and the "ETS of AI" seat is empty because
+of it. If advisory participation reads as sponsorship, meaning "advise us and get
+advertising", the instrument becomes the thing it was built to replace. A single visible
+instance of a vendor's product appearing in a challenge they advised on is enough to do
+it, and no rule written afterwards repairs it.
 
 ### Rules that keep it defensible
 
@@ -203,9 +242,9 @@ Adopt before the first advisor is signed, not after:
 4. **No placement, ever.** Advisors receive credit and credibility, never product
    placement, logo positioning inside challenges, or preferential treatment of their tools.
    If it functions as advertising, it is sponsorship and it needs a firewall.
-5. **Separation of powers.** Advisors inform research inputs; an independent examiner
-   function owns the final instrument. Keep the decision rights explicit and separate,
-   as the CNCF model does with technical control never following the money.
+5. **Separation of powers.** Advisors inform research inputs; the examiner function
+   owns the final instrument. Keep the decision rights explicit and separate, as the
+   CNCF model does with technical control never following the money.
 6. **Say no publicly.** The ability to reject an advisor's suggestion, on the record, is
    what makes the rest of it believable.
 
@@ -213,5 +252,5 @@ Adopt before the first advisor is signed, not after:
 
 The advisory network compounds: better research produces a better instrument, which
 attracts better advisors, which improves the research. But it only compounds while the
-scores mean something. Neutrality is not a constraint on the flywheel — it is the bearing
-the flywheel spins on.
+scores mean something. The rules above are not a tax on the flywheel. They are what keeps
+a score worth having.

@@ -5,8 +5,9 @@
  * WHAT IT CLAIMS, AND WHY IT IS SO NARROW. The judging pipeline (spec Phase
  * 4) does not exist and `scores` is empty. A credential that implied a normed
  * score, a pass mark or a standard met would be the one lie that kills a
- * credential body (docs/POSITIONING.md: the neutral-examiner seat is the
- * whole asset). So today the credential asserts exactly one thing —
+ * credential body (docs/POSITIONING.md: what we can claim today is a fact
+ * about the method, and an overclaimed credential destroys it). So today
+ * the credential asserts exactly one thing —
  * THIS PERSON SAT AND COMPLETED AILX <version> ON <date> — plus the plain
  * facts of that sitting: which tracks they attempted, the playful player type
  * their run produced, and a link to the artifact they built. Everything it
