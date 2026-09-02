@@ -202,6 +202,14 @@ describe("processSignal", () => {
   it("reads the log in order — revisions before any prompt close nothing", () => {
     expect(processSignal(art([REV, REV, P("a"), P("b"), P("c")]))).toBe(0.5);
   });
+
+  it("pays nothing extra for a pasted wall of text", () => {
+    // Prompt length is not evidence of iteration. One 8 kB pasted prompt
+    // gets the same breadth and closure credit as one short prompt.
+    const wall = P("<html>" + "x".repeat(8000) + "</html>");
+    expect(processSignal(art([wall, REV]))).toBeCloseTo(0.5 / 3 + 0.5 / 3, 12);
+    expect(processSignal(art([wall, REV]))).toBe(processSignal(art([P("hero section"), REV])));
+  });
 });
 
 /**
