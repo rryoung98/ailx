@@ -1,7 +1,7 @@
 # FRONTEND.md — AILX frontend standard
 
-The standard the AILX frontend is held to. `AGENTS.md` is the root contract (invariants,
-commands, engineering philosophy); this file does not restate it. Where they touch, `AGENTS.md`
+AILX frontend code must follow this standard. `AGENTS.md` is the root contract (invariants,
+commands, engineering philosophy). This file does not repeat it. Where they overlap, `AGENTS.md`
 wins.
 
 Section order: 1 Philosophy · 2 Module structure · 3 File tree · 4 Security · 5 Clean code ·
@@ -13,8 +13,8 @@ Status: this repo **does not comply yet**. §9 is the honest gap.
 
 ## 1. Philosophy
 
-This is not a website. It is a **measuring instrument with a browser front end**, run against a
-clock, producing a score someone will act on.
+This is a **measuring instrument with a browser front end**. It runs against a clock and produces
+a score someone will act on.
 
 - **A UI bug is a scoring defect.** Focus lost on answer commit inflates `decisionLatency`, which
   is a scored input. Jank during a T2 drag contaminates a measurement. Treat interaction defects
@@ -40,7 +40,7 @@ Non-goals: design-system generality, framework abstraction, speculative multi-te
 
 > **If it decides a score, it lives in `packages/`. If it draws a pixel, it lives in `apps/web`.**
 
-Everything else follows from that.
+This rule sets every other boundary.
 
 | Kind of code | Home | Why |
 |---|---|---|
@@ -72,7 +72,7 @@ with `pnpm --filter @ailx/content-tools run snapshot:2026.1` — CI fails if it 
 
 ### 2.3 Server-only vs client-safe — codify what exists
 
-The repo already has the right convention. It is now a rule.
+The repo already uses this convention. It is now required.
 
 1. **`app/api/**/route.api.ts` and `app/**/page.api.tsx`** are the only file patterns that may
    import server capability. `next.config.mjs` keeps `api.ts`/`api.tsx` out of `pageExtensions`
@@ -103,13 +103,13 @@ The repo already has the right convention. It is now a rule.
 7. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
    endpoint, and static export does not support Server Actions anyway. Use `route.api.ts`.
 
-Three mechanisms, deliberately overlapping, because they fail at different times: directory
-convention (2), TypeScript (3), and the build (`pageExtensions`). Adopt `import 'server-only'`
-only if a real leak happens — see §7.
+Three mechanisms overlap because they fail at different times: directory convention (2),
+TypeScript (3), and the build (`pageExtensions`). Adopt `import 'server-only'` only if a real
+leak happens — see §7.
 
 ### 2.4 Barrel files — a decision, not a menu
 
-The field genuinely disagrees. [Feature-Sliced Design mandates an `index.ts` per
+The field disagrees. [Feature-Sliced Design mandates an `index.ts` per
 slice](https://feature-sliced.design/docs/reference/public-api); [TkDodo measured a Next.js app
 drop from 11k to ~3.5k modules (−68%) by deleting internal
 barrels](https://tkdodo.eu/blog/please-stop-using-barrel-files); [Marvin
@@ -129,21 +129,21 @@ only](https://vercel.com/blog/how-we-optimized-package-imports-in-next-js), not 
   TkDodo describes and `import/no-cycle` exists to catch.
 - Subpath exports (`@ailx/backend/t1`) are fine and preferred over one giant barrel.
 
-We side with TkDodo/Bulletproof over FSD: FSD buys *enforceable* encapsulation at a tooling cost,
-and its own docs concede the cost while admitting barrels do not actually prevent deep imports.
-For a repo this size, workspace packages already give us enforceable boundaries for free.
+We choose TkDodo/Bulletproof over FSD. FSD provides *enforceable* encapsulation at a tooling cost.
+Its own docs acknowledge the cost and admit that barrels do not prevent deep imports. For a repo
+this size, workspace packages already enforce those boundaries.
 
 ### 2.5 Structure philosophy — Bulletproof, not FSD
 
 We adopt [Bulletproof React](https://github.com/alan2207/bulletproof-react/blob/master/docs/project-structure.md)'s
-shape (feature folders, unidirectional imports `shared → feature → route`, no cross-feature
-imports) and reject [FSD](https://feature-sliced.design/docs/get-started/overview)'s six-layer
-taxonomy. Reason: FSD's placement decisions are its weakest part — [its own examples were
+shape: feature folders, unidirectional imports `shared → feature → route`, and no cross-feature
+imports. We reject [FSD](https://feature-sliced.design/docs/get-started/overview)'s six-layer
+taxonomy. FSD's placement decisions are its weakest part — [its own examples were
 re-sliced repeatedly](https://philrich.dev/fsd-vs-clean-architecture/) — and `apps/web` is a
 7-route app. A taxonomy with more layers than the app has routes is ceremony (§7).
 
-Colocation ([Kent C. Dodds](https://kentcdodds.com/blog/colocation)) governs *within* a feature:
-component, its CSS module, its test, its local helpers sit together. Layer-first governs only at
+Colocation ([Kent C. Dodds](https://kentcdodds.com/blog/colocation)) applies *within* a feature.
+Keep a component, its CSS module, its test, and its local helpers together. Layer-first applies only at
 the workspace boundary. When shared logic "loses its home", it moves up one level — to
 `components/` or to a package — never sideways into another feature.
 
@@ -189,13 +189,12 @@ packages/
   content-tools/
 ```
 
-**Rationale, one line each.** `app/` holds routing and nothing else, so a route file is always
-readable in one screen. `features/` gives deletability: removing a surface is `rm -rf` plus one
-route. `components/ui/` is presentational-only so it can never drag domain code into a landing
-page. `lib/` is the narrow cross-cutting waist; if it grows past ~10 files again, it has become
-a grab-bag and something belongs in a feature or a package. `styles/` separates tokens from
-rules so contrast tests have one target. `e2e/` is separate from `test/` because the runners,
-speed, and flake budgets differ (§6).
+`app/` holds only routing, so a route file stays readable in one screen. `features/` makes a
+surface easy to delete with `rm -rf` plus one route. `components/ui/` contains only presentation
+code, so it cannot pull domain code into a landing page. `lib/` is the narrow shared layer. If it
+grows past ~10 files again, it has become a grab-bag, and something belongs in a feature or a
+package. `styles/` separates tokens from rules, giving contrast tests one target. Keep `e2e/`
+separate from `test/` because the runners, speed, and flake budgets differ (§6).
 
 ### "Where does X go?" — run this in order
 
@@ -240,8 +239,8 @@ requirement IDs (`v5.0.0-<ch>.<sec>.<req>`) in security tests so claims are audi
 
 ### 4.1 Hosting untrusted candidate sites
 
-The current design (`packages/backend/src/t1/handlers.ts` `sandboxHeaders`) is right. It is now
-mandatory and testable.
+The current design (`packages/backend/src/t1/handlers.ts` `sandboxHeaders`) is mandatory and
+testable.
 
 - **`Content-Security-Policy: sandbox allow-scripts` as a RESPONSE HEADER, never only an iframe
   attribute.** The header applies sandbox flags to a *top-level* document, so protection survives
@@ -326,7 +325,7 @@ mandatory and testable.
 
 ### 4.5 Upload validation (T1)
 
-`packages/backend/src/t1/zip.ts` is the model; these are now rules.
+Follow the model in `packages/backend/src/t1/zip.ts` and these rules.
 
 - **Enforce limits on DECLARED sizes before inflating anything** — entry count, per-file bytes,
   total bytes. That is how a zip bomb is refused without being decompressed.
@@ -360,10 +359,10 @@ mandatory and testable.
 
 ### 4.7 Never trusted from the client
 
-In a scored exam the browser is the candidate's territory. In hosted mode the server treats as
-**advisory only**: client-computed scores, client-reported timings and latencies, item answer
-keys, attempt completion claims, and item selection. Scores of record are recomputed server-side
-from the append-only event log by `packages/*`. The static demo build has no server and
+In a scored exam, the browser is the candidate's territory. In hosted mode the server treats
+these as **advisory only**: client-computed scores, client-reported timings and latencies, item
+answer keys, attempt completion claims, and item selection. `packages/*` recomputes the score of
+record on the server from the append-only event log. The static demo build has no server and
 therefore issues **no score of record** — the UI must never imply otherwise (`lib/mode.ts`
 `footerModeCopy()` is the precedent: say what the build actually does).
 
@@ -457,8 +456,8 @@ therefore issues **no score of record** — the UI must never imply otherwise (`
 
 ## 6. Testing strategy
 
-Today: ~1,077 vitest tests, **zero E2E**. `docs/PLAN.md` deferred Playwright "to the hosted
-phase". That phase has arrived.
+Today there are ~1,077 vitest tests and **zero E2E**. `docs/PLAN.md` deferred Playwright "to the hosted
+phase". The hosted phase has arrived.
 
 ### 6.1 Our position in the pyramid-vs-trophy fight: neither
 
@@ -471,7 +470,7 @@ there:
 > Focus on [tests that] establish clear boundaries, run quickly & reliably, and only fail for
 > useful reasons."
 
-So: **no ratio target.** Instead, classify by resources and determinism
+There is **no ratio target.** Classify tests by resources and determinism
 ([Google test sizes](https://testing.googleblog.com/2010/12/test-sizes.html)) and place each test
 at the cheapest level that can actually observe the behaviour.
 
@@ -489,8 +488,8 @@ belong in E2E.
 
 ### 6.3 Tool: Playwright
 
-Chosen over Cypress and WebdriverIO. Reasons, in our order: it drives the browser out-of-process,
-so multi-origin and multi-tab work natively — [Cypress is one superdomain per test and needs
+We choose Playwright over Cypress and WebdriverIO. It drives the browser out-of-process, so
+multi-origin and multi-tab work natively — [Cypress is one superdomain per test and needs
 `cy.origin`](https://docs.cypress.io/app/references/trade-offs), and we must navigate between the
 app origin and a sandboxed candidate site with an opaque origin. Cheap `BrowserContext`
 isolation makes parallel workers safe. `page.clock` gives deterministic time. `page.route` stubs
@@ -500,7 +499,7 @@ covers the a11y floor. WebdriverIO only wins if we need Appium/mobile grids; we 
 ### 6.4 What MUST be covered E2E — and how to assert it
 
 The dogfood found an **infinite redirect loop on the live-site link** and **focus loss on T2
-answering** while the unit suite was green — and one suite asserted *"a 308 was emitted"* while
+answering** while the unit suite was green. One suite asserted *"a 308 was emitted"* while
 the loop existed. That is the whole argument:
 
 > **A status code is one edge of a redirect graph. The user-visible outcome is the graph's fixed
@@ -592,7 +591,7 @@ Four true stories from this repo, all of them green at the time:
 4. A dogfooder found the confidence panel **invisible** on provenance items — it rendered
    behind the card. Every DOM assertion passed.
 
-The common cause is not carelessness. It is that
+The common cause is
 [jsdom lists Layout as unimplemented](https://www.npmjs.com/package/jsdom): every box it
 reports is 0x0 at (0,0). "Is this modal centred", "is it above the fold", "is it covered",
 "is this tap target big enough" are not questions jsdom answers wrongly — they are
@@ -646,8 +645,7 @@ a box by hand is a bug.
 - `expectTextNotClipped` / `expectNoInnerScroll` — content is not silently truncated by
   its container, and a modal step is not something you must scroll INSIDE.
 
-Two harness notes that are easy to get wrong, both of them ways to make a true contract
-report a false failure:
+Two harness details can make a true contract report a false failure:
 
 - **Settle the harness's own scroll first.** Playwright scrolls an element into view as
   part of its actionability checks, so a click can move the page for reasons that have
@@ -671,8 +669,8 @@ it, is the assertion that proves nothing actually moved.
 
 #### 6.7.3 A test that cannot fail is worse than no test
 
-It costs the same to run, and it spends the reviewer's trust. Story 3 above is the proof:
-the injector was patching a call the code no longer made.
+It costs the same to run and wastes the reviewer's trust. In story 3 above, the injector
+patched a call the code no longer made.
 
 - **Every visual contract is mutation-tested.** `e2e/visual-contracts.spec.ts` breaks the
   exact thing each contract protects — a corner modal, a panel above the fold, a
@@ -710,9 +708,9 @@ passed, and always would have — the floor is now 312
 
 #### 6.7.4 Screenshot baselines: few, deterministic, or not at all
 
-A baseline earns its keep only where a human would notice the regression instantly AND the
-pixels are deterministic. Anything else becomes flake that people learn to click past,
-which costs more than the bug it was meant to catch.
+Use a baseline only where a human would notice the regression instantly AND the pixels are
+deterministic. Anything else becomes flake that people learn to click past. That costs more
+than the bug it was meant to catch.
 
 `e2e/visual-baselines.spec.ts` holds four ELEMENT screenshots of copy-only surfaces with
 no seeded content and no clock in frame: the pause overlay, the time-up notice, the runner
@@ -732,8 +730,7 @@ image before committing it; an unread baseline is a rubber stamp.
 
 #### 6.7.5 A green run can also be a lie about WHERE it looked
 
-Two more shapes of the same bug, both cheap to hit and both recorded here so the next
-person recognises them:
+The same bug has two more forms:
 
 - **A dev server poisons a build-output scan.** `next dev` writes development chunks into
   `apps/web/.next/static`, and `test/bundleSecrecy.test.ts` greps that directory. Run
@@ -758,8 +755,8 @@ person recognises them:
 
 ## 7. Flexible, not over-engineered
 
-This section **governs sections 1–6**. `AGENTS.md` demands right-sized engineering and minimal
-diff; a standard that prescribes ceremony contradicts it.
+This section **governs sections 1–6**. `AGENTS.md` requires right-sized engineering and a minimal
+diff. A standard that prescribes ceremony contradicts it.
 
 ### 7.1 The tradeoff rule
 
@@ -815,7 +812,7 @@ review.
 
 ## 8. Review checklist
 
-Run this on every frontend PR. Each item is checkable in under a minute.
+Check every frontend PR against this list. Each item takes under a minute to check.
 
 **Boundaries**
 - [ ] No new function in `apps/web` whose output reaches a score, report figure, or audit digest.
@@ -858,8 +855,8 @@ Run this on every frontend PR. Each item is checkable in under a minute.
 
 ## 9. Migration plan
 
-The repo does not comply. Evidence: `/tmp/ailx-research-01a04bca/frontend-audit.md`. Ordered by
-risk removed per line changed. One PR per numbered step.
+The repo does not comply. See `/tmp/ailx-research-01a04bca/frontend-audit.md`. The order reflects
+risk removed per line changed. Use one PR per numbered step.
 
 *In flight at the time of writing:* work adding `app/error.tsx`, `app/global-error.tsx`,
 `RunnerErrorBoundary`, `PersistWarning` and T2 focus/keyboard tests is uncommitted in the
@@ -921,6 +918,6 @@ than assuming, and renumber nothing.
     Vitest 3.
 16. **Next 16** in its own PR — nothing in the codebase blocks it.
 
-Steps 1–3 are hours. Steps 4–5 are the ones that protect the claim in `docs/POSITIONING.md` that
-audit-grade recomputability is a strategic asset. Do not start step 7 before step 4: moving files
-twice is the expensive way.
+Steps 1–3 take hours. Steps 4–5 protect the claim in `docs/POSITIONING.md` that audit-grade
+recomputability is a strategic asset. Do not start step 7 before step 4. Otherwise, the files
+must move twice.
