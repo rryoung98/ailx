@@ -10,9 +10,9 @@ Companion documents: `docs/SAMPLING.md` §5 (the panel cannot sit the exam, whic
 `AILX-Spec-2026.1.md` §04 (the sitting this form replaces).
 
 Marking follows `docs/SAMPLING.md`. **VERIFIED** means a primary source was read and is cited.
-**QUALIFIED** means the source was read and says something narrower than the claim it was cited for;
-the narrower reading is written out. **ESTIMATE** means an engineering judgement with the reasoning
-shown. **DECLARED** means a threshold we chose rather than derived, which is not the same as a
+**QUALIFIED** means the source was read and says something narrower than the claim it was cited for.
+The narrower reading is written out. **ESTIMATE** means an engineering judgement with the reasoning
+shown. **DECLARED** means a threshold we chose rather than derived. That is not the same as a
 finding. **UNKNOWN** means we do not know and have not pretended to.
 
 ---
@@ -20,17 +20,17 @@ finding. **UNKNOWN** means we do not know and have not pretended to.
 ## 0. The one-paragraph version
 
 The examination is 4h 20m plus a 48-hour build window (spec §04). A bought probability panel will
-not sit it, so without a short form there is no population statistic at all. This document specifies
-a **53-minute matrix-sampled panel form**: every respondent takes the frozen T2 anchor core, then
-one of four operational T2 link blocks and one of four T3 model-free reliance scenarios, giving
+not sit it. Without a short form there is no population statistic at all. This document specifies a
+**53-minute matrix-sampled panel form**. Every respondent takes the frozen T2 anchor core, then one
+of four operational T2 link blocks and one of four T3 model-free reliance scenarios. That gives
 sixteen forms with a common block. **T1 and T4 are out of the population statistic**, because both
 need human panels a probability sample cannot supply. The T3 essay is out, because nobody writes
 1,200 defensible words in a matrix block, and the LLM judge goes with it. What is left is measured
-by arithmetic on response data with no model in the loop. So the statistic this form can produce is
-**not "AI literacy" and not the composite**; §2.3 names it in one sentence. Plausible values are the
-right machinery for the design and **we cannot produce them yet**, because AILX has no IRT model and
-no calibrated item parameters (§4.5). Wave 1 therefore publishes design-based weighted rates with
-replicate standard errors, and plausible values arrive when a calibration exists.
+by arithmetic on response data with no model in the loop. So this form's statistic is **not "AI
+literacy" and not the composite**. §2.3 names it in one sentence. Plausible values are the right
+machinery for this design, and **we cannot produce them yet**: AILX has no IRT model and no
+calibrated item parameters (§4.5). Wave 1 therefore publishes design-based weighted rates with
+replicate standard errors. Plausible values arrive when a calibration exists.
 
 ---
 
@@ -52,54 +52,54 @@ replicate standard errors, and plausible values arrive when a calibration exists
 
 - **USC's Understanding America Study is the one panel with a published rate card, and it prices by
   the minute.** It pays panellists
-  **"$20 per 30 minutes (and proportionately less if a survey is shorter)"** and charges clients
+  **"$20 per 30 minutes (and proportionately less if a survey is shorter)"**. It charges clients
   **"$3/per study participant/per minute for the first 500 participants"**, $2.50 after, plus a
   $2,000 handling fee (https://uasdata.usc.edu/page/Recruitment and
   https://uasdata.usc.edu/page/UAS+Pricing, fetched 2026-09-02). **VERIFIED.**
   **The claim that UAS *caps* a sitting at 30 minutes is UNVERIFIED and should stop being repeated,
   including in the issue that asked for this document.** We read Recruitment, Retention, For+Clients,
-  UAS+Pricing, UAS+Policies and the UAS Client Road Map PDF; none states a maximum survey length,
-  and `uasdata.usc.edu/faq` and `/page/For+Researchers` are both 404. Thirty minutes is the unit of
-  the pay rate, not a documented limit. It is still a useful reference point — a panel that prices
-  its incentive in 30-minute units is telling you what a normal sitting looks like — but it is not a
-  cap and we may not cite it as one.
+  UAS+Pricing, UAS+Policies and the UAS Client Road Map PDF. None states a maximum survey length.
+  `uasdata.usc.edu/faq` and `/page/For+Researchers` are both 404. Thirty minutes is the unit of the
+  pay rate, not a documented limit. It is still a useful reference point. A panel that prices its
+  incentive in 30-minute units shows what a normal sitting looks like. But it is not a cap, and we
+  may not cite it as one.
 - **Web-survey dropout rises steeply with length: 31.8% at 10 minutes, 43.2% at 20, 53.2% at 30,
   with about 30% of all dropouts in the first four pages.** **VERIFIED** (Statistics Sweden, from
   Galesic & Bosnjak, *Public Opinion Quarterly* 73(2), 2009; `docs/SAMPLING.md` §8.3). **QUALIFIED on our own check:**
   the *Public Opinion Quarterly* article is behind Cloudflare and we could not read it (403 to plain
   HTTP and to a browser session, 2026-09-02). The abstract, via OpenAlex, supports the direction and
-  the design but carries no percentages: the authors "manipulated the stated length (10, 20, and 30
+  the design but gives no percentages. The authors "manipulated the stated length (10, 20, and 30
   minutes)" and found "the longer the stated length, the fewer respondents started and completed the
   questionnaire", with later answers "faster, shorter, and more uniform"
   (https://api.openalex.org/works/https://doi.org/10.1093/poq/nfp031). So the three percentages are
-  quoted second-hand from the Statistics Sweden report as `docs/SAMPLING.md` records them, and the
-  direction is verified at source while the numbers are not. Pew says the same thing qualitatively
-  about its own panel: a single survey interview "is often limited in length to prevent respondent
-  fatigue", and "the amount can also depend on the length of the survey"
+  second-hand from the Statistics Sweden report, as `docs/SAMPLING.md` records them. The direction
+  is verified at source. The numbers are not. Pew says the same qualitatively about its own panel.
+  A single survey interview "is often limited in length to prevent respondent fatigue", and "the
+  amount can also depend on the length of the survey"
   (https://www.pewresearch.org/our-methods/u-s-surveys/the-american-trends-panel/, fetched
   2026-09-02). **VERIFIED, and it is a statement of practice, not a number.** NORC AmeriSpeak and
-  Ipsos KnowledgePanel publish no length or break-off figure we could reach: **UNVERIFIED**, and we
-  will not quote a vendor threshold from memory.
+  Ipsos KnowledgePanel publish no length or break-off figure we could reach: **UNVERIFIED**. We will
+  not quote a vendor threshold from memory.
 - **Length costs you the low scorers, not mainly the refusals.** In the German NEPS adult panel, a
-  longer test did not raise interview refusal but did significantly raise **test-avoidance**
-  (skipping or abandoning the test while staying in the survey), and low test performance itself
+  longer test did not raise interview refusal. It did significantly raise **test-avoidance**
+  (skipping or abandoning the test while staying in the survey). Low test performance itself
   predicted dropping out of later waves (Kleinert, Christoph & Ruland, *Sociological Methods &
-  Research*, 2019). **VERIFIED** via `docs/SAMPLING.md` §8.3. That biases the mean **upward**, in the
-  same direction as the online-coverage bias in `docs/SAMPLING.md` §7, so the two errors add.
+  Research*, 2019). **VERIFIED** via `docs/SAMPLING.md` §8.3. That biases the mean **upward**. It is
+  the same direction as the online-coverage bias in `docs/SAMPLING.md` §7, so the two errors add.
 - **Splitting the form into two sittings is not the free fix it looks like.** Peytchev et al.
   (*JSSAM*, 2019) found modularisation **increased** total non-response, with disproportionate
   incentive toward the first module helping. **VERIFIED** via `docs/SAMPLING.md` §8.3. One session
   it is.
 
 **So 53 minutes is beyond the published dropout curve, and we are choosing it anyway.** The defence
-is that an assessment is not a questionnaire: it is paid as work (`docs/SAMPLING.md` §8.2 puts the
-incentive alone at $25–50 for an effortful scored task), the respondent is told the length up front,
-and the panel vendor recruits against a stated burden. That defence is **an argument, not evidence**.
-The tolerable length is an **UNKNOWN** and §7.2 buys the experiment that settles it.
+is that an assessment is not a questionnaire. It is paid as work (`docs/SAMPLING.md` §8.2 puts the
+incentive alone at $25–50 for an effortful scored task). The respondent is told the length up front.
+The panel vendor recruits against a stated burden. That defence is **an argument, not evidence**.
+The tolerable length is an **UNKNOWN**, and §7.2 buys the experiment that settles it.
 
 ### 1.3 Where the 53 minutes go
 
-Per respondent, one session, no untimed window. **ESTIMATE** throughout; the per-item rates come
+Per respondent, one session, no untimed window. **ESTIMATE** throughout. The per-item rates come
 from the spec's own timings (120 T2 items in 50 minutes = 25 s/item).
 
 | Segment | Minutes | Why it costs that |
@@ -121,35 +121,35 @@ Both fit under 60 minutes. Neither fits under 45.
 ### 1.4 The drop-off to expect, and how it is treated
 
 - **ESTIMATE, from the Galesic & Bosnjak curve extrapolated past 30 minutes: 55–65% of starters do
-  not finish.** The curve does not extend to 53 minutes and an assessment is not the survey it was
-  measured on, so this is an extrapolation, not a finding.
+  not finish.** The curve does not extend to 53 minutes. An assessment is not the survey it was
+  measured on. So this is an extrapolation, not a finding.
 - **Break-off is informative, not missing at random** (`docs/SAMPLING.md` §8.3, adopted). Every
   break-off enters the non-response bias analysis as a named group **with its partial performance
-  data**, which the matrix design already stores block by block.
+  data**. The matrix design already stores that data block by block.
 - **Report an assessment-completion rate separately from the panel response rate**, both to AAPOR
   definitions (`docs/SAMPLING.md` §8.3). A respondent who answers the background items and abandons
   Block C is not a complete.
 - **The block order is fixed and it is a decision.** The anchor core comes first, because it is the
-  one block that must not be differentially lost: it is the trend line and the common set. The cost
+  one block that must not be differentially lost. It is the trend line and the common set. The cost
   is that Block C, the most interesting 20 minutes, is fielded to the most tired respondents.
   **DECLARED**, and the wave-0 experiment (§7.2) randomises order so we can measure what it cost.
 
 ### 1.5 The shed order, decided before the data
 
 If wave-0 break-off is worse than the design tolerates, minutes come off in this order and no other.
-Writing the order down now stops it being decided at 2 a.m. by whoever is holding the field report.
+Writing the order down now stops it being decided at 2 a.m. by whoever holds the field report.
 
 1. **Drop the operational T2 link block (−8.5 min).** Cost: the item-level bridge to the credential
    form (§5.2). The population statistic survives; the comparison with Track A does not.
 2. **Halve the T3 scenario to 10 minutes with 5–6 planted errors (−10 min).** Cost: a much wider
    interval on the reliance rate. `EVIDENCE-RELIABILITY-AND-TIME-PRESSURE.md` §A12 is blunt about
    what few opportunities buy: at p = 0.5, 8 binary opportunities give SE = 0.177. That is a
-   per-person figure and the population mean is far tighter, but halving the block halves the
+   per-person figure, and the population mean is far tighter. But halving the block halves the
    information the wave collects about reliance.
 3. **Drop the T3 block entirely (−20 min).** Cost: the statistic becomes T2-only, and the sentence
    in §2.3 loses its second half.
-4. **Never shed the anchor core.** Without it there is no trend line, no common block, and no matrix
-   design — only sixteen unlinked short tests.
+4. **Never shed the anchor core.** Without it there is no trend line, no common block and no matrix
+   design. There are only sixteen unlinked short tests.
 
 ---
 
@@ -167,21 +167,21 @@ Writing the order down now stops it being decided at 2 a.m. by whoever is holdin
 **`docs/SAMPLING.md` §5 kept T1 alive as option (a): a 30-minute reduced-scope build for a random
 third of the panel. This document rejects it and takes option (b).** Three reasons. A 30-minute
 build block would cost more minutes than the T3 block that carries the better construct. It would
-still yield only the 30 machine-checkable gate points, because the rater pool does not exist, so it
-would measure something the credential's T1 does not measure and invite exactly the comparison it
-cannot support. And a composite whose components have very different precision is the
-Kreiner-style attack surface `docs/SAMPLING.md` §9 already warns about. **T1 stays a Track A
-instrument**, and the T1-in / T1-out sensitivity contrast that §9 asks for becomes trivial: T1 is
-out, and the headline says so.
+still yield only the 30 machine-checkable gate points, because the rater pool does not exist. So it
+would measure something the credential's T1 does not measure, and invite the comparison it cannot
+support. And a
+composite whose components have very different precision is the Kreiner-style attack surface
+`docs/SAMPLING.md` §9 already warns about. **T1 stays a Track A instrument**. The T1-in / T1-out
+sensitivity contrast that §9 asks for then becomes trivial: T1 is out, and the headline says so.
 
 ### 2.2 What is deliberately NOT measured, and what that costs
 
 - **No LLM judge is in the panel path at all.** That is not only a cost decision. A judged component
-  would put a model version inside a population statistic, and judge severity moves with model
-  version by up to 133 points of 1,000 across version contrasts (Sunkavalli 2026, arXiv:2608.29517,
+  would put a model version inside a population statistic. Judge severity moves with model version
+  by up to 133 points of 1,000 across version contrasts (Sunkavalli 2026, arXiv:2608.29517,
   via `EVIDENCE-JUDGE-AGREEMENT.md` §2; **VERIFIED** there). The cost: the strongest *rubric*
   content in the instrument — analysis quality — is absent from the national number.
-- **No response-latency component.** `docs/SAMPLING.md` §6 forbids it: device latency alone ranges
+- **No response-latency component.** `docs/SAMPLING.md` §6 forbids it. Device latency alone ranges
   35–140 ms across handsets and correlates with handset price (Hassenstab et al. 2023, **VERIFIED**
   there). Timing is stored and stays diagnostic.
 - **No individual score, and no score shown to the respondent.** §6.
@@ -195,13 +195,13 @@ out, and the headline says so.
 
 Everything publishable from a panel wave is a statement about those two rates, their subgroup
 differences, and their change on the frozen line. **Nothing else.** A headline that says "AI
-literacy" over this form is claiming a construct the form did not measure, and a reviewer will find
-that in an afternoon.
+literacy" over this form claims a construct the form did not measure. A reviewer will find that in
+an afternoon.
 
 The two rates are reported as **two named subscales, never averaged into one number.** Averaging
-them would create a composite with no weighting justification: the spec's weights (T1 .40, T3 .40,
-T2 .20) are for a four-track instrument, and re-normalising two survivors of it to sum to 1.0 is a
-new instrument wearing the old one's authority.
+them would create a composite with no weighting justification. The spec's weights (T1 .40, T3 .40,
+T2 .20) are for a four-track instrument. Re-normalising two survivors of it to sum to 1.0 is a new
+instrument wearing the old one's authority.
 
 ---
 
@@ -224,50 +224,49 @@ C scenario. At the `docs/SAMPLING.md` §4.1 floor of n = 1,500 it is ~94, ~375 a
 ### 3.2 Why four rotations and not two, or eight
 
 - **Two is too few for the C family.** With two scenarios, half the reliance statistic rests on one
-  source document, and any quirk of that document — its topic, its difficulty, its planted-error mix
-  — is inseparable from the population rate. Scenario is a facet we must be able to average over.
+  source document. Any quirk of that document — its topic, its difficulty, its planted-error mix —
+  is then inseparable from the population rate. Scenario is a facet we must be able to average over.
 - **Eight is too many for the n.** At eight C scenarios and n = 1,500, each scenario has ~190
-  respondents, and a subgroup estimate inside a scenario stops being reportable under the §4.5
+  respondents. A subgroup estimate inside a scenario then stops being reportable under the §4.5
   reporting floors.
 - **Four is the smallest number that lets scenario variance be estimated at all** (three degrees of
   freedom) while keeping ~375–500 per block. **DECLARED**, and the wave-0 data should be used to
   check it rather than to confirm it.
-- The B family is four for a duller reason: 4 × 20 = 80 operational T2 items, which is two thirds of
-  the 120-item operational deck, so the panel touches most of the deck without any respondent
-  sitting more than 20 of it.
+- The B family is four for a duller reason. 4 × 20 = 80 operational T2 items, two thirds of the
+  120-item operational deck. So the panel touches most of the deck, and no respondent sits more than
+  20 of it.
 
 ### 3.3 Assignment
 
 - **Randomised at the respondent, inside the panel's own sampling strata.** Not spiralled by arrival
-  order. Spiralling by arrival correlates the form with time of day and therefore with who is
-  answering at that hour, which quietly makes form a proxy for lifestyle.
+  order. Spiralling by arrival correlates the form with time of day, and therefore with who is
+  answering at that hour. It makes form a proxy for lifestyle.
 - **Assignment is stored, not inferred.** The form id, both block ids and the anchor form id are
   written into the response record at issue time. A design recovered afterwards from which items a
-  respondent saw is a design that cannot distinguish "not assigned" from "broke off before it".
+  respondent saw cannot distinguish "not assigned" from "broke off before it".
 - **Randomisation is stratified so the sixteen cells are balanced within country and device class.**
   Device class matters because `docs/SAMPLING.md` §6 device-locks the population form to
-  desktop/laptop by default; a lock that leaks makes device a between-form confound.
-- **The canary subsample is drawn independently of form.** It is a leak probe, not a design factor,
-  and crossing it with the sixteen cells would leave ~8 respondents per cell holding it.
+  desktop/laptop by default. A lock that leaks makes device a between-form confound.
+- **The canary subsample is drawn independently of form.** It is a leak probe, not a design factor.
+  Crossing it with the sixteen cells would leave ~8 respondents per cell holding it.
 
 ### 3.4 Partial coverage, and how it is handled
 
 Every respondent is missing 60 of the 80 operational T2 items and three of the four reliance
-scenarios. That missingness is **planned, and missing completely at random by design**, which is the
-entire reason a matrix design is legitimate: the assignment mechanism is ours, it is random, and it
-is recorded.
+scenarios. That missingness is **planned, and missing completely at random by design**. That is why
+a matrix design is legitimate: the assignment mechanism is ours, it is random, and it is recorded.
 
-What it means in practice, in the order the analysis actually runs:
+What that means, in the order the analysis runs:
 
 1. **Nothing is imputed at the item level.** An unassigned item is not a wrong answer and is never
    scored as one.
 2. **Every published rate is a weighted estimate over the respondents who were assigned the block**,
    with the panel's design weights and replicate weights (`docs/SAMPLING.md` §9). The effective n is
-   the block's n, not the wave's n, and it is printed next to the estimate.
+   the block's n, not the wave's n. It is printed next to the estimate.
 3. **The anchor core is the only block with the full n**, which is a second reason it carries the
    trend.
 4. **A person-level scale score requires a measurement model that does not exist yet** (§4.5). Until
-   it does, there is no person-level number to report, and the design does not need one.
+   it does, there is no person-level number to report. The design does not need one.
 
 ---
 
@@ -275,20 +274,20 @@ What it means in practice, in the order the analysis actually runs:
 
 ### 4.1 What they are, for a reader who has not met them
 
-A matrix design gives each person too few items for a reliable individual score, on purpose. If you
-scored each person anyway and averaged those scores, the population mean would be about right and
-**the population variance would be too wide**, because each person's score carries measurement error
-that does not cancel. Every statistic that depends on the spread — a standard deviation, a
-percentile, the share above a cut, a subgroup gap — would be wrong, and wrong in a direction that
-looks like a real finding.
+A matrix design gives each person too few items for a reliable individual score, on purpose. Score
+each person anyway and average those scores. The population mean is then about right, but **the
+population variance is too wide**. Each person's score carries measurement error that does not
+cancel. Every statistic that depends on the spread — a standard deviation, a percentile, the share
+above a cut, a subgroup gap — is then wrong. It is wrong in a direction that looks like a real
+finding.
 
-Plausible values fix this by refusing to produce a point score at all. For each respondent the model
-draws several random values from the **posterior distribution of that person's proficiency**, given
-their answers and their background characteristics. Each draw is a plausible ability for that person.
-Analyses are run once per draw and the results are combined, so the uncertainty about each person
-is carried into the published standard error instead of being hidden inside a point estimate.
+Plausible values fix this by producing no point score at all. For each respondent the model draws
+several random values from the **posterior distribution of that person's proficiency**, given their
+answers and their background characteristics. Each draw is a plausible ability for that person.
+Analyses run once per draw and the results are combined, so the uncertainty about each person enters
+the published standard error instead of hiding inside a point estimate.
 
-This is NAEP's design, and NCES states the reason in its own words:
+This is NAEP's design. NCES states the reason in its own words:
 
 > "In contrast, NAEP derives its population values directly from the responses to each question
 > answered by a representative sample of students, without ever calculating individual test scores.
@@ -306,8 +305,8 @@ defines matrix sampling as a "sampling plan in which different samples of respon
 samples of items" and BIB spiralling as "a complex variant of matrix sampling"
 (https://nces.ed.gov/nationsreportcard/glossary.aspx). **QUALIFIED on one point of framing:** the
 NAEP technical documentation describes the programme as moving "from an early concept of matrix
-sampling to the present use of probability sample design", so "NAEP uses BIB-spiralled booklets" is
-accurate and "NAEP's sample design is matrix sampling" is looser than NCES's own wording
+sampling to the present use of probability sample design". So "NAEP uses BIB-spiralled booklets" is
+accurate, and "NAEP's sample design is matrix sampling" is looser than NCES's own wording
 (https://nces.ed.gov/nationsreportcard/tdw/, fetched 2026-09-02).
 
 ### 4.2 Why this design needs them
@@ -318,15 +317,14 @@ Three reasons, all structural:
    four reliance scenarios (§3.1). Individual scores from that many items are dominated by which
    block the person happened to get.
 2. **We report subgroup differences.** Age, education and income gaps are the point of a population
-   statistic, and those are exactly the statistics that break under measurement error in a point
-   score.
+   statistic. Those are the statistics that break under measurement error in a point score.
 3. **The panel is weighted.** Design weights, replicate weights and plausible values compose. A
-   published figure needs both sources of uncertainty — sampling and measurement — and Rubin's rules
-   are how the second one enters.
+   published figure needs both sources of uncertainty, sampling and measurement. Rubin's rules are
+   how the second one enters.
 
 ### 4.3 The model that produces them
 
-NAEP's conditioning approach is the reference and we copy its shape:
+NAEP's conditioning approach is the reference. We copy its shape:
 
 > "In order to accurately and consistently estimate group-level statistics and to provide useful
 > data for secondary analysis, NAEP creates plausible values. These plausible values are based on a
@@ -339,44 +337,44 @@ NAEP's conditioning approach is the reference and we copy its shape:
 > student underlying performance."
 > — https://nces.ed.gov/nationsreportcard/tdw/analysis/est_estimate.aspx (fetched 2026-09-02)
 
-**VERIFIED**, with a terminology note that matters for anyone following the citation: the older
-literature calls this **conditioning**, and current NCES documentation calls it the
-**population-structure model** in a latent regression. The old `scaling_cond.aspx` page is a 404
-today. Both names are used below and they mean the same model.
+**VERIFIED**, with a terminology note for anyone following the citation: the older literature calls
+this **conditioning**, and current NCES documentation calls it the **population-structure model** in
+a latent regression. The old `scaling_cond.aspx` page is a 404 today. Both names are used below and
+they mean the same model.
 
 For AILX that means, when we have the data for it:
 
-- **An IRT measurement model** over the item responses. T2 items are binary and 2PL/3PL-shaped; the
-  T3 planted-error opportunities are binary within a scenario, with the scenario as a testlet, so
-  ignoring the testlet would overstate the information each opportunity carries.
+- **An IRT measurement model** over the item responses. T2 items are binary and 2PL/3PL-shaped. The
+  T3 planted-error opportunities are binary within a scenario, with the scenario as a testlet.
+  Ignoring the testlet would overstate the information each opportunity carries.
 - **A conditioning model** regressing latent proficiency on the panel's background variables and the
   design variables (block assignment, device class, country, language of administration).
 - **Draws from the posterior**, one set per respondent.
 
 **Two AILX-specific warnings.** First, the conditioning model must contain **every variable that
-will later be crossed with the statistic**, or those crossings are biased toward zero; a "secondary
+will later be crossed with the statistic**, or those crossings are biased toward zero. A "secondary
 analyst finds no gap" result is then a property of our model, not of the population. Second, T2's
 distribution has a documented lump at chance in a general population (`docs/TRACK-REVIEW.md` §2.1),
-and a floor pile-up is exactly what strains an IRT fit. `docs/TREND-FORM.md` §4.2 already chose
-**chained equipercentile** over an IRT method for equating for this reason. The two choices must not
-be allowed to drift apart: if IRT cannot fit T2 well enough to condition on, then plausible values
-for the T2 subscale are not available either, and the T2 rate stays a design-based rate.
+and a floor pile-up is exactly what strains an IRT fit. For that reason `docs/TREND-FORM.md` §4.2
+already chose **chained equipercentile** over an IRT method for equating. The two choices must not
+drift apart. If IRT cannot fit T2 well enough to condition on, then plausible values for the T2
+subscale are not available either, and the T2 rate stays a design-based rate.
 
 ### 4.4 How many, and what a user of the published figures may do
 
 - **Twenty plausible values per respondent per subscale. DECLARED, copying NAEP's number.** An
-  earlier draft of this section said five, which is the classic literature's figure and is out of
-  date: NCES draws twenty. "These three steps are repeated twenty times producing twenty sets of
+  earlier draft of this section said five, the classic literature's figure, which is out of date:
+  NCES draws twenty. "These three steps are repeated twenty times producing twenty sets of
   plausible values for all sampled respondents"
   (https://nces.ed.gov/nationsreportcard/tdw/analysis/est_pv_creation.aspx, fetched 2026-09-02).
-  **VERIFIED.** Twenty draws cost nothing at our n, and matching the reference implementation means
+  **VERIFIED.** Twenty draws cost nothing at our n. Matching the reference implementation also means
   a secondary analyst's NAEP-shaped code runs on our files unchanged.
 - **A user must run their analysis five times, once per plausible value, and combine the five
-  results with Rubin's rules**: the estimate is the mean of the five, and the standard error
-  combines the average sampling variance with the between-draw imputation variance. Any analysis
-  that touches one plausible value only is wrong, and its standard error is too small.
+  results with Rubin's rules**. The estimate is the mean of the five. The standard error combines
+  the average sampling variance with the between-draw imputation variance. Any analysis that touches
+  one plausible value only is wrong, and its standard error is too small.
 - **A user must use the replicate weights for the sampling variance.** The two variances are
-  computed separately and added; a single "just use the weights" pass understates both.
+  computed separately and added. A single "just use the weights" pass understates both.
 - **A user may not treat a plausible value as a person's score, and may not average a person's
   twenty draws into one.** NCES says both halves plainly:
 
@@ -388,7 +386,7 @@ for the T2 subscale are not available either, and the T2 rate stays a design-bas
   > means differ from one another."
   > — https://nces.ed.gov/nationsreportcard/tdw/analysis/est_pv_individual.aspx (fetched 2026-09-02)
 
-  **VERIFIED.** The average is a shrunken point estimate whose spread is too narrow, which is the
+  **VERIFIED.** The average is a shrunken point estimate whose spread is too narrow. That is the
   error §4.1 exists to avoid.
 - **A user may not compare a plausible value to a candidate's credential score.** Different form,
   different construct coverage, different scale (§5.2).
@@ -406,42 +404,42 @@ What that means for wave 1:
    beside each figure. That is a defensible statistic and it needs no measurement model at all.
 2. **Item calibration comes from Track A first.** `docs/SAMPLING.md` §2 already assigns item
    calibration to the self-selected web cohort. A calibration fitted on Track A must be checked for
-   DIF against the panel before it is used to condition panel data, because the two populations
-   differ in exactly the ways that move item parameters.
+   DIF against the panel before it conditions panel data. The two populations differ in the ways
+   that move item parameters.
 3. **Plausible values are a wave-2 deliverable at the earliest**, contingent on (a) a fitted IRT
    model that survives the floor pile-up, (b) an agreed conditioning model, (c) an external
    psychometric review of both. Costed in §7.
 4. **Until then no percentile, no "share above a cut" and no proficiency band is published**, because
    those are the statistics that need the measurement model. Rates and rate differences are.
 
-Anyone who wants the short version: **the design is matrix-sampled today, and it will be
-plausible-valued later; publishing band percentages before then would be inventing precision.**
+The short version: **the design is matrix-sampled today, and it will be plausible-valued later;
+publishing band percentages before then would be inventing precision.**
 
 ---
 
 ## 5. The links
 
 The issue that asked for this document says the short form is "linked to the full sitting through an
-anchor block". That is one sentence covering three different links with three different designs, and
-only one of them uses the anchor. `docs/TREND-FORM.md` §4.1 makes the same split for equating; this
-is the same discipline applied to the short form.
+anchor block". That is one sentence covering three different links with three different designs.
+Only one of them uses the anchor. `docs/TREND-FORM.md` §4.1 makes the same split for equating, and
+this section applies the same discipline to the short form.
 
 ### 5.1 Link 1 — form to form inside the panel. The anchor core, and it is not equating
 
 All sixteen forms carry Block A, the 32-item frozen anchor core. It is the common set that puts the
-sixteen forms on one footing, and `docs/TREND-FORM.md` §4.1 already names this: "the panel short
+sixteen forms on one footing. `docs/TREND-FORM.md` §4.1 already names this: "the panel short
 form is matrix-sampled, so different respondents see different operational blocks and the anchor core
 is what they have in common."
 
 - **32 common items clears every published floor with margin.** Angoff's rule of thumb is 20 items
-  or 20% of the form, whichever is larger; Kolen & Brennan's is 20% of a test of 40+ items.
-  `docs/TREND-FORM.md` §4.2 records that both quotations are second-hand and which one is commonly
-  misattributed, and that qualification carries over here unchanged.
+  or 20% of the form, whichever is larger. Kolen & Brennan's is 20% of a test of 40+ items.
+  `docs/TREND-FORM.md` §4.2 records that both quotations are second-hand, and which one is commonly
+  misattributed. That qualification carries over here unchanged.
 - **No equating is needed for link 1**, because the block is identical in content, order, exposure
   and renderer across all sixteen forms. There is nothing to transform.
-- **What the common block actually buys** is the ability to test whether the sixteen groups differ
-  in ability before their block-level rates are compared. If they do — a randomisation failure, or
-  differential break-off by form — the anchor core is the instrument that detects it.
+- **What the common block buys** is the ability to test whether the sixteen groups differ in ability
+  before their block-level rates are compared. If they do — a randomisation failure, or differential
+  break-off by form — the anchor core is the instrument that detects it.
 
 ### 5.2 Link 2 — short form to the full sitting. Operational common items, and it is NOT an equating
 
@@ -449,9 +447,9 @@ is what they have in common."
 issue.** `docs/TREND-FORM.md` §2.2 makes the anchor panel-only and Track A never sees it. A block
 that appears in only one of the two things you want to link cannot link them.
 
-What does appear in both is the **operational T2 link block**: 20 items per form, drawn from the same
-operational deck a credential candidate sits, four rotations covering 80 of the 120 items. That gives
-20 common items per respondent and 80 across the design.
+What does appear in both is the **operational T2 link block**. It is 20 items per form, drawn from
+the same operational deck a credential candidate sits, in four rotations covering 80 of the 120
+items. That gives 20 common items per respondent and 80 across the design.
 
 **And it is still not an equating.** Of the five requirements Dorans, Moses & Eignor (2010) restate
 for a linking to be an equating (quoted in full in `docs/TREND-FORM.md` §4.3), this design fails the
@@ -462,8 +460,8 @@ first and the second outright:
 - **Equal reliability.** 20 operational items against 120, and one reliance scenario against a
   90-minute track.
 
-So the honest statement is: **the panel form and the credential form are linked at the item level and
-are not on a common score scale.** The common items support three things and no more.
+Stated honestly: **the panel form and the credential form are linked at the item level and are not
+on a common score scale.** The common items support three things and no more.
 
 1. **Comparability checking.** Item-level DIF between panel respondents and Track A candidates on the
    80 shared items, which tells us whether the two populations answer the same item the same way.
@@ -473,20 +471,20 @@ are not on a common score scale.** The common items support three things and no 
    interval, never as "the panel's AILX score".
 
 **What breaks this link:** re-versioning the operational deck between the credential form and the
-panel wave, which changes the items under the common set; a leak of the operational deck, which
-changes what the items measure; and any change to exposure time, item order or renderer, because
+panel wave, which changes the items under the common set. Or a leak of the operational deck, which
+changes what the items measure. Or any change to exposure time, item order or renderer, because
 `docs/TREND-FORM.md` §5.3 makes the renderer part of the instrument. The link block is therefore
-frozen for the duration of a wave and its item ids are stored with every response.
+frozen for the duration of a wave, and its item ids are stored with every response.
 
 ### 5.3 Link 3 — short form to the trend form. There is nothing to link
 
 The trend form **is** Block A of the short form. Same items, same order, same exposure, same
 administration, in the same sitting. The panel wave is not linked to the trend line; it *is* the
-trend line's fielding. `docs/TREND-FORM.md` §1.1's budget is the constraint this design must respect,
-and it does: one administration per respondent, and the 12,000-per-cycle exposure budget bounds how
-many panel completes may see it. **At n = 2,000 per country, four countries, that is 8,000 of the
-12,000 in one wave.** A second wave inside the same cycle would breach the budget, which is a real
-constraint on how often a country may be re-fielded and should be said out loud in the fielding plan.
+trend line's fielding. This design must respect `docs/TREND-FORM.md` §1.1's budget, and it does: one
+administration per respondent, and the 12,000-per-cycle exposure budget bounds how many panel
+completes may see it. **At n = 2,000 per country, four countries, that is 8,000 of the 12,000 in one
+wave.** A second wave inside the same cycle would breach the budget. That is a real constraint on how
+often a country may be re-fielded, and the fielding plan must say so.
 
 ---
 
@@ -520,10 +518,10 @@ Said here, before a reviewer says it.
 
 ## 7. Cost and timeline to a first fielding
 
-All figures **ESTIMATE** unless marked, and they are built on `docs/SAMPLING.md` §13, which is itself
-built on one published rate card plus market judgement. Every one must be replaced by a real quote
-before commitment. **Assumptions are named at the end of the section**; changing any of them changes
-the number.
+All figures are **ESTIMATE** unless marked. They are built on `docs/SAMPLING.md` §13, which is
+itself built on one published rate card plus market judgement. Every one must be replaced by a real
+quote before commitment. **Assumptions are named at the end of the section.** Changing any of them
+changes the number.
 
 ### 7.1 The build
 
@@ -537,31 +535,31 @@ the number.
 
 ### 7.2 Wave 0: the length experiment, which is the cheapest thing here
 
-`docs/SAMPLING.md` §5 says the tolerable length is an **UNKNOWN** to be settled by a randomised
-experiment rather than by assertion, and §1.2 above says why our 53 minutes is an argument rather
-than evidence. Wave 0 settles it.
+`docs/SAMPLING.md` §5 says the tolerable length is an **UNKNOWN**, to be settled by a randomised
+experiment rather than by assertion. §1.2 above says why our 53 minutes is an argument rather than
+evidence. Wave 0 settles it.
 
-- **Three randomised length arms — about 35, 45 and 53 minutes** — built by dropping blocks in the
-  §1.5 shed order, so every arm is a form we could actually field.
+- **Three randomised length arms — about 35, 45 and 53 minutes.** Each arm drops blocks in the §1.5
+  shed order, so every arm is a form we could field.
 - **Block order randomised within arm**, to price the "anchor first" decision in §1.4.
 - **n ≈ 300 per arm, 900 total.** At `docs/SAMPLING.md` §8.2's US planning range that is
   **$45–120k** of fieldwork, plus analysis.
 - **Outcomes: break-off by arm and by block, completion rate, and the performance difference between
-  completers and break-offs.** The last one is the one that matters, because it prices the bias
-  §1.2 warns about instead of assuming it.
+  completers and break-offs.** The last one is the one that matters. It prices the bias §1.2 warns
+  about instead of assuming it.
 - **NAEP's own reporting floor is a useful sanity check on the arm size:** NCES's "rule of 62"
   suppresses a group statistic based on fewer than 62 students, for 0.80 power against a 0.5 SD
   effect at a design effect of 2 (https://nces.ed.gov/nationsreportcard/glossary.aspx, fetched
-  2026-09-02). **VERIFIED.** 300 per arm is comfortably above it; a fourth arm at 150 would not be.
+  2026-09-02). **VERIFIED.** 300 per arm is comfortably above it. A fourth arm at 150 would not be.
 
 **This experiment should run before the wave-1 contract is signed**, because its result can change
-the form, and a form change after contracting is a change order.
+the form. A form change after contracting is a change order.
 
 ### 7.3 Wave 1 fieldwork
 
 Unchanged from `docs/SAMPLING.md` §13: option B, US + UK at n = 2,000 each, **$0.8–1.2M** all in.
-The short form does not make fieldwork cheaper per complete — the per-minute rate is why it is a
-short form — but it makes the complete *achievable*, which is the point. A 4h 20m sitting has no
+The short form does not make fieldwork cheaper per complete. The per-minute rate is why it is a
+short form. It does make the complete *achievable*, which is the point. A 4h 20m sitting has no
 price because no vendor will field it.
 
 Two lines from `docs/SAMPLING.md` §13.2 fall away because of what §2 cut:
@@ -569,9 +567,9 @@ Two lines from `docs/SAMPLING.md` §13.2 fall away because of what §2 cut:
 - **LLM judging at panel scale: $10–30k → $0.** No judge is in the panel path.
 - **T1 rater panel: not costed there and not needed here.** T1 is out.
 
-One line grows: the **sampling and weighting contractor** ($80–150k) now also owns the plausible-value
-scaling when it exists, and `docs/SAMPLING.md` §13.2's "nobody marks their own homework" rule applies
-to it more strongly than to the weights.
+One line grows. The **sampling and weighting contractor** ($80–150k) now also owns the
+plausible-value scaling when it exists. `docs/SAMPLING.md` §13.2's "nobody marks their own homework"
+rule applies to it more strongly than to the weights.
 
 ### 7.4 Timeline
 
@@ -596,9 +594,9 @@ to it more strongly than to the weights.
 4. **The frozen anchor exists and is authored** before wave 1. It is the one block §1.5 never sheds,
    so it is also the one that blocks the wave if it slips.
 5. **Four reliance scenarios can be authored to a common difficulty.** They cannot be equated to each
-   other in wave 1 — there is no common item between two scenarios — so scenario differences will be
-   confounded with whoever got them. Randomisation makes that a variance, not a bias, and §3.2 is why
-   four rather than two.
+   other in wave 1, because there is no common item between two scenarios. So scenario differences
+   will be confounded with whoever got them. Randomisation makes that a variance, not a bias. §3.2
+   is why four rather than two.
 6. **No re-fielding inside a cycle**, because of the anchor's 12,000-administration budget (§5.3).
 
 ---
@@ -631,13 +629,13 @@ short_form:
 
 Two rotated **families**, and a respondent takes one block from each. That is what makes four T2 link
 blocks and four T3 scenarios sixteen forms rather than eight (§3.1). The example shows two members
-per family; the real form has four in each.
+per family. The real form has four in each.
 
-`target_minutes` is the **testing** budget, not the 53 minutes of §1.3: consent, instructions, the
-warm-up, the background items and the debrief are not blocks and are not declared here. This design's
-blocks cost 42 minutes on the longest path — 13.5 + 8.5 + 20 — inside a declared 45. The canary probe
-is not declared either: it goes to one respondent in eight and is a leak probe, not a design factor
-(§3.3), so §1.3 counts its 3.5 minutes and the manifest does not.
+`target_minutes` is the **testing** budget, not the 53 minutes of §1.3. Consent, instructions, the
+warm-up, the background items and the debrief are not blocks, and are not declared here. This
+design's blocks cost 42 minutes on the longest path, 13.5 + 8.5 + 20, inside a declared 45. The
+canary probe is not declared either. It goes to one respondent in eight and is a leak probe, not a
+design factor (§3.3). So §1.3 counts its 3.5 minutes and the manifest does not.
 
 `packages/content-tools` validates it in `parseManifest`, in the same style as the `anchor` block.
 Three rules are enforced rather than documented, because they are the three that a fielding cannot
@@ -646,21 +644,22 @@ recover from:
 - **At least one `every_respondent` block.** That is the common set of §5.1. A matrix design without
   one is sixteen unlinked short tests.
 - **Every rotated family has at least two members**, or that family rotates nothing and the word
-  "matrix" is decoration. A rotated block must name its family; a common block may not have one.
+  "matrix" is decoration. A rotated block must name its family. A common block may not have one.
 - **The longest respondent path fits `target_minutes`** — every common block plus the longest member
-  of **each** family. Summing all rotated blocks would reject a legal design; taking one maximum
+  of **each** family. Summing all rotated blocks would reject a legal design. Taking one maximum
   across all of them would let a two-family form overrun in silence. A form that overruns does not
   fail loudly at fielding. It fails as break-off, and break-off costs low scorers first
   (`docs/SAMPLING.md` §8.3).
 
 Unknown keys are rejected on the form and on a block, so a misspelled `minutes` cannot drop a block
-out of the budget in silence. What the code does **not** do: assign a respondent to a block, sample anything, count exposure, hold
-the item-to-block mapping, or link anything. `content-tools` reads content and never sees a sitting.
+out of the budget in silence. What the code does **not** do: assign a respondent to a block, sample
+anything, count exposure, hold the item-to-block mapping, or link anything. `content-tools` reads
+content and never sees a sitting.
 Rotation and assignment belong to the exam service in the private repo. **No sampler, no IRT model
 and no plausible-value generator is being built by this document**, and §4.5 says why the last two
 cannot be built yet.
 
-A redacted package may declare a short form — a block structure is not marking material — but it
+A redacted package may declare a short form, because a block structure is not marking material. It
 still may not declare an `anchor`, so a redacted package's short form cannot carry the trend block.
 That rule is already enforced and needed no change.
 
@@ -670,7 +669,7 @@ That rule is already enforced and needed no change.
 
 1. The panel form is **53 minutes**, one session, no untimed window, no modularisation.
 2. **T1 and T4 are out of the population statistic.** `docs/SAMPLING.md` §5's option (a), a
-   reduced-scope T1 build for a random third, is **rejected**; option (b) is adopted, and the
+   reduced-scope T1 build for a random third, is **rejected**. Option (b) is adopted, and the
    exclusion is stated in the headline.
 3. The T3 written analysis and its judge are out. The model-free planted-error block stays.
 4. **No LLM judge and no rater panel is in the panel path at all.**
@@ -682,7 +681,7 @@ That rule is already enforced and needed no change.
    design-based rates with replicate standard errors and no bands or percentiles.
 9. The short form and the credential form are **linked at the item level and not equated**. The
    anchor cannot carry that link, because it is panel-only.
-10. The shed order under break-off pressure is fixed in advance (§1.5); the anchor core is never
+10. The shed order under break-off pressure is fixed in advance (§1.5). The anchor core is never
     shed.
 11. A wave-0 randomised length experiment runs **before** the wave-1 contract is signed.
 12. The manifest carries `short_form.id`, `target_minutes` and its blocks, grouped into rotated
@@ -699,13 +698,13 @@ That rule is already enforced and needed no change.
 3. **How different are four reliance scenarios in difficulty?** UNKNOWN until they are piloted. There
    is no common item between scenarios, so wave 1 cannot equate them.
 4. **Does the Track A calibration transfer to the panel?** UNKNOWN. The 80 shared operational items
-   are what would tell us (§5.2), and DIF between a self-selected cohort and a probability panel is
-   the thing most likely to break it.
+   are what would tell us (§5.2). DIF between a self-selected cohort and a probability panel is the
+   thing most likely to break it.
 5. **Is 3 minutes of background enough**, given that the conditioning model must contain every
    variable a secondary analyst will later cross with the statistic (§4.3)? Probably not, and the
    trade against testing minutes is unresolved.
 6. **What does a device-locked panel cost, and can vendors deliver one at n = 2,000?** UNKNOWN;
    `docs/SAMPLING.md` §6 assumes it is possible.
 7. **Does the anchor's 12,000-administration budget survive a four-country wave plus a wave-0
-   experiment?** §5.3 says 8,000 of 12,000 goes in one four-country wave. The arithmetic is tight and
-   somebody should own it before fielding.
+   experiment?** §5.3 says 8,000 of 12,000 goes in one four-country wave. The arithmetic is tight.
+   Somebody should own it before fielding.
