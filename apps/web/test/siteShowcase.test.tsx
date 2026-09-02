@@ -196,9 +196,10 @@ describe("header play pill", () => {
     // Static export: the share gallery and the personal progress page both
     // need a database, so the nav links the T4 community wall instead of
     // routes that cannot exist here. The pill is the free drill (/practice);
-    // the graded run keeps a plain, obvious slot of its own.
+    // the graded run keeps a plain, obvious slot of its own, and /daily sits
+    // next to it because it plays in this build too.
     expect(links.map((l) => l.href)).toEqual([
-      "/exam", "/report", "/wall", "/methodology", "/validate", "/practice",
+      "/exam", "/daily", "/report", "/wall", "/methodology", "/validate", "/practice",
     ]);
     expect(links[links.length - 1].className).toBe("nav-pill");
     for (const l of links.slice(0, -1)) expect(l.className).toBeUndefined();
@@ -228,7 +229,7 @@ describe("header play pill", () => {
       // loop is never URL-only; /progress reads the store, so it is here and
       // not in the export.
       expect(hrefs).toEqual([
-        "/exam", "/progress", "/report", "/gallery", "/world", "/methodology", "/validate", "/practice",
+        "/exam", "/daily", "/progress", "/report", "/gallery", "/world", "/methodology", "/validate", "/practice",
       ]);
       expect(hrefs).not.toContain("/wall");
     } finally {
@@ -320,7 +321,7 @@ describe("parent dogfood follow-ups", () => {
     // 3 always-on links + Play, plus the two mode-gated hosted links
     // (/gallery, /world), the static-export /wall that replaces them, and the
     // one slot that is /progress in the hosted build and /practice in the export.
-    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(9);
+    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(10);
     const navSrc = readFileSync(join(appDir, "..", "lib", "NavLink.tsx"), "utf8");
     expect(navSrc).toContain("usePathname");
     expect(navSrc).toContain('aria-current={current ? "page" : undefined}');

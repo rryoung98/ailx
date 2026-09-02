@@ -25,12 +25,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
+  DAILY_STREAK_MEANING,
   PRACTICE_ACCURACY_CAVEAT,
   PRACTICE_EFFICACY_NOTE,
   PRACTICE_EFFICACY_NOTE_SHORT,
 } from "@ailx/report";
 import Home from "../app/page";
 import PracticePage, { metadata as practiceMetadata } from "../app/practice/page";
+import DailyPage, { metadata as dailyMetadata } from "../app/daily/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -57,7 +59,12 @@ const EFFICACY_CLAIM: readonly RegExp[] = [
 ];
 
 /** The denials legitimately contain the banned words; excise them by identity. */
-const DENIALS = [PRACTICE_EFFICACY_NOTE, PRACTICE_EFFICACY_NOTE_SHORT, PRACTICE_ACCURACY_CAVEAT];
+const DENIALS = [
+  PRACTICE_EFFICACY_NOTE,
+  PRACTICE_EFFICACY_NOTE_SHORT,
+  PRACTICE_ACCURACY_CAVEAT,
+  DAILY_STREAK_MEANING,
+];
 
 function findEfficacyClaim(raw: string): string | null {
   const text = DENIALS.reduce((acc, d) => acc.split(d).join(" "), raw);
@@ -124,6 +131,18 @@ describe("the practice surface claims nothing for itself", () => {
     expect(String(practiceMetadata.description)).toContain(PRACTICE_EFFICACY_NOTE_SHORT);
     expect(findEfficacyClaim(String(practiceMetadata.description))).toBeNull();
     expect(findEfficacyClaim(String(practiceMetadata.title))).toBeNull();
+  });
+
+  it("the daily page asserts no ability gain, and says what its streak means", async () => {
+    const text = await renderedText(createElement(DailyPage));
+    expect(findEfficacyClaim(text)).toBeNull();
+    // A daily streak is the strongest engagement mechanic in the product, so
+    // the page carries the denial next to it rather than leaving a reader to
+    // infer that coming back for a month proved something.
+    expect(text).toContain(DAILY_STREAK_MEANING);
+    expect(findEfficacyClaim(String(dailyMetadata.description))).toBeNull();
+    expect(findEfficacyClaim(String(dailyMetadata.title))).toBeNull();
+    expect(String(dailyMetadata.description)).toContain(PRACTICE_EFFICACY_NOTE_SHORT);
   });
 
   it("the landing page asserts no ability gain", async () => {
