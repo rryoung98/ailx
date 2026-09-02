@@ -1,29 +1,27 @@
 # ARCHITECTURE.md — separating the frontend from the exam
 
-Status: decision document, 2026-08-30. Design only — no application code changed by this
-commit. Supersedes nothing; extends spec §11 (architecture) and §14 (versioning) with the
-decisions those sections left open.
+Status: decision document, 2026-08-30. Design only. This commit changed no application code.
+It supersedes nothing. It answers the questions left open in spec §11 (architecture) and
+§14 (versioning).
 
 ## 0. The question, unconflated
 
-The ask was "build an API backend and DB so we can separate the frontend". That sentence
-contains three independent decisions, and answering them as one produces a rewrite nobody
-needs:
+The request was "build an API backend and DB so we can separate the frontend". It contains
+three separate decisions:
 
 1. **Content custody** — where the secure bytes live and who may read them.
 2. **Runtime split** — one deployable, or a frontend plus a separate API service.
 3. **Repo split** — one repository, or a public frontend repo plus a private backend repo.
 
-Only the first is forced by the precipitating fact. The other two are options we buy later,
-on evidence, and this document says exactly when.
+Only the first follows from the precipitating fact. We will make the other two later if the
+evidence supports them. This document defines when.
 
 ### The precipitating fact (verified)
 
-`apps/web/lib/instrument.ts` statically imports `instruments/2026.1/snapshot.json`. That
-snapshot carried all 104 T2 items with `key`, `rationale` and `provenance` (since
-2026-08-30 it carries the 84 operational items; the other 20 moved to the released-practice
-tier `instruments/demo-2026.1` — see §10 step 1). The deployed
-static export leaks them:
+`apps/web/lib/instrument.ts` statically imports `instruments/2026.1/snapshot.json`. The
+snapshot carried all 104 T2 items with `key`, `rationale` and `provenance`. Since
+2026-08-30, it carries the 84 operational items. The other 20 moved to the released-practice
+tier `instruments/demo-2026.1` — see §10 step 1. The deployed static export leaks them:
 
 ```
 apps/web/out/_next/static/chunks/638-614dcaf82a885294.js
@@ -31,26 +29,28 @@ apps/web/out/_next/static/chunks/638-614dcaf82a885294.js
   → "rationale":"Genuinely model-generated (see provenance)…"
 ```
 
-The repository is public as well, so the bank is readable twice over. An exam whose item
-bank and answer keys are public is not an exam — it is a worksheet. Server-side scoring is
-also the assessment-industry baseline: ATP/ITC *Guidelines for Technology-Based Assessment*
-v1.1 (July 2025) §3.6 — "Scoring should be conducted at the server level to prevent
-compromise or subversion at the browser level."
+The repository is public as well, so the bank is readable twice over. An exam with a public
+item bank and answer keys
+is a worksheet, not an exam. Server-side scoring is also the assessment-industry baseline.
+ATP/ITC *Guidelines for Technology-Based Assessment* v1.1 (July 2025) §3.6 says,
+"Scoring should be conducted at the server level to prevent compromise or subversion at the
+browser level."
 
-Note what is *already* right, because it decides the shape: `packages/backend` handlers are
-framework-agnostic `(ctx, headers, body) => {status, body}`; `apps/web/app/api/**/route.api.ts`
-are thin adapters; `packages/backend/src/practice.ts` already implements the exact security
-pattern we need (deck dealt server-side, grade computed server-side, an answer to an undealt
-item refused, bank never in a client module). FRONTEND.md §4.7 already declares answer keys
-and item selection untrusted from the client. **The policy exists; T2 does not obey it.**
+The existing design determines the solution. `packages/backend` handlers use the
+framework-independent shape `(ctx, headers, body) => {status, body}`.
+`apps/web/app/api/**/route.api.ts` contains thin adapters.
+`packages/backend/src/practice.ts` already uses the required security pattern. It deals the
+deck and computes grades on the server. It refuses answers to undealt items. It never puts the
+bank in a client module. FRONTEND.md §4.7 already treats client-provided answer keys and item
+selection as untrusted. **The policy exists; T2 does not obey it.**
 
 ## 1. Recommendation
 
-**Phase 1 (now): custody, not topology.** Keep one repo and one Next.js deployable. Add one
+**Phase 1 (now): custody, not topology.** Keep one repo and one Next.js deployment. Add one
 server-only deep module, `packages/instrument`, which owns the operational bank, deck
 sampling, redaction and grading. Move the operational bank to a private, digest-pinned
-source. Ship a public **practice-tier** instrument (spec §09's released tier) that keeps the
-GitHub Pages demo working, keys and all, honestly labelled.
+source. Ship a public **practice-tier** instrument (spec §09's released tier). It keeps the
+GitHub Pages demo working with published keys and an honest label.
 
 **Phase 2 (when Phase 4 judging lands, not before): runtime split inside one repo.** Re-host
 the same handlers in `services/api` (Hono) and add `services/worker` for judging. `apps/web`
@@ -60,10 +60,10 @@ pass-through layer and a second truth.
 
 **Never: a repo split.** See §6.
 
-This is deliberately staged. Phase 1 delivers the entire driver — a browser that cannot see
-an answer key — with a diff measured in one new package and one new route. Phase 2 is bought
-with a concrete workload (long-running model calls that must not run inside a serverless
-request), not with an aesthetic preference for microservices.
+The work is staged. Phase 1 delivers the main requirement: the browser cannot see an answer
+key. It adds one package and one route. Phase 2 requires a concrete workload: long-running
+model calls that must not run inside a serverless request. A preference for microservices is
+not enough.
 
 ## 2. Caller-first sketches
 
@@ -88,8 +88,9 @@ const { items } = await (await fetch(`/api/attempts/${attemptId}/items?track=t2`
 //                yourChoice: "ai" }
 ```
 
-Phase is **derived** from `attempt.finalized_at`, never believed from a query parameter. The
-client names a wish; the server states a fact. Same rule `practice.ts` already follows.
+The server **derives** the phase from `attempt.finalized_at`. It never trusts a query
+parameter. The client requests a phase. The server decides the phase. `practice.ts` already
+follows this rule.
 
 ### 2.2 The static GitHub Pages demo — same call site, different provider
 
@@ -100,7 +101,7 @@ export const trackConfig = isServerMode() ? fetchTrackConfig : demoTrackConfig;
 // 20 items, keys and rationales published ON PURPOSE, labelled "practice".
 ```
 
-The operational bank is simply absent from that build's module graph. `footerModeCopy()`
+The operational bank is absent from that build's module graph. `footerModeCopy()`
 already tells the visitor the static build issues no score of record; that copy stays true.
 
 ### 2.3 Server wiring — one process-wide open, one adapter
@@ -163,27 +164,27 @@ export async function openInstrument(env: Env): Promise<Instrument> { /* not imp
 export function openDemoInstrument(): Instrument { /* not implemented */ }
 ```
 
-`ApiContext` gains `instrument` and **loses** `sampleDecks?` — that callback forwards
-arguments and hides nothing, and the new module absorbs it. `packages/backend` stays
-content-agnostic: it holds an interface, not a bank.
+`ApiContext` gains `instrument` and **loses** `sampleDecks?`. That callback only forwards
+arguments. The new module absorbs it. `packages/backend` remains content-independent. It
+holds an interface, not a bank.
 
-Why this module is deep rather than shallow: six methods hide package fetch and digest
-verification, bank parsing, locale fallback, the `material` transform, deck sampling, key
-custody, redaction policy, phase authorisation, exposure seconds, and the rubric/scoring
-digest lookups — all 357 lines of today's `apps/web/lib/instrument.ts` plus the loader.
-Moving it also closes the FRONTEND.md §9 / PLAN.md Phase 1 holdout that says `instrument.ts`
-must leave `apps/web`; the asset-URL coupling that blocked that move becomes an injected
-`(path: string) => string`.
+The module has six methods. They hide package fetching, digest verification, bank parsing,
+locale fallback, the `material` transform, deck sampling, key custody, redaction policy,
+phase authorisation, exposure seconds, and rubric and scoring digest lookups. This covers all
+357 lines of today's `apps/web/lib/instrument.ts` plus the loader. Moving the module also
+satisfies the FRONTEND.md §9 / PLAN.md Phase 1 requirement that `instrument.ts` leave
+`apps/web`. An injected `(path: string) => string` replaces the asset-URL coupling that
+blocked the move.
 
 Red flags screened (per the architect skill's `design-red-flags.md`):
 
 - **Information leakage — rejected** "return the full item and let the client call
-  `redactItem()`". One policy, two homes, one of them the candidate's machine.
+  `redactItem()`". That puts one policy in two places, including the candidate's machine.
 - **Pass-through — removed one** (`ApiContext.sampleDecks?`).
 - **Temporal decomposition — rejected** a `loadBank → validate → sample → redact` chain of
-  four modules re-parsing one item shape. One module owns "what an item is and who may see it".
+  four modules that parse the same item shape. One module owns "what an item is and who may see it".
 - **Shallow module — rejected** a `ContentClient` HTTP wrapper over a separate content
-  service: wide surface (auth, retries, caching, error mapping), hides nothing but a `fetch`.
+  service. It adds auth, retries, caching, and error mapping but hides only a `fetch`.
 
 ## 4. Trust boundary — what the browser may ever see
 
@@ -199,34 +200,33 @@ Red flags screened (per the architect skill's `design-red-flags.md`):
 | Own event log, own score, own report, own credential | yes | yes | — |
 | Practice-tier bank with keys | yes | yes | — (published on purpose) |
 
-Consequences we accept, stated plainly:
+This design has these consequences:
 
-- In hosted mode the browser **cannot** compute a T2 score during the sitting, because
-  `score()` needs the keys. That is correct: FRONTEND.md §4.7 already says client scores are
-  advisory. The score of record is recomputed server-side from the append-only log. The UI
-  shows progress, not correctness, until finalize.
-- `score()` does **not** move and does not change. It stays pure in `packages/tracks`,
-  inside the CI purity sandbox, imported by whichever runtime needs it. Byte-identical
-  recomputability rests on purity + stored inputs + the `scorers[]` source digest — never on
-  *where* the function runs. What changes is who is allowed to **issue** a score row.
-- For T3/T4 the judge's output is one of those **stored inputs**, because an LLM judge is not
-  reproducible even at temperature 0 (spec §14). Judging collects evidence once, in a
-  pipeline stage; the row is immutable and content-addressed; `score()` replays it. Re-scoring
-  reproduces, re-judging does not, and the honest pair is published rather than the strong
-  half alone.
+- In hosted mode the browser **cannot** compute a T2 score during the sitting because
+  `score()` needs the keys. FRONTEND.md §4.7 already says client scores are advisory. The
+  server recomputes the score of record from the append-only log. Until finalize, the UI
+  shows progress but not correctness.
+- `score()` does **not** move or change. It remains pure in `packages/tracks`, inside the CI
+  purity sandbox. Any runtime that needs it can import it. Purity + stored inputs + the
+  `scorers[]` source digest provide byte-identical recomputability. The runtime location does
+  not. Only the actor allowed to **issue** a score row changes.
+- For T3/T4, the judge's output is one of those **stored inputs**. An LLM judge is not
+  reproducible even at temperature 0 (spec §14). A pipeline stage collects the evidence once.
+  The row is immutable and content-addressed. `score()` replays it. Re-scoring reproduces;
+  re-judging does not. We publish both facts.
 - Screenshot leakage is not solved by any of this. Only three-tier rotation and a withheld
   anchor block (spec §09) address a candidate photographing items. Custody stops bulk
   extraction; it does not stop a camera.
 
 ## 5. Stack decision (Phase 2, prepared now)
 
-**Hono**, if and when a service is extracted. Single strongest reason: it is Fetch-native, so
-`apps/web/lib/server/api.ts` — which already speaks `Request`/`Response` — ports almost
-verbatim, and the same binary runs on Node, Cloud Run, Bun and Workers without a rewrite of
-the host. Typed client via `hc<AppType>` with no codegen step.
+Use **Hono** if and when we extract a service. It is Fetch-native.
+`apps/web/lib/server/api.ts` already uses `Request`/`Response`, so it ports almost verbatim.
+The same binary runs on Node, Cloud Run, Bun and Workers without a host rewrite. `hc<AppType>`
+provides a typed client without a codegen step.
 
-Honest evidence, gathered 2026-08-30 from npm registry, GitHub API and the GitHub Advisory
-Database (blog-tier sources deliberately excluded):
+This evidence came from npm registry, GitHub API and the GitHub Advisory Database on
+2026-08-30. It excludes blog-tier sources:
 
 | pkg | latest | rel./12mo | dl/wk | advisories |
 |---|---|---|---|---|
@@ -241,26 +241,26 @@ Database (blog-tier sources deliberately excluded):
 Readings, in order of weight:
 
 - **Throughput is not our bottleneck and pretending otherwise would be dishonest.** A scored
-  sitting is low-QPS; judging is multi-second model calls. Framework routing overhead is
+  sitting is low-QPS. Judging uses multi-second model calls. Framework routing takes
   microseconds — under 0.1% of request latency. Benchmarks do not decide this.
-- **Patch surface does decide it.** Next.js has the weakest 2026 posture in the table and the
-  advisories sit in exactly the request-handling path an exam API uses. Serving the exam from
-  the same process as the marketing site couples the exam's patch cadence to a frontend
-  framework's. That, not performance, is the real argument for a separate host.
+- **Patch surface does decide it.** Next.js has the weakest 2026 posture in the table. Its
+  advisories affect the request-handling path used by an exam API. Serving the exam and the
+  marketing site from one process ties the exam's patch schedule to a frontend framework.
+  This patch risk, not performance, supports a separate host.
 - Hono's advisory count is disclosure discipline plus a wide optional-middleware surface, not
   defect density; we use core only. It is still real patch load: 68 releases in 12 months.
 - Rejected: **NestJS** (DI over ~190 lines of plain functions), **Fastify** (Node-only; core
-  advisories have larger blast radius; a second schema world next to our validators),
-  **Express** (no Fetch, weakest types), **Elysia** (Bun lock-in), **Encore.ts** (own deploy
-  plane, collides with spec §11's GCP shape, and would swallow the `AuthProvider` /
-  `SnapshotStore` seams we already own).
+  advisories affect more code; a second schema system beside our validators), **Express**
+  (no Fetch, weakest types), **Elysia** (Bun lock-in), **Encore.ts** (own deploy plane,
+  conflicts with spec §11's GCP shape, and would absorb the `AuthProvider` / `SnapshotStore`
+  seams we already own).
 - What would change my mind: if Phase 4 judging is deferred indefinitely, keep Next route
   handlers and skip Phase 2 entirely. The custody fix does not depend on it.
 
 ## 6. Repo split — rejected
 
-A private backend repo plus a public frontend repo buys one thing custody does not already
-give us: it prevents a contributor from *accidentally* importing the bank. It costs:
+A private backend repo plus a public frontend repo adds one protection beyond custody. It
+prevents a contributor from *accidentally* importing the bank. It also adds these costs:
 
 - Atomic changes across the seam become two PRs and a version bump (the handlers and their
   callers change together constantly today).
@@ -268,52 +268,51 @@ give us: it prevents a contributor from *accidentally* importing the bank. It co
 - The `scorers[]` audit digest walks a source closure — splitting the repo splits the closure
   and makes PLAN.md's known cross-package hashing gap worse, not better.
 
-Instead: keep one repo, make the **content** private (spec §14 already plans exactly this —
-OCI-packaged, cosign-signed instrument packages loaded by digest), and enforce the boundary
-mechanically, not by discipline:
+Instead, keep one repo and make the **content** private. Spec §14 already calls for
+OCI-packaged, cosign-signed instrument packages loaded by digest. Enforce the boundary in
+code and CI:
 
 - `packages/instrument` has no `browser` export condition and is not a dependency of any
   client module.
 - A CI test greps the built client bundles for a known key/rationale string and any
   operational item id, and fails the build. The leak we just found must not be findable twice.
 - A separate repo becomes right only when item writers need bank commit rights without
-  platform commit rights. Then it is the **instrument package** that moves out — not the API.
+  platform commit rights. At that point, move the **instrument package**, not the API.
 
 ## 7. Data layer and migrations
 
-**Stay on raw `pg` with hand-written SQL.** `pg` 8.23.0: one advisory ever, none since 2024.
-The alternatives fail on failure class, not features: all four Kysely 2026 advisories are
-**injection bugs in its own SQL compiler** (one an incomplete fix of another); Drizzle has the
-same class and its 1.0 is still RC. Parameterised `pg` has no such surface. Our SQL is
-already SQL-shaped — partial unique indexes as `ON CONFLICT` targets, `num_nonnulls` CHECKs,
-`ON CONFLICT DO NOTHING RETURNING` — and no builder type-checks those anyway. The 2-method
-`Queryable` seam that lets tests run PGlite in-process is the property worth protecting.
+**Stay on raw `pg` with hand-written SQL.** `pg` 8.23.0 has had one advisory and none since
+2024. The alternatives introduce a different failure class. All four Kysely 2026 advisories
+are **injection bugs in its own SQL compiler**; one incompletely fixed another. Drizzle has
+the same class of bug, and its 1.0 is still RC. Parameterised `pg` has no SQL compiler to
+expose. Our SQL uses features that builders do not type-check: partial unique indexes as
+`ON CONFLICT` targets, `num_nonnulls` CHECKs, and `ON CONFLICT DO NOTHING RETURNING`. Keep
+the 2-method `Queryable` interface that lets tests run PGlite in-process.
 
-**Adopt migration tooling. This is a real gap and hand-run SQL blocks will bite us.**
+**Adopt migration tooling. Hand-run SQL blocks leave a real gap.**
 
 - `db/migrations/NNNN_name.sql` — forward-only, plain SQL, reviewable in a PR. The blocks
   currently in `db/README.md` become `0001…`.
-- Applied in deployments by **dbmate** (single static binary, plain SQL, no ORM) or
-  **node-pg-migrate 9** in SQL-file mode if we prefer staying in the pnpm ecosystem. Either is
-  defensible; pick one in the implementation PR and do not keep both.
-- Applied in tests by a ~20-line loop over the *same* files, so tests and production never
-  diverge and PGlite needs no tool support. One set of SQL, two appliers — that is the DRY
-  line, and the file order is the only shared contract.
-- `db/schema.sql` becomes **generated** (`dbmate dump`) with a CI equality check, so it stays
-  the readable artefact it already is without becoming a second truth.
+- Apply migrations in deployments with **dbmate** (single static binary, plain SQL, no ORM)
+  or **node-pg-migrate 9** in SQL-file mode if we choose the pnpm ecosystem. Pick one in the
+  implementation PR. Do not keep both.
+- A ~20-line loop applies the *same* files in tests. Tests and production therefore use one
+  set of SQL, while PGlite needs no tool support. The two appliers share only the file order.
+- Generate `db/schema.sql` with `dbmate dump` and check equality in CI. It remains a readable
+  artefact without becoming a second source of truth.
 - Rejected: **Atlas** (views/functions gated behind `atlas login`; a diff engine planning DDL
   against append-only tables is where you want a human), **graphile-migrate** (idempotent
   re-run model assumes a disposable dev DB), **Flyway** (JVM), **drizzle-kit** (requires the
   ORM). Keep the prose in `db/README.md` for the one migration whose data genuinely cannot be
   migrated (`share_links.token_sha256` → `token`); no tool solves that.
 
-**UNVERIFIED**: whether any deployed database has drifted from `schema.sql`. Baseline
-migration `0000` must be written to match what is actually deployed, not what is committed.
+**UNVERIFIED**: whether any deployed database differs from `schema.sql`. Baseline migration
+`0000` must match the deployed database, not the committed file.
 
 ## 8. The judging pipeline (spec Phase 4) — the boundary that must survive
 
-Judging is the workload that actually justifies a second runtime: model calls, ×3 samples,
-medians, retries, minutes not milliseconds. Design the seam now, build it later.
+Judging justifies a second runtime. It needs model calls, ×3 samples, medians, and retries.
+It takes minutes, not milliseconds. Design the interface now and build it later.
 
 ```ts
 // packages/backend/src/judging.ts — ONE module owns capture → judge → aggregate → scored
@@ -325,20 +324,21 @@ export async function runJudging(ctx: JudgeContext, run: JudgeRun): Promise<void
 export interface JobQueue { enqueue(stage: StageName, payload: JobPayload): Promise<void>; }
 ```
 
-Rules that make the later split a re-host rather than a re-architecture:
+These rules let the later split change the host without changing the design:
 
-- **Idempotency lives in the database**, per spec §11 and `db/README.md`: the `judgments`
-  UNIQUE constraint, not queue de-duplication. The queue only has to deliver at-least-once,
-  which is why the queue choice is reversible.
+- **Idempotency lives in the database**, as required by spec §11 and `db/README.md`. The
+  `judgments` UNIQUE constraint provides it, not queue de-duplication. The queue only needs
+  at-least-once delivery, so we can replace it later.
 - **Recommended queue: `pg-boss`** on the Postgres we already run (12.28.1, 1.49M dl/wk, zero
-  advisories ever). Transactional enqueue in the same statement as the response insert, no
-  second stateful system. Cloud Tasks stays available behind `JobQueue` when spec §11's GCP
-  shape lands — note its task-level retry config is still Preview. Rejected BullMQ (adds
-  Redis) and Inngest/Trigger.dev (hosted-first, control plane we do not need).
+  advisories ever). It can enqueue a job transactionally in the same statement as the
+  response insert. It adds no second stateful system. Cloud Tasks remains available behind
+  `JobQueue` when spec §11's GCP shape lands. Its task-level retry config is still Preview.
+  Reject BullMQ because it adds Redis. Reject Inngest/Trigger.dev because they are
+  hosted-first control planes we do not need.
 - `runJudging` takes the same context shape as a request handler, so it runs in-process
   today and in `services/worker` tomorrow with no signature change.
-- Judge outputs are **stored as inputs**. `score()` still consumes stored judgments and stays
-  pure. This is the invariant the whole architecture exists to protect.
+- Judge outputs are **stored as inputs**. `score()` continues to consume stored judgments and
+  remains pure. The architecture must preserve this invariant.
 
 ## 9. Module and service map
 
@@ -366,19 +366,18 @@ db/
 
 ## 10. Migration plan — shippable at every step
 
-Each step is independently releasable and independently revertible.
+Each step can ship and be reverted on its own.
 
-1. **Stop the leak (highest value, smallest diff).** Create `packages/instrument`; move
+1. **Stop the leak (highest value, smallest diff).** Create `packages/instrument`. Move
    `apps/web/lib/instrument.ts` into it behind `Instrument`; add
    `GET /api/attempts/:id/items` returning the `RedactedItem` union; publish
    `instruments/demo-2026.1` for the static build. Add the CI bundle-grep test. Ship. **The
-   driver is now satisfied** even if nothing else in this document ever happens.
-2. **Make custody real.** Move the operational bank out of the public repo into a private,
+   driver is now satisfied** even if no later step happens.
+2. **Make custody real.** Move the operational bank from the public repo into a private,
    digest-pinned artefact (spec §14 OCI + cosign, or a private package as an interim);
    `instruments.package_digest` records it. Rotate the 84 exposed operational items — they
-   are burned,
-   and a leaked bank cannot be un-leaked. Treat 2026.1's operational form as compromised and
-   re-cut it.
+   are burned, and a leaked bank cannot be un-leaked. Treat 2026.1's operational form as
+   compromised and re-cut it.
 3. **Migrations.** Baseline `0000` from the deployed database, then `0001…` from
    `db/README.md`'s blocks; generated `schema.sql` + CI equality check.
 4. **Judging seam.** Land `judging.ts` and `JobQueue` with the in-process implementation and
