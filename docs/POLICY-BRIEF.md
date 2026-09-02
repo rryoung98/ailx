@@ -20,10 +20,10 @@ travels with the pack rather than behind it. Section 7 has two openers.
 COULD NOT VERIFY means the site refused the fetch or the source was not reached. OURS means it
 is a claim about AILX, checkable in this repository, with no outside source behind it.
 
-Two sites blocked automated fetching and were read through a browser or an official mirror:
-`eur-lex.europa.eu` (browser), `coe.int`, `unesdoc.unesco.org`, `oecd.org` (mirrors, flagged at
-each use). `oecd.org` refused both routes, so the OECD AI capability indicators and PIAAC Cycle 2
-were not checked. Nothing in this file rests on them.
+Four sites blocked automated fetching. `eur-lex.europa.eu` was read in a browser. `coe.int`,
+`unesdoc.unesco.org` and `oecd.org` were read through official-text mirrors, flagged at each use.
+`oecd.org` refused the browser too, so the OECD AI capability indicators, PIAAC Cycle 2 and the
+PISA 2029 reporting date were not checked at source. Nothing here rests on them.
 
 ## 2. The policy hook, and how it changed in July 2026
 
@@ -69,10 +69,11 @@ supervising and enforcing the rules as of 2 August 2026". The same page writes "
 2026" one answer earlier. Both spellings are live on the page today, and it is worth knowing that
 before someone corrects us on the date.
 
-### 2.3 No official measure is attached to Article 4, and the Commission says so
+### 2.3 The Commission says Article 4 does not oblige anyone to measure
 
-This is the strongest sentence in the pack, because it is the regulator's own words rather than
-our inference. Commission AI Office, "AI Literacy — Questions & Answers",
+Two separate claims here, and only the first is the Commission's. **The Commission's claim:** the
+duty does not require measurement. **Ours:** we looked at the three places an official measure
+could sit and found none. Commission AI Office, "AI Literacy - Questions & Answers",
 `https://digital-strategy.ec.europa.eu/en/faqs/ai-literacy-questions-answers`, accessed
 2026-09-02. VERIFIED.
 
@@ -82,7 +83,7 @@ our inference. Commission AI Office, "AI Literacy — Questions & Answers",
 > "There is no need for a certificate. Organisations can keep an internal record of trainings
 > and/or other guiding initiatives."
 
-Three routes that could have carried a measure, and do not:
+Three routes that could have carried a measure, and did not when we checked them on 2026-09-02:
 
 - **The living repository of AI literacy practices.** More than 40 initiatives, collected from AI
   Pact pledgers and an open survey. The page says copying them "does not automatically grant
@@ -91,7 +92,9 @@ Three routes that could have carried a measure, and do not:
   among staff". No scale, no test.
 - **CEN-CENELEC.** Standardisation request C(2023) 3215 lists ten deliverables, from risk
   management to conformity assessment. The word "literacy" appears zero times in the annexes.
-  There is no harmonised standard for Article 4 and no presumption-of-conformity route.
+  So the 2023 request mandates no AI-literacy standard. COULD NOT VERIFY: the current JTC 21 work
+  programme, which could contain an informative deliverable the request never asked for. Say "the
+  standardisation request contains no literacy deliverable", not "no standard exists".
 
 **The one thing to watch.** New Article 4(3) requires the AI Board to "adopt recommendations,
 taking into account European competence frameworks... including by setting out common objectives".
@@ -107,8 +110,8 @@ rewriting the same week.
   fetch.
 - **UNESCO AI competency framework for students (2024), §5.8.** "few attempts have been made to
   develop these sorts of instruments for assessing comprehensive AI competencies cross-cutting
-  multiple progression levels." UNESCO is asking someone to build one. VERIFIED on a full-text
-  mirror.
+  multiple progression levels." The same section tells implementers to construct their own
+  assessment system. Quote it as "few attempts", not as "none". VERIFIED on a full-text mirror.
 - **UNESCO AI competency framework for teachers (2024), §5.5.** Gives one worked example, and
   prints its grading criteria as "(To be specified in accordance with the adapted learning
   objectives and the type of the assessment items)". VERIFIED on a mirror.
@@ -121,14 +124,17 @@ recommendation that "half of the assessment time is allocated to 'analyse and ev
 'create'". Performance-based, internationally comparable, nationally representative. VERIFIED on a
 mirror of the OECD draft; `oecd.org` blocked direct fetch.
 
-It tests 15-year-olds. First data 2029, reporting after that. It is fed by the OECD and European
-Commission **AILit** framework, declassified by the PISA Governing Board on 8 April 2026, which is
+It tests 15-year-olds, in the PISA 2029 cycle. **We could not verify the reporting date.** OECD's
+project page refused every fetch, and a second reviewer reading it reports results expected in
+December 2031. Do not put a year on it in a meeting until someone opens that page. It is fed by the
+OECD and European Commission **AILit** framework, declassified by the PISA Governing Board on 8 April 2026, which is
 the framework the Digital Omnibus recital names. AILit contains no test of its own.
 
-**IEA ICILS 2028** is the other one. Pilot March 2026, field test March to May 2027, main survey
-2028, report 2029, 34 education systems interested. Its reported scales stay computer and
-information literacy plus computational thinking, with AI as a context theme. Grade 8 students.
-Whether a separate AI scale is planned: COULD NOT VERIFY.
+**IEA ICILS 2028** is not a second AI assessment, and calling it one will get us corrected. It
+reports computer and information literacy plus computational thinking, on Grade 8 students, with AI
+worked into those constructs and the questionnaires. Pilot March 2026, field test March to May 2027,
+main survey 2028, report 2029, 34 education systems interested. Whether a separate AI scale is
+planned: COULD NOT VERIFY.
 
 Neither covers adults, and neither is connected to the Article 4 duty.
 
@@ -145,7 +151,7 @@ Neither covers adults, and neither is connected to the Article 4 duty.
 - Finland, Singapore, UAE, Korea, India, Japan, Estonia and the UK: COULD NOT VERIFY. Say nothing
   about them.
 
-## 3. The measurement gap, checked hard enough to survive a hostile reader
+## 3. The measurement gap, and the exact wording that survives a check
 
 ### 3.1 The population-scale instruments are self-report
 
@@ -170,7 +176,7 @@ self-assessment". The short form AILIT-S (doi:10.1016/j.chbah.2025.100176) is 10
 university students in Germany, the UK and the US. Convenience samples, no weights, no population
 frame. VERIFIED.
 
-### 3.3 The exception we must state before anyone finds it
+### 3.3 The exception, and the version of our claim that survives it
 
 **Pew Research Center, "Public Awareness of Artificial Intelligence in Everyday Activities",
 15 February 2023.** 11,004 US adults on the American Trends Panel, recruited by "national, random
@@ -178,17 +184,25 @@ sampling of residential addresses", weighted to the US adult population. Six que
 correct answers. "30% of Americans correctly answered all six questions". Mean 3.7 out of 6.
 VERIFIED.
 
-That is nationally representative and it has right answers. So the claim is narrower than it first
-looks:
+It is also scaled, and a first draft of this file was wrong about that. Pew's methodology page
+reports Cronbach's alpha of 0.83 for the six items, an exploratory factor analysis whose first
+factor explains 91% of the shared variance, and a two-parameter logistic IRT model with
+item-level discrimination and difficulty. VERIFIED at
+`https://www.pewresearch.org/science/2023/02/15/ai-awareness-methodology/`. So Pew has a
+nationally representative, IRT-scaled knowledge measure of US adults, and anyone who reads the
+methodology page will know it.
 
-- Safe: **no nationally representative scored assessment of adult AI literacy exists.** No ability
-  scale, no item statistics, no equating, no repeat wave, no trend series.
-- Not safe: "nobody has asked the public a question with a right answer." That is false, checkable
-  in one search, and it would end the meeting.
+The claim that survives is about **what is measured**, not about rigour:
 
-Pew's own limit helps us: the six items are "not designed to be an exhaustive list", and they test
-awareness of where AI already sits in consumer products. They do not test use, judgement under
-uncertainty, or production.
+- Safe: **no representative measure of what adults can do with AI exists.** Pew's six items ask
+  people to identify where AI is already at work in email, online shopping and customer service.
+  Pew calls it "awareness of AI in daily life" and says the items "are not designed to be an
+  exhaustive list". Recognising that a spam filter uses AI is not the same as writing a prompt,
+  checking an AI answer that is wrong, or deciding when not to use the tool.
+- Safe: one wave, December 2022, no repeat, so no trend.
+- Not safe: "no nationally representative scored assessment exists", "no ability scale", "no item
+  statistics". All three are false against the Pew methodology page, checkable in one click, and
+  they would end the meeting.
 
 ### 3.4 The nearest representative performance instrument is not about AI
 
@@ -199,15 +213,17 @@ AI literacy. VERIFIED at nces.ed.gov; the OECD page was blocked.
 
 ### 3.5 The gap, in one sentence
 
-Adults are measured on skills that are not AI. AI literacy is measured by asking people about
-themselves, or by testing university students. The two performance-based AI instruments in
-development, PISA 2029 MAIL and ICILS 2028, both test children, and the first results land in
-2029.
+Adults are measured on skills that are not AI (PIAAC), or on six recognition items once, in 2022
+(Pew). AI literacy is otherwise measured by asking people about themselves, or by testing
+university students. The one performance-based AI assessment in development, PISA 2029 MAIL, tests
+15-year-olds. Nobody is measuring what adults can do with AI, on a sample that represents anyone.
 
 ## 4. Who can do what, and what they will ask us for
 
-Read the last column first. It is the list of things we cannot supply yet, which is the real state
-of every one of these conversations.
+OURS, all of it. Nobody in this section has been contacted. What each body "can do" is our reading
+of its published mandate, not a signal from anyone inside it, and no source below promises any
+outcome. Read the second half of each entry first. It is the list of things we cannot supply, and
+it is the real state of every one of these conversations.
 
 ### 4.1 US Department of State
 
@@ -271,8 +287,8 @@ room. They have the sampling machinery we lack.
 
 ### 4.5 UNESCO, Digital Learning and Transformation of Education
 
-Publisher of both 2024 competency frameworks, and the body that wrote down that the instruments do
-not exist.
+Publisher of both 2024 competency frameworks, and the body that wrote down that "few attempts"
+have produced cross-level AI competency instruments.
 
 - **What attention buys:** a citation in implementation guidance, a convening of member states, or
   a low-resource pilot.
@@ -296,7 +312,7 @@ window for item material is this year, not 2028.
 
 Each one is defensible on 2026-09-02, with the evidence beside it. None of them contains a score.
 
-### 5.1 EU law now asks for AI literacy and explicitly does not ask anyone to measure it
+### 5.1 EU law asks for AI literacy and does not ask anyone to measure it
 
 Article 4 applies to providers and deployers since 2 February 2025. Since the Digital Omnibus of
 8 July 2026 it asks them to "support the development of" AI literacy and states that the obligation
@@ -304,11 +320,10 @@ Article 4 applies to providers and deployers since 2 February 2025. Since the Di
 individual". The Commission's own Q&A: "Article 4 of the AI Act does not entail an obligation to
 measure the knowledge of AI of employees." No EU fine attaches. No harmonised standard covers it.
 
-**Why this is our point and not an objection to us.** A duty with no measure produces compliance
-theatre: attendance sheets for trainings nobody can evaluate. The interesting question is not "how
-do we make firms comply", it is "how would anyone know whether AI literacy in a population is
-rising or falling". Nothing in the Article 4 machinery answers that, and the Commission does not
-claim it does.
+**Why this is our point and not an objection to us.** What a duty with no measure produces is
+attendance records for trainings nobody evaluates. The question we care about is different from
+compliance: how would anyone know whether AI literacy in a population is rising or falling?
+Nothing in the Article 4 machinery answers that, and the Commission does not claim it does.
 
 ### 5.2 Every population-scale AI-literacy number in circulation is self-report
 
@@ -318,17 +333,20 @@ Eurobarometer AI items are opinion. Self-perceived competence is a real construc
 well-measured one. It is not what a person can do, and no published work licenses reading one off
 the other.
 
-### 5.3 A performance-based population statistic on AI literacy does not exist for adults anywhere
+### 5.3 No representative measure exists of what adults can do with AI
 
 The performance-based AI tests that exist run on university students (AILIT, AILIT-S). The
-representative performance instruments that exist measure something else (PIAAC). The two
-performance-based AI assessments in development, PISA 2029 MAIL and ICILS 2028, measure school
-students, and their first data lands in 2029.
+representative performance instruments that exist measure something else (PIAAC). PISA 2029 MAIL,
+the one AI assessment in development, tests 15-year-olds.
 
-**State the exception in the same breath.** Pew asked 11,004 weighted US adults six correct-answer
-items in December 2022; 30% got all six, mean 3.7 out of 6. That is a six-item awareness battery
-run once, with no ability scale and no trend. The claim is "no scored assessment of adults", never
-"nobody has ever tested the public".
+**State the exception in the same breath, with its statistics.** Pew asked 11,004 weighted US
+adults six correct-answer items in December 2022. 30% got all six, mean 3.7 out of 6, Cronbach's
+alpha 0.83, a 2PL IRT model behind it. It is a real scale. It measures awareness of where AI
+already sits in consumer products, once, in 2022. It does not ask anyone to use a model, judge an
+answer, or decide when to stop trusting one.
+
+Say "no representative measure of adult AI task performance", never "nobody has tested the
+public".
 
 ### 5.4 We can show the method today, and the method is the part that is checkable
 
@@ -345,8 +363,11 @@ OURS, all of it verifiable in the public repository:
   both halves, because no model call may sit on the recompute path.
 - **Items are content-addressed.** An edit creates a new item and never mutates one.
 
-This is what an auditor can check without trusting us, and it is available now, which is more than
-can be said for our numbers.
+An auditor can check every line of that from the public repository today. The purity harness has
+limits and lists them in `packages/core/src/purity.ts`: it traps clock, randomness, network and
+deferred scheduling at call time, and it cannot see a reference captured before the call, a
+`node:fs` imported at module load, or a `process.env` read. Byte-identical replay is verified on
+the pinned runtime. Cross-runtime identity is not proven.
 
 ### 5.5 We have written down what would falsify us, and we publish it first
 
@@ -359,17 +380,22 @@ and that no arm beat control at two weeks. Branch `w/ten-40` rewrites `docs/POSI
 governance, recording that none of the six is met. That branch is not merged on 2026-09-02, so do
 not point anyone at the file until it is.
 
-A policy audience has seen many decks. It has seen fewer teams hand over the list of things that
-would sink them.
+Handing over the list of results that would sink us is cheaper now than being handed it later.
 
 ## 6. What we are not claiming
 
 Put this in the pack. Do not save it for the objection.
 
-1. **No score of record has been issued.** The `scores` table is empty. The credential asserts a
-   completed sitting and says nothing about ability (`docs/CREDENTIAL.md`).
+**Marking, so nobody is misled about what is checkable.** Points 1 to 3 are facts about systems in
+the private backend repository or about this repository's history. A reader cannot verify 1 and 2
+from the public tree, and we should say so rather than gesture at "the repo".
+
+1. **No score of record has been issued.** The `scores` table in the exam service is empty. The
+   credential asserts a completed sitting and says nothing about ability (`docs/CREDENTIAL.md`).
 2. **The judging pipeline is not in production.** T3 and T4 depend on an LLM judge whose outputs
-   are stored and replayed. The pipeline that collects them does not exist yet.
+   are stored and replayed. The pipeline that collects them does not exist yet. Both facts live in
+   the private backend repository, so take them as our statement, not as something you can check
+   here.
 3. **The operational item bank was public in this repository until 2026-08-30.** Any exposure that
    caused is already in the world. Two tests now fail the build if operational content returns
    (`packages/content-tools/test/public-tree.test.ts`,
@@ -377,17 +403,20 @@ Put this in the pack. Do not save it for the objection.
 4. **The reliance construct has no external validity evidence.** Our signed reliance index is our
    own invention. No published work reports a one-dimensional index of reliance calibration, and no
    study reports a reliability coefficient for any behavioural appropriate-reliance measure. The
-   one direct test found ICC below 0.5 at 153 trials. Source: the private evidence review
+   one direct test found ICC below 0.5 at 153 trials. Source: the evidence reviews
    `docs/EVIDENCE-CALIBRATED-RELIANCE.md` §8 and
-   `docs/EVIDENCE-RELIABILITY-AND-TIME-PRESSURE.md` §A1.
+   `docs/EVIDENCE-RELIABILITY-AND-TIME-PRESSURE.md` §A1, both in the **private** backend
+   repository and not readable from here.
 5. **Judge agreement is not settled.** The QWK 0.708 to 0.712 figure we cite is one unreviewed
    preprint, one dataset, one model family. Human inter-rater median on the same dataset is 0.76,
    so the judge is below human agreement, not at it. Source:
-   `docs/EVIDENCE-JUDGE-AGREEMENT.md`.
+   `docs/EVIDENCE-JUDGE-AGREEMENT.md`, also private.
 6. **No cross-language or cross-country evidence exists.** No invariance testing, no translated
    forms, no field trial.
 7. **We are not neutral, and we should stop using the word.** An examiner is funded by somebody,
-   and editorial independence does not cure who chose the donors. Branch `w/ten-40` removes the
+   and editorial independence does not cure who chose the donors. Note the contradiction while it
+   lasts: `docs/POSITIONING.md` in this branch still calls the empty seat "neutral". Branch
+   `w/ten-40` removes the
    neutrality claim from `docs/POSITIONING.md` and replaces it with six governance conditions:
    a diversified funding pool with a per-donor cap, no donor veto over methods or publication, an
    independent board with a public conflict register, preregistered methods, mandatory publication
@@ -416,9 +445,9 @@ one link.
 > providers or deployers to guarantee any specific level". The Commission's own Q&A adds that
 > Article 4 "does not entail an obligation to measure the knowledge of AI of employees".
 >
-> So there is a literacy duty and no measure. Meanwhile every population-scale AI-literacy number
-> I can find is self-report, and the two performance-based assessments in development, PISA 2029
-> MAIL and ICILS 2028, both test school students.
+> So there is a literacy duty and no measure. Meanwhile the population-scale AI-literacy numbers I
+> can find are self-report, and the one performance-based assessment in development, PISA 2029
+> MAIL, tests 15-year-olds.
 >
 > I build an AI literacy examination and I have no population number either. I would value 30
 > minutes on how you would recognise a credible one.
@@ -436,8 +465,8 @@ one link.
 >
 > I spent this week checking whether anyone measures it anyway. MAILS, SNAIL and AILQ are
 > self-report by their authors' own description. The performance-based tests run on university
-> students. Pew asked 11,004 US adults six correct-answer items in 2022, mean 3.7 out of 6, and
-> nobody repeated it. PISA 2029 MAIL and ICILS 2028 will test 15-year-olds and report from 2029.
+> students. Pew asked 11,004 US adults six correct-answer items in 2022, mean 3.7 out of 6, alpha
+> 0.83, and nobody repeated it. PISA 2029 MAIL will test 15-year-olds.
 >
 > I build an AI literacy exam. I have no population statistic and I am not offering one.
 >
@@ -449,8 +478,9 @@ one link.
 
 - **The AI Board publishes Article 4 recommendations with common objectives.** New Article 4(3)
   requires them. If they land, §5.1 is out of date the same week.
-- **Somebody fields a scored adult AI-literacy survey.** PIAAC Cycle 3 is the obvious candidate,
-  and a national statistics office could do it faster. Recheck §3 before every meeting.
+- **Somebody fields a scored adult AI-literacy survey.** Pew already has the panel, the scale and
+  the method; a second wave with harder items would close most of the gap in one field period.
+  PIAAC Cycle 3 is the slower, larger candidate. Recheck §3 before every meeting.
 - **We get asked for our own number.** The answer is that we have none, followed by
-  `docs/SAMPLING.md` §11 Stage 0. Anyone who wants a national statistic from a calibration cohort
-  of 45 people is not the partner we want.
+  `docs/SAMPLING.md` §11 Stage 0. A calibration cohort of about 45 people supports item statistics
+  and nothing with a population noun in it.

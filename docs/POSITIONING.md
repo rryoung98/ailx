@@ -157,7 +157,8 @@ AILX's fit is a **CNCF-consortium + CFA-eminent-cohort hybrid**. In order:
 4. **One anchor mandate.** One employer requiring AILX in hiring, or one
    ministry/procurement pilot. The exam is worthless until someone requires it and
    compounds fast after. EU AI Act Art. 4 is a weaker hook than it looks: it requires
-   no measurement and carries no EU fine (docs/POLICY-BRIEF.md §2.2, §2.3).
+   no measurement and carries no EU-level fine, only whatever national penalties Member States
+   set under Art. 99(1) (docs/POLICY-BRIEF.md §2.2, §2.3).
 5. **Structural hygiene from day one.** Nonprofit examiner owns the trademark and the
    secure anchor block; training/prep lives in a separate entity. This makes the
    neutrality claim legally credible — and is why audit-grade score recomputability
