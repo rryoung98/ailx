@@ -278,7 +278,7 @@ Never cut: the cold open, the replay, the planted error, or the ask. Those four 
 - One chosen card for the replay — a shadow or reflection inconsistency, not hands or text.
 - Recorded fallback clips for all four demo blocks.
 - The narrowed positioning sentence, word for word: *the first cross-nationally normed, annually re-versioned, task-performance-based AI literacy examination for adults.*
-- Two numbers you will be asked for and should not have to look up: **45 of 400** points exposed to model judging, and **\$750** a month for the pilot.
+- Two numbers you will be asked for and should not have to look up: **80 of 400** points exposed to model judging by design — **180 of 400** as the system is built today, because the unbuilt gates and the unbuilt human panel fall back to the judge path — and **\$750** a month for the pilot. (`pointsByResolution()` in `packages/core/src/allocation.ts` is the source; AILX-Spec-2026.1.md §04 states both columns.)
 
 ## Questions you will get
 

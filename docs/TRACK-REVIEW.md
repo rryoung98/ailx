@@ -520,8 +520,18 @@ what makes this review worth acting on.
 
 Second, the §04 design principle — "no track is scored the same way as any other", so a flaw in
 LLM-judge methodology damages at most 40–45 points out of 400 — **is currently false in the code.**
-As implemented, T1 (100), T4 (80) and T3 (45) all resolve through stored judge values: 225 of 400
-points, not 45. The principle is sound and worth restoring; it is not currently true.
+As implemented, T1 (100), T4 (80) and T3 (45) all resolve through stored judge values: ~~225 of 400
+points~~, not 45. The principle is sound and worth restoring; it is not currently true.
+
+> **Corrected — do not quote 225.** The count above is wrong twice over, and both corrections are
+> kept rather than edited away because this section is the record of what the review believed on
+> 2026-09-01. (i) The number was **241 of 400**, not 225: T4's `craft` is a blend and was judge-resolved
+> for 96 of its 100 points, not 80 — see §9.2(a). (ii) That figure is now historical. After the
+> restructure recorded in §9 the implemented judge exposure is **180 of 400** and the *designed*
+> LLM-judge exposure is **80 of 400**, against 220 model-free, 40 machine-gate and 60 human-cj.
+> `pointsByResolution()` in `packages/core/src/allocation.ts` is the only place those numbers live;
+> `packages/core/test/spec-allocation.test.ts` checks the spec against it and
+> `apps/web/test/allocationResolution.test.ts` checks it against the real `score()` paths.
 
 ---
 
