@@ -180,11 +180,13 @@ claim"). This section is the smallest study that would change that. It is
 additive: it reuses the same recruitment, the same pre-registration and the same
 `t0`/`t2` spacing as §2, and it changes nothing about the T2 arms.
 
-**Sample size is not settled here, and must be before `t0`.** §2.5's n = 176 per
-arm is powered for a between-arm difference in Δd′, which is a different
-quantity from an ICC or a correlation. §3 needs its own calculation, driven by
-the narrowest interval it must report — the ICC(2,1) in §3.2 — and by the
-timed/untimed allocation in §3.5. Naming the gap is not the same as closing it.
+**Sample size has its own arithmetic here.** §2.5's n = 176 per arm is powered
+for a between-arm difference in Δd′, which is a different quantity from an ICC
+or a correlation. §3.8 runs the estimates §3 needs — the ICC(2,1) in §3.2, the
+event count in §3.3, the correlation in §3.1 and the timed/untimed allocation
+in §3.5 — and keeps the simulation that produced them in
+`research/transfer_study_power.py`. They are estimates under stated
+assumptions, not a commitment to a number.
 
 ### 3.1 A two-stage block, so RAIR and RSR can actually be computed
 
@@ -305,6 +307,263 @@ QWK alone cannot tell the two apart. Report the human–human agreement measured
 the same panel in the same table: a judge coefficient without its human
 comparator cannot be read. Pin and record the judge version with every
 coefficient.
+
+### 3.8 How big does this have to be
+
+Open research, not a decision. §3 named sample size as the gap; this fills it
+with estimates and keeps the code that produced them. Every number below comes
+from `research/transfer_study_power.py`, a Monte Carlo simulation (Python,
+numpy and scipy, 2000 replicates, seed 20260902). Re-run it with
+`uv run research/transfer_study_power.py`; it is analysis, outside the pnpm
+workspace, and no test or build gate in this repo runs it.
+
+**Why simulate rather than use a formula.** `reliance.index` is a difference of
+two proportions measured on the same candidate from two different event pools.
+Its sampling variance carries both pools' noise, and its true variance depends
+on how the two traits covary in the population — a quantity nobody has
+measured. A closed-form power calculation has to assume that covariance away.
+The simulation varies it instead, and §3.8.5 shows the answer moving with it.
+
+**The model.** For candidate *i* at sitting *t*,
+`logit(p) = mu + b[i] + s[i,t]`, where `b` is the stable trait and `s` is
+sitting-level state noise. The latent reliability `var(b)/(var(b)+var(s))` is
+the "true latent ICC" column: what we would measure with unlimited events.
+Counts are then drawn beta-binomially with a within-sitting event correlation
+`rho_event`, because Buçinca, Malaya & Gajos (CSCW 2021) found people "develop
+general heuristics about whether and when to follow the AI suggestions" rather
+than judging each item, so planted errors are not independent trials.
+`rho_event = 0` is the plain binomial and is reported as the optimistic bound.
+
+Standing assumptions: mean over-reliance 0.40, mean under-reliance 0.20, 20
+planted errors and 20 correct-advice events per sitting (§3.3), two sittings 14
+days apart, `rho_event = 0.10`, trait correlation 0. Each is varied below.
+
+#### 3.8.1 Candidates for a usable ICC(2,1)
+
+The pre-commitment in §3.2 is a threshold: below ICC 0.5 a rate is reported as
+a band and its point allocation is reopened. So the question is not "what is
+the point estimate" but "how many candidates put the interval on one side of
+0.5". Those are two very different prices.
+
+| events/sitting | true latent ICC | measure | observed ICC | n for CI width ≤ 0.30 | n to rule 0.5 OUT | n to rule 0.5 IN |
+|---|---|---|---|---|---|---|
+| 20 | 0.3 | `reliance.over` | 0.17 | 200 | 75 | > 1200 |
+| 20 | 0.3 | `reliance.under` | 0.14 | 200 | 75 | > 1200 |
+| 20 | 0.3 | `reliance.index` | 0.17 | 200 | 75 | > 1200 |
+| 20 | 0.5 | `reliance.over` | 0.29 | 150 | 150 | > 1200 |
+| 20 | 0.5 | `reliance.under` | 0.25 | 150 | 150 | > 1200 |
+| 20 | 0.5 | `reliance.index` | 0.28 | 150 | 150 | > 1200 |
+| 20 | 0.7 | `reliance.over` | 0.41 | 150 | 600 | > 1200 |
+| 20 | 0.7 | `reliance.under` | 0.37 | 150 | 400 | > 1200 |
+| 20 | 0.7 | `reliance.index` | 0.39 | 150 | 600 | > 1200 |
+| 97 | 0.3 | `reliance.over` | 0.20 | 200 | 75 | > 1200 |
+| 97 | 0.3 | `reliance.index` | 0.19 | 200 | 75 | > 1200 |
+| 97 | 0.5 | `reliance.over` | 0.32 | 150 | 200 | > 1200 |
+| 97 | 0.5 | `reliance.index` | 0.31 | 150 | 200 | > 1200 |
+| 97 | 0.7 | `reliance.over` | 0.45 | 150 | > 1200 | > 1200 |
+| 97 | 0.7 | `reliance.index` | 0.45 | 150 | > 1200 | > 1200 |
+
+"Rule OUT" is the smallest n at which the 95% CI upper bound falls below 0.5 in
+80% of simulated studies; "rule IN" is the same for the lower bound above 0.5.
+The script prints all 45 rows, including the 40-event set.
+
+Three things fall out.
+
+- **150 to 200 candidates buys a reportable coefficient** — CI width ≤ 0.30 —
+  and the width barely depends on the ICC's size. That is the cheap part.
+- **Refuting 0.5 is affordable. Confirming it is not.** If the latent
+  reliability is what Karvelis et al. (2024) measured for advice taking
+  (ICC < 0.5), 75 to 150 candidates put the whole interval below the line. If
+  the latent reliability were 0.7, no sample size up to 1200 proves it, because
+  measurement noise caps the *observed* coefficient at 0.41 (20 events) or 0.45
+  (97 events). The study can find the measure wanting; it cannot vindicate it
+  on this form.
+- **More events help less than they look.** Going from 20 to 97 planted errors
+  moves the observed ICC from 0.29 to 0.32 at a latent 0.5. Sitting-level state
+  noise, not binomial noise, is the binding constraint, and a longer form does
+  not touch it.
+
+#### 3.8.2 Planted errors per sitting
+
+§3.3 quotes ±0.35 at 8 events. That is the Wald half-width. Wilson is narrower
+and is what a study should report. The `rho_event` columns apply the design
+effect `1 + (m−1)·rho`.
+
+| planted errors | ± Wald | ± Wilson, independent | ± Wilson, rho = 0.10 | ± Wilson, rho = 0.20 | ± empirical, rho = 0.10 |
+|---|---|---|---|---|---|
+| 8 (`RSR_MIN_SURFACED`) | 0.346 | 0.285 | 0.335 | 0.366 | 0.375 |
+| 12 | 0.283 | 0.246 | 0.317 | 0.356 | 0.417 |
+| 16 | 0.245 | 0.220 | 0.306 | 0.350 | 0.375 |
+| 20 (§3.3 floor) | 0.219 | 0.201 | 0.299 | 0.346 | 0.350 |
+| 30 | 0.179 | 0.168 | 0.289 | 0.341 | 0.333 |
+| 40 | 0.155 | 0.148 | 0.283 | 0.338 | 0.325 |
+| 60 | 0.127 | 0.123 | 0.277 | 0.336 | 0.317 |
+| 97 | 0.100 | 0.098 | 0.272 | 0.333 | 0.309 |
+| 150 | 0.080 | 0.079 | 0.269 | 0.332 | 0.313 |
+
+**Where it stops being embarrassing: 40 events, and only if the events are
+independent.** 40 gives ±0.15 and 97 gives ±0.10, matching the 97 in the
+private repo's `docs/EVIDENCE-CALIBRATED-RELIANCE.md` §3. At `rho_event = 0.10`
+the width floors near ±0.27 and **no event count fixes it**: 150 events buy
+0.269 against 20 events' 0.299. If reliance is a policy rather than a
+per-item judgement, a longer form measures the same habit more times. The
+empirical column tracks the Wilson-with-design-effect column within about 0.05,
+which is why §3.3 asks for both intervals side by side: the gap between them is
+the estimate of `rho_event`, and it is the most valuable single number the
+pilot can return.
+
+#### 3.8.3 Correlating over/under against RAIR and RSR
+
+The two-stage block (§3.1) gives RAIR and RSR on the same candidate. Both sides
+of that correlation are unreliable, so the observable correlation is the true
+one attenuated: `r_obs = r_true · sqrt(rel_AILX · rel_RAIR)`.
+
+| true construct r | reliability of each | observable r | n for CI half-width ≤ 0.15 | n for CI lower bound > 0.20 |
+|---|---|---|---|---|
+| 0.3 | 0.4 | 0.12 | 200 | > 1200 |
+| 0.3 | 0.6 | 0.18 | 200 | > 1200 |
+| 0.5 | 0.4 | 0.20 | 200 | > 1200 |
+| 0.5 | 0.6 | 0.30 | 150 | 800 |
+| 0.7 | 0.4 | 0.28 | 150 | 1200 |
+| 0.7 | 0.6 | 0.42 | 150 | 150 |
+
+150 to 200 candidates report the correlation with a ±0.15 interval, which is
+enough to publish it and enough to see a near-zero result. Proving the
+correlation is above 0.20 needs 800 or more unless both measures are more
+reliable than anything in this literature. The pre-registered direction in §3.1
+therefore has to be read as a descriptive result with an interval, not as a
+test the study can pass.
+
+#### 3.8.4 Timed versus untimed arms
+
+The only published effect is Rosbach et al., MELBA 2026 (arXiv:2603.11821):
+weight of advice 0.48 → 0.54 under a 10-second countdown, SD 0.13,
+t(27) = 2.55, p = .017, a paired design with 28 pathologists. Read as a
+between-subject standardised effect that is 0.06 / 0.13 = 0.46. §3.5's arms are
+between-subject and the outcome is a *rate*, so the assumed shift is 0.48 →
+0.54 on the over-reliance rate.
+
+| assumed shift | events/sitting | rho_event | n per arm for 80% power |
+|---|---|---|---|
+| +0.06 | 8 | 0.00 | 500 |
+| +0.06 | 8 | 0.10 | 600 |
+| +0.06 | 20 | 0.00 | 350 |
+| +0.06 | 20 | 0.10 | 500 |
+| +0.06 | 40 | 0.10 | 500 |
+| +0.03 | 20 | 0.00 | 2000 |
+| +0.03 | 20 | 0.10 | 2000 |
+| +0.03 | 40 | 0.10 | > 2000 |
+
+500 per arm at 20 events, so 1000 candidates for the timed factor alone. That
+is roughly twice §2.5's 530. Crossing the timer with the T2 arms rather than
+adding a third study is the only version that fits.
+
+**The assumed effect is borrowed and probably too large.** It comes from
+pathologists on a weight-of-advice scale, not from candidates on an
+error-adoption rate, and the same group's earlier study
+(arXiv:2411.00998) found the *rate* of error adoption unchanged under time
+pressure (p = 0.19, interaction p = 0.46) with only its severity raised. At
+half the borrowed effect the study needs 2000 per arm. So a null in §3.5 must
+be reported as "not powered below a 0.06 shift", never as "the timer does
+nothing", and the TOST logic of §2.6 applies here too.
+
+#### 3.8.5 What the index costs against its components
+
+This is the one place where the simulation contradicts the expectation §3.2
+sets out.
+
+| true latent ICC | trait correlation | ICC over | ICC under | ICC index | CI width, over | CI width, index |
+|---|---|---|---|---|---|---|
+| 0.4 | −0.3 | 0.23 | 0.21 | 0.27 | 0.26 | 0.26 |
+| 0.4 | 0.0 | 0.23 | 0.21 | 0.22 | 0.26 | 0.26 |
+| 0.4 | +0.3 | 0.23 | 0.21 | 0.17 | 0.26 | 0.27 |
+| 0.6 | −0.3 | 0.35 | 0.31 | 0.39 | 0.24 | 0.24 |
+| 0.6 | 0.0 | 0.35 | 0.31 | 0.33 | 0.24 | 0.25 |
+| 0.6 | +0.3 | 0.34 | 0.31 | 0.27 | 0.24 | 0.26 |
+
+The index is worse than its components **only when the two traits correlate
+positively**. At a trait correlation of +0.3 it loses about a quarter of the
+components' reliability (0.17 against 0.23; 0.27 against 0.35). At zero it
+matches them. At −0.3 it beats them, because subtracting two negatively
+correlated traits adds signal faster than it adds noise. The confidence
+interval on the index's ICC is at most 0.02 wider than on `reliance.over` at
+n = 200, so the width claim is small; the reliability claim is the real one.
+
+Hedge, Powell & Sumner (2018) and Enkavi et al. (2019) are still the right
+prior — their difference scores subtract positively correlated conditions of
+one task. But **AILX's two rates are measured on disjoint events and may
+correlate negatively**: a trusting candidate accepts wrong advice and rejects
+little correct advice. Nobody has measured the sign. Until someone does, "the
+index is expected to be the worst of the three" in §3.2 is a prediction resting
+on an unmeasured correlation, and the study should estimate that correlation
+and say so. Reporting all three coefficients separately, as §3.2 already
+requires, is what makes this checkable either way.
+
+#### 3.8.6 What the study can afford, question by question
+
+| question | can the study answer it? |
+|---|---|
+| 1. ICC on the two rates and the index | **Partly.** 150–200 candidates give reportable intervals. 75–150 refute the 0.5 line if the truth is below it. Nothing up to 1200 confirms 0.5 on a 20-event form. |
+| 2. Events per sitting for a scorable rate | **Yes, and the answer is 40 for ±0.15, 97 for ±0.10** — conditional on independence, which the same data can test. |
+| 3. Correlation with RAIR and RSR | **Report yes, prove no.** ±0.15 at n = 150–200; a lower bound above 0.20 needs 800+. |
+| 4. Timed versus untimed | **Only at the borrowed effect size.** 500 per arm at 0.06; 2000 per arm at 0.03. |
+| 5. Index against components | **Yes, cheaply**, because it is a comparison inside one sample, not a new sample. |
+
+Read together: **a cohort of about 200 for §3.2–§3.3 and §3.5's descriptive
+outcomes, and about 1000 if the timed contrast has to be powered.** The honest
+framing is that this study is well shaped to find the reliance measure
+wanting and badly shaped to vindicate it, which is the correct asymmetry for a
+number that carries 160 points.
+
+#### 3.8.7 What would change these numbers
+
+- **`rho_event`.** The single most important unknown. At 0 the event count
+  buys precision as fast as textbooks say; at 0.10 it stops buying almost
+  anything past 20 events.
+- **The mean rates.** 0.40 and 0.20 were assumed. Rates nearer 0.5 have more
+  binomial variance and need more events; rates near 0 or 1 have less variance
+  but hit floor and ceiling effects the ICC handles badly.
+- **The split between trait and state.** The ICC column is a latent quantity.
+  If reliance drifts between sittings — mood, a different document, a different
+  assistant persona — the state term grows and every n above rises.
+- **The trait correlation.** It decides §3.8.5's whole direction, and it is
+  unmeasured.
+- **Form variance.** §3.6 treats form parameters as a factor. Any variance the
+  form contributes is state variance here, so a form-varying design lowers the
+  observed ICC further than these tables show.
+
+#### 3.8.8 What a pilot of 30 candidates would tell us
+
+| true latent ICC | measure | pilot ICC | pilot CI width | P(upper bound < 0.5) | P(interval spans 0 to 0.5) |
+|---|---|---|---|---|---|
+| 0.3 | `reliance.over` | 0.18 | 0.68 | 0.48 | 0.35 |
+| 0.3 | `reliance.index` | 0.18 | 0.68 | 0.50 | 0.34 |
+| 0.5 | `reliance.over` | 0.29 | 0.65 | 0.26 | 0.37 |
+| 0.5 | `reliance.index` | 0.28 | 0.66 | 0.29 | 0.40 |
+| 0.7 | `reliance.over` | 0.41 | 0.60 | 0.09 | 0.27 |
+| 0.7 | `reliance.index` | 0.40 | 0.61 | 0.09 | 0.29 |
+
+**A pilot of 30 cannot measure reliability.** The interval on the ICC is about
+0.65 wide, and about a third of the time it spans everything from 0 to 0.5 —
+the whole range the decision turns on. Even refuting 0.5 when the truth is 0.3
+is a coin flip at 48%.
+
+What 30 candidates *can* return, and what the full study's sample size depends
+on most:
+
+- **`rho_event`**, from 30 × 20 = 600 planted-error events and their
+  clustering. §3.8.2 shows this decides whether a longer form is worth
+  building.
+- **The mean rates**, which set the binomial variance.
+- **The sign of the trait correlation** between over- and under-reliance, which
+  decides §3.8.5.
+- **Whether the two-stage block (§3.1) is even completable** in the time budget,
+  and how much the second block's order effect moves the rates.
+
+So the pilot is a *parameter* study, not a reliability study, and it should be
+pre-registered as one. Running it first is cheap and changes the price of
+everything after it. Presenting a 30-candidate ICC as evidence about the
+measure would be the error this whole section exists to prevent.
 
 ---
 
