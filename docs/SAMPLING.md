@@ -922,6 +922,16 @@ All figures **ESTIMATE** unless marked. They are built from the one published ra
 market-judgement ranges, and every one of them must be replaced by a real quote before commitment.
 The purpose of this section is to make the decision legible, not to be a budget.
 
+Three labels are used below and they mean different things. **FIRM** is a signed quote from the
+party that will do the work; **no line in this section is FIRM.** **ESTIMATE** is a range with
+reasoning shown, or a market rate read at a primary source. **OURS** is a number we chose and can
+argue for. Anything unlabelled in a table inherits ESTIMATE.
+
+The arithmetic is in `docs/release-cost.mjs`, so a changed assumption can be re-run rather than
+re-argued. It is outside the test run and outside every tsconfig, like `docs/cj-cost.mjs`. Run
+`node docs/release-cost.mjs` for the tables below and `node docs/release-cost.mjs --check` for the
+assertions the numbers in this section rest on.
+
 ### 13.1 Per-country fieldwork
 
 | Country | Route | n | Per complete | Fieldwork |
@@ -947,24 +957,155 @@ a smaller n.
 | LLM judging for T3/T4 at panel scale | $10–30k | ~$3–8 per sitting × 3,500–7,000 sittings; small relative to fieldwork, and it is a per-wave recurring cost |
 | Microdata publication, documentation, replication code | $20–40k | |
 
+**Every line above is a contractor or a piece of engineering. None of them runs the release.**
+Panel procurement, vendor contracts, fieldwork scheduling, ethics review and microdata handling are
+one person's job for the length of the wave, and that person was missing from this section until
+2026-09-02. They are costed in §13.4, and §13.3's totals include them.
+
+Translation is charged per non-English country, so a US + UK wave carries **$0** on that line.
+
 ### 13.3 Three release shapes
 
-| Option | Countries | n | Estimated total | What it buys |
-|---|---|---|---|---|
-| **A — minimum credible** | US only | 3,000 | **$0.6–0.9M** | one defensible national estimate, subgroups reportable, an NRBA, and a published method. No comparison, no trend. |
-| **B — recommended first release** | US + UK | 2,000 each | **$0.8–1.2M** | two estimates, one genuine cross-national comparison on a common language, both off-the-shelf frames, lowest execution risk. Establishes the method before spending on hard frames. |
-| **C — the trilateral claim** | US + JP + KR (+UK) | 1,500–2,000 each | **$1.9–2.8M** | the cross-national norming claim in the spec, and the only version that supports "cross-nationally normed" as written. Highest execution risk: two commissioned fresh samples, two translations, and DIF screening across three languages. |
+| Option | Countries | n | Centre | Range | What it buys |
+|---|---|---|---|---|---|
+| **A — minimum credible** | US only | 3,000 | **$1.26M** | $0.92–1.74M | one defensible national estimate, subgroups reportable, an NRBA, and a published method. No comparison, no trend. |
+| **B — recommended first release** | US + UK | 2,000 each | **$1.38M** | $1.00–1.95M | two estimates, one genuine cross-national comparison on a common language, both off-the-shelf frames, lowest execution risk. Establishes the method before spending on hard frames. |
+| **C — the trilateral claim** | US + UK + JP + KR | 1,500–2,000 each | **$2.39M** | $1.61–3.90M | the cross-national norming claim in the spec, and the only version that supports "cross-nationally normed" as written. Highest execution risk: two commissioned fresh samples, two translations, and DIF screening across three languages. |
+
+Each total is §13.1 fieldwork plus §13.2 non-fieldwork plus a §13.4 operator plus a stated 20%
+contingency. The operator here is the **employed** route, which is the dearest of the three; a
+contracted or seconded operator takes about $109k or $235k off shape B's centre, contingency
+included.
+
+**These numbers replace the $0.6–0.9M / $0.8–1.2M / $1.9–2.8M this table carried until
+2026-09-02.** The old figures were the same fieldwork and the same contractors with no operator and
+no contingency line. Run `node docs/release-cost.mjs`: the old lines alone still centre on $0.81M,
+which is where the $0.8M ask came from.
+
+**Shape B, itemised.** Centre column, so the arithmetic can be checked by hand.
+
+| Line | Centre | Range | Label |
+|---|---|---|---|
+| US fieldwork, n = 2,000 at $120 | $240k | $150–400k | ESTIMATE |
+| UK fieldwork, n = 2,000 at $110 | $220k | $140–380k | ESTIMATE |
+| Panel short-form build | $90k | $60–120k | ESTIMATE |
+| Sampling and weighting contractor | $115k | $80–150k | ESTIMATE |
+| NRBA production and publication | $45k | $30–60k | ESTIMATE |
+| Advisory board + external psychometric review | $45k | $30–60k | ESTIMATE |
+| Translation and localisation | $0 | — | OURS: both countries are English |
+| LLM judging at panel scale | $20k | $10–30k | ESTIMATE |
+| Microdata publication, documentation, replication code | $30k | $20–40k | ESTIMATE |
+| **Measurement operator, 18 months, employed (§13.4)** | **$349k** | $310–388k | ESTIMATE |
+| Subtotal | $1,154k | $0.83–1.63M | |
+| **Contingency, 20%** | **$231k** | $0.17–0.33M | OURS |
+| **Total** | **$1.38M** | $1.00–1.95M | |
+
+**The contingency is a line, not a cushion inside the estimates.** 20% is OURS. It is there because
+no line in this section is FIRM: the fieldwork rates are unquoted, the operator's cost depends on a
+person who has not been found, and the panel design effect that drives realised n is UNKNOWN (§15).
+When three vendor quotes replace §13.1, the contingency should fall, and the line should be moved
+rather than deleted.
 
 **Recommendation: B, then C.** Option B proves the pipeline — short form, weighting, plausible
-values, NRBA, publication bundle — on frames that can be bought, at roughly a third of C's cost. Do
+values, NRBA, publication bundle — on frames that can be bought, at roughly 58% of C's cost. Do
 C in wave 2 with the method already public and reviewed, rather than debugging the method and the
 Japanese address frame in the same quarter.
+
+**Japan and Korea are a phase, not a line item in wave 1.** The September 2026 vendor review
+(TEN-23) found that neither country sells a probability panel that a 45–60 minute assessment can be
+sent to, so both need commissioned fieldwork bought through an institution. Shape C therefore costs
+about **$1.01M more than shape B at the centre**, and that difference is the least trustworthy
+number in this section: the 2× per-complete premium on the JP and KR rows is OURS and nothing
+supports it, Korea has no published per-complete price at all, and shape C's operator load is
+heavier than wave 1's because commissioned fieldwork is negotiated country by country. Wave 1 is
+**US + UK**. Japan and Korea field when the money for them is committed and a local partner is
+contracted, and AILX publishes no Japanese or Korean population figure before then.
 
 **What none of these buys.** None of them is PIAAC. PIAAC realised ~5,200 adults per country with
 in-home administration and a $100 incentive, and still reported 27.8% in the US. We are buying a
 smaller, web-delivered, online-population estimate for a fraction of the cost, and the release
 should say so in those words. An honest smaller claim is worth more than a large claim that a
 methodologist can take apart in an afternoon.
+
+### 13.4 The measurement operator
+
+Someone has to own the release: panel procurement, vendor contracts and quotes, fieldwork
+scheduling, ethics review, microdata handling, and the decision to stop when a response rate comes
+in low. This is negotiation and accountability with external counterparties, so it cannot be run by
+an agent and it cannot be bought as a review at the end.
+
+**Duration: 18 months. OURS.** Procurement and contracting, short-form build and pilot, fieldwork,
+weighting and NRBA, then publication. A wave that fields for four months still runs for eighteen.
+The cost is linear in this number, so it is the single assumption most worth arguing with:
+`node docs/release-cost.mjs --months=12`.
+
+| Route | Basis | Loaded cost, 18 months | Governance |
+|---|---|---|---|
+| **Employed** | $140–175k salary, +47.7% employer load | **$310–388k** | We direct the work and we own the conflict. Independence has to come from the §13.2 contractor and the advisory board, because it does not come from the post. Add 3–6 months of search before the clock starts. |
+| **Contracted**, 0.6 FTE | $130–175 per hour, 1,880 h/yr | **$220–296k** | Fastest to start and the easiest to stop. Not independent of us: a contractor we pay and can replace mid-wave is not a check on us, and should never be the person who also signs off the weighting. |
+| **Seconded**, 0.5 FTE | UK Grade 9 £63.6–80.5k, +29% on-costs, +57–67% institutional overhead | **$131–176k** | Cheapest on paper and slowest in practice. Brings the institution's name and its ethics review, and its review process runs on its own calendar. The secondment agreement decides who can publish an unflattering number; settle that before signing, not after fielding. |
+
+Sources, each read at the primary source on 2026-09-02:
+
+- Salary band **OURS**, anchored on BLS OEWS May 2025 (released 2026-05-15, USDL-26-0725), SOC
+  15-2041 Statisticians: median $105,650, 75th percentile $141,490, 90th percentile $174,050. SOC
+  19-3022 Survey Researchers sits lower, median $69,460 and 90th percentile $130,860. The public
+  comparator is OPM's 2026 General Schedule with the Washington-Baltimore locality (+33.94%): GS-14
+  step 1 is $143,913 and step 5 is $163,104. The role we are describing is a GS-14, not a GS-13.
+- Employer load **47.7% on wages**, from BLS ECEC March 2026 (released 2026-06-12, USDL-26-0827):
+  for management and professional occupations, benefits are 32.3% of total compensation.
+- Contractor rate band **OURS**, from awarded ceiling rates published by GSA (buy.gsa.gov/pricing,
+  index of 2026-09-02): "Survey Methodologist" n = 6, median $152.20/hr, range $127.79–172.21;
+  "Senior Statistician" n = 18, median $144.88/hr; "Statistician" n = 51, median $122.31/hr. A
+  schedule rate is already loaded, so no overhead multiplier is applied on top.
+- Secondment salary from the UCL 2025/26 non-clinical spine, Grade 9 (Associate Professor / Reader)
+  £63,606–80,525 excluding London allowance; UCEA advised implementation of the 2025-26 spine from
+  2025-08-01. On-costs are employer Class 1 NI at 15% above £5,000 (gov.uk, 2025/26) plus USS
+  employer 14.5% (USS Schedule of Contributions 2023). GBP converted at 1.3531, the ECB reference
+  rate for 2026-09-01.
+- Institutional overhead **OURS**, standing on a US comparator because the UK figure is not
+  published: Georgia Tech's ONR rate agreement of 2024-04-02 sets organized research on-campus F&A
+  at 57.4% capped and 66.5% uncapped on MTDC. **UNVERIFIED:** a UK indirect cost per academic FTE.
+  The OfS Annual TRAC 2024-25 publishes sector cost recovery (66.6% of research fEC) but no rate we
+  can apply per person. A real secondment quote replaces this whole line.
+
+**Which route to take.** Contract first, employ when the panel is funded, and treat a secondment as
+a partnership decision rather than a saving. The order matters more than the money: the widest gap
+between the three routes is $235k on shape B's centre, and the gap between having this person and
+not having them is the release.
+
+**A hire does not remove the §13.2 contractor.** "Nobody marks their own homework" is a governance
+requirement. The operator buys the fieldwork; the independent contractor and the advisory board
+check the numbers. Merging the two roles to save $115k is the cheapest way to lose the release.
+
+### 13.5 What a shortfall does
+
+If the raise lands at the old $0.8M, the release changes shape. The honest answer is not "we do it
+smaller". It is a choice about which country is dropped.
+
+**What $0.8M buys: shape A, cut.** US only, n = 1,500 rather than 3,000, contracted operator for 12
+months rather than 18. That centres on **$0.84M** and spans $0.59–1.15M, so it fits $0.8M only if
+fieldwork prices land below the planning centre. Everything that makes the number defensible
+survives: the independent weighting contractor, the NRBA, the advisory review, the published
+microdata, and n = 1,500 clears the §4 floor of 1,000 realised completes. What is lost is the
+comparison. One country is an estimate, not a cross-national statistic, and the release must say so.
+
+**What $0.8M does not buy: US + UK.** No route in §13.4 brings shape B's centre under $1.0M. Trying
+to run a two-country wave on $0.8M means cutting method lines, and each one is fatal in a different
+way:
+
+- Cut the sampling and weighting contractor ($115k): we mark our own homework, and the first
+  reviewer says so.
+- Cut the NRBA ($45k): §10 makes it mandatory in the same bundle as the estimate. Without it there
+  is no published statistic, only a number.
+- Cut the operator ($220–388k): the release has no owner, and it slips regardless of funding.
+- Cut n below 1,000 realised completes: §4.5 forbids publishing a national mean from it.
+
+**Decide the country count before contracting, not during fieldwork.** A shortfall found in month
+two costs a rescope. The same shortfall found in month ten, with fieldwork running, costs the wave:
+completes already bought cannot be un-bought, and a wave stopped mid-field produces neither an
+estimate nor a refund. This is the specific reason the ask should be the corrected number and not
+the comfortable one.
 
 ---
 
@@ -995,7 +1136,11 @@ methodologist can take apart in an afternoon.
 10. Track A publications carry the §11 hedging block verbatim, and never use "national" or
     "representative".
 11. A frozen trend form is fielded from wave 1, and headline trends are reported only on it (§12).
-12. First release: US + UK, n = 2,000 each, roughly $0.8–1.2M (§13).
+12. First release: US + UK, n = 2,000 each, centring on **$1.4M** and spanning $1.0–2.0M (§13.3).
+    The release is budgeted with a **measurement operator for its full 18 months** (§13.4) and a
+    stated 20% contingency; the older $0.8–1.2M figure was the same fieldwork and contractors with
+    both left out. If the money lands at $0.8M the wave becomes US only at n = 1,500, and no method
+    line is cut to save it (§13.5).
 
 ---
 
@@ -1014,6 +1159,11 @@ methodologist can take apart in an afternoon.
   the vendor map.
 - **UNVERIFIED:** per-complete pricing for AmeriSpeak, KnowledgePanel and SSRS custom work. Three
   real quotes should replace §13's estimates before any budget decision.
+- **UNVERIFIED:** what a measurement operator actually costs us. §13.4's three routes are built from
+  published wage, schedule-rate and pay-spine data, not from an offer anyone has accepted. The UK
+  institutional overhead per academic FTE is not published at all and stands on a US comparator.
+- **OURS:** 18 months of operator time, and the 20% contingency. Both are planning figures, both
+  are linear in the total, and both are arguments to have before the ask goes out (§13.3, §13.4).
 - **UNVERIFIED:** the clause numbering of NCES Statistical Standard 4-4-A (§10.3).
 - **NOT YET DESIGNED:** the conditioning model for plausible values, and which background variables
   must be in it to support the subgroup breakdowns we intend to publish. This has to be decided
