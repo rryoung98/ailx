@@ -232,16 +232,14 @@ describe("the pool is published material and nothing else", () => {
 });
 
 /**
- * TEN-18's second constraint, as a test rather than a promise: a daily result
- * may be ranked and shared, and it may never touch the credential.
+ * TEN-18's second constraint: a daily result may be ranked and shared, and it
+ * may never touch the credential.
  *
- * `packages/report/test/daily.test.ts` proves the GRID carries no key. This
- * proves the other half — that the daily is a separate store and a separate
- * module graph from the sitting, so a daily streak cannot become a score of
- * record, an attempt, or a line on a credential. It is the same guard the
- * practice ledger already has in `anonymousScoredSitting.test.ts`; the daily
- * had none, and a future "post your streak to your profile" is exactly the
- * change that would quietly need one.
+ * `packages/report/test/daily.test.ts` proves the GRID carries no key. What is
+ * proved here: playing a round writes the daily ledger key and nothing else,
+ * and no module the daily can reach spells the exam, scoring or credential
+ * path. The practice ledger has the same guard in
+ * `anonymousScoredSitting.test.ts`; the daily had none.
  */
 describe("the daily never touches the credential", () => {
   const read = (rel: string): string => readFileSync(join(WEB_ROOT, rel), "utf8");
@@ -255,6 +253,29 @@ describe("the daily never touches the credential", () => {
       expect(DAILY_LEDGER_KEY.startsWith(other)).toBe(false);
       expect(other.startsWith(DAILY_LEDGER_KEY)).toBe(false);
     }
+  });
+
+  it("leaves the attempt log and the practice ledger byte-identical after a round", () => {
+    // Sentinels, not key names: a daily that imported ATTEMPT_KEY and wrote to
+    // it would still pass a test that only compares the spellings.
+    const attempt = '{"attemptId":"att-sentinel","events":[{"seq":0,"type":"attempt_started"}]}';
+    const practice = '{"days":[{"day":"2026-03-16","sessions":1,"answered":6,"correct":4}]}';
+    store.set(ATTEMPT_KEY, attempt);
+    store.set(LOCAL_PRACTICE_KEY, practice);
+
+    mount();
+    const deck = dailyDeck(DAY, DAILY_POOL);
+    playRound((i) => deck[i].key);
+
+    expect(store.get(ATTEMPT_KEY)).toBe(attempt);
+    expect(store.get(LOCAL_PRACTICE_KEY)).toBe(practice);
+    // The round did happen, so the two above are unchanged because nothing
+    // wrote them, not because nothing ran.
+    expect(parseDailyLedger(store.get(DAILY_LEDGER_KEY)).days).toEqual([DAY]);
+    // And no third key either: a new store is a new place a streak could go.
+    expect([...store.keys()].sort()).toEqual(
+      [ATTEMPT_KEY, DAILY_LEDGER_KEY, LOCAL_PRACTICE_KEY].sort(),
+    );
   });
 
   it("imports nothing from the exam, scoring or credential path", () => {
