@@ -305,8 +305,8 @@ window for item material is this year, not 2028.
   option module.
 - **What they will ask for and we do not have:** IRT item statistics from a real field trial,
   translation and adaptation procedures, and measurement invariance across countries. We have item
-  statistics from a small calibration cohort (`docs/SAMPLING.md` §11, Stage 0). That
-  is not a field trial.
+  statistics from a small calibration cohort — about 30 people is the floor for ±1 logit
+  calibration (`docs/SAMPLING.md` §11, Stage 0). That is not a field trial.
 
 ## 5. The five talking points
 

@@ -295,7 +295,7 @@ the weakest number in this document.** The load test replaces it.
 
 | Level | Requests/month | vCPU-seconds | Cost before free tier |
 | --- | --- | --- | --- |
-| Pilot cohort, 45 sittings (docs/BUDGET.md) | 11,250 | 675 | $0.02 |
+| Pilot cohort, 45 sittings (worked example; docs/BUDGET.md) | 11,250 | 675 | $0.02 |
 | Steady, 1,000 sittings + 2,000 drills | 300,000 | 18,000 | $0.57 |
 | Campaign, 10,000 users (TEN-20): 4,000 drills + 500 sittings | 225,000 | 13,500 | $0.43 |
 
@@ -419,7 +419,7 @@ half of the bill: while `min_instances` is 0 a bigger limit costs nothing at all
 costs $3.24 a month per warm 512 MiB if warm capacity is ever bought. Raising memory is
 usually the better trade than shrinking concurrency to 2.
 
-**3. Keep `min_instances = 0` outside a campaign.** At 45 sittings a month, warm capacity buys
+**3. Keep `min_instances = 0` outside a campaign.** At tens of sittings a month, warm capacity buys
 a candidate one or two seconds a few times a day for $9.72 plus $19.34 of always-on Neon. That
 is a bad trade and it should stay a bad trade until someone measures otherwise.
 

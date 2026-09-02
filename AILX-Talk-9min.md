@@ -152,7 +152,7 @@ Expect a question here about whether it is fair to lie to candidates. Short answ
 
 **Watch**
 
-If you show a grid of forty-five thumbnails, you have made the point that models are bad at scaling comparisons and then made the same mistake yourself. Two at a time.
+If you show a grid of thumbnails, you have made the point that models are bad at scaling comparisons and then made the same mistake yourself. Two at a time.
 
 **\[5:00 — 45 sec\]**
 
@@ -228,7 +228,7 @@ Three lines. Nothing else.
 
 **Say**
 
-“One. This room, as the first cohort. Forty-five people across three countries is a small sample and an unrepeatable one, and we would report it as calibration, not certification.”
+“One. This room, as the first cohort. A first cohort across three countries is a small sample and an unrepeatable one, and we would report it as calibration, not certification.”
 
 “Two. Item writers in Japanese and Korean. Nothing usable exists to source in either language, so we are authoring, and it has to be native speakers. This is the real constraint, not money.”
 
@@ -286,7 +286,7 @@ Never cut: the cold open, the replay, the planted error, or the ask. Those four 
 
 | Question                                      | Answer, in one breath                                                                                                                                                                       |
 |-----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Is forty-five people enough?                  | No, and we say so. It calibrates items to within one logit, which is enough to rank difficulty and cull bad items. Certification needs two hundred and fifty. Year one reports percentiles. |
+| Is a first cohort enough?                     | No, and we say so. About thirty people calibrates items to within one logit, which is enough to rank difficulty and cull bad items. Certification needs two hundred and fifty. Year one reports percentiles. |
 | Does this just measure English?               | Every item ships in all three languages with recorded translation provenance, and we analyse difficulty by language from the first cohort. If there is a language effect we publish it.     |
 | When do we get a number for Japan or Korea?   | When the fieldwork is funded. Neither country has a probability panel to rent, so each needs a commissioned sample — one to one point six million dollars on top of the US and UK wave. The exam is trilingual today; the statistic is not.                                              |
 | What stops someone gaming the aesthetic vote? | Self-exclusion is mandatory, work is anonymous, and per-rater bias is estimated and corrected. That correction alone removes about ninety-five percent of the recoverable error.            |

@@ -931,7 +931,8 @@ happens **before** a panel exists — which is the stage we are at now.
 
 **May say:** item difficulty and discrimination estimates; that the instrument spreads a capable
 cohort; qualitative findings; that this is a calibration and item-development cohort, as the spec
-already states.
+already states. Item calibration to ±1 logit needs about 30 people (Linacre's table, spec §09).
+Below 30 the item statistics are provisional and must be reported as such.
 **May not say:** anything with a population noun in it. No percentile against "people", no band
 described as a standard.
 

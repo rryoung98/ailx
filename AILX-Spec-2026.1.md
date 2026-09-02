@@ -205,7 +205,7 @@ Build a personal website. It has to actually work, and then it has to survive be
 
 ### The task
 
-Candidates receive a brief 48 hours before the sitting: build a personal site that communicates who they are and what they work on, to a stated audience. Required content elements are specified (so brief compliance is machine-checkable). AI assistance is unrestricted and expected — the prompt log is a required submission artefact, not a confession. Submission is a ZIP of static assets; no build step runs on our infrastructure (see §12).
+Candidates receive the brief 48 hours before the sitting: build a personal site that communicates who they are and what they work on, to a stated audience. Required content elements are specified (so brief compliance is machine-checkable). AI assistance is unrestricted and expected — the prompt log is a required submission artefact, not a confession. Submission is a ZIP of static assets; no build step runs on our infrastructure (see §12).
 
 ### Score allocation
 
@@ -588,7 +588,7 @@ The single highest-leverage step available is to embed an **anchor block of publ
 
 ### Producing a normal distribution
 
-A self-selected expert cohort is a restricted, high-ability sample, so the dominant threat is a **ceiling effect**, not a floor one. The item-difficulty plan compensates deliberately.
+If the cohort is a restricted, high-ability sample, the dominant threat is a **ceiling effect**, not a floor one. The item-difficulty plan compensates deliberately.
 
 - **Target the guessing-corrected midpoint, not p = .50.** For binary items the ideal difficulty is 85%, for 4-option MC 74%, for 3-option 77%. Aiming every item at .50 maximises variance per item but, with correlated items, tends toward a bimodal rather than normal curve.
 - **Spread difficulties, do not cluster them.** A few easy anchors at p ≈ .85 to protect the floor and keep candidates engaged; the bulk at p = .50–.75; and a deliberate hard tail at p \< .25 to separate the top of the distribution.
@@ -768,7 +768,7 @@ Four GCP projects: `ailx-prod`, `ailx-staging`, `ailx-sandbox-prod` (the user-co
 
 ## 12 · Sandbox & threat model
 
-Forty-five people upload arbitrary HTML, CSS and JavaScript, and then forty-five people load each other's uploads while logged in. This is the highest-risk component in the system and it gets three independent layers of isolation.
+Candidates upload arbitrary HTML, CSS and JavaScript, and then load each other's uploads while logged in. This is the highest-risk component in the system and it gets three independent layers of isolation.
 
 ### Three layers, all mandatory
 
@@ -1028,11 +1028,11 @@ T3's transcript gets its own table because it is the audit artefact, with a `rev
 
 ## 15 · Data governance
 
-Forty-five people from three jurisdictions, generating biometric-adjacent response data, judged partly by models that may run outside the region. This is the part that has to be right before the first candidate registers.
+A cohort drawn from three jurisdictions generates biometric-adjacent response data, judged partly by models that may run outside the region. This is the part that has to be right before the first candidate registers.
 
 ### What the spec commits to
 
-1.  **Single primary data plane in `asia-northeast1` (Tokyo)** for database, storage, tasks, compute, registry, secrets, and regionalised log buckets. Not three residency zones for forty-five people — that is complexity without benefit.
+1.  **Single primary data plane in `asia-northeast1` (Tokyo)** for database, storage, tasks, compute, registry, secrets, and regionalised log buckets. Not three residency zones for one pilot cohort — that is complexity without benefit.
 2.  **Vertex AI pinned to a regional endpoint**, never the `global` endpoint, which explicitly carries no residency guarantee. Documented fallback: if a required model is global-only, that processing step is disclosed as a cross-border transfer and the payload is **pseudonymised before the call** — no name, email or organisation, participant referred to by `pid` only.
 3.  **Named cross-border transfers** in a single table in the privacy notice: Clerk (US — identifiers, email, name, session metadata), AWS SES (`ap-northeast-1`), Google Vertex (region or global as applicable), GitHub (source only, no personal data).
 4.  **Data minimisation as the primary control.** The exam does not need date of birth, national ID, address, or phone number. Name, email, organisation, country, consent flags. Everything else is exam artefacts keyed to a `pid`.
