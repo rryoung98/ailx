@@ -136,7 +136,6 @@ export function PracticeDrill() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [deck, setDeck] = useState<PracticeItem[]>([]);
   const [played, setPlayed] = useState<Played[]>([]);
-  const [outcome, setOutcome] = useState<SubmitBody | null>(null);
   // The last streak we know about — the server's when the round was recorded
   // on an account, this browser's own otherwise. Deliberately NOT cleared by
   // a new round: if a submit fails, the panel a candidate was looking at must
@@ -180,7 +179,6 @@ export function PracticeDrill() {
   const deal = useCallback(async () => {
     setPhase("loading");
     setPlayed([]);
-    setOutcome(null);
     setQualification(null);
     setSubmitFailed(false);
     setStimulus("pending");
@@ -367,7 +365,6 @@ export function PracticeDrill() {
       });
       if (!res.ok) throw new Error(`the round could not be recorded (${res.status})`);
       const body = (await res.json()) as SubmitBody;
-      setOutcome(body);
       setStreak(body.progress.streak);
       setQualification(body.result.qualification);
       setSubmitFailed(false);
