@@ -56,6 +56,7 @@ import { Diagnosis } from "../../lib/Diagnosis";
 import { t2AnswerKeys } from "../../lib/instrument";
 import { fetchServerAnswerKeys } from "../../lib/hostedDeck";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
+import { RelianceCard } from "../../lib/RelianceCard";
 import { Reveal } from "../../lib/Reveal";
 import { SiteLink } from "../../lib/SiteLink";
 import { SiteExportPanel } from "../../lib/SiteExportPanel";
@@ -500,6 +501,10 @@ export default function ReportPage() {
                   </div>
                 );
               })}
+              {/* T3's two reliance rates, each with its interval and the
+                  band, because 8 planted errors cannot support a bare
+                  two-decimal rate (TEN-35). */}
+              {t === "t3" && <RelianceCard raw={score.raw} />}
               {t === "t1" && !sample && <SiteLiveLink attemptId={state.attemptId ?? undefined} />}
               {t === "t4" && !sample && <ShareToGallery artifact={ts.artifact} />}
               {t === "t2" && calBins.some((b) => b.n > 0) && (
