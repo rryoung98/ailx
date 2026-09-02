@@ -1,20 +1,20 @@
 # LOAD-TEST.md — sizing the exam service, and what min-instances would buy
 
-TEN-13. Cloud Run runs `min_instances = 0` in every environment, on purpose. Before that
-changes, three things have to exist: numbers from a real load test, a concurrency figure
-derived from per-request memory instead of a default, and a price for each option. This
-document holds two of the three. The measurement is not here, because it cannot be faked:
-what is here is the plan, the thresholds it must be judged against, and the arithmetic that
-tells you which result would justify spending money.
+TEN-13. Cloud Run runs `min_instances = 0` in every environment, on purpose. Three things must
+exist before that changes: numbers from a real load test, a concurrency figure derived from
+per-request memory instead of a default, and a price for each option. This document holds two
+of the three. The measurement is not here because it cannot be faked. This document provides
+the plan, its thresholds, and the arithmetic that shows which result would justify spending
+money.
 
-Everything below was derived on 2026-09-02 by reading `infra/terraform` and
+The findings below were derived on 2026-09-02 by reading `infra/terraform` and
 `packages/backend` in the private `ailx-backend` repo, and the browser's own call sites in
 this repo. No request was timed. Every latency figure in this file is an estimate and says so.
 
 ## 1. What is deployed today
 
-The public repo's `infra/` is a README. The real configuration is `infra/terraform` in the
-private repo.
+The public repo's `infra/` contains a README. The private repo holds the real configuration in
+`infra/terraform`.
 
 | Setting | Value | Decision, or default? |
 | --- | --- | --- |
@@ -31,22 +31,22 @@ private repo.
 | Neon endpoint | pooled (`-pooler`) | Decision, `infra/terraform/README.md` section 10 |
 | Neon autosuspend | 5 minutes | Neon's default. It lives in the Neon console, so Terraform cannot assert it |
 
-Two ceilings fall out of that table, and both are products of defaults.
+That table sets two ceilings. Both come from defaults.
 
-**Postgres connections: 12.** `AILX_PG_POOL_MAX` (3) times `max_instances` (4). Neon's pooled
+**Postgres connections: 12.** Multiply `AILX_PG_POOL_MAX` (3) by `max_instances` (4). Neon's pooled
 endpoint accepts 10,000 client connections globally, and the number that may hold a transaction
 at once is `0.9 x max_connections`, which moves with the compute size: 104 direct connections at
 0.25 CU (93 slots), 209 at 0.5 CU (188), 419 at 1 CU (377), 839 at 2 CU (755)
 (neon.com/docs/connect/connection-pooling, read 2026-09-02). Twelve fits at every size. Neon
 pooling is not what breaks first. The load test should confirm that rather than discover it.
 
-The compute size is a floor, not a constant, and **no repository records it.** Terraform holds
+The compute size is a floor, not a constant. **No repository records it.** Terraform holds
 only `DATABASE_URL` as a secret; the plan, the autoscale range and the autosuspend setting live
 in the Neon console. Free and Launch autoscale up from 0.25 CU, so 93 is what a cold database
 offers a spike. Read the console before trusting any figure derived from 377. Section 8 does the
 arithmetic at the conservative floor instead.
 
-**In-flight requests: 320.** Concurrency (80) times `max_instances` (4). Above that Cloud Run
+**In-flight requests: 320.** Multiply concurrency (80) by `max_instances` (4). Above that Cloud Run
 queues, and Google publishes exactly one number about the queue: a request pends for up to 3.5
 times the average instance startup time, or 10 seconds, whichever is greater
 (cloud.google.com/run/docs/tips/general, read 2026-09-02). Then the caller gets a 429.
@@ -58,20 +58,19 @@ holds it for the whole handler**. The pool's `max` is 3. So an instance can serv
 database-touching requests at once. The 4th waits on `connectionTimeoutMillis` and fails after
 10 seconds with a generic 500.
 
-Cloud Run is told it may put 80 requests on that instance. The gap between 80 and 3 is not a
-tuning question, it is a queue with a 10-second fuse.
+Cloud Run may put 80 requests on that instance. The gap between 80 and 3 creates a queue with a
+10-second fuse.
 
 Nor does the autoscaler rescue the instance early. Metrics-based scaling "sets a 60% threshold
 for CPU utilization and request concurrency targets", and "at lower instance counts, the
 autoscaler might wait longer to scale" (cloud.google.com/run/docs/about-instance-autoscaling,
 read 2026-09-02). At concurrency 80 that is roughly 48 average concurrent requests over a
 minute before a second instance is asked for. The pool wall is at 3. Requests 4 to about 48
-fail on one instance while the autoscaler sees a revision that is not busy yet. Nothing has fallen over yet because
-staging traffic is a handful of requests at a time.
+fail on one instance while the autoscaler sees a revision that is not busy yet. Staging has not
+failed because it receives only a handful of requests at a time.
 
-This is the single most useful thing the reading produced, and it is worth being blunt about:
-**concurrency and `AILX_PG_POOL_MAX` are one setting written in two places, and they currently
-disagree by a factor of 26.** Any load test that does not push past 3 concurrent requests per
+The reading found the main defect: **concurrency and `AILX_PG_POOL_MAX` are one setting written
+in two places, and they currently disagree by a factor of 26.** Any load test that does not push past 3 concurrent requests per
 instance will measure nothing.
 
 ## 2. The paths that matter
@@ -81,7 +80,7 @@ Timings are estimates; that is what the load test is for.
 
 ### 2.1 The sitting path (first)
 
-What the browser actually calls during a run, from `apps/web/lib/persistence.ts` and
+During a run, the browser makes these calls from `apps/web/lib/persistence.ts` and
 `apps/web/lib/hostedDeck.ts`:
 
 | Request | Blocking for the candidate? | DB round trips | Peak memory |
@@ -95,25 +94,25 @@ What the browser actually calls during a run, from `apps/web/lib/persistence.ts`
 | `POST /v1/attempts/:id/finalize` | yes, at the end | ~5 | small |
 | `POST /v1/attempts/:id/score` | yes, at the end | 5-6, one of them a sequential scan of `judgments` (no index on `attempt_id`) | small |
 
-Three facts change how this path should be load-tested.
+Three facts determine how to load-test this path.
 
-**No route calls a model.** The judging jury runs from `pnpm judge`, an offline CLI
+**No route calls a model.** The judging jury uses `pnpm judge`, an offline CLI
 (`services/api/src/judge.ts`), and `judging/index.ts` says it is the only place in the service
 that calls a model. The T3 assistant is instrument-driven and deterministic. So no request on
 the sitting path waits on an LLM, and the load test needs no model stub. Wall-clock per request
-is database round trips plus JSON, nothing else.
+includes only database round trips and JSON.
 
 **The response mirror is not blocking.** localStorage is the synchronous source of truth for
-the running tab, and `ServerMirror` posts entries in the background, one at a time, retrying on
+the running tab. `ServerMirror` posts entries in the background, one at a time, and retries on
 the next save. A slow or cold server delays when an answer is *stored*, never what the answer
 *says*. Every timing that reaches a score is measured on the client (`clientTs`, `latencyMs`),
 and `score()` is pure, so server latency cannot inflate or deflate a score. That is asserted in
 `infra/terraform/README.md` section 10 and it holds.
 
-**One request per log entry.** The mirror posts exactly one `POST /responses` per session-log
+**One request per log entry.** The mirror posts exactly one `POST /responses` for each session-log
 entry, plus one `POST /attempts` at the start and one `POST /finalize` at the end. That ratio is
 pinned by a test in `apps/web/test/persistence.test.ts` because the cost model in section 4
-depends on it. A full sitting is 120 timed T2 items plus a 12-item provenance block
+depends on it. A full sitting has 120 timed T2 items and a 12-item provenance block
 (AILX-Spec-2026.1.md section on T2), plus T1, T3 and T4 activity, so **250 requests per sitting
 is the working estimate**. A practice drill is roughly 25.
 
@@ -123,19 +122,19 @@ while a sitting runs.
 
 ### 2.2 Finalize, score and credential (second)
 
-`POST /finalize` is five round trips and cheap. `POST /score` runs the pure `score()` in
+`POST /finalize` takes five round trips and is cheap. `POST /score` runs the pure `score()` in
 process. `POST /credential` and `POST /share` each read **the whole mirrored event log for the
 attempt** (`SELECT payload FROM responses WHERE attempt_id = $1 ORDER BY seq`), `JSON.parse`
 every row and project it in memory. Peak memory scales with the log, so it scales with the
 number of items the candidate answered. Estimate: a few hundred KB live per request for a full
-sitting. Small, but it is the only read whose memory grows with a candidate's own behaviour.
+sitting. It is small, but it is the only read whose memory grows with a candidate's own behaviour.
 
 **Needs measurement:** `POST /credential` latency and memory against a real full-length log, not
 a fixture with ten entries.
 
 ### 2.3 Read paths behind the report and the gallery (third)
 
-These are the ones that will rot as data accumulates.
+These paths slow as data accumulates.
 
 - `GET /v1/aggregates` has no index it can use for `payload->>'type'`, so it is a full
   sequential scan of `responses` and a sort, plus a full scan of `attempt_decks`, plus a full
@@ -154,21 +153,21 @@ likely to be embarrassing, and it is the cheapest to fix (one expression index).
 
 ### 2.4 T1 upload (fourth, and it sets the memory limit)
 
-`POST /v1/attempts/:id/site` takes a ZIP body capped at 25 MiB. The body is buffered, then
-copied into one contiguous array, then every entry is inflated and held at once, then each file
-is written to the object store in a sequential PUT. Estimate for a maximum-size upload:
+`POST /v1/attempts/:id/site` takes a ZIP body capped at 25 MiB. The handler buffers the body,
+copies it into one contiguous array, inflates and holds every entry at once, then writes each
+file to the object store in a sequential PUT. Estimate for a maximum-size upload:
 **about 75 MiB of live buffers for one request**, plus up to 501 external PUTs inside the
 request.
 
 That number, not the sitting path, is what should set memory and concurrency. Four concurrent
 maximum-size uploads is about 300 MiB of live buffers, 59% of a 512 MiB instance before the
-Node baseline is counted, and the baseline has never been measured. A Cloud Run OOM kills the
+Node baseline is counted. The baseline has never been measured. A Cloud Run OOM kills the
 instance and every request on it, so the headroom is the whole point. The direct-to-blob upload path that would avoid this returns
 501 in this deployment (`makeUploadStaging` returns null), so today every large T1 site goes
 through the function body.
 
 **Needs measurement:** peak RSS for one 25 MiB upload, then for two and four concurrently. This
-is the measurement that decides the concurrency setting.
+measurement decides the concurrency setting.
 
 ## 3. The load test somebody can run
 
@@ -295,7 +294,7 @@ the weakest number in this document.** The load test replaces it.
 
 | Level | Requests/month | vCPU-seconds | Cost before free tier |
 | --- | --- | --- | --- |
-| Pilot cohort, 45 sittings (docs/BUDGET.md) | 11,250 | 675 | $0.02 |
+| Pilot cohort, 45 sittings (worked example; docs/BUDGET.md) | 11,250 | 675 | $0.02 |
 | Steady, 1,000 sittings + 2,000 drills | 300,000 | 18,000 | $0.57 |
 | Campaign, 10,000 users (TEN-20): 4,000 drills + 500 sittings | 225,000 | 13,500 | $0.43 |
 
@@ -419,7 +418,7 @@ half of the bill: while `min_instances` is 0 a bigger limit costs nothing at all
 costs $3.24 a month per warm 512 MiB if warm capacity is ever bought. Raising memory is
 usually the better trade than shrinking concurrency to 2.
 
-**3. Keep `min_instances = 0` outside a campaign.** At 45 sittings a month, warm capacity buys
+**3. Keep `min_instances = 0` outside a campaign.** At tens of sittings a month, warm capacity buys
 a candidate one or two seconds a few times a day for $9.72 plus $19.34 of always-on Neon. That
 is a bad trade and it should stay a bad trade until someone measures otherwise.
 

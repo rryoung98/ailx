@@ -1,15 +1,15 @@
 # PANEL-MARKETS.md — what a probability sample costs in Japan and Korea, and what it does not
 
-Status: evidence review, September 2026. Written to settle one question: can AILX buy a national
-population statistic in Japan and Korea on the same terms as in the US and the UK? It cannot, and
-this document says what it can buy instead, at what price, and what has to be true before the
-trilingual exam is allowed to produce a trilingual statistic.
+Status: evidence review, September 2026. AILX cannot buy a national population statistic in Japan
+and Korea on the same terms as in the US and the UK. This document describes what it can buy
+instead, at what price, and the conditions that must be met before the trilingual exam can produce
+a trilingual statistic.
 
 Companion documents: `docs/SAMPLING.md` (the two-track design and the release rules),
 `docs/POSITIONING.md` (why a population statistic is the ambition), `AILX-Spec-2026.1.md` §01–02.
 
 Labels follow `docs/SAMPLING.md`. **VERIFIED** means a primary source was read and is cited.
-**ESTIMATE** means our arithmetic or judgement, with the assumption written beside it. **UNKNOWN**
+**ESTIMATE** means our arithmetic or judgement. The assumption appears beside it. **UNKNOWN**
 means we do not know. Every source below was read on 2026-09-02. Currency conversions use
 1 USD = 160.16 JPY = 1,374.61 KRW (ECB reference rate, 2026-09-01). **VERIFIED.**
 
@@ -18,16 +18,16 @@ means we do not know. Every source below was read on 2026-09-02. Currency conver
 ## 1. The finding, in four sentences
 
 **No probability-based online panel can be bought in Japan or South Korea.** Ipsos sells
-KnowledgePanel in ten countries and neither is among them; every major Japanese and Korean panel is
+KnowledgePanel in ten countries. Neither is among them. Every major Japanese and Korean panel is
 opt-in. **VERIFIED.**
 
-**Probability fieldwork, however, is on sale in Japan** — as an omnibus ride, in person, on someone
-else's questionnaire. **VERIFIED.** Korea sells ad-hoc mobile RDD by the project. **VERIFIED.**
+**Japan sells probability fieldwork** as an omnibus ride, in person, on someone else's
+questionnaire. **VERIFIED.** Korea sells ad-hoc mobile RDD by the project. **VERIFIED.**
 
-**Neither of those can carry a 45–60 minute assessment**, which is what a Track B wave needs
+**Neither can carry a 45–60 minute assessment.** A Track B wave needs that much time
 (`docs/SAMPLING.md` §5). An omnibus sells questions, not testing time.
 
-**So the AILX position is: the exam is trilingual, the first population statistic is not.** The
+**The AILX position is: the exam is trilingual, the first population statistic is not.** The
 first wave covers the US and the UK, whose frames are rentable. Japan and Korea field when
 commissioned fieldwork is funded and a local partner is contracted.
 
@@ -49,9 +49,8 @@ commissioned fieldwork is funded and a local partner is contracted.
 Sources: vendor methods pages (macromill, intage, insight.rakuten, cross-m, freeasy-survey,
 monitor.nikkei-r, nikkei-r pollsurvey, videor, crs.or.jp/survey/omhh.html, nrc.co.jp/solution/nos).
 
-One legal gate worth knowing: Basic Resident Register access is granted only for surveys whose
-results will be published. **VERIFIED** (CRS). A commercial-only AILX wave may not qualify for the
-best frame in the country.
+Basic Resident Register access is granted only for surveys whose results will be published.
+**VERIFIED** (CRS). A commercial-only AILX wave may not qualify for the best frame in the country.
 
 ## 3. Korea — the vendors
 
@@ -70,30 +69,32 @@ bespoke job, and at what conversion, is **UNKNOWN**.
 ## 4. The counter-examples, and why they do not count
 
 - **PbOPSS-23** — Probability-based Online Panel for Social Science since 2023, Ochanomizu
-  University, PI Sugino Isamu, JSPS KAKENHI 22H00070, to March 2027. Members recruited by random
-  sampling and mail invitation; about 1,000 registrants; fieldwork contracted out. Its own page
-  says there are still almost no probability-based online panels in Japan. **VERIFIED.** It is a
-  research panel running about one survey a year, with no survey time for sale.
+  University, PI Sugino Isamu, JSPS KAKENHI 22H00070, to March 2027. Members were recruited by
+  random sampling and mail invitation. The panel has about 1,000 registrants. Fieldwork was
+  contracted out. Its own page says there are still almost no probability-based online panels in
+  Japan. **VERIFIED.** It is a research panel that runs about one survey a year. It has no survey
+  time for sale.
 - **KPOP** — Korean Probability-based Online Panel, a recruitment pilot by Kim Jibum and Kim Hyelin
   (Sungkyunkwan) with the European Social Survey HQ. Mail push-to-web, 570 households, four
   mailings, **~21% response (N = 112)**. 조사연구 2025;26(3):91–123, DOI 10.20997/SR.26.3.4.
-  **VERIFIED.** A feasibility study, not an operating panel.
+  **VERIFIED.** It is a feasibility study, not an operating panel.
 - **JGSS and KGSS** — real probability samples, run as academic infrastructure. JGSS draws from the
-  electoral register or the Basic Resident Register, two-stage, and contracts fieldwork to Central
-  Research Services; KGSS is multistage area probability, face to face, and its 2021 wave was
-  collected by Gallup Korea. **VERIFIED.** Module inclusion is by academic collaboration, on an
-  annual-to-biennial cadence. Whether paid question placement is possible at all is **UNKNOWN**.
-- **JLPS, JHPS-KHPS, KLIPS, KLoSA** — probability longitudinal cohorts. Panel studies, not vendors.
-  **UNKNOWN** whether any takes paid placement.
+  electoral register or the Basic Resident Register in two stages. It contracts fieldwork to
+  Central Research Services. KGSS uses multistage area probability and face-to-face interviews.
+  Gallup Korea collected its 2021 wave. **VERIFIED.** Module inclusion requires academic
+  collaboration and follows an annual-to-biennial cadence. Whether paid question placement is
+  possible at all is **UNKNOWN**.
+- **JLPS, JHPS-KHPS, KLIPS, KLoSA** — probability longitudinal cohorts. They are panel studies, not
+  vendors. **UNKNOWN** whether any takes paid placement.
 - **Official statistics** — Japan's 2025 Population Census reached a provisional **48.2%** internet
-  response rate against 37.9% in 2020 (統計調査ニュース No.468), and Statistics Korea's Social Survey
-  is a two-stage stratified PPS cluster sample with an internet self-completion option. **VERIFIED.**
-  Both are government channels. Neither is available to us.
+  response rate against 37.9% in 2020 (統計調査ニュース No.468). Statistics Korea's Social Survey
+  uses a two-stage stratified PPS cluster sample with an internet self-completion option.
+  **VERIFIED.** Both are government channels. Neither is available to us.
 
 The honest summary of §2–§4: **the panel claim holds; the "nothing exists" version of it does not.**
-Japan has a purchasable probability frame with an in-person mode, and Korea has purchasable
-probability telephone fieldwork. What neither country has is a probability sample that can be sent
-a long web assessment.
+Japan has a purchasable
+probability frame with an in-person mode. Korea has purchasable probability telephone fieldwork.
+Neither country has a probability sample that can be sent a long web assessment.
 
 ## 5. Response rates, with year and source
 
@@ -115,11 +116,11 @@ Non-respondents in Push to Web Address Based Sampling Mail Surveys in Japan*, �
 DOI 10.2333/jbhmk.51.59, and 放送研究と調査 74(12) (2024) for NHK; JGSS per-wave pages; KGSS from the
 KOSSDA cumulative record; Korean telephone rates from the vendors' own published release tables.
 
-**The 19% in the issue is right, and it is the smaller problem.** The larger one is the last three
-rows: Korean telephone response has fallen to **9.7% at Gallup and 3.7% at Realmeter**, so
-"RDD phone-to-web" is a route into a sample that four in ten people never even answer. Any Korean
-design has to be argued on non-response bias, not on the response rate, and the NRBA
-(`docs/SAMPLING.md` §10) is the deliverable that decides whether the number is publishable.
+**The 19% in the issue is right, and it is the smaller problem.** Korean telephone response has
+fallen to **9.7% at Gallup and 3.7% at Realmeter**. That makes "RDD phone-to-web" a route into a
+sample that four in ten people never even answer. Any Korean design has to be argued on non-response
+bias, not on the response rate. The NRBA (`docs/SAMPLING.md` §10) decides whether the number is
+publishable.
 
 ## 6. Cost anchors, and the one assumption they break
 
@@ -137,48 +138,48 @@ design has to be argued on non-response bias, not on the response rate, and the 
 **Read the first three rows together, because they break an assumption we were carrying.**
 `docs/SAMPLING.md` §13.1 prices Japan and Korea at about **double** the US per-complete rate. On the
 only published rate cards that compare, a Japanese probability omnibus complete ($9.37–$11.07) and a
-US probability omnibus complete ($9.25) are within two dollars of each other. **The 2× premium in
-§13.1 has no source, and this review did not find one.** It is ours, and it is now marked as such.
+US probability omnibus complete ($9.25) are within two dollars of each other. **The 2× premium in §13.1 has no source, and this review did not find one.** It is ours,
+and it is now marked as such.
 
-Two things stop that from making Japan cheap:
+Japan is not cheap for two reasons:
 
 1. **An omnibus ride is not an assessment.** It buys a few questions on somebody else's
-   questionnaire, in person, in someone else's field period. A Track B wave needs 45–60 minutes of
-   matrix-sampled testing on a device, on a probability sample, per country. Nobody publishes a
-   price for that, in any of the four countries. **UNKNOWN.**
+   questionnaire. The questions run in person during someone else's field period. A Track B wave
+   needs 45–60 minutes of matrix-sampled testing on a device, on a probability sample, per country.
+   Nobody publishes a price for that in any of the four countries. **UNKNOWN.**
 2. **The real gap is probability versus opt-in, and it is about 7×, not 2×.** ¥1,773 against ¥249
    for the same nominal ten questions and roughly a thousand completes. **ESTIMATE** from two
-   verified rate cards; the modes and sample sizes differ, so treat it as an order of magnitude and
+   verified rate cards. The modes and sample sizes differ, so treat it as an order of magnitude,
    not a quote.
 
-So the budget in `docs/SAMPLING.md` §13 stands as an engineering estimate, and the JP/KR line of it
-is now supported by one thing only: no panel exists to rent, so recruitment must be built and paid
-for per wave. **Three real quotes should replace the whole table before any money is committed.**
+The budget in `docs/SAMPLING.md` §13 remains an engineering estimate. Only one fact now supports
+its JP/KR line: no panel exists to rent, so each wave must pay to recruit its sample. **Three real
+quotes should replace the whole table before any money is committed.**
 
 ## 7. The decision
 
 **The exam is trilingual. The first population statistic covers two countries.**
 
-1. **Wave 1 is US + UK.** Both frames are rentable, both are English, and the wave proves the
-   pipeline — short form, weighting, plausible values, NRBA, release bundle — before it is asked to
-   survive a foreign address frame. `docs/SAMPLING.md` §13.3 option B, at an estimated $0.8–1.2M.
-   **ESTIMATE.**
+1. **Wave 1 is US + UK.** Both frames are rentable. Both are English. The wave proves the
+   pipeline — short form, weighting, plausible values, NRBA, release bundle — before the pipeline
+   must handle a foreign address frame. `docs/SAMPLING.md` §13.3 option B, at an estimated
+   $0.8–1.2M. **ESTIMATE.**
 2. **Japan and Korea are a funded phase, not a date.** The trilateral release is estimated at
-   $1.9–2.8M against $0.8–1.2M for US + UK, so adding the two countries costs roughly
-   **$1.1–1.6M more** — the low-to-low and high-to-high difference between options B and C in
-   `docs/SAMPLING.md` §13.3, not an interval on a measured quantity. **ESTIMATE, ours** — §6 above
-   says why no published source supports the JP/KR half of it.
-3. **The named condition.** Japan or Korea fields when all four hold: the money is committed; a
-   local fieldwork partner is contracted with a written sampling design; a pilot has produced a
-   realised response rate and a non-response bias analysis; and the realised n clears the 1,000
-   floor in `docs/SAMPLING.md` §4.5. Missing any one of them, the country is suppressed and we
-   publish the reason.
+   $1.9–2.8M against $0.8–1.2M for US + UK. Adding the two countries therefore costs roughly
+   **$1.1–1.6M more**. This is the low-to-low and high-to-high difference between options B and C in
+   `docs/SAMPLING.md` §13.3. It is not an interval on a measured quantity. **ESTIMATE, ours** —
+   §6 above explains why no published source supports the JP/KR half of it.
+3. **The named condition.** Japan or Korea fields when all four conditions hold. The money is
+   committed. A local fieldwork partner is contracted with a written sampling design. A pilot has
+   produced a realised response rate and a non-response bias analysis. The realised n clears the
+   1,000 floor in `docs/SAMPLING.md` §4.5. If any condition is missing, the country is suppressed
+   and we publish the reason.
 4. **Until then, no AILX output describes a Japanese or Korean population.** ja/ko convenience data
-   is used for what it is good for: item calibration, DIF screening across en/ja/ko, individual
-   credentials. The `docs/SAMPLING.md` §11 rules apply unchanged, and the word "national" is not
-   available for it.
+   serves three purposes: item calibration, DIF screening across en/ja/ko, and individual
+   credentials. The `docs/SAMPLING.md` §11 rules apply unchanged. The word "national" is not
+   available for this data.
 5. **What we say in public.** "The exam runs in three languages. The first population statistic
-   covers two countries." Both halves, in that order, in the same breath.
+   covers two countries." Use both halves, in that order, in the same breath.
 
 ## 8. What is still UNKNOWN
 

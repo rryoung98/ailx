@@ -225,7 +225,7 @@ the raters are the candidates themselves, comparisons **per rater** = r ÷ 2 —
 
 | Cohort | r per artefact | Total comparisons | Comparisons per candidate-rater | Rater time |
 |---|---|---|---|---|
-| N = 45 (spec) | 24 | 540 | 12 | ~15 min |
+| N = 45 (worked example) | 24 | 540 | 12 | ~15 min |
 | N = 500 | 30 | 7,500 | 15 | ~19 min |
 | N = 50,000 | 30 | 750,000 | 15 | ~19 min |
 
@@ -240,8 +240,8 @@ mandates non-adaptive pairing; that decision must never be traded for efficiency
 .90 supports **bands**, not ranks. At N = 50,000, telling someone they are 12,043rd is not supported
 by the measurement, and the report must not imply it.
 
-The cost that does *not* scale is **rater turnout**. At N = 45 in one room on D+1, everyone judges.
-Asynchronously at N = 50,000, judging is a second visit, and non-response among raters — not
+The cost that does *not* scale is **rater turnout**. In one room on D+1 with a few dozen
+candidates, everyone judges. Asynchronously at N = 50,000, judging is a second visit, and non-response among raters — not
 comparison volume — is what breaks the design.
 
 ### 3.4 Burn rate
@@ -433,7 +433,7 @@ ten points of provenance hygiene. Two tracks, one scoring apparatus, one claim t
 "artefact quality proxies creative capability"). §03 maps T1 to "Create with AI 1–3, Manage AI 1–3"
 and T4 to "Create with AI 1, 2, 4" — an overlap, not a distinction. If T1 and T4 scores correlate
 above ~.6 in the calibration cohort, T4 is buying a hundred points of nothing, and that correlation
-should be the first thing computed from the summit data.
+should be the first thing computed from the first cohort's data.
 
 There is a second construct problem specific to image generation: **the model does most of the
 variance.** A 2026 image model produces a competent image from a mediocre prompt. What separates
@@ -465,9 +465,8 @@ ambient. Compare T1, where the output is *the candidate's own site*.
 
 Estimates from spec §T4 model pricing. The generation cost is survivable. The **approval gate is
 not**: the spec commits to "a human approves every asset before it becomes publicly visible", which
-at 20 seconds per asset is ~1,100 person-hours at N = 50,000. That commitment was made for a
-45-person summit with three foreign ministries watching, and it is correct at that size. It does not
-survive scale, and the alternatives (sampled approval, takedown-based moderation) are exactly the
+at 20 seconds per asset is ~1,100 person-hours at N = 50,000. Reviewing every asset is affordable
+for a pilot cohort. It does not survive scale, and the alternatives (sampled approval, takedown-based moderation) are exactly the
 weaker posture the spec refused. **T4 is the track whose governance model contradicts AILX's growth
 plan.** That is a structural fact, not a cost line.
 

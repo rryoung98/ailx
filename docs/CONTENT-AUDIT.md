@@ -2,10 +2,9 @@
 
 Scope: every item in
 `instruments/2026.1/tracks/t2-discrimination/items/bank.jsonl`
-(66 items after this audit; 72 before). Verdicts: **legitimate** (grounded in
-real, cited material), **legitimate-authored** (authored content explicitly
-modeled on a documented real-world pattern or mechanism, cited in
-provenance), **retired** (removed from the bank).
+(66 items). Verdicts: **legitimate** (grounded in real, cited material) and
+**legitimate-authored** (authored content explicitly modeled on a documented
+real-world pattern or mechanism, cited in provenance).
 
 Method:
 - Live HTTP check of every `provenance.source_url` and `provenance.references`
@@ -20,24 +19,6 @@ Method:
 - The four `key:"human"` text passages were replaced with genuine pre-2015
   human text (Project Gutenberg / pre-2015 Wikipedia revisions, source URLs
   in provenance).
-
-## Retired items (6) — mock SVG "image-provenance" scenes
-
-The hand-drawn SVG vignettes (shadow-direction stories, storefront signs,
-lakeside scenes) were authored mock stimuli, not real photographs or real
-generator output; a discrimination deck built on them measures nothing about
-real synthesis. Removed; the bank is content-addressed, so the edited bank
-was re-hashed (`hash-bank --write`) and the snapshot rebuilt
-(`build-snapshot`). The 44 real Commons media items are the image bank now.
-
-| old id (prefix) | locale | difficulty | verdict |
-|---|---|---|---|
-| 26ef09615a0a | en | easy | retired |
-| 54db2b215ec0 | en | medium | retired |
-| df99839c37bd | en | medium | retired |
-| 1faeb2d85148 | ko | hard | retired |
-| 7675e69143bb | en | hard | retired |
-| 764d8e564de2 | en | medium | retired |
 
 ## Media items (44) — image-provenance
 

@@ -1,14 +1,14 @@
 # AGENTS.md — AILX (resilience)
 
-Monorepo for AILX, the AI Literacy Examination. Spec: `AILX-Spec-2026.1.md`. Plan: `docs/PLAN.md`. Positioning: `docs/POSITIONING.md`. Progression/streaks loop: `docs/PROGRESSION.md`.
+This monorepo contains AILX, the AI Literacy Examination. The spec is `AILX-Spec-2026.1.md`. The plan is `docs/PLAN.md`. Positioning is in `docs/POSITIONING.md`. The progression/streaks loop is in `docs/PROGRESSION.md`.
 
 ## Layout
 
-**This repository is a FRONTEND.** The exam service — the HTTP handlers, the append-only store,
-the auth providers and the OPERATIONAL item bank — lives in the PRIVATE `rryoung98/ailx-backend`
-repository and nowhere else. It used to live here too, and that cost us twice: the bank was
-readable in a public JS chunk, and the two copies of the handlers drifted until a browser called
-a route the deployed service did not have. Do not bring either back. See "The repository split".
+**This repository is a FRONTEND.** The PRIVATE `rryoung98/ailx-backend` repository is the only
+home of the exam service. That service includes the HTTP handlers, the append-only store,
+the auth providers and the OPERATIONAL item bank. It once lived here too. That caused two
+problems. The bank was readable in a public JS chunk. The handler copies also drifted until a
+browser called a route the deployed service did not have. Do not bring either back. See "The repository split".
 
 - `apps/web/` — Next.js frontend. Static export on GitHub Pages, and a hosted build (`AILX_BACKEND=1`) that adds the seven database-reading PAGES. It has NO API routes: it calls the exam service through `lib/mode.ts`
 - `packages/core/` — TrackPlugin interface, scoring purity harness, content addressing, the T1 ZIP writer
@@ -37,26 +37,26 @@ a route the deployed service did not have. Do not bring either back. See "The re
 - Here: `packages/core/test/frontendOnly.test.ts` fails if this repo declares or imports
   `@ailx/backend`/`@ailx/instrument`, grows a `pg`/`node-pg-migrate`/`@clerk/backend`
   dependency, grows an `app/api/**` route, re-adds a server request adapter or `db/`, or adds
-  a second route handler. It fails just as loudly if what a browser legitimately needs goes
+  a second route handler. It also fails if anything a browser legitimately needs goes
   missing. `packages/content-tools/test/public-tree.test.ts` guards the content tree.
 - There: `pnpm sync:shared:check` compares the vendored copies byte for byte against THIS repo
   on every PR. **This repo is the source of truth**, so fix a shared package HERE and sync it
   there — never the other way round.
 
-There is exactly ONE route handler in this repo, `app/s/[token]/card.png`: the frontend's own
-Open Graph image. It rasterizes an already-public share payload. It holds no key, touches no
-store and decides no policy, and the guard allows it BY NAME so a second one is a decision
-somebody makes in front of a reviewer.
+There is exactly ONE route handler in this repo, `app/s/[token]/card.png`. It creates the
+frontend's Open Graph image by rasterizing an already-public share payload. It holds no key.
+It touches no store and decides no policy. The guard allows it BY NAME, so adding a second
+handler requires a decision in front of a reviewer.
 
 ## Commands
 - `pnpm install` · `pnpm test` · `pnpm -r build` (both must pass before any commit)
 - `pnpm lint` — Biome. An error fails the run and the CI `lint` job; a warning is carried debt, and every carried rule has a reason in `docs/DEBT.md`.
-- `pnpm test` is ONE vitest for the whole monorepo (`vitest-workspace.ts`), with one worker pool capped at 4 forks — the ceiling is memory, not CPU. Raise it with `AILX_TEST_FORKS=8 pnpm test` on a big machine. `pnpm -r test` still works and still runs the same tests, but it starts a vitest per package, so it costs more RAM and more time.
-- `vitest run` inside a package is the way to debug one package.
+- `pnpm test` runs ONE vitest for the whole monorepo (`vitest-workspace.ts`). Its worker pool is capped at 4 forks because memory, not CPU, sets the ceiling. Raise it with `AILX_TEST_FORKS=8 pnpm test` on a big machine. `pnpm -r test` still works and runs the same tests. It starts a vitest per package, so it costs more RAM and more time.
+- Run `vitest run` inside a package to debug that package.
 - `pnpm test:reap` — kill vitest workers orphaned by an interrupted run (reparented to pid 1, each still holding its heap). The capped pool and the per-file PGlite close make this rare rather than routine.
-- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). Deliberately outside `pnpm test`. It boots the frontend itself but needs a RUNNING EXAM SERVICE: set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). There is no default, on purpose: guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
-- Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page". `rm -rf apps/web/.next` between the two as well: a build over the OTHER mode's leftover output failed twice on 2026-09-01, once with a prerender "Cannot read properties of undefined (reading 'call')" and once with a missing `next-font-manifest.json`. Neither error names the real cause.
-- Never run `next dev` in `apps/web` while anyone is testing: it leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps exactly that directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
+- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). This command is deliberately outside `pnpm test`. It boots the frontend but needs a RUNNING EXAM SERVICE. Set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). It has no default, on purpose. Guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
+- Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page". Also run `rm -rf apps/web/.next` between the builds. A build over the OTHER mode's leftover output failed twice on 2026-09-01. One failure reported a prerender "Cannot read properties of undefined (reading 'call')". The other reported a missing `next-font-manifest.json`. Neither error names the real cause.
+- Never run `next dev` in `apps/web` while anyone is testing. It leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps that exact directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
 - The e2e suite always boots its own server. `AILX_E2E_REUSE_SERVER=1` reuses whatever is already on the port for a fast inner loop — and then YOU own what is on that port. It is opt-in because a next-server orphaned by a dead agent once held 3210 for a day and the suite silently tested it, green.
 
 ## Credential and diagnosis
@@ -135,10 +135,10 @@ somebody makes in front of a reviewer.
 
 ## Frontend environment (`apps/web`)
 
-Short, because this app is a frontend. Everything about the database, the auth mode, the
-snapshot store, the reviewer allowlist, the connection pool and the GitHub export now belongs to
-the exam service — see the PRIVATE repo's README §3. If you find yourself wanting to set
-`DATABASE_URL` here, the thing you want is running `services/api`.
+This app is a frontend. The exam service owns the database, the auth mode, the
+snapshot store, the reviewer allowlist, the connection pool and the GitHub export.
+See the PRIVATE repo's README §3. If you want to set `DATABASE_URL` here, run
+`services/api` instead.
 
 - `AILX_BACKEND=1` — add `page.api.tsx` / `route.api.ts` to `pageExtensions`, i.e. build the
   seven database-reading PAGES and the one Open Graph card route. Unset = the static Pages
@@ -177,13 +177,13 @@ the exam service — see the PRIVATE repo's README §3. If you find yourself wan
 - Any score ever issued is byte-identically recomputable from stored inputs. **A judge's output IS a stored input** — an LLM judge is not reproducible even at temperature 0, so T3/T4 judging is an evidence-COLLECTION step whose result is persisted and content-addressed (`judgmentId`, `packages/core`), and `score()` replays it. Say both halves: **re-scoring is reproducible, re-judging is not.** Never put a model call on the recompute path.
 - That invariant is ENFORCED, not asserted, and it was asserted-only until 2026-09-01. Every `track_scored` entry carries `judgmentIds` (the claimed content address of each stored row) and `scoredBy`, and `append()` refuses a score whose evidence is missing, mutated, unordered or duplicated (`packages/session/src/machine.ts`, `assertJudgmentsAttested`); `loadAttemptValidated` re-checks a stored log and truncates a tampered one. Stored rows go into ONE canonical total order and every aggregation over them is order-invariant by construction (`packages/core/src/judgments.ts`), because a store read without `ORDER BY` used to change a T3 score by a rounding step. `replayTrackScore` (`apps/web/lib/registry.ts`) is the auditor's recompute in production code, shown per track on the report. **A score the browser did not issue is marked `scoredBy: "server"` and claims no local replay** — the exam service holds the evidence and the key, and saying so is the narrow truth.
 - `score()` is pure — no I/O, clock, or randomness. `runPure` (`packages/core/src/purity.ts`) enforces this in CI by TRAPPING GLOBALS: clock, randomness, network, deferred scheduling, a promise return and a newly created global all throw. It is not a sandbox and does not claim to be — it cannot see a reference captured before the call, a `node:fs` imported at module load, or a `process.env` read. The blind spots are listed in that module and each one has a test asserting the harness stays quiet, so the list cannot rot. Byte-identical replay is verified ON THE PINNED RUNTIME; cross-runtime-version identity is NOT proven (no runtime version is stored in provenance, and unicode case folding moves with ICU).
-- Item banks are content-addressed; edits create new items, never mutations.
+- Item banks are content-addressed. Edits create new items, never mutations.
 - The audit digest content-addresses `score()` SOURCE at build time (`instruments/demo-2026.1/snapshot.json` `scorers[]`); regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1` (build first — the CLI runs from `dist/`). The digests are tier-independent — they hash `score()` source, which is the same in both repos. **What it covers, plainly:** every file in the track's `score()` import closure BY ITS BYTES, and — since 2026-09-01 — the `@ailx/core` modules that closure actually imports, also by their bytes, recorded under a package-qualified path (`@ailx/core/src/rounding.ts`). So editing the score allocation, the canonical judgment order, the order-invariant mean/median or `round3` moves every affected track's digest with NO version bump. What it still does not cover: a REGISTRY dependency (pinned at `name@range`), core modules no scorer imports (`zip.ts`, `ui.ts`, `purity.ts` are deliberately out), and the toolchain — TypeScript, the runtime and ICU are not in the hash. Bump `packages/core/package.json` when core's public behaviour changes, but the digest no longer DEPENDS on you remembering. See `packages/content-tools/src/scorers.ts`.
 - `responses` and `transcripts` are append-only; re-scores are inserts linked by `superseded_by`.
 
 ## Code quality and engineering philosophy
-- **DRY — flag repetition aggressively.** If you see duplicated logic, types, or constants, consolidate them. Do not leave repetition in place and move on.
+- **DRY — flag repetition aggressively.** Consolidate duplicated logic, types, or constants. Do not leave repetition in place and move on.
 - **Well-tested code is non-negotiable.** Prefer too many tests over too few. New or changed code must have tests covering general behavior and edge cases. Do not leave coverage gaps.
-- **Right-sized engineering.** Avoid both extremes: under-engineered (fragile, hacky, no error handling) and over-engineered (premature abstraction, unnecessary layers, speculative complexity). Write the minimum structure needed to be correct and maintainable.
+- **Right-sized engineering.** Avoid under-engineered code (fragile, hacky, no error handling) and over-engineered code (premature abstraction, unnecessary layers, speculative complexity). Write the minimum structure needed for correctness and maintenance.
 - **Handle edge cases thoughtfully.** Err on the side of handling more edge cases, not fewer. Thoughtfulness beats speed — take time to consider what can go wrong.
 - **Minimal diff.** Achieve the goal with the fewest new abstractions and files touched.
