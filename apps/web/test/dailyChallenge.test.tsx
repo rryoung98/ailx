@@ -16,9 +16,10 @@
  *    being safe in a unit test is not the same as the page being safe.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -37,6 +38,90 @@ import { DAILY_POOL } from "../lib/demoItems";
 import { ATTEMPT_KEY, LOCAL_PRACTICE_KEY } from "./helpers/keys";
 
 const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * The app's own import graph, over `app/` and `lib/`.
+ *
+ * Specifiers come from the TypeScript parser — `import`, `export … from` and
+ * dynamic `import()` — so one written in a comment or a string is not one, and
+ * the shape of the file does not matter. Only RELATIVE specifiers are
+ * resolved; a package name is a leaf, which is what a guard over this app's
+ * own modules wants.
+ */
+function sourceFiles(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) sourceFiles(full, out);
+    // Keys are "/"-spelled whatever the platform, so a test can name one.
+    else if (/\.(ts|tsx)$/.test(name)) out.push(relative(WEB_ROOT, full).split(sep).join("/"));
+  }
+  return out;
+}
+
+function importSpecifiers(rel: string): string[] {
+  const file = ts.createSourceFile(
+    rel,
+    readFileSync(join(WEB_ROOT, rel), "utf8"),
+    ts.ScriptTarget.ESNext,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const out: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      out.push(node.moduleSpecifier.text);
+    }
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      ts.isStringLiteral(node.arguments[0])
+    ) {
+      out.push(node.arguments[0].text);
+    }
+    node.forEachChild(visit);
+  };
+  visit(file);
+  return out;
+}
+
+/** A relative specifier as a path under `apps/web`, or null if it is a package. */
+function resolveImport(from: string, spec: string): string | null {
+  if (!spec.startsWith(".")) return null;
+  const base = join(WEB_ROOT, dirname(from), spec);
+  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, join(base, "index.ts"), join(base, "index.tsx")]) {
+    if (existsSync(candidate) && statSync(candidate).isFile()) {
+      return relative(WEB_ROOT, candidate).split(sep).join("/");
+    }
+  }
+  return null;
+}
+
+const MODULE_GRAPH = new Map<string, { specifiers: string[]; files: string[] }>(
+  [...sourceFiles(join(WEB_ROOT, "app")), ...sourceFiles(join(WEB_ROOT, "lib"))].map((rel) => {
+    const specifiers = importSpecifiers(rel);
+    const files = specifiers
+      .map((s) => resolveImport(rel, s))
+      .filter((f): f is string => f !== null);
+    return [rel, { specifiers, files }];
+  }),
+);
+
+/** Everything `start` imports, transitively, `start` included. */
+function reachable(start: string): Set<string> {
+  const seen = new Set<string>();
+  const stack = [start];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    for (const next of MODULE_GRAPH.get(current)?.files ?? []) stack.push(next);
+  }
+  return seen;
+}
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -243,6 +328,16 @@ describe("the pool is published material and nothing else", () => {
  */
 describe("the daily never touches the credential", () => {
   const read = (rel: string): string => readFileSync(join(WEB_ROOT, rel), "utf8");
+  /** The daily's own modules. */
+  const DAILY_MODULES = ["lib/dailyState.ts", "lib/DailyChallenge.tsx"];
+  /** The modules that score a sitting, keep its log, or show a credential. */
+  const SCORING_MODULES = [
+    "lib/registry.ts",
+    "lib/persistence.ts",
+    "lib/checkpoints.ts",
+    "lib/credentialView.ts",
+    "lib/CredentialPanel.tsx",
+  ];
   /** Source with comments stripped: a module note may name what code may not. */
   const code = (rel: string): string =>
     read(rel).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
@@ -286,17 +381,32 @@ describe("the daily never touches the credential", () => {
     }
   });
 
-  it("is imported by nothing on the exam, scoring or credential path", () => {
-    for (const file of [
-      "app/exam/page.tsx",
-      "lib/persistence.ts",
-      "lib/checkpoints.ts",
-      "lib/credentialView.ts",
-      "lib/CredentialPanel.tsx",
-      "lib/registry.ts",
-    ]) {
-      expect(read(file), file).not.toMatch(/dailyState|DailyChallenge/);
+  it("is reached by no page that scores or shows a credential", () => {
+    // Every route file the app has, not a hand-picked six: a page added
+    // tomorrow is in this list without anybody remembering to add it.
+    const pages = [...MODULE_GRAPH.keys()].filter((f) => /^app\/.*(page|route)(\.api)?\.tsx?$/.test(f));
+    expect(pages.length).toBeGreaterThan(10);
+    expect(pages).toContain("app/report/page.tsx");
+    expect(pages).toContain("app/daily/page.tsx");
+
+    const offenders = pages
+      .map((page) => ({ page, reaches: reachable(page) }))
+      .filter(({ reaches }) => SCORING_MODULES.some((m) => reaches.has(m)))
+      .map(({ page, reaches }) => ({ page, daily: DAILY_MODULES.filter((m) => reaches.has(m)) }))
+      .filter((r) => r.daily.length > 0);
+    expect(offenders, JSON.stringify(offenders)).toEqual([]);
+  });
+
+  it("classifies the pages this guard depends on, so it cannot pass by finding nothing", () => {
+    // If `app/report/page.tsx` stopped counting as a scoring page, the test
+    // above would go quiet instead of red.
+    for (const page of ["app/report/page.tsx", "app/exam/page.tsx", "app/verify/[code]/page.api.tsx"]) {
+      const reaches = reachable(page);
+      expect(SCORING_MODULES.filter((m) => reaches.has(m)), page).not.toEqual([]);
     }
+    // And the daily page does reach the daily, so the modules being looked for
+    // are spelled the way the app spells them.
+    expect(DAILY_MODULES.filter((m) => reachable("app/daily/page.tsx").has(m))).toEqual(DAILY_MODULES);
   });
 
   it("reaches no identity, so a signed-in player's daily is the same daily", () => {
