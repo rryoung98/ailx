@@ -20,7 +20,15 @@ const ARGS = Object.fromEntries(
     return [k, v === undefined ? "true" : v];
   }),
 );
-const num = (name, fallback) => (ARGS[name] === undefined ? fallback : Number(ARGS[name]));
+/** Positive finite numbers only: `--panel=0` used to print Infinity, `--r=nope` used to print NaN. */
+const num = (name, fallback) => {
+  if (ARGS[name] === undefined) return fallback;
+  const v = Number(ARGS[name]);
+  if (!Number.isFinite(v) || v <= 0) {
+    throw new Error(`--${name} must be a positive finite number, got "${ARGS[name]}"`);
+  }
+  return v;
+};
 
 export const DEFAULTS = {
   /** Comparisons per artefact. Spec AILX-Spec-2026.1.md: r = 30. */
@@ -59,6 +67,39 @@ export function costRow(n, o = DEFAULTS) {
   };
 }
 
+
+/** `node docs/cj-cost.mjs --check` — the arithmetic this doc rests on, asserted. */
+function check() {
+  const eq = (got, want, what) => {
+    if (Math.abs(got - want) > 1e-9) throw new Error(`${what}: got ${got}, want ${want}`);
+  };
+  const a = costRow(500, DEFAULTS);
+  eq(a.total, 7500, "N=500, r=30 total comparisons"); // the TEN-10 correction: not 30,000
+  eq(a.perCandidateRater, 15, "per candidate-rater");
+  eq(a.candidateMinutes, 18.75, "candidate minutes");
+  // Per candidate-rater is flat in N; total and per-expert are linear.
+  const b = costRow(10000, DEFAULTS);
+  eq(b.perCandidateRater, a.perCandidateRater, "per candidate-rater is flat in N");
+  eq(b.total / a.total, 20, "total is linear in N");
+  eq(b.perExpert / a.perExpert, 20, "per expert is linear in N");
+  eq(b.expertUsd / b.raterHours, DEFAULTS.expertRate, "expert cost is rater-hours priced");
+  eq(b.modelUsd, b.total * DEFAULTS.modelRate, "model cost is per comparison");
+  // r halves the artefact budget and the rater budget together.
+  eq(costRow(500, { ...DEFAULTS, r: 15 }).total, a.total / 2, "total is linear in r");
+  for (const bad of ["0", "-1", "nope", ""]) {
+    ARGS.r = bad;
+    let threw = false;
+    try {
+      num("r", DEFAULTS.r);
+    } catch {
+      threw = true;
+    }
+    if (!threw) throw new Error(`--r=${JSON.stringify(bad)} should be rejected`);
+  }
+  delete ARGS.r;
+  console.log("cj-cost self-check: ok");
+}
+
 const opts = {
   ...DEFAULTS,
   r: num("r", DEFAULTS.r),
@@ -73,6 +114,10 @@ const one = (x) => x.toFixed(1);
 const usd = (x) => `$${Math.round(x).toLocaleString("en-US")}`;
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  if (ARGS.check !== undefined) {
+    check();
+    process.exit(0);
+  }
   console.log(
     `r=${opts.r}, ${opts.seconds}s per pair, expert panel of ${opts.panel} at $${opts.expertRate}/h, model at $${opts.modelRate}/comparison\n`,
   );

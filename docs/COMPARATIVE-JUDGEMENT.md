@@ -45,7 +45,9 @@ candidate comes back and judges. That is the exposure, and §2 prices it.
 
 Regenerate this table with `node docs/cj-cost.mjs` (pass `--r=`, `--seconds=`, `--panel=`,
 `--expert-rate=`, `--model-rate=` to change an assumption). The script is not in the build or the
-test run: `docs/` is outside the vitest workspace and outside every tsconfig.
+test run: `docs/` is outside the vitest workspace and outside every tsconfig. It carries its own
+assertions instead — `node docs/cj-cost.mjs --check` checks the arithmetic this document rests on,
+including that per-rater load is flat in N while the total is linear.
 
 Assumptions, each stated beside the number it produces:
 
@@ -72,10 +74,10 @@ is the same rater-hours priced. **Nothing here is 10x under-costed. The candidat
 
 What the table does not price, and what actually breaks the design:
 
-- **Turnout.** At 60% turnout the remaining raters must cover 100% of the comparisons, so per-rater
-  burden becomes `r / (2 x turnout)` = 25 pairs, about 31 minutes. At 30% turnout it is 50 pairs,
-  about 63 minutes, and the session stops being something people finish. Turnout is the term to
-  monitor, not volume.
+- **Turnout.** The absent raters' share falls on the ones who show up, so per-rater burden is
+  `r / (2 x turnout)`. At 60% that is 25 pairs, about 31 minutes. At 50% it is 30 pairs, about 38
+  minutes. At 30% it is 50 pairs, about 63 minutes, and the session stops being something people
+  finish. Turnout is the term to monitor, not volume.
 - **Coverage.** `N x r / 2` comparisons must also be *connected*: a design that leaves an artefact
   in a disconnected component has no estimable measure, whatever the total says.
 - **Time to fit**, storage and moderation of 150,000 rows. Small next to the rater hours.
@@ -84,12 +86,14 @@ What the table does not price, and what actually breaks the design:
 
 | Rater model | Cash cost at N = 10,000 | Scaling | The real objection |
 |---|---|---|---|
-| Candidates (the spec's choice) | $0 | Flat per rater | Conflict of interest, and turnout |
+| Candidates (the spec's choice) | No marker payroll | Flat per rater | Conflict of interest, and turnout |
 | Expert panel of 10 | ~$187,500 (guess rate) | Linear per expert | Unaffordable above ~N = 500 |
 | Model jury | ~$3,000 (guess rate) | Linear, cheap | Cannot do the task (see below) |
 
-**Candidates.** Cheap and free-scaling, and a candidate who rates peers has an interest in the
-outcome. The spec's handling is mandatory self-exclusion (a candidate never sees their own
+**Candidates.** No marker payroll, and flat per rater. It is not free: total participant time still
+grows linearly (3,125 rater-hours at N = 10,000), and the administration of a judging session is not
+priced here at all. What the candidate model buys is that nobody is invoiced, not that nobody pays.
+A candidate who rates peers also has an interest in the outcome. The spec's handling is mandatory self-exclusion (a candidate never sees their own
 artefact), author identity never shown, randomised pairs, and per-rater bias and reliability
 estimated in the fit. That covers self-favouring and blunt collusion. It does not cover a rater who
 recognises a classmate's work in a small cohort, and it cannot: at N = 45 in one room, style is
@@ -140,8 +144,10 @@ instead."
 
 How it is computed:
 
-1. Split the rater pool at random into two halves, before any fitting, using a seed stored with the
-   attempt so the split is reproducible.
+1. Split the rater pool into two halves of equal size, before any fitting, using a seed stored with
+   the attempt so the split is reproducible. Then check each half's comparison graph is connected
+   and that every artefact appears in both halves. A random split does neither on its own, and a
+   disconnected half has no estimable measures to correlate. Re-draw the split until both hold.
 2. Fit Bradley–Terry independently on each half's comparisons.
 3. Correlate the two sets of artefact measures (Pearson on logits, and Spearman, because the
    published failure mode is a rank-order collapse under a matched distribution).
@@ -149,10 +155,11 @@ How it is computed:
    the uncorrected half-panel correlation next to it. Never report only the corrected number.
 
 **What it costs.** Nothing extra, if we accept less precision: the existing `N x r / 2` comparisons
-are split, so each half-panel fit sees r / 2 = 15 comparisons per artefact, which is Verhavert's
-.80 band, not .90 — that is exactly the loss Spearman–Brown corrects for. If a half-panel estimate
-at full precision is wanted, it costs **2x total comparisons** (30 pairs per rater, ~38 min), and
-that is not worth it for a check statistic.
+are split, so each half-panel fit sees r / 2 = 15 comparisons per artefact. Fifteen sits above
+Verhavert's .70 band (10–14) and below the .80 band (19–20), so each half is a weaker measurement
+than the full panel — which is exactly the loss Spearman–Brown corrects for. If a half-panel
+estimate at full precision is wanted, it costs **2x total comparisons** (30 pairs per rater,
+~38 min), and that is not worth it for a check statistic.
 
 **What it does not tell us.** Three things, and each must be said next to the number.
 
@@ -178,14 +185,27 @@ whose confidence intervals do not overlap.
   only because the design is non-adaptive.
 
 T1 only, because that is where the rest of the instrument already is. T3 is scored by a rubric with
-an LLM jury and a measured agreement statistic, not by CJ. T4's comparative points were cut with the
-track: it is recorded as a showcase index and is not scored. Extending CJ to a second track would
-double the rater burden per candidate and is not on the table.
+an LLM jury and a measured agreement statistic, not by CJ.
+
+**T4 is an open decision, and it doubles the number in the table.** T4's comparative merit is no
+longer scored — the track is recorded as a showcase index — but the spec still runs T4 pairs in the
+same session: the timetable row D+1 reads "Peer comparative judgement session (T1, T4)", and the
+showcase index still has a comparative-40 component that needs comparisons to exist. If T4 keeps
+being judged at r = 30, the per-rater burden is **30 pairs, about 38 minutes**, not 15 and 19
+minutes. Two ways out, and somebody has to choose:
+
+1. **Drop T4 comparisons.** The showcase index loses its comparative component and reports the
+   other 60 points. Rater burden stays at 15 pairs.
+2. **Judge T4 at a lower r.** A showcase index is not a score of record, so it does not need the
+   .90 band. At r = 10 (Verhavert's .70 band) T4 adds 5 pairs, and the burden is 20 pairs, ~25 min.
+
+Recommendation: option 2, and label the showcase comparative component with the reliability it
+actually bought. Until that is decided, read every candidate-rater number in §2 as **T1 only**.
 
 **The conditions that flip this decision:**
 
-- **Turnout below ~50%** in the first live sitting. Per-rater burden doubles to ~31 minutes and
-  keeps climbing as turnout falls. Below 50% the honest move is a paid expert panel at reduced N,
+- **Turnout below ~50%** in the first live sitting. Per-rater burden doubles to 30 pairs, about 38
+  minutes, and keeps climbing as turnout falls. Below 50% the honest move is a paid expert panel at reduced N,
   with T1's comparative points reweighted or dropped, not a longer judging session.
 - **Split-panel correlation below ~.7** at r = 30, Spearman–Brown corrected. That says the cohort
   does not agree on the construct, and a CJ scale over disagreement is a formal average of taste.
