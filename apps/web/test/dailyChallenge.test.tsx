@@ -58,14 +58,8 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-function importSpecifiers(rel: string): string[] {
-  const file = ts.createSourceFile(
-    rel,
-    readFileSync(join(WEB_ROOT, rel), "utf8"),
-    ts.ScriptTarget.ESNext,
-    true,
-    ts.ScriptKind.TSX,
-  );
+function parseSpecifiers(source: string, name = "in.tsx"): string[] {
+  const file = ts.createSourceFile(name, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX);
   const out: string[] = [];
   const visit = (node: ts.Node): void => {
     if (
@@ -87,6 +81,9 @@ function importSpecifiers(rel: string): string[] {
   visit(file);
   return out;
 }
+
+const importSpecifiers = (rel: string): string[] =>
+  parseSpecifiers(readFileSync(join(WEB_ROOT, rel), "utf8"), rel);
 
 /** A relative specifier as a path under `apps/web`, or null if it is a package. */
 function resolveImport(from: string, spec: string): string | null {
@@ -322,12 +319,16 @@ describe("the pool is published material and nothing else", () => {
  *
  * `packages/report/test/daily.test.ts` proves the GRID carries no key. What is
  * proved here: playing a round writes the daily ledger key and nothing else,
- * and no module the daily can reach spells the exam, scoring or credential
- * path. The practice ledger has the same guard in
- * `anonymousScoredSitting.test.ts`; the daily had none.
+ * the daily imports no module that scores a sitting or shows a credential, and
+ * no page that does either reaches a daily module. The practice ledger has the
+ * same guard in `anonymousScoredSitting.test.ts`; the daily had none.
+ *
+ * One gap, stated so it is not mistaken for coverage. The graph follows import
+ * specifiers inside `apps/web`. A package is a leaf, so what `@ailx/report`
+ * itself imports is that package's own tests to prove, and a module named by a
+ * computed string is not followed at all.
  */
 describe("the daily never touches the credential", () => {
-  const read = (rel: string): string => readFileSync(join(WEB_ROOT, rel), "utf8");
   /** The daily's own modules. */
   const DAILY_MODULES = ["lib/dailyState.ts", "lib/DailyChallenge.tsx"];
   /** The modules that score a sitting, keep its log, or show a credential. */
@@ -338,9 +339,8 @@ describe("the daily never touches the credential", () => {
     "lib/credentialView.ts",
     "lib/CredentialPanel.tsx",
   ];
-  /** Source with comments stripped: a module note may name what code may not. */
-  const code = (rel: string): string =>
-    read(rel).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  /** The daily page and everything it imports, transitively. */
+  const DAILY_CLOSURE = [...reachable("app/daily/page.tsx")];
 
   it("keeps its days in a store neither the sitting nor practice reads", () => {
     for (const other of [ATTEMPT_KEY, LOCAL_PRACTICE_KEY]) {
@@ -374,11 +374,17 @@ describe("the daily never touches the credential", () => {
   });
 
   it("imports nothing from the exam, scoring or credential path", () => {
-    for (const file of ["lib/dailyState.ts", "lib/DailyChallenge.tsx", "app/daily/page.tsx"]) {
-      expect(code(file), file).not.toMatch(
-        /persistence|checkpoints|credentialView|CredentialPanel|scoreTrack|track_scored|\/attempts|registry/,
-      );
-    }
+    // Transitive, and read from parsed imports rather than from the text: the
+    // page reaches lib/demoItems.ts and lib/instrument.ts, so a scoring module
+    // pulled in one step further along would be missed by a per-file grep.
+    expect(SCORING_MODULES.filter((m) => DAILY_CLOSURE.includes(m))).toEqual([]);
+    // The packages that score, hold identity or spell a service route. The
+    // daily may import @ailx/report (the daily rules) and @ailx/session (the
+    // StorageLike type), and does. That the daily asks the service for nothing
+    // at all is pinned above, where a round is played with fetch stubbed.
+    const packages = DAILY_CLOSURE.flatMap((f) => MODULE_GRAPH.get(f)?.specifiers ?? [])
+      .filter((s) => /^(@ailx\/(core|contract)|@clerk)/.test(s));
+    expect(packages).toEqual([]);
   });
 
   it("is reached by no page that scores or shows a credential", () => {
@@ -410,8 +416,21 @@ describe("the daily never touches the credential", () => {
   });
 
   it("reaches no identity, so a signed-in player's daily is the same daily", () => {
-    for (const file of ["lib/dailyState.ts", "lib/DailyChallenge.tsx"]) {
-      expect(code(file), file).not.toMatch(/lib\/auth|useAuth|identityState|authHeaders/);
-    }
+    expect(DAILY_CLOSURE.filter((f) => /^lib\/auth/.test(f))).toEqual([]);
+  });
+
+  it("reads imports with the compiler, so no string can hide one", () => {
+    // The regex stripper this replaced cut everything after a `//` inside a
+    // string, which deleted real code from the text being checked.
+    expect(parseSpecifiers('const url = "https://x";\nimport { a } from "./persistence";')).toEqual([
+      "./persistence",
+    ]);
+    // A specifier in a comment or a string is not an import.
+    expect(parseSpecifiers('/** imports "./checkpoints" one day */\nconst s = "./registry";')).toEqual([]);
+    expect(parseSpecifiers('// import { x } from "./credentialView";')).toEqual([]);
+    // The three shapes that do reach a module.
+    expect(parseSpecifiers('import type { S } from "@ailx/session";')).toEqual(["@ailx/session"]);
+    expect(parseSpecifiers('export { a } from "./dailyState";')).toEqual(["./dailyState"]);
+    expect(parseSpecifiers('const m = await import("./DailyChallenge");')).toEqual(["./DailyChallenge"]);
   });
 });
