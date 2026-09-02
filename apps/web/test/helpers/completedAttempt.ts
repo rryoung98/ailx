@@ -6,7 +6,7 @@
  */
 import { append, project, type SequencedEntry, type TrackId } from "@ailx/session";
 import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
-import { scoreTrack } from "../../lib/registry";
+import { scoreTrack, trackScoredEntry } from "../../lib/registry";
 
 /**
  * The sample fixture stops at between_tracks (validate scores it itself);
@@ -23,11 +23,7 @@ export function completedLog(): SequencedEntry[] {
   for (const c of completions) {
     t += 1_000;
     const rec = scoreTrack(c.trackId as TrackId, c.artifact);
-    log = append(log, {
-      type: "track_scored", trackId: c.trackId, score: rec.score,
-      judgments: rec.judgments, rubricVersion: rec.rubricVersion,
-      scoringDigest: rec.scoringDigest, modelManifest: rec.modelManifest, ts: t,
-    });
+    log = append(log, trackScoredEntry(c.trackId as TrackId, rec, t));
   }
   log = append(log, { type: "attempt_completed", ts: t + 1_000 });
   return log;

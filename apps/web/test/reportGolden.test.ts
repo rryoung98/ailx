@@ -15,7 +15,7 @@ import {
   playerType, playerTypeFor, researchExport, t2ResponsesFromArtifact, trackInsights,
 } from "@ailx/report";
 import { t2AnswerKeys } from "../lib/instrument";
-import { scoreTrack } from "../lib/registry";
+import { scoreTrack, trackScoredEntry } from "../lib/registry";
 import { buildSampleAttemptLog } from "../lib/sampleAttempt";
 
 /** Recursively blank every `scoringDigest` — it addresses the build, not a value. */
@@ -32,11 +32,7 @@ function derivedReport() {
   for (const t of TRACK_IDS) {
     ts += 1000;
     const rec = scoreTrack(t, scored.tracks[t].artifact);
-    log = append(log, {
-      type: "track_scored", trackId: t, score: rec.score, judgments: rec.judgments,
-      rubricVersion: rec.rubricVersion, scoringDigest: rec.scoringDigest,
-      modelManifest: rec.modelManifest, ts,
-    } as SequencedEntry);
+    log = append(log, trackScoredEntry(t, rec, ts));
   }
   log = append(log, { type: "attempt_completed", ts: ts + 1000 } as SequencedEntry);
   const state = project(log);
@@ -105,9 +101,27 @@ describe("report golden", () => {
    * scores of record are cut against the OPERATIONAL instrument, whose
    * rubric.yaml and prompts did not change (its four versions are still
    * 572c74c9…, 4bb83e18…, c223b246…, 0b6fe323…), and this tier issues none.
+   *
+   * It MOVED a fifth time when stored judgment rows gained a canonical order.
+   * A score of record now records the CONTENT ADDRESS of every judgment it
+   * consumed, and rows go into the log sorted rather than in the order the
+   * judge happened to emit them (packages/core judgments.ts,
+   * packages/session/test/recomputability.test.ts). EXACTLY 72 leaves of this
+   * object changed and every one of them is inside a `judgments[]` array —
+   * 36 under `participant.tracks[]`, 36 under `research.scores[]`, all of
+   * them T1 and T4, whose demo juries emit dimension-by-dimension in a
+   * different order from the canonical one. T3's rows were already canonical.
+   * The multiset of rows per track is byte-identical before and after; only
+   * the position of each row moved, which was established by diffing the
+   * whole derivation leaf by leaf against a worktree at the previous commit
+   * before this digest was touched. No composite, no track raw, no insight,
+   * no narrative, no player type, no calibration bin and no export field
+   * moved — and no SCORE moved, which is the load-bearing half: the
+   * aggregation these rows feed is order-invariant by construction now, so
+   * re-ordering the evidence must not, and did not, change the number.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("0e4e241d8bbe6c38b4450dc7e181877083202ded1f097cf4624447a1ca990e28");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("073bc1592b708918a26e0dc8f2739fd655f0284b23de666eac5e0243ec1e2e3a");
   });
 
   it("is stable across repeated derivation", () => {
