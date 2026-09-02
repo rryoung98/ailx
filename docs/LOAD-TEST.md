@@ -34,10 +34,17 @@ private repo.
 Two ceilings fall out of that table, and both are products of defaults.
 
 **Postgres connections: 12.** `AILX_PG_POOL_MAX` (3) times `max_instances` (4). Neon's pooled
-endpoint accepts 10,000 client connections globally, and a 1 CU compute allows 419 direct
-connections of which `0.9 x 419 = 377` may hold a transaction at once
-(neon.com/docs/connect/connection-pooling, read 2026-09-02). Twelve is 3% of 377. Neon pooling
-is not what breaks first. The load test should confirm that rather than discover it.
+endpoint accepts 10,000 client connections globally, and the number that may hold a transaction
+at once is `0.9 x max_connections`, which moves with the compute size: 104 direct connections at
+0.25 CU (93 slots), 209 at 0.5 CU (188), 419 at 1 CU (377), 839 at 2 CU (755)
+(neon.com/docs/connect/connection-pooling, read 2026-09-02). Twelve fits at every size. Neon
+pooling is not what breaks first. The load test should confirm that rather than discover it.
+
+The compute size is a floor, not a constant, and **no repository records it.** Terraform holds
+only `DATABASE_URL` as a secret; the plan, the autoscale range and the autosuspend setting live
+in the Neon console. Free and Launch autoscale up from 0.25 CU, so 93 is what a cold database
+offers a spike. Read the console before trusting any figure derived from 377. Section 8 does the
+arithmetic at the conservative floor instead.
 
 **In-flight requests: 320.** Concurrency (80) times `max_instances` (4). Above that Cloud Run
 queues, and Google publishes exactly one number about the queue: a request pends for up to 3.5
