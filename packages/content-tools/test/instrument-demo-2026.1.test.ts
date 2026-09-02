@@ -168,7 +168,10 @@ describe("T2 released bank", () => {
     };
     const held = new Map<string, number>();
     for (const i of bank.items) {
-      const block = BLOCK_OF[i.type] ?? "provenance";
+      // No fallback block. `type` is a free string, so a typo would otherwise
+      // be counted as provenance and the totals would still add up.
+      const block = BLOCK_OF[i.type];
+      expect(block, `bank item ${i.id} has unknown type ${i.type}`).toBeDefined();
       held.set(block, (held.get(block) ?? 0) + 1);
     }
     const t2 = pkg.tracks.find((t) => t.trackId === "t2-discrimination")!;

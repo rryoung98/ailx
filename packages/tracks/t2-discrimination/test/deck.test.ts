@@ -157,11 +157,18 @@ describe("sampleT2DeckIds", () => {
   });
 
   it("refuses a malformed declaration rather than dealing something else", () => {
-    for (const bad of [
+    const bads: T2DeckComposition[] = [
       { mediaPairs: -1, text: 2, provenance: 2 },
       { mediaPairs: 1, text: 1.5, provenance: 2 },
       { mediaPairs: 1, text: 2, provenance: Number.NaN },
-    ]) {
+      // A MISSING field is a malformed declaration, not a stratum at zero:
+      // an instrument that forgot to say is not an instrument that said none.
+      { mediaPairs: 1, text: 2 } as unknown as T2DeckComposition,
+      { text: 2, provenance: 2 } as unknown as T2DeckComposition,
+      { mediaPairs: 1, text: undefined, provenance: 2 } as unknown as T2DeckComposition,
+      { mediaPairs: 1, text: null, provenance: 2 } as unknown as T2DeckComposition,
+    ];
+    for (const bad of bads) {
       expect(() => sampleT2DeckIds(bank(), bad)).toThrow(/non-negative integer/);
       expect(() => sampleT2DeckIds(bank(), bad, t2DeckSeed("att-bad", BANK_SHA))).toThrow(
         /non-negative integer/,

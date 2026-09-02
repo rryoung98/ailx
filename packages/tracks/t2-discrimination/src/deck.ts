@@ -86,8 +86,12 @@ export function sampleT2DeckIds(
   deck: T2DeckComposition,
   seed?: string,
 ): string[] {
-  for (const [field, n] of Object.entries(deck)) {
-    if (!Number.isInteger(n) || n < 0) {
+  // The three named fields, by name: iterating the object's own keys would
+  // pass a declaration that is MISSING one (and would check a field the
+  // sampler never reads).
+  for (const field of ["mediaPairs", "text", "provenance"] as const) {
+    const n = deck?.[field];
+    if (!Number.isInteger(n) || (n as number) < 0) {
       throw new Error(`t2 deck ${field} must be a non-negative integer, got ${String(n)}`);
     }
   }
