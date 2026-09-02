@@ -902,7 +902,7 @@ Adding a fifth track in 2027 means a new package directory and a plugin implemen
       plugin_id      text NOT NULL,         -- 'artifact-hosting@2'
       config_digest  text NOT NULL,
       rubric_version text NOT NULL,         -- hash(rubric + prompts)
-      scoring_digest text NOT NULL,         -- hash of score.ts build output
+      scoring_digest text NOT NULL,         -- content address of score()'s SOURCE closure
       UNIQUE (instrument_id, instrument_ver, track_id)
     );
 
@@ -1001,7 +1001,7 @@ The benchmark's value to a ministry or a lab is in the data, not the score. Expo
 | **Individual**   | The candidate           | Four track scores, composite, percentile, band, criterion diagnostic, calibration curve, trap results, annotated prompt log                                                          | PDF certificate + interactive web report |
 | **Cohort**       | Programme sponsors      | Distributions per track, by country and by language; item-level difficulty and discrimination; reliability statistics with CIs; DIF analysis by language; time-on-task distributions | PDF + XLSX + interactive dashboard       |
 | **Research**     | Governments, academics  | De-identified item-level response data, response latencies, confidence data, judge outputs with evidence spans, rubric versions and model manifests, all scoring code                | Parquet + JSON schema + BigQuery share   |
-| **Reproduction** | Frontier labs, auditors | Everything needed to recompute any score: instrument package digest, item bank hashes, judge prompts, model IDs with date suffixes, scoring function build output, golden fixtures   | Signed OCI artefact + runbook            |
+| **Reproduction** | Frontier labs, auditors | Everything needed to recompute any score: instrument package digest, item bank hashes, judge prompts, model IDs with date suffixes, the content address of score()'s source closure (track files AND the @ailx/core modules they import), golden fixtures   | Signed OCI artefact + runbook            |
 
 ### What makes the research tier actually useful to a lab
 
