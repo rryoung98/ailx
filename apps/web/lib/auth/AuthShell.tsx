@@ -15,6 +15,7 @@
 import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { isClerkEnabled } from "../mode";
+import { ClaimProgress } from "./ClaimProgress";
 import { ClerkTokenBridge } from "./ClerkTokenBridge";
 
 export function AuthShell({ children }: { children: ReactNode }) {
@@ -22,6 +23,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider>
       <ClerkTokenBridge />
+      {/* After the bridge, never before it: the claim needs the identity the
+          bridge publishes, and the token that goes with it. */}
+      <ClaimProgress />
       {children}
     </ClerkProvider>
   );

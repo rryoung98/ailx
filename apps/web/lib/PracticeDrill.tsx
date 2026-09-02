@@ -11,26 +11,46 @@
  * corpus and nothing else. The scored item bank is not imported here, is not
  * reachable from here, and must never be — a practised item is a dead item.
  *
- * IT ASSERTS NOTHING. In the hosted build the server deals the deck, grades
- * every answer and decides whether the session earned its streak day; this
- * component sends choices and displays what comes back. In the static export
- * there is no server, so the drill still plays (the corpus is bundled) and
- * says plainly that nothing is recorded — the same honesty rule as
- * `footerModeCopy()`.
+ * IT ASSERTS NOTHING TO A SERVER. When the round is recorded on an account,
+ * the server deals the deck, grades every answer and decides whether the
+ * session earned its streak day; this component sends choices and displays
+ * what comes back.
+ *
+ * IT PLAYS WITHOUT AN ACCOUNT. A visitor who has never signed in — and the
+ * whole static export, which has no server at all — still gets a round and
+ * still keeps a streak, in their own browser (`lib/localPractice.ts`, and
+ * `@ailx/report`'s `localPractice.ts` for why it lives there). The page says
+ * exactly where those days are kept and what ends them, and the ask to sign
+ * in arrives after the round, naming what an account is for. Nothing here
+ * ever tells anybody they are about to lose something.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  CLAIM_PROMISE,
   FAMILY_META,
+  LOCAL_PRACTICE_BASIS,
   PRACTICE_OPTIONS,
   SIGNAL_CHOICE,
+  SIGN_IN_VALUE_SHORT,
   practiceItem,
   samplePracticeDeck,
   type PracticeItem,
+  type PracticeQualification,
   type ProgressReport,
+  type StreakSummary,
 } from "@ailx/report";
 import { authHeaders } from "./authHeaders";
-import { apiBase, assetUrl, isServerMode } from "./mode";
+import { useIdentity } from "./auth/identityState";
+import {
+  localStreakSummary,
+  readLastClaim,
+  recordLocalPracticeRound,
+  subscribeLocalPractice,
+  utcOffsetMinutes,
+  type ClaimOutcome,
+} from "./localPractice";
+import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "./mode";
 
 import styles from "./PracticeDrill.module.css";
 
@@ -67,7 +87,7 @@ const STIMULUS_FAILED =
 
 /** Shape of what a submit returns; only the fields this view renders. */
 interface SubmitBody {
-  result: { answered: number; correct: number; qualification: { counted: boolean; reason: string } };
+  result: { answered: number; correct: number; qualification: PracticeQualification };
   progress: ProgressReport;
 }
 
@@ -99,22 +119,38 @@ function Pips({ deck, played }: { deck: readonly PracticeItem[]; played: readonl
   );
 }
 
-/** Minutes EAST of UTC — the sign convention @ailx/report `localDay` expects. */
-function utcOffsetMinutes(): number {
-  return -new Date().getTimezoneOffset();
-}
-
 export function PracticeDrill() {
   const server = isServerMode();
+  const identity = useIdentity();
+  /**
+   * Where this round goes. An account records it on the server, which is what
+   * makes the deck server-dealt and the day server-stamped; anybody else
+   * keeps it in their own browser and keeps a streak all the same.
+   *
+   * `pending` is neither: Clerk has not answered yet, and dealing a local
+   * round in the meantime would quietly drop a signed-in person's day.
+   */
+  const recorded = server && identity.status === "signed-in";
+  const waitingOnIdentity = server && identity.status === "pending";
   const [phase, setPhase] = useState<Phase>("loading");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [deck, setDeck] = useState<PracticeItem[]>([]);
   const [played, setPlayed] = useState<Played[]>([]);
   const [outcome, setOutcome] = useState<SubmitBody | null>(null);
-  // The last streak the SERVER told us about. Deliberately NOT cleared by a
-  // new round: if a submit fails, the panel a candidate was looking at must
+  // The last streak we know about — the server's when the round was recorded
+  // on an account, this browser's own otherwise. Deliberately NOT cleared by
+  // a new round: if a submit fails, the panel a candidate was looking at must
   // survive the failure rather than disappear with it.
-  const [streak, setStreak] = useState<ProgressReport["streak"] | null>(null);
+  const [streak, setStreak] = useState<StreakSummary | null>(null);
+  /**
+   * Whether the round earned a streak day, and why not when it did not. ONE
+   * piece of state for both paths, because it is one product rule
+   * (`qualifiesForStreak`) applied to the same two numbers — the server
+   * measures the elapsed time it stamped, this browser measures its own.
+   */
+  const [qualification, setQualification] = useState<PracticeQualification | null>(null);
+  /** What the sign-in claim did, if it happened while this page was open. */
+  const [claim, setClaim] = useState<ClaimOutcome | null>(null);
   const [submitFailed, setSubmitFailed] = useState(false);
   const [sending, setSending] = useState(false);
   const [stimulus, setStimulus] = useState<Stimulus>("pending");
@@ -122,6 +158,19 @@ export function PracticeDrill() {
   // whose first fetch failed.
   const [reload, setReload] = useState(0);
   const shownAt = useRef<number>(0);
+  /** When the round was dealt — what this browser measures its elapsed time from. */
+  const roundStartedAt = useRef<number>(0);
+  /**
+   * How the round ON SCREEN was dealt, which is not always how the next one
+   * will be: signing in on another tab flips the identity under a round
+   * already in progress. The round finishes the way it started — a
+   * server-dealt session is submitted to the server, a browser-dealt one is
+   * kept here — because a client-side session id means nothing to the server
+   * and a server session id means nothing to this browser.
+   */
+  const roundRecorded = useRef(false);
+  /** True once a card has been called: an unfinished round is never re-dealt. */
+  const roundBegun = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   // Set when a control that had focus is about to be unmounted, so focus
@@ -132,14 +181,17 @@ export function PracticeDrill() {
     setPhase("loading");
     setPlayed([]);
     setOutcome(null);
+    setQualification(null);
     setSubmitFailed(false);
     setStimulus("pending");
     try {
-      // Static export: no server, so the browser seeds its own deck. Hosted:
-      // the server deals and RECORDS the deck before any answer is taken.
+      // No account (and the whole static export): the browser seeds its own
+      // deck from the bundled corpus. On an account: the server deals and
+      // RECORDS the deck before any answer is taken, which is what stops a
+      // client walking the corpus.
       let id: string;
       let ids: string[];
-      if (server) {
+      if (recorded) {
         const res = await fetch(`${apiBase()}/practice`, {
           method: "POST",
           headers: await authHeaders(window.localStorage),
@@ -155,19 +207,45 @@ export function PracticeDrill() {
       const items = ids.map((itemId) => practiceItem(itemId)).filter((i): i is PracticeItem => i !== null);
       if (items.length === 0) throw new Error("the practice deck came back empty");
       setSessionId(id);
+      roundRecorded.current = recorded;
+      roundBegun.current = false;
       setDeck(items);
       shownAt.current = Date.now();
+      roundStartedAt.current = shownAt.current;
       setPhase("card");
     } catch {
       // The exception itself is never shown: offline, this is a TypeError
       // reading "Failed to fetch", which is browser plumbing, not copy.
       setPhase("error");
     }
-  }, [server]);
+  }, [recorded]);
 
   useEffect(() => {
+    // Deal nothing while Clerk is still answering: a round dealt now would be
+    // dealt against the wrong answer to "is anybody signed in?".
+    if (waitingOnIdentity) return;
+    // An identity that arrives mid-round (a sign-in in another tab) does not
+    // take the round away and deal a new one. It finishes as it started, and
+    // the NEXT round is the one that goes to the account.
+    if (roundBegun.current) return;
     void deal();
-  }, [deal]);
+  }, [deal, waitingOnIdentity]);
+
+  /**
+   * The streak this BROWSER holds, kept in step with the ledger. It is read
+   * on mount (a returning visitor sees their streak before they play), after
+   * every local round, and after a sign-in claim moves the days to an
+   * account — the claim is what makes the stale-panel case real.
+   */
+  useEffect(() => {
+    const refresh = () => {
+      setClaim(readLastClaim());
+      if (recorded) return;
+      setStreak(localStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes()));
+    };
+    refresh();
+    return subscribeLocalPractice(refresh);
+  }, [recorded]);
 
   // Route/phase change moves focus to the new view's heading (FRONTEND.md §5).
   useEffect(() => {
@@ -204,6 +282,7 @@ export function PracticeDrill() {
 
   function answer(choice: number): void {
     if (current === undefined || stimulus === "failed") return;
+    roundBegun.current = true;
     setPlayed([
       ...played,
       {
@@ -237,8 +316,35 @@ export function PracticeDrill() {
     shownAt.current = Date.now();
   }
 
+  /**
+   * Keep a finished round in this browser's own ledger.
+   *
+   * The qualification rule is the shared one, applied to an elapsed time this
+   * browser measured. That is the browser's own word, which is exactly what a
+   * local day is — it buys the streak on this screen and nothing else, and it
+   * is labelled as self-reported the moment it reaches an account.
+   */
+  function recordLocally(round: readonly Played[]): void {
+    const graded = round.filter((p) => p.result !== null);
+    const answered = graded.length;
+    const correct = graded.filter((p) => p.result!.correct).length;
+    const now = Date.now();
+    const { qualification: earned } = recordLocalPracticeRound(window.localStorage, {
+      answered,
+      correct,
+      elapsedMs: Math.max(0, now - roundStartedAt.current),
+      now,
+      tzOffsetMinutes: utcOffsetMinutes(),
+    });
+    setQualification(earned);
+    setStreak(localStreakSummary(window.localStorage, now, utcOffsetMinutes()));
+  }
+
   async function submit(round: readonly Played[]): Promise<void> {
-    if (!server || sessionId === null) return;
+    if (!roundRecorded.current || sessionId === null) {
+      recordLocally(round);
+      return;
+    }
     setSending(true);
     try {
       const res = await fetch(`${apiBase()}/practice/${sessionId}`, {
@@ -263,6 +369,7 @@ export function PracticeDrill() {
       const body = (await res.json()) as SubmitBody;
       setOutcome(body);
       setStreak(body.progress.streak);
+      setQualification(body.result.qualification);
       setSubmitFailed(false);
     } catch {
       // Same rule as the deal: the exception is plumbing, the page gets copy.
@@ -290,7 +397,6 @@ export function PracticeDrill() {
   if (phase === "loading") return <p className="muted">Dealing a round…</p>;
 
   if (phase === "done") {
-    const counted = outcome?.result.qualification.counted === true;
     return (
       <div ref={stageRef} className={styles.stage}>
         <h2 ref={headingRef} tabIndex={-1} className={styles.tally}>
@@ -316,7 +422,7 @@ export function PracticeDrill() {
           Practice is not scored and never reaches your result. What it does is give you the
           tell before the clock is running.
         </p>
-        {server && streak !== null ? (
+        {streak !== null ? (
           <p className={styles.streak}>
             <span className="stat">
               <span className="value">{streak.current}</span>
@@ -332,24 +438,41 @@ export function PracticeDrill() {
             </span>
           </p>
         ) : null}
-        {server && submitFailed && streak !== null ? (
+        {recorded && submitFailed && streak !== null ? (
           <p className="small faint">
             That streak is what your last recorded round left. This round is not in it yet.
           </p>
         ) : null}
-        {server && !counted && outcome !== null ? (
+        {qualification !== null && !qualification.counted ? (
           <p className="small faint">
-            {outcome.result.qualification.reason === "too_fast"
+            {qualification.reason === "too_fast"
               ? "That round went too fast to count towards a streak day — the drill only counts if it was actually read."
               : "That round did not finish, so it does not count towards a streak day. Finishing one is all it takes."}
           </p>
         ) : null}
-        {server ? null : (
+        {/* Where the days are, said plainly, on the screen that shows them.
+            A streak nobody explained is a streak somebody can lose without
+            ever being told how. */}
+        {recorded ? null : <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>}
+        {/* The ask, and only here: after a round, never in front of one. It
+            names what an account is for and what happens to these days, and
+            it is absent from the static export, which has no sign-in page to
+            send anybody to. */}
+        {!recorded && isClerkEnabled() ? (
           <p className="small faint">
-            This is the static demo build, so nothing was recorded and there is no streak here.
-            The hosted build keeps your practice days and works out the streak on the server.
+            {SIGN_IN_VALUE_SHORT} {CLAIM_PROMISE}{" "}
+            <Link href="/sign-in">Sign in</Link>
           </p>
-        )}
+        ) : null}
+        {/* The receipt for the claim, so a person who just signed in can SEE
+            that their days came with them. */}
+        {claim?.ok && claim.claimed.length > 0 ? (
+          <p className="small faint" role="status">
+            {claim.claimed.length === 1
+              ? "The practice day this browser was holding is now on your account."
+              : `The ${claim.claimed.length} practice days this browser was holding are now on your account.`}
+          </p>
+        ) : null}
         {submitFailed ? (
           // The round above is still on screen: a failed send must not cost a
           // candidate the thing they just did.
@@ -377,6 +500,7 @@ export function PracticeDrill() {
       </div>
     );
   }
+
 
   const showing = phase === "feedback" ? last!.item : current!;
   const broken = phase === "card" && stimulus === "failed";

@@ -19,8 +19,12 @@ export function ClerkProvider({ children }: { children?: ReactNode }): ReactNode
 }
 
 /** Nobody is ever signed in here, so the bridge registers no token source. */
-export function useAuth(): { isSignedIn: boolean; getToken: () => Promise<string | null> } {
-  return { isSignedIn: false, getToken: async () => null };
+export function useAuth(): {
+  isSignedIn: boolean;
+  userId: string | null;
+  getToken: () => Promise<string | null>;
+} {
+  return { isSignedIn: false, userId: null, getToken: async () => null };
 }
 
 /** Never reached: `AuthNav` only renders where Clerk is mounted. */

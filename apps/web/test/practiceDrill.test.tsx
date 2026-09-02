@@ -15,7 +15,17 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { FAMILY_META, PRACTICE_BANK, PRACTICE_DECK_SIZE } from "@ailx/report";
+import {
+  CLAIM_PROMISE,
+  FAMILY_META,
+  LOCAL_PRACTICE_KEY,
+  PRACTICE_BANK,
+  PRACTICE_DECK_SIZE,
+  PRACTICE_MIN_ELAPSED_MS,
+  SIGN_IN_VALUE_SHORT,
+  localDay,
+  parseLocalLedger,
+} from "@ailx/report";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -66,9 +76,13 @@ function installFetch(): void {
 let root: Root | null = null;
 let host: HTMLElement;
 
-async function mount(serverMode: boolean): Promise<void> {
+async function mount(serverMode: boolean, clerk = false): Promise<void> {
   vi.resetModules();
   process.env.NEXT_PUBLIC_AILX_BACKEND = serverMode ? "1" : "";
+  // Clerk is mounted iff a publishable key is present (lib/mode.ts). Without
+  // one, a hosted build runs on the asserted dev id — which IS an identity
+  // the API accepts, so the drill records against it exactly as before.
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = clerk ? "pk_test_stub" : "";
   const { PracticeDrill } = await import("../lib/PracticeDrill");
   host = document.createElement("div");
   document.body.appendChild(host);
@@ -77,6 +91,26 @@ async function mount(serverMode: boolean): Promise<void> {
     root!.render(createElement(PracticeDrill));
   });
 }
+
+/** A hosted build with Clerk mounted and its session not yet resolved. */
+async function mountWithClerk(): Promise<void> {
+  await mount(true, true);
+}
+
+/**
+ * Publish what the Clerk bridge would publish. The bridge is the only module
+ * that talks to the SDK; everything downstream reads this state, so a test
+ * needs no provider and no network to put the app in either identity.
+ */
+async function publish(status: "anonymous" | "signed-in", userId: string | null): Promise<void> {
+  const { publishIdentity } = await import("../lib/auth/identityState");
+  await act(async () => {
+    publishIdentity({ status, userId });
+  });
+}
+
+const signedOut = () => publish("anonymous", null);
+const signedIn = (userId: string) => publish("signed-in", userId);
 
 function buttons(): HTMLButtonElement[] {
   return [...host.querySelectorAll("button")];
@@ -111,9 +145,36 @@ async function playThrough(): Promise<void> {
   }
 }
 
+/**
+ * The same round, played slowly enough to have been read.
+ *
+ * A local day is earned under the SAME rule the server applies — the whole
+ * deck, and `PRACTICE_MIN_ELAPSED_MS` on the clock — so a test that wants a
+ * day has to spend the time, and `playThrough` on its own proves the floor
+ * still bites.
+ */
+async function playSlowly(): Promise<void> {
+  advance(PRACTICE_MIN_ELAPSED_MS + 1_000);
+  await playThrough();
+}
+
+/**
+ * The clock is ours, because a streak day is a clock decision. `Date.now` is
+ * the only thing stubbed: `new Date()` still works, so the client timestamps
+ * the drill stamps on an answer stay real ISO strings.
+ */
+const NOW = Date.parse("2026-03-11T12:00:00.000Z");
+let clock = NOW;
+const advance = (ms: number) => void (clock += ms);
+/** The browser's own calendar day, read the way the drill reads it. */
+const today = () => localDay(clock, -new Date().getTimezoneOffset());
+const daysAgo = (n: number) => localDay(clock - n * 86_400_000, -new Date().getTimezoneOffset());
+
 beforeEach(() => {
   posted.length = 0;
   store.clear();
+  clock = NOW;
+  vi.spyOn(Date, "now").mockImplementation(() => clock);
   submitOffline = false;
   dealt = PRACTICE_BANK.slice(0, PRACTICE_DECK_SIZE).map((i) => i.id);
   qualification = { counted: true, reason: "ok" };
@@ -129,6 +190,7 @@ afterEach(() => {
   act(() => root?.unmount());
   host?.remove();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("hosted build", () => {
@@ -417,13 +479,148 @@ describe("static export build", () => {
     expect(host.querySelector('a[href="/progress"]')).toBeNull();
   });
 
-  it("says plainly that nothing was recorded and shows no streak", async () => {
+  it("keeps the round in this browser, and says where it went", async () => {
+    await mount(false);
+    await playSlowly();
+    expect(posted).toEqual([]);
+    expect(host.textContent).toMatch(/kept in this browser/i);
+    expect(host.textContent).toMatch(/clearing your site data/i);
+    expect(host.textContent).toContain("day streak");
+    expect(store.get(LOCAL_PRACTICE_KEY)).toBeTruthy();
+  });
+
+  it("offers no sign-in, because the static export has no sign-in page", async () => {
+    await mount(false);
+    await playSlowly();
+    expect(host.querySelector('a[href="/sign-in"]')).toBeNull();
+  });
+
+  it("counts one day per browser calendar day, however many rounds are played", async () => {
+    await mount(false);
+    await playSlowly();
+    await click(/Another round/);
+    await playSlowly();
+    const ledger = parseLocalLedger(store.get(LOCAL_PRACTICE_KEY) ?? null);
+    expect(ledger.days).toHaveLength(1);
+    expect(ledger.days[0]!.sessions).toBe(2);
+    expect(host.textContent).toContain("1day streak");
+  });
+
+  it("adds today to the streak a returning visitor already had", async () => {
+    store.set(
+      LOCAL_PRACTICE_KEY,
+      JSON.stringify({
+        days: [
+          { day: daysAgo(2), sessions: 1, answered: 6, correct: 4 },
+          { day: daysAgo(1), sessions: 1, answered: 6, correct: 5 },
+        ],
+      }),
+    );
+    await mount(false);
+    await playSlowly();
+    // Two days were already in this browser; today makes three, and the
+    // ledger it came out of was written by nobody but this browser.
+    expect(host.textContent).toContain("3day streak");
+  });
+
+  it("does not buy a day for a round that went too fast to have been read", async () => {
     await mount(false);
     await playThrough();
+    expect(host.textContent).toMatch(/too fast to count/i);
+    expect(parseLocalLedger(store.get(LOCAL_PRACTICE_KEY) ?? null).days).toEqual([]);
+  });
+
+  it("plays for a browser that stores nothing at all", async () => {
+    const broken = { ...window.localStorage };
+    Object.defineProperty(window, "localStorage", {
+      value: {
+        getItem: () => { throw new Error("denied"); },
+        setItem: () => { throw new Error("denied"); },
+        removeItem: () => { throw new Error("denied"); },
+      },
+      configurable: true,
+    });
+    try {
+      await mount(false);
+      await playSlowly();
+      // The round still finished and still said what it was: only the memory
+      // of it is gone, and nothing on screen is broken.
+      expect(host.textContent).toMatch(/\d+ right, \d+ missed/);
+      expect(host.textContent).toContain("0day streak");
+    } finally {
+      Object.defineProperty(window, "localStorage", { value: broken, configurable: true });
+    }
+  });
+});
+
+/**
+ * The on-ramp proper: a hosted build with Clerk mounted, and nobody signed in.
+ *
+ * This is the case the whole feature exists for, and the one that did not work
+ * before it: the API refuses an anonymous caller, so a drill that could only
+ * play through the server could not play at all.
+ */
+describe("hosted build, nobody signed in", () => {
+  it("deals nothing until Clerk has answered", async () => {
+    await mountWithClerk();
     expect(posted).toEqual([]);
-    expect(host.textContent).toMatch(/static demo build/i);
-    expect(host.textContent).toMatch(/nothing was recorded/i);
-    expect(host.textContent).not.toContain("day streak");
+    expect(host.textContent).toMatch(/dealing a round/i);
+  });
+
+  it("plays locally once Clerk says nobody is signed in, and calls no API", async () => {
+    await mountWithClerk();
+    await signedOut();
+    expect(host.textContent).toMatch(/Is this a photograph, or an AI-generated image\?/);
+    await playSlowly();
+    expect(posted).toEqual([]);
+    expect(host.textContent).toContain("1day streak");
+  });
+
+  it("asks for an account only after the round, and only for what it is for", async () => {
+    await mountWithClerk();
+    await signedOut();
+    // Not during the round: the ask is never in front of the game.
+    expect(host.querySelector('a[href="/sign-in"]')).toBeNull();
+    await playSlowly();
+    const ask = host.textContent ?? "";
+    expect(host.querySelector('a[href="/sign-in"]')).toBeTruthy();
+    expect(ask).toContain(SIGN_IN_VALUE_SHORT);
+    expect(ask).toContain(CLAIM_PROMISE);
+  });
+
+  it("threatens nobody with what they would lose", async () => {
+    await mountWithClerk();
+    await signedOut();
+    await playSlowly();
+    const copy = host.textContent ?? "";
+    for (const tell of [/lose your/i, /before it/i, /last chance/i, /hurry/i, /expires/i]) {
+      expect(copy).not.toMatch(tell);
+    }
+  });
+
+  it("deals from the server once somebody signs in", async () => {
+    await mountWithClerk();
+    await signedIn("user_abc");
+    expect(posted.map((p) => p.url)).toContain("/api/practice");
+  });
+
+  it("finishes a round the way it started when a sign-in lands mid-round", async () => {
+    await mountWithClerk();
+    await signedOut();
+    await click(/AI-generated/);
+    await click(/Next card/);
+    // Another tab signs in. The round on screen is browser-dealt, so its
+    // session id means nothing to the server: it must not be posted, and the
+    // cards already called must not be taken away.
+    await signedIn("user_abc");
+    expect(host.textContent).toMatch(/Card 2 of/);
+    for (let i = 1; i < PRACTICE_DECK_SIZE; i++) {
+      advance(4_000);
+      await click(/AI-generated/);
+      await click(/Next card|Finish the round/);
+    }
+    expect(posted.filter((p) => p.url.includes("/api/practice/"))).toEqual([]);
+    expect(host.textContent).toContain("1day streak");
   });
 });
 
