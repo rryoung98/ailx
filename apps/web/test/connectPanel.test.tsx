@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ConnectPanel } from "../lib/ConnectPanel";
+import { QueryProvider } from "../lib/QueryProvider";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -24,11 +25,16 @@ Object.defineProperty(window, "localStorage", { value: shim, configurable: true 
 let root: Root | null = null;
 let host: HTMLElement;
 
+/**
+ * The panel's OAuth exchange is a TanStack Query mutation, so it needs the
+ * client the app mounts in `app/layout.tsx`. A fresh one per mount, because a
+ * shared cache would carry one test's state into the next.
+ */
 function mount() {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
-  act(() => root!.render(createElement(ConnectPanel)));
+  act(() => root!.render(createElement(QueryProvider, null, createElement(ConnectPanel))));
 }
 
 function click(label: string) {
