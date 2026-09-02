@@ -78,6 +78,7 @@ describe("runPure — traps", () => {
 
   it("rejects a Promise return — deferred work escapes the traps", () => {
     expect(() => runPure(() => Promise.resolve(1))).toThrow(/returned a Promise/);
+    // biome-ignore lint/suspicious/noThenProperty: the thenable is the input under test.
     expect(() => runPure(() => ({ then: () => {} }))).toThrow(/returned a Promise/);
   });
 

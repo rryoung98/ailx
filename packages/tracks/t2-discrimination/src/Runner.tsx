@@ -53,13 +53,6 @@ const btn: CSSProperties = {
   cursor: "pointer",
 };
 
-const ghostBtn: CSSProperties = {
-  ...btn,
-  background: "transparent",
-  color: "var(--fg)",
-  border: "1px solid var(--border)",
-};
-
 /** Visually hidden, exposed to assistive technology (self-contained —
  *  the package must not depend on an app stylesheet). */
 const srOnly: CSSProperties = {

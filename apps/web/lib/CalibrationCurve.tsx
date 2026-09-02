@@ -8,7 +8,6 @@
  * plotted — nothing is imputed.
  */
 
-import * as React from "react";
 import type { CalibrationBin } from "@ailx/report";
 
 const W = 340;

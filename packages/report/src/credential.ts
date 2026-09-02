@@ -39,7 +39,7 @@
  *
  * Pure: no clock, no I/O, no randomness. Stamps and codes are injected.
  */
-import { TRACK_IDS, type SessionState, type TrackId, type TrackRawScores } from "@ailx/session";
+import { TRACK_IDS, type SessionState, type TrackRawScores } from "@ailx/session";
 import { playerTypeFor } from "./playerType.js";
 import { TRACK_META } from "./tracks.js";
 

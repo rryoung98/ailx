@@ -408,7 +408,7 @@ export default function ReportPage() {
                     <p className="muted" style={{ margin: 0 }}>{p.tagline}</p>
                   </div>
                 </div>
-                <div className="ptype-code" aria-label={`Type code ${p.code}`}>
+                <div className="ptype-code" role="img" aria-label={`Type code ${p.code}`}>
                   {p.poles.map((pole) => (
                     <span key={pole.track} className={`ptype-letter${pole.high ? " hi" : ""}`} title={`${pole.track.toUpperCase()}: ${pole.label}`}>
                       {pole.letter}

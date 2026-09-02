@@ -37,7 +37,7 @@ import type { TrackRawScores } from "@ailx/session";
  * in spirit; kept here as the canonical list because this package owns the
  * words. Each pattern is an assertion form, never a denial form.
  */
-export const EFFICACY_CLAIM = [
+const EFFICACY_CLAIM = [
   /\bmoves detection\b/i,
   /\bimproves? (your|their|people'?s?)\b/i,
   /\bmakes you (better|sharper)\b/i,
@@ -58,14 +58,14 @@ export const EFFICACY_CLAIM = [
  * exact identity is the only way to do this that a future rewording cannot
  * quietly defeat — change the constant and it stops being excluded.
  */
-export function withoutDenials(text: string): string {
+function withoutDenials(text: string): string {
   return [PRACTICE_EFFICACY_NOTE, PRACTICE_EFFICACY_NOTE_SHORT].reduce(
     (acc, denial) => acc.split(denial).join(" "),
     text,
   );
 }
 
-export function findEfficacyClaim(raw: string): string | null {
+function findEfficacyClaim(raw: string): string | null {
   const text = withoutDenials(raw);
   for (const re of EFFICACY_CLAIM) {
     const m = text.match(re);

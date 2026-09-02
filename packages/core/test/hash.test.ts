@@ -135,6 +135,7 @@ describe("canonicalJson rejects values JSON cannot represent", () => {
     ["an undefined-valued property", { a: undefined, b: 1 }, /undefined at \$\.a/],
     ["an undefined array element", [undefined, 1], /undefined at \$\[0\]/],
     // eslint-disable-next-line no-sparse-arrays
+    // biome-ignore lint/suspicious/noSparseArray: the hole is the input under test.
     ["an array HOLE", [, 1], /undefined at \$\[0\]/],
     ["a nested -0", { a: { b: [1, { c: -0 }] } }, /negative zero at \$\.a\.b\[1\]\.c/],
     ["a nested undefined", { a: [{ b: undefined }] }, /undefined at \$\.a\[0\]\.b/],
