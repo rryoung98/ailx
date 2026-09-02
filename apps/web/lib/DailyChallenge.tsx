@@ -160,7 +160,7 @@ export function DailyChallenge() {
         </p>
         {/* The grid is the share. It carries hits, misses and the day's
             number — never which card was which, so posting it cannot spoil
-            the day for anybody who has not played (docs/SHARING.md §5). */}
+            the day for anybody who has not played (docs/SHARING.md §8). */}
         <DailyShareRow number={number} results={results} streak={streak.current} />
         <p className="small faint" style={{ maxWidth: "58ch" }}>
           The next five arrive at your own midnight. Your streak is kept on this device only —

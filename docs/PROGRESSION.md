@@ -293,7 +293,10 @@ comparison.
 | Tables | `db/schema.sql` — `practice_sessions`, `practice_answers`; migration in `db/README.md` |
 | API | `apps/web/app/api/practice/route.api.ts`, `.../[id]/route.api.ts` |
 | Drill UI | `apps/web/lib/PracticeDrill.tsx` + its CSS module |
-| Pages | `app/practice/page.tsx` (both builds), `app/progress/page.api.tsx` (server only) |
+| Daily deck, grid, daily ledger | `packages/report/src/daily.ts` (pure) |
+| Daily share words | `packages/report/src/shareText.ts` (pure), with the rest of the share copy |
+| Daily UI and its browser store | `apps/web/lib/DailyChallenge.tsx`, `apps/web/lib/dailyState.ts` |
+| Pages | `app/practice/page.tsx` and `app/daily/page.tsx` (both builds), `app/progress/page.api.tsx` (server only) |
 
 `/progress` reads the store, so it is a `page.api.tsx` and does not exist in the
 GitHub Pages export at all — the same page-twin rule as `/gallery`, `/world` and
@@ -311,7 +314,17 @@ ranking of one person against another anywhere in the loop. Spec §13's warning
 is that the tone should read as a well-made instrument, not a mobile game, and
 `apps/web/test/progressPage.test.tsx` holds that as a test.
 
-Nothing in the loop is shareable yet. Progression **could** become a share
+The DAILY CHALLENGE (`/daily`) is the one exception, and a narrow one. It is
+the same shape as practice — published material, no score, a streak that counts
+returns — with two additions: everybody gets the same five cards on the same
+calendar date, and the result can be posted as a grid. The grid is safe by
+construction and by mutation test (docs/SHARING.md §8): it is built from
+hit/miss/skip and can carry no key, no item and no rank. Its streak is
+`streakSummary`, the same function and the same rest-day rule as practice, over
+a SEPARATE store — a daily round is not a practice round, and folding one into
+the other would inflate a streak that is supposed to mean one specific thing.
+
+Nothing else in the loop is shareable. Progression **could** become a share
 section later, and the seam for that is clean: `progressReport()` is a pure
 function returning a plain object, and `@ailx/report`'s share payload is an
 explicit section allowlist. Adding a section is a decision about what a

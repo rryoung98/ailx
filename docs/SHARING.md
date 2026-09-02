@@ -389,3 +389,76 @@ case id for anyone to guess.
 to return `rejectedBy` and `approvedBy` — the reviewer's identity, to the
 person they had just refused. `ownerShareView` drops both, and the public
 gallery listing drops `approvedBy` for the same reason.
+
+## 8. The daily challenge grid
+
+The daily (`/daily`, `packages/report/src/daily.ts`) is the second thing this
+product asks people to paste in public, and it is the riskier of the two: a
+share card describes its owner, but a daily result describes an ITEM SET that
+other people have not played yet. So the rule is narrower than §1's.
+
+### What the grid is, and what it cannot be
+
+One glyph per card, in the order the cards were dealt:
+
+| Glyph | Meaning |
+|---|---|
+| 🟩 | called it |
+| 🟥 | missed it |
+| ⬜ | never called — the picture did not load |
+
+`dailyGrid` takes a vector of `hit | miss | skip` and NOTHING else. It never
+sees an item, a key, a choice, a family or a difficulty, so it cannot encode
+one. That is a type-level guarantee, and it is also mutation-tested
+(`packages/report/test/daily.test.ts`): flip every key in the pool and the grid
+for a given result vector is byte-identical, and for every grid a day can
+produce, BOTH keys stay consistent at every position — seeing a published grid
+narrows nothing about the answers.
+
+A fourth glyph is the thing to refuse. "🟦 for a correct AI call" reads as a
+harmless flourish and publishes the day's key to everyone who has not played,
+because a grid plus one poster's answers is the whole answer sheet. The test
+fails on it rather than a reviewer having to notice.
+
+The ORDER is deliberately kept. The day's deck is the same for everybody, so
+the position of a glyph is public knowledge already, and "we both missed the
+third one" is the conversation the feature exists for.
+
+Colour is never the only cue: `dailyShareText` always prints the tally in
+words beside the grid, and the glyphs are the oldest, widest-supported block
+emoji, so X, LinkedIn, WhatsApp and a plain SMS all render them without an
+image or a font.
+
+### What the words may say
+
+`dailyShareText` (in `shareText.ts`, with the rest of the share copy, so the
+honesty rules are asserted over it too) may carry the puzzle number, the grid,
+the tally and the streak. It may not carry a percentile, a rank, a cohort
+position or any suggestion that a streak is evidence of a better eye —
+`SHARE_TEXT_FORBIDDEN` and `efficacyClaims.test.ts` are both run over every
+string it can emit, and `dailyShareLeaks` is run over the rendered result view
+and every share link in `apps/web/test/dailyChallenge.test.tsx`.
+
+### Why this is not exam security
+
+The daily deals from PUBLISHED content: the released-practice tier, whose keys
+are public on purpose, and the practice corpus. A determined reader can open
+the bundle and read the keys. The grid guard protects the READ — what somebody
+sees in a feed before they have played — which is the only thing that can
+actually be spoiled here. The operational bank is in another repository and no
+browser ever holds it (`AGENTS.md`, "The repository split").
+
+### The day, and the timezone
+
+The deck is a pure function of (calendar day, pool), and the day is the
+PLAYER'S OWN local calendar day — the same `localDay` the practice streak uses.
+So the puzzle turns over at local midnight, everyone on the same date gets the
+same five cards, and no server round trip is needed to agree on what today is.
+The cost is written down rather than hidden: two people in different zones get
+"today" at different instants, and somebody who flies east may meet the next
+puzzle early. That is Wordle's rule and the one people expect; a UTC rollover
+would reset the puzzle in the middle of the evening for half the planet.
+
+Nothing about the daily touches a sitting: no answer reaches `score()`, a
+report figure or a credential, and there is no ranking of one player against
+another. It is a game on published material, and the page says so.
