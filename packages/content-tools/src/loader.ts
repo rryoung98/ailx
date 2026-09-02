@@ -4,7 +4,7 @@ import { parse } from "yaml";
 import { itemId, canonicalJson, rubricVersion } from "@ailx/core";
 import { createHash } from "node:crypto";
 import type {
-  InstrumentManifest, InstrumentPackage, InstrumentTrack, ItemBank,
+  AnchorForm, InstrumentManifest, InstrumentPackage, InstrumentTrack, ItemBank,
   BankItem, BandAnchor, JudgePrompt, Rubric, TrackConfigFile, Locale,
 } from "./types.js";
 
@@ -39,6 +39,12 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
   if (redacted !== undefined && typeof redacted !== "boolean") {
     fail(path, "'redacted' must be a boolean");
   }
+  const anchor = parseAnchor(doc.anchor, path);
+  // Published keys and a frozen trend line cannot both be true of one package.
+  // A redacted package publishes every key on purpose, so declaring an anchor
+  // in it would ship a burned form that still looks comparable — the failure
+  // docs/TREND-FORM.md §2 calls worse than having no anchor at all.
+  if (anchor && redacted === true) fail(path, "a redacted package must not declare an 'anchor'");
   const effective_from = String(req<unknown>(doc, "effective_from", path));
   const locales = req<Locale[]>(doc, "locales", path);
   const tracks = req<string[]>(doc, "tracks", path);
@@ -48,8 +54,31 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
   }
   return {
     id, version, ...(notice ? { notice } : {}), ...(redacted === true ? { redacted: true } : {}),
-    effective_from, locales, tracks,
+    effective_from, locales, tracks, ...(anchor ? { anchor } : {}),
   };
+}
+
+/**
+ * The manifest's optional frozen-trend-form block (docs/TREND-FORM.md).
+ *
+ * The budget is validated here rather than counted here: this package reads
+ * content, it does not see a sitting. What it can enforce is that a form
+ * claiming to be an anchor names itself and states a finite budget, so a
+ * later exposure count has something to compare against.
+ */
+function parseAnchor(raw: unknown, path: string): AnchorForm | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) fail(path, "'anchor' must be a mapping");
+  const a = raw as Record<string, unknown>;
+  const id = req<unknown>(a, "id", `${path} anchor`);
+  if (typeof id !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(id)) {
+    fail(path, `anchor id '${String(id)}' must be lowercase alphanumeric with hyphens`);
+  }
+  const budget = req<unknown>(a, "exposure_budget", `${path} anchor`);
+  if (typeof budget !== "number" || !Number.isSafeInteger(budget) || budget <= 0) {
+    fail(path, "anchor 'exposure_budget' must be a positive whole number of administrations");
+  }
+  return { id, exposure_budget: budget as number };
 }
 
 export function parseTrackConfig(raw: string, path: string): TrackConfigFile {
