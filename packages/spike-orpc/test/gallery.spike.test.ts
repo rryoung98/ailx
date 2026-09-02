@@ -15,10 +15,13 @@
  */
 import { describe, expect, it } from "vitest";
 import type { PublicGalleryEntry } from "@ailx/contract";
+import { GALLERY_MAX_PAGE_SIZE, parseGalleryQuery } from "@ailx/contract";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { implement } from "@orpc/server";
+import { createORPCClient } from "@orpc/client";
+import { OpenAPILink } from "@orpc/openapi-client/fetch";
 import { galleryContract, type PublicGalleryListing } from "../src/contract.js";
-import { spikeGalleryClient } from "../src/client.js";
+import { spikeGalleryClient, type SpikeGalleryClient } from "../src/client.js";
 
 const TOKEN = "a".repeat(43);
 
@@ -55,13 +58,19 @@ const handler = new OpenAPIHandler(os.router({ listGallery }));
 /** Every request the client makes, so a test can assert the URL it chose. */
 const seen: string[] = [];
 
+/** Every header set the client sent, so a test can assert identity travels. */
+const sentHeaders: Headers[] = [];
+
+async function answer(request: Request, prefix: `/${string}`): Promise<Response> {
+  seen.push(request.url);
+  sentHeaders.push(request.headers);
+  const { response } = await handler.handle(request, { prefix });
+  return response ?? new Response("not found", { status: 404 });
+}
+
 const client = spikeGalleryClient({
   url: "https://api.example.test/v1",
-  fetch: async (request) => {
-    seen.push(request.url);
-    const { response } = await handler.handle(request, { prefix: "/v1" });
-    return response ?? new Response("not found", { status: 404 });
-  },
+  fetch: (request) => answer(request, "/v1"),
 });
 
 describe("an oRPC contract over GET /gallery", () => {
@@ -92,11 +101,57 @@ describe("an oRPC contract over GET /gallery", () => {
     });
   });
 
-  it("applies the contract's caps and defaults on the SERVER side", async () => {
-    // `parseGalleryQuery` clamps; the schema REJECTS. That is a behaviour
-    // change, not a port: today `?limit=1e9` yields 48 and a 200, here it is
-    // an input-validation error. Whichever we want, we must choose it.
+  it("REJECTS an over-cap limit that the parser would clamp", async () => {
+    // A behaviour change, not a port. `parseGalleryQuery({ limit: "1000000000" })`
+    // returns 48 and the endpoint answers 200. The zod schema refuses the
+    // request. Same for a `sort` the parser would fall back to "recent" for,
+    // and for `site=true`, which the parser reads as false.
     await expect(client.listGallery({ limit: 1_000_000_000 })).rejects.toThrow();
+    expect(parseGalleryQuery({ limit: "1000000000" }).limit).toBe(GALLERY_MAX_PAGE_SIZE);
+    expect(parseGalleryQuery({ sort: "sideways" }).sort).toBe("recent");
+    expect(parseGalleryQuery({ site: "true" }).withSite).toBe(false);
+    // And the parser is not a clamp for everything a hostile caller can send:
+    // "1e9" goes through Number.parseInt, so it is 1, not 48.
+    expect(parseGalleryQuery({ limit: "1e9" }).limit).toBe(1);
+  });
+
+  it("needs an ABSOLUTE url, so a relative apiBase() must be resolved first", async () => {
+    // `apiBase()` is "/ailx/api" in the Pages export and "/api" in a hosted
+    // build with no NEXT_PUBLIC_AILX_API_BASE. OpenAPILink calls `new URL()`
+    // on its url and throws TypeError on both. `spikeGalleryClient` resolves
+    // them; the raw library does not.
+    const raw: SpikeGalleryClient = createORPCClient(
+      new OpenAPILink(galleryContract, { url: "/ailx/api" }),
+    );
+    await expect(raw.listGallery({})).rejects.toThrow(TypeError);
+    for (const base of ["/api", "/ailx/api"] as const) {
+      const seenHere: string[] = [];
+      const local = spikeGalleryClient({
+        url: base,
+        origin: "https://ailx.example",
+        fetch: (request) => {
+          seenHere.push(request.url);
+          return answer(request, base);
+        },
+      });
+      const out = await local.listGallery({});
+      expect(out.gallery.total).toBe(1);
+      expect(seenHere[0]).toBe(`https://ailx.example${base}/gallery`);
+    }
+  });
+
+  it("accepts the ASYNC header function this app actually has", async () => {
+    // `apps/web/lib/authHeaders.ts` returns a promise: Clerk may refresh a
+    // token before the call goes out. A sync-only headers option would rule
+    // out every identified read.
+    sentHeaders.length = 0;
+    const identified = spikeGalleryClient({
+      url: "https://api.example.test/v1",
+      headers: async () => ({ "x-ailx-dev-user": "dev:ada" }),
+      fetch: (request) => answer(request, "/v1"),
+    });
+    await identified.listGallery({});
+    expect(sentHeaders.at(-1)?.get("x-ailx-dev-user")).toBe("dev:ada");
   });
 
   it("refuses a query value the contract does not allow", async () => {
