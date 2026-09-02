@@ -105,12 +105,23 @@ function parseImports(source: string, name = "in.tsx"): ParsedImport[] {
     }
     if (
       ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+        (ts.isIdentifier(node.expression) && node.expression.text === "require")) &&
       node.arguments[0] &&
       ts.isStringLiteralLike(node.arguments[0])
     ) {
-      // A dynamic import hands over the whole module namespace.
+      // A dynamic import and a require() both hand over the whole module
+      // namespace. require() is read because the graph covers .js and .mjs
+      // files, where it is how a module is reached.
       out.push({ specifier: node.arguments[0].text, bindings: "", names: ["*"] });
+    }
+    // `import x = require("y")`, which TypeScript still compiles.
+    if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      ts.isStringLiteralLike(node.moduleReference.expression)
+    ) {
+      out.push({ specifier: node.moduleReference.expression.text, bindings: "", names: ["*"] });
     }
     node.forEachChild(visit);
   };
@@ -453,12 +464,23 @@ describe("the daily never touches the credential", () => {
       // holds the daily rules and a credential helper in one barrel, and
       // @ailx/track-t2 holds the item pool and a scorer.
       if (BANNED_BINDINGS.test(i.bindings)) offences.push(`banned binding: ${i.specifier} ${i.bindings}`);
+      // Taking a whole @ailx barrel takes every name in it, so no name check
+      // can see what is used. `import * as React from "react"` stays legal:
+      // the barrels this guard is about are ours.
+      if (i.specifier.startsWith("@ailx/") && i.names.includes("*")) {
+        offences.push(`whole package taken: ${i.specifier}`);
+      }
       if (i.specifier === "@ailx/contract") {
         for (const name of i.names) {
           if (!CONTRACT_BINDINGS_ALLOWED.includes(name)) {
             offences.push(`banned binding: @ailx/contract ${name}`);
           }
         }
+      } else if (i.specifier.startsWith("@ailx/contract/")) {
+        // A deep import reaches a contract module directly, so the allowance
+        // above never sees it. `@ailx/contract/dist/share-url.js` is the
+        // shape that walks past a check on the package name alone.
+        offences.push(`deep import: ${i.specifier}`);
       }
     }
     return offences;
@@ -552,6 +574,11 @@ describe("the daily never touches the credential", () => {
     ["a re-export of the whole contract", 'export * from "@ailx/contract";'],
     ["a renamed credential binding", 'import { OwnerCredential as X } from "@ailx/contract";'],
     ["a dynamic contract import", 'const m = await import("@ailx/contract");'],
+    ["a require of the contract", 'const c = require("@ailx/contract");'],
+    ["an import-equals of the contract", 'import c = require("@ailx/contract");'],
+    ["a deep import past the barrel", 'import type { ShareStatus } from "@ailx/contract/dist/share-url.js";'],
+    ["the whole report barrel", 'import * as report from "@ailx/report";'],
+    ["a dynamic report import", 'const r = await import("@ailx/report");'],
     ["a scorer from core", 'import { round3 } from "@ailx/core";'],
     ["a judge helper from report", 'import { judgeDemo } from "@ailx/report";'],
     ["an identity SDK", 'import { useUser } from "@clerk/nextjs";'],
@@ -644,6 +671,11 @@ describe("the daily never touches the credential", () => {
     expect(parseImports('export * from "@ailx/report";')[0].names).toEqual(["*"]);
     expect(parseImports('import "@ailx/report";')[0].names).toEqual(["*"]);
     expect(parseImports('import r from "@ailx/report";')[0].names).toEqual(["default"]);
+    // The two CommonJS shapes reach a module as surely as an import does, and
+    // this graph reads .js and .mjs files where they are the only shapes.
+    expect(parseSpecifiers('const r = require("@ailx/report");')).toEqual(["@ailx/report"]);
+    expect(parseSpecifiers('import r = require("@ailx/report");')).toEqual(["@ailx/report"]);
+    expect(parseSpecifiers('const r = notRequire("@ailx/report");')).toEqual([]);
   });
 
   it("resolves both spellings of an app module, so the @/ alias is not a leaf", () => {
