@@ -1,4 +1,4 @@
-# TRANSFER-STUDY.md — could we tell whether practice works?
+# TRANSFER-STUDY.md — the two validation studies we have not run
 
 Status: **design, not a commitment.** Nothing in this file is built. It exists
 because the product previously claimed a training effect it had no way to
@@ -9,6 +9,14 @@ that means something.
 
 Read `AILX-Spec-2026.1.md` §13 for what practice is, and `docs/PROGRESSION.md`
 for the loop this would measure.
+
+Two studies live here. **§2 is the T2 study**: does practice move sensitivity on
+generators the candidate never drilled on? **§3 is the T3 study**: do the reliance
+numbers behave like the published ones, and are they stable enough to carry 160
+points? They share a cohort and a pre-registration, and nothing else. §3 was added
+2026-09-02 (TEN-36) after a spike found no external validity evidence for the
+reliance construct; the trace is in the private repo's
+`docs/EVIDENCE-CALIBRATED-RELIANCE.md`.
 
 ---
 
@@ -46,7 +54,7 @@ one number. So **d′ and c are reported apart, always, in the same table.**
 
 ---
 
-## 2. The design
+## 2. The T2 design — does discrimination transfer?
 
 ### 2.1 Construct and primary outcome
 
@@ -164,7 +172,129 @@ telemetry, and it never reaches `score()`.
 
 ---
 
-## 3. Recommendation for the user to decide: publish the result either way
+## 3. The T3 design — does the reliance measure mean anything?
+
+T3 carries 160 points and .40 of the composite on a construct with no external
+validity evidence and no reliability figure (spec §T3, "What this track cannot
+claim"). This section is the smallest study that would change that. It is
+additive: it reuses the same recruitment, the same pre-registration and the same
+`t0`/`t2` spacing as §2, and it changes nothing about the T2 arms.
+
+### 3.1 A two-stage block, so RAIR and RSR can actually be computed
+
+The centrepiece, and the one measurement without which the rest is decoration.
+
+Schemmer et al.'s RAIR and RSR (IUI '23, doi:10.1145/3581641.3584066) condition
+on an **independent first answer**: RAIR is switching to correct advice given the
+person was initially wrong, RSR is holding a correct answer against incorrect
+advice. The shipped T3 has no first stage, so it can report over- and
+under-reliance (Passi & Vorvoreanu, MSR-TR-2022-12) and nothing stronger.
+
+The block fixes that for the study only:
+
+- A **sub-form of the T3 sitting** in which each seeded claim is presented first
+  as a question. The candidate commits an answer and a confidence (0–100) before
+  the assistant speaks. The assistant then advises: correct on half the claims,
+  seeded-wrong on the other half, randomised per candidate.
+- From that block, compute **RAIR and RSR to the published definitions**, and the
+  Appropriateness-of-Reliance tuple. Report the tuple, never a difference.
+- Compute AILX's `reliance.over`, `reliance.under` and `reliance.index` on the
+  **same** candidate from the ordinary block, and publish the correlations
+  between the two sets, with confidence intervals. **Publish them whatever they
+  are.** A low correlation is the finding, not a failure of the study.
+- Pre-register the direction: `reliance.over` should track 1 − RSR, and
+  `reliance.under` should track 1 − RAIR. If they do not, the spec's claim that
+  the two rates are "comparable in direction" to the literature goes.
+
+The block costs the candidate time and changes the task, which is exactly why it
+is a study instrument and not a shipped form. It is the only design found that
+lets AILX say its numbers behave like the literature's.
+
+### 3.2 Test–retest on parallel forms
+
+- **Two sittings, at least 14 days apart**, matching §2.4's `t2`.
+- **Disjoint planted-error sets.** No error instance appears in both sittings.
+  Instances come from the same four families (misattributed figure, false causal
+  claim, fabricated citation, wrong calculation) in the same counts, so the forms
+  are parallel in construction and share no answer.
+- Report **ICC(2,1) with 95% CI for `reliance.over`, for `reliance.under`, and
+  separately for `reliance.index`.** Three coefficients, three intervals, no
+  averaging.
+- **The index is expected to be the worst of the three.** Difference scores are
+  less reliable than their components (Hedge, Powell & Sumner, *Behav. Res.
+  Methods* 50:1166–1186, 2018; Enkavi et al., *PNAS* 2019, median ICC 0.174 for
+  contrast measures), and the one direct test–retest of advice taking found
+  ICC < 0.5 (Karvelis et al., *PLoS ONE* 19(11):e0312255, 2024). Predicting it
+  in advance is what stops it being explained away afterwards.
+- Pre-commit to the consequence: **if ICC(2,1) for a reported rate is below 0.5,
+  that rate is reported as a band only, and the point allocation behind it is
+  reopened.**
+
+### 3.3 Enough events per sitting for a rate to be estimable
+
+The shipped floor is eight planted errors (`RSR_MIN_SURFACED`). Eight binary
+events give a 95% binomial interval of about ±0.35 on a rate, which cannot
+support an individual score.
+
+- **≥ 20 planted errors and ≥ 20 correct-advice opportunities per sitting**, so
+  the retest design accumulates ≥ 40 of each.
+- Report the **binomial interval and the empirical interval side by side.** If
+  they disagree, the events are not independent and the binomial one is a
+  fiction.
+- Add a **split-half / Spearman–Brown internal-consistency estimate at the
+  achieved length**, split by error family, so the answer is not one number for
+  a mixed bag of four different tasks.
+
+### 3.4 Convergent, discriminant and criterion evidence
+
+Collected at `t0`, one page, no scoring impact:
+
+- A validated self-report reliance or complacency scale (GenAI-RTS,
+  arXiv:2607.14301, ω = .75–.88) and Need for Cognition. Convergence should be
+  **modest**. Near 1.0 with self-report means the behavioural measure is a
+  personality questionnaire in disguise; near 0 with everything means it may be
+  noise.
+- One **criterion**: accuracy on a held-out task where an assistant is available
+  and wrong on 30% of its claims. Without a criterion outside the exam, calibrated
+  reliance stays a descriptive index.
+
+### 3.5 The timer as a manipulated factor, not a fixed backdrop
+
+This is what TEN-30 needs before the report may say "under time pressure".
+
+- **Timed and untimed arms, presentation held constant.** Same document, same
+  assistant, same planted-error set and salience, same turn order. The timer is
+  the only thing that moves.
+- Randomise at assignment, stratified as in §2.3.
+- Report the effect on `reliance.over`, on `reliance.under` and on completion,
+  with effect sizes and intervals. The one published test of this found the
+  **rate** of error adoption unchanged (p = 0.19) and only the severity raised,
+  so a null on rate is the expected result and must be publishable as one.
+- Until this runs, every "under time pressure" sentence describes this form and
+  not the construct, because the timer and the interface vary together.
+
+### 3.6 Form-parameter sensitivity, pre-registered
+
+Over-reliance moves with task difficulty and payoff (Vasconcelos et al.,
+arXiv:2212.06823) and with **when** the assistant speaks (Swaroop et al.,
+arXiv:2306.07458). Vary planted-error salience and assistant-presentation timing
+across forms, and report how much of the index's variance is form rather than
+candidate. If form variance dominates, the index is a property of the exam.
+
+### 3.7 Judge validation: Spearman beside QWK
+
+The 45 analysis-quality points route to a jury (spec §04). Whenever that jury is
+validated against a human panel, **report Spearman ρ next to QWK, both with
+intervals.** Distribution calibration can match the human score distribution
+while carrying almost no rank information (Yeadon et al., arXiv:2603.14732), and
+QWK alone cannot tell the two apart. Report the human–human agreement measured on
+the same panel in the same table, because a judge figure without its human
+comparator is not a result. Pin and record the judge version with every
+coefficient.
+
+---
+
+## 4. Recommendation for the user to decide: publish the result either way
 
 Not a decision this document makes. The case, so it can be decided:
 
@@ -195,7 +325,7 @@ ahead of the field on this specific question.
 
 ---
 
-## 4. What exists today
+## 5. What exists today
 
 Nothing of the above. What exists is the honesty layer that stops us claiming
 the answer before we have it:
