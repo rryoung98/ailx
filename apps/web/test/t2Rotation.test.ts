@@ -2,11 +2,13 @@
  * T2 per-attempt deck rotation — regression tests.
  * The deck is deterministic per attemptId (seed = sha256(attemptId + bank
  * sha256) through the pure @ailx/track-t2 sampler), varies across attempts,
- * and holds the balance invariants: 6 items = 2 media (1 AI + 1 real, difficulty-
- * matched) + 2 text/message (1 signal + 1 benign) + 2 provenance. Without
- * an attemptId the fixed
- * default deck is returned (fixtures, /validate). The operational
- * instrument uses fixed forms; this rotation is demo-only.
+ * and holds the balance invariants. The released tier declares a deck of one
+ * media pair, two text items and two provenance (config.deck in t2's
+ * track.yaml), so an en deck is 6 items: 2 media (1 AI + 1 real,
+ * difficulty-matched) + 2 text/message (1 signal + 1 benign) + 2 provenance.
+ * Without an attemptId the fixed default deck is returned (fixtures,
+ * /validate). The operational instrument uses fixed forms; this rotation is
+ * demo-only.
  */
 import { describe, expect, it } from "vitest";
 import {
