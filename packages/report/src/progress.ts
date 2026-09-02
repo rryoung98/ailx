@@ -46,6 +46,23 @@ export function clampTzOffset(offset: unknown): number {
 const DAY_MS = 86_400_000;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Is this a calendar day this module can do arithmetic on?
+ *
+ * Well-SHAPED is not enough: "2026-13-45" matches the pattern and is not a
+ * date, and a day that is not a date poisons every gap calculation
+ * downstream. Exported because the daily challenge (./daily.ts) reads days
+ * out of the same untrusted place — a browser's localStorage — and two
+ * copies of "what a day is" is how two streaks end up disagreeing.
+ */
+export function isCalendarDay(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    DAY_RE.test(value) &&
+    !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
+  );
+}
+
 /** The participant's local calendar day (YYYY-MM-DD) for a server instant. */
 export function localDay(epochMs: number, tzOffsetMinutes: number): string {
   const shifted = new Date(epochMs + clampTzOffset(tzOffsetMinutes) * 60_000);
@@ -137,7 +154,7 @@ function canRest(day: string, restDays: readonly string[]): boolean {
  * best off the same runs, so the two numbers can never disagree.
  */
 export function practiceRuns(days: readonly string[]): PracticeRun[] {
-  const sorted = [...new Set(days.filter((d) => DAY_RE.test(d)))].sort();
+  const sorted = [...new Set(days.filter((d) => isCalendarDay(d)))].sort();
   const runs: PracticeRun[] = [];
   for (const day of sorted) {
     const run = runs[runs.length - 1];

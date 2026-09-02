@@ -43,6 +43,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       the pill: the pill is the fast, free thing, and a four-hour
                       sitting is a terrible first click. */}
                   <NavLink href="/exam">Full run</NavLink>
+                  {/* The daily plays in BOTH builds and needs no account: it
+                      is bundled public content, a device clock and
+                      localStorage. It is the shortest first click there is. */}
+                  <NavLink href="/daily">Daily</NavLink>
                   {/* /progress reads the store, so it is hosted-only. Practice
                       plays in BOTH builds (its corpus is bundled) and is the
                       pill, so it is not repeated here. */}

@@ -50,6 +50,7 @@ export const T2_ITEMS: T2Item[] = [
  * so the landing demo exercises the actual instrument, not toy content.
  * Items are pinned by content-addressed id; a test asserts they exist.
  */
+import { DAILY_IMAGE_STEM, dailyPoolFromPractice, type DailyCard } from "@ailx/report";
 import { snapshotTrack } from "./instrument";
 import { assetUrl } from "./mode";
 
@@ -83,6 +84,11 @@ export const TEASER_BANK_IDS = [
 interface RawBankItem {
   id: string;
   type: string;
+  locale: string;
+  /** The question as the bank asks it. */
+  stem: string;
+  /** Option ids are the answer vocabulary ("ai" / "real"); labels are shown. */
+  options: Array<{ id: string; label: string }>;
   key: string;
   rationale: string;
   material: {
@@ -141,6 +147,83 @@ function teaserFromSnapshot(): TeaserItem[] {
 
 /** The three-item deck used by the landing-page teaser — real bank items. */
 export const TEASER_ITEMS: TeaserItem[] = teaserFromSnapshot();
+
+// ---------------------------------------------------------------------------
+// The daily challenge's released half
+// ---------------------------------------------------------------------------
+
+/**
+ * The RELEASED-PRACTICE tier as daily cards, joined to the practice corpus to
+ * make the pool the daily challenge deals from (`@ailx/report`'s ./daily.ts).
+ *
+ * Both halves are PUBLIC content whose keys are published on purpose — the
+ * demo tier says so in its own manifest (`redacted: true`, "issues no score of
+ * record"), and the practice corpus exists precisely so that a drill never
+ * touches a scored item. The operational bank is in another repository and
+ * cannot be reached from a browser bundle; `test/bundleSecrecy.test.ts` greps
+ * the built output to keep it that way.
+ *
+ * Only BINARY items come across. A daily result is one bit per card — called
+ * it, missed it — because that is the only outcome a spoiler-free grid can
+ * carry (see the leak rule in `@ailx/report`'s daily module), so the
+ * four-option provenance-reasoning items stay in the full T2 deck where they
+ * can be answered properly.
+ */
+const DAILY_SIGNAL_KEYS = new Set(["ai", "hostile", "synthetic"]);
+
+function releasedDailyCard(raw: RawBankItem): DailyCard | null {
+  const signal = raw.options.findIndex((o) => DAILY_SIGNAL_KEYS.has(o.id));
+  if (raw.options.length !== 2 || signal < 0) return null;
+  const m = raw.material;
+  // Index 0 is always the SIGNAL call, whichever order the bank listed the
+  // options in — the deck's balance rule is defined against that index.
+  const options: [string, string] = [
+    raw.options[signal].label,
+    raw.options[1 - signal].label,
+  ];
+  const key = raw.key === raw.options[signal].id ? 0 : 1;
+  const material: DailyCard["material"] =
+    raw.type === "image-provenance" && typeof m.src === "string"
+      ? { kind: "image", src: m.src.replace(/^\/+/, ""), alt: m.alt ?? "A photograph." }
+      : {
+          kind: "text",
+          ...(raw.type === "message-hostility"
+            ? { title: [m.from_display, m.subject].filter(Boolean).join(" — ") }
+            : {}),
+          text: (raw.type === "message-hostility" ? m.body : m.text) ?? "",
+        };
+  return {
+    id: raw.id,
+    stem: raw.type === "image-provenance" ? DAILY_IMAGE_STEM : raw.stem,
+    material,
+    options,
+    key,
+    tell: raw.rationale,
+    // The released media carries its provenance in the snapshot, not a
+    // per-item licence line; nothing here may invent an attribution.
+    credit: null,
+  };
+}
+
+/** The English released items that can be asked as a one-bit call. */
+export function releasedDailyCards(): DailyCard[] {
+  const bank = snapshotTrack("t2").bank;
+  if (!bank) throw new Error("snapshot t2 bank missing");
+  return (bank.items as unknown as RawBankItem[])
+    .filter((i) => i.locale === "en")
+    .map((i) => releasedDailyCard(i))
+    .filter((c): c is DailyCard => c !== null);
+}
+
+/**
+ * THE DAILY POOL — every card the daily challenge can ever deal, in this
+ * build. Built once: it is static content, and `dailyDeck` hashes the ids on
+ * every call.
+ */
+export const DAILY_POOL: readonly DailyCard[] = [
+  ...dailyPoolFromPractice(),
+  ...releasedDailyCards(),
+];
 
 export interface T3Turn {
   id: string;

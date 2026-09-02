@@ -73,7 +73,15 @@ import {
   seededShuffle,
   type PracticeItem,
 } from "./practice.js";
-import { addDays, daysBetween, localDay, streakSummary, type StreakSummary } from "./progress.js";
+import { MAX_LOCAL_DAYS } from "./localPractice.js";
+import {
+  addDays,
+  daysBetween,
+  isCalendarDay,
+  localDay,
+  streakSummary,
+  type StreakSummary,
+} from "./progress.js";
 
 // ---------------------------------------------------------------------------
 // The day
@@ -414,4 +422,114 @@ export function dailyRoundComplete(round: DailyRound, deckSize: number): boolean
  */
 export function dailyStreak(days: readonly string[], today: string): StreakSummary {
   return streakSummary(days, today);
+}
+
+// ---------------------------------------------------------------------------
+// The browser's own record
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a browser keeps its daily history, and why it keeps it there.
+ *
+ * The same answer the anonymous practice ledger gives (./localPractice.ts):
+ * localStorage, because the loop has to work in the static export and for
+ * somebody who has agreed to nothing. A daily result is not a score of record
+ * — it reaches no attempt, no `score()`, no credential and no cohort figure —
+ * so there is nothing here a server would need to attest, and no row to
+ * delete later because there is no row.
+ *
+ * The cost is said on the page rather than hidden: clearing site data ends
+ * the streak, and it does not follow anyone to a second device.
+ *
+ * The key is versioned in the NAME. A v2 with a different shape must not try
+ * to read v1's bytes: an unreadable streak is a lost one, and a silently
+ * mis-parsed one is a WRONG one, which is worse.
+ */
+export const DAILY_LEDGER_KEY = "ailx:daily:v1";
+
+/**
+ * Days kept. The same cap as the practice ledger's `MAX_LOCAL_DAYS`, imported
+ * rather than re-chosen: two different memories of "how long a browser
+ * remembers you" would be two answers to one question a person asks once.
+ */
+export { MAX_LOCAL_DAYS as MAX_DAILY_DAYS } from "./localPractice.js";
+
+export interface DailyLedger {
+  /** Local days on which a full round was finished. Sorted, de-duplicated. */
+  days: string[];
+  /**
+   * The most recent finished round. It is what makes today's result survive a
+   * reload — and what stops a second play of the same day, which would make
+   * the grid a lie.
+   */
+  last: DailyRound | null;
+}
+
+export function emptyDailyLedger(): DailyLedger {
+  return { days: [], last: null };
+}
+
+const DAILY_RESULTS = new Set<string>(["hit", "miss", "skip"]);
+
+/** Days that survive validation, de-duplicated, sorted, and capped. */
+function keptDays(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  // Newest days win the cap: an old day is history, today is the streak.
+  return [...new Set(value.filter((d): d is string => isCalendarDay(d)))].sort().slice(-MAX_LOCAL_DAYS);
+}
+
+/** One stored round from untrusted input, or null when the shape is not one. */
+export function parseDailyRound(value: unknown): DailyRound | null {
+  if (typeof value !== "object" || value === null) return null;
+  const raw = value as Record<string, unknown>;
+  if (!isCalendarDay(raw.day)) return null;
+  if (typeof raw.number !== "number" || !Number.isInteger(raw.number)) return null;
+  if (!Array.isArray(raw.results) || raw.results.length > DAILY_DECK_SIZE) return null;
+  if (!raw.results.every((r) => typeof r === "string" && DAILY_RESULTS.has(r))) return null;
+  // The number is not trusted from storage either: it is a pure function of
+  // the day, so a rewritten one is simply recomputed rather than published.
+  return { day: raw.day, number: dailyNumber(raw.day), results: raw.results as DailyResult[] };
+}
+
+/**
+ * Read a ledger out of whatever was in storage. NEVER throws and never
+ * returns a partially-trusted object: junk, a truncated write, a v0 blob and
+ * a hostile rewrite all degrade to the days that survive validation.
+ */
+export function parseDailyLedger(raw: string | null | undefined): DailyLedger {
+  if (typeof raw !== "string" || raw === "") return emptyDailyLedger();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return emptyDailyLedger();
+  }
+  if (typeof parsed !== "object" || parsed === null) return emptyDailyLedger();
+  const { days, last } = parsed as { days?: unknown; last?: unknown };
+  return { days: keptDays(days), last: parseDailyRound(last) };
+}
+
+export function serializeDailyLedger(ledger: DailyLedger): string {
+  return JSON.stringify({ days: ledger.days, last: ledger.last });
+}
+
+/**
+ * Add one finished round to the ledger.
+ *
+ * A day is bought only by a COMPLETE round (`dailyRoundComplete`): an
+ * abandoned one is still on screen and still unscored, it simply is not a day
+ * played. Replaying a day already recorded cannot add it twice, because
+ * `days` is a set.
+ */
+export function recordDailyRound(
+  ledger: DailyLedger,
+  round: DailyRound,
+  deckSize: number,
+): DailyLedger {
+  const valid = parseDailyRound(round);
+  if (valid === null) return ledger;
+  return {
+    days: dailyRoundComplete(valid, deckSize) ? keptDays([...ledger.days, valid.day]) : ledger.days,
+    last: valid,
+  };
 }
