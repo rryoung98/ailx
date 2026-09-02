@@ -39,13 +39,24 @@ const PENDING: Identity = { status: "pending", userId: null };
 /** Hosted, no Clerk: the asserted dev id IS an identity the API accepts. */
 const DEV_IDENTITY: Identity = { status: "signed-in", userId: null };
 
+/** By status, so a published state that carries no id is a shared constant. */
+const SNAPSHOTS = { pending: PENDING, anonymous: ANONYMOUS, "signed-in": DEV_IDENTITY } as const;
+
 let current: Identity = PENDING;
 const listeners = new Set<() => void>();
 
-/** Called by the Clerk bridge, and by nothing else. */
+/**
+ * Called by the Clerk bridge, and by nothing else.
+ *
+ * An id belongs to a SIGNED-IN identity and to nothing else, and that is
+ * normalized here rather than trusted: everything downstream reads "is there
+ * an account?" as "is there an id?", so a pending or anonymous state carrying
+ * a leftover id would be an account that does not exist.
+ */
 export function publishIdentity(next: Identity): void {
-  if (next.status === current.status && next.userId === current.userId) return;
-  current = next;
+  const userId = next.status === "signed-in" ? next.userId : null;
+  if (next.status === current.status && userId === current.userId) return;
+  current = next.status === "signed-in" ? { status: "signed-in", userId } : SNAPSHOTS[next.status];
   for (const listener of [...listeners]) listener();
 }
 
@@ -62,7 +73,8 @@ export function readIdentity(): Identity {
   return current;
 }
 
-function subscribe(listener: () => void): () => void {
+/** Exported for the hook below and for the test that pins the notify rule. */
+export function subscribeIdentity(listener: () => void): () => void {
   listeners.add(listener);
   return () => void listeners.delete(listener);
 }
@@ -73,7 +85,7 @@ function subscribe(listener: () => void): () => void {
  * flashes an anonymous state at somebody who is signed in.
  */
 export function useIdentity(): Identity {
-  return useSyncExternalStore(subscribe, readIdentity, () => PENDING);
+  return useSyncExternalStore(subscribeIdentity, readIdentity, () => PENDING);
 }
 
 /** Test hook: forget everything a bridge published. */

@@ -25,11 +25,12 @@ export function ClaimProgress(): null {
   const identity = useIdentity();
   const claimed = useRef(new Set<string>());
   useEffect(() => {
-    if (identity.status !== "signed-in") return;
-    // A signed-in identity with no id is the asserted dev identity, which is
-    // the same identity the drill was already recording against — there is
-    // nothing to move.
-    const key = identity.userId;
+    // ONE condition, because there is only one question: is there an account
+    // to move these days to? A pending or anonymous identity never carries an
+    // id (`identityState`, and the test that pins it), and a signed-in one
+    // with no id is the asserted DEV identity — which is the identity the
+    // drill was already recording against, so there is nothing to move.
+    const key = identity.status === "signed-in" ? identity.userId : null;
     if (key === null || claimed.current.has(key)) return;
     claimed.current.add(key);
     void claimLocalPractice(window.localStorage);

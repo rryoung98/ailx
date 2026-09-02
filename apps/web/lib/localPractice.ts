@@ -22,7 +22,6 @@ import {
   parseLocalLedger,
   qualifiesForStreak,
   recordLocalRound,
-  sanitizeClaimDays,
   serializeLocalLedger,
   streakSummary,
   type LocalPracticeLedger,
@@ -140,16 +139,6 @@ export function resetLastClaim(): void {
 }
 
 /**
- * The wire body of a claim: every unclaimed day, validated on the way OUT as
- * well as on the way in. Not for the server's sake — it validates its own
- * input, with this same shared function — but for this app's, so a rewritten
- * localStorage cannot make it post a body that is not the shape it documents.
- */
-export function claimBody(ledger: LocalPracticeLedger): { days: PracticeDayCounts[] } {
-  return { days: sanitizeClaimDays(claimableDays(ledger)) };
-}
-
-/**
  * Hand this browser's unclaimed practice days to the account that just signed
  * in, and remember which ones were taken.
  *
@@ -163,7 +152,11 @@ export async function claimLocalPractice(
   fetchFn: typeof fetch = fetch,
 ): Promise<ClaimOutcome | null> {
   const ledger = readLocalLedger(storage);
-  const { days } = claimBody(ledger);
+  // Already validated and bounded: `readLocalLedger` runs every entry through
+  // the SHARED `parsePracticeDay` on the way out of storage, so a second
+  // sanitize here would be dead code — a mutation test proved it, rather than
+  // leaving it in as defence nobody could break.
+  const days: PracticeDayCounts[] = claimableDays(ledger);
   if (days.length === 0) return null;
   try {
     const res = await fetchFn(`${apiBase()}/practice/claim`, {
