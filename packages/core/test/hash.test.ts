@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { crc32 as zlibCrc32 } from "node:zlib";
 import { canonicalJson, crc32, sha256Bytes, sha256Hex } from "../src/hash.js";
-import { itemId, rubricVersion } from "../src/content-address.js";
+import { itemId, judgmentId, rubricVersion } from "../src/content-address.js";
+import type { Judgment } from "../src/plugin.js";
 
 // ---------------------------------------------------------------------------
 // sha256 — locked against FIPS 180-4 vectors and node:crypto.
@@ -94,21 +95,17 @@ describe("canonicalJson", () => {
     expect(canonicalJson(v)).toBe(JSON.stringify(v));
   });
 
-  it("serializes numbers with JSON semantics (-0 collapses, exponents kept)", () => {
-    expect(canonicalJson({ n: -0 })).toBe('{"n":0}');
+  it("serializes representable numbers with JSON semantics (exponents kept)", () => {
     expect(canonicalJson({ n: 1e21 })).toBe('{"n":1e+21}');
     expect(canonicalJson({ n: 0.1 })).toBe('{"n":0.1}');
+    expect(canonicalJson({ n: 0 })).toBe('{"n":0}');
+    expect(canonicalJson({ n: Number.MAX_SAFE_INTEGER })).toBe('{"n":9007199254740991}');
   });
 
-  it("follows JSON semantics for null / undefined / non-finite numbers", () => {
+  it("keeps null, which JSON represents exactly", () => {
     expect(canonicalJson(null)).toBe("null");
     expect(canonicalJson({ a: null })).toBe('{"a":null}');
-    // undefined object values are dropped; undefined array slots become null.
-    expect(canonicalJson({ a: undefined, b: 1 })).toBe('{"b":1}');
-    expect(canonicalJson([undefined, 1])).toBe("[null,1]");
-    // JSON.stringify(undefined) is undefined — callers must not address it.
-    expect(canonicalJson(undefined)).toBeUndefined();
-    expect(canonicalJson({ a: NaN, b: Infinity })).toBe('{"a":null,"b":null}');
+    expect(canonicalJson([null, 1])).toBe("[null,1]");
   });
 
   it("does not mutate its input", () => {
@@ -116,6 +113,64 @@ describe("canonicalJson", () => {
     const before = JSON.stringify(input);
     canonicalJson(input);
     expect(JSON.stringify(input)).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Injectivity at the hashing boundary. JSON.stringify collapses -0 into 0,
+// NaN/Infinity into null and an undefined-valued property into that property's
+// absence; content addressing that aliases two different values is not content
+// addressing. canonicalJson refuses them, so itemId/judgmentId cannot mint one
+// id for two judgments.
+// ---------------------------------------------------------------------------
+
+describe("canonicalJson rejects values JSON cannot represent", () => {
+  const rejected: ReadonlyArray<readonly [string, unknown, RegExp]> = [
+    ["negative zero", { n: -0 }, /negative zero at \$\.n/],
+    ["NaN", { n: NaN }, /non-finite number NaN at \$\.n/],
+    ["Infinity", { n: Infinity }, /non-finite number Infinity at \$\.n/],
+    ["-Infinity", { n: -Infinity }, /non-finite number -Infinity at \$\.n/],
+    ["a top-level undefined", undefined, /undefined at \$/],
+    ["a top-level NaN", NaN, /non-finite number NaN at \$/],
+    ["an undefined-valued property", { a: undefined, b: 1 }, /undefined at \$\.a/],
+    ["an undefined array element", [undefined, 1], /undefined at \$\[0\]/],
+    // eslint-disable-next-line no-sparse-arrays
+    ["an array HOLE", [, 1], /undefined at \$\[0\]/],
+    ["a nested -0", { a: { b: [1, { c: -0 }] } }, /negative zero at \$\.a\.b\[1\]\.c/],
+    ["a nested undefined", { a: [{ b: undefined }] }, /undefined at \$\.a\[0\]\.b/],
+    ["a function", { f: () => 1 }, /a function at \$\.f/],
+    ["a symbol", { s: Symbol("x") }, /a symbol at \$\.s/],
+    ["a bigint", { n: 1n }, /a bigint at \$\.n/],
+  ];
+
+  for (const [name, value, message] of rejected) {
+    it(`throws on ${name}`, () => {
+      expect(() => canonicalJson(value)).toThrow(message);
+    });
+  }
+
+  it("names canonicalJson in the error so the caller knows which boundary refused", () => {
+    expect(() => canonicalJson({ n: NaN })).toThrow(/^canonicalJson: refusing to content-address/);
+  });
+
+  it("still encodes the representable neighbours of every rejected value", () => {
+    expect(canonicalJson({ n: 0 })).toBe('{"n":0}');
+    expect(canonicalJson({ b: 1 })).toBe('{"b":1}');
+    expect(canonicalJson([null, 1])).toBe("[null,1]");
+    expect(canonicalJson({ a: { b: [1, { c: 0 }] } })).toBe('{"a":{"b":[1,{"c":0}]}}');
+  });
+
+  it("propagates through itemId and judgmentId — ids are never minted for aliased values", () => {
+    // The exact aliasing JSON.stringify would have produced: these pairs would
+    // otherwise share one id.
+    expect(() => itemId({ n: -0 })).toThrow(/negative zero/);
+    expect(() => itemId({ a: undefined, b: 1 })).toThrow(/undefined/);
+    const judgment: Judgment = { dimension: "d", sample: 0, value: 1, modelId: "m" };
+    expect(() => judgmentId({ ...judgment, value: NaN })).toThrow(/non-finite number NaN/);
+    expect(() => judgmentId({ ...judgment, evidence: undefined })).toThrow(/undefined at \$\.evidence/);
+    // An absent optional field is a different, legal value — and hashes.
+    expect(judgmentId(judgment)).toMatch(/^[0-9a-f]{64}$/);
+    expect(judgmentId(judgment)).not.toBe(judgmentId({ ...judgment, evidence: "" }));
   });
 });
 

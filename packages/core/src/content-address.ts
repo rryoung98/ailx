@@ -23,6 +23,11 @@ export function itemId(item: unknown): string {
  * the same number, byte for byte. If they do not match, the judgments were
  * mutated and the score of record is void — which is a different and much
  * louder failure than a judge that drifted.
+ *
+ * Validation is not skipped, it is delegated: canonicalJson REJECTS anything
+ * JSON cannot represent losslessly (NaN, ±Infinity, -0, an undefined-valued
+ * property), so a judgment carrying one of those throws here rather than
+ * quietly sharing an id with a different judgment.
  */
 export function judgmentId(judgment: Judgment): string {
   return sha256Hex(canonicalJson(judgment));
