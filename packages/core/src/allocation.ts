@@ -10,9 +10,11 @@
  *
  * So the allocation lives here, as data, next to the plugin interface every
  * track already imports — and `AILX-Spec-2026.1.md` §04 is checked against it
- * by `packages/core/test/allocation.test.ts`. Track weights, the report's
- * component tables and the composite's track weights all derive from it.
- * There is no second copy to drift.
+ * by `packages/core/test/spec-allocation.test.ts`, which parses §04's
+ * mechanism table and asserts it against this data. The allocation NUMBERS
+ * themselves are pinned separately by `packages/core/test/allocation.test.ts`.
+ * Track weights, the report's component tables and the composite's track
+ * weights all derive from it. There is no second copy to drift.
  *
  * The four resolution mechanisms are deliberately distinct, and the
  * distinction is the whole point of the design principle:
