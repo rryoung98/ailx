@@ -15,8 +15,8 @@ Each attempt has one append-only event log in `packages/session/src/machine.ts`.
 |---|---|---|
 | Runner emission | `props.onEvent(TrackEvent)` | `packages/tracks/*/src/Runner.tsx` |
 | Persistence | exam page `onEvent` → `append()` → `saveAttempt()` | `apps/web/app/exam/page.tsx` |
-| In-progress state | `onCheckpoint(state)` → `ailx:checkpoint:<attemptId>:<trackId>` | `apps/web/lib/checkpoints.ts` |
-| Completion | `track_completed` (artifact) + `track_scored` (score, judgments, rubricVersion, scoringDigest, modelManifest) | `apps/web/app/exam/page.tsx`, `apps/web/lib/registry.ts` |
+| In-progress state | `onCheckpoint(state)` → `ailx:checkpoint:<attemptId>:<trackId>` | `apps/web/lib/data/checkpoints.ts` |
+| Completion | `track_completed` (artifact) + `track_scored` (score, judgments, rubricVersion, scoringDigest, modelManifest) | `apps/web/app/exam/page.tsx`, `apps/web/lib/instrument/registry.ts` |
 | Report | projection of the log; verbatim Event log section | `apps/web/app/report/page.tsx` |
 | Export | individual tier (own data) + research tier (allowlist) | `apps/web/lib/exportTiers.ts` |
 

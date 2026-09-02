@@ -2,11 +2,11 @@ import { test as base, expect, type Locator, type Page } from "@playwright/test"
 import { randomUUID } from "node:crypto";
 import { ATTEMPT_KEY, TRACK_IDS, append, type SequencedEntry, type SessionConfig, type TrackId } from "@ailx/session";
 import { apiPath, DEV_USER_HEADER } from "@ailx/contract";
-import { fixtureArtifact } from "../lib/sampleAttempt";
+import { fixtureArtifact } from "../lib/instrument/sampleAttempt";
 import { completedLog } from "../test/helpers/completedAttempt";
-import { DEV_USER_KEY, syncKey } from "../lib/persistence";
-import { checkpointKey } from "../lib/checkpoints";
-import { buildSiteZip, T1_SITE_SEQ, type SiteFile } from "../lib/siteUpload";
+import { DEV_USER_KEY, syncKey } from "../lib/data/persistence";
+import { checkpointKey } from "../lib/data/checkpoints";
+import { buildSiteZip, T1_SITE_SEQ, type SiteFile } from "../lib/data/siteUpload";
 import { OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
 import { apiRoot } from "./service";
 

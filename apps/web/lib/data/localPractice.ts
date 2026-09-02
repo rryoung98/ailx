@@ -32,7 +32,7 @@ import {
 import { apiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
-import { apiBase } from "./mode";
+import { apiBase } from "../mode";
 
 /** Minutes EAST of UTC — the sign convention `localDay` expects. */
 export function utcOffsetMinutes(now: Date = new Date()): number {

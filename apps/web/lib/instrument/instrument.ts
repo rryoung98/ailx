@@ -25,8 +25,8 @@ import {
   type T2DeckComposition,
 } from "@ailx/track-t2";
 import { t3TimeBudgetSeconds, type T3PresentationConfig } from "@ailx/track-t3";
-import snapshotRaw from "../../../instruments/demo-2026.1/snapshot.json";
-import { assetUrl } from "./mode";
+import snapshotRaw from "../../../../instruments/demo-2026.1/snapshot.json";
+import { assetUrl } from "../mode";
 
 interface BankItem {
   id: string;

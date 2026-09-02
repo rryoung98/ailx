@@ -29,7 +29,7 @@ import { apiPath } from "@ailx/contract";
 import { TRACK_META, type WorldAggregates } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { PageError, PageLoading } from "../../components/PageNotice";
-import { useService } from "../../lib/serviceFetch";
+import { useService } from "../../lib/data/serviceFetch";
 
 const EYEBROW = "PUBLIC AGGREGATES · DISTRIBUTIONS ONLY";
 

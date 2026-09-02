@@ -10,7 +10,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { DEV_USER_COOKIE, isDevUserId } from "@ailx/contract";
-import { DEV_USER_KEY, clearDevUser, devUser } from "../lib/persistence";
+import { DEV_USER_KEY, clearDevUser, devUser } from "../lib/data/persistence";
 
 /** This vitest/jsdom combo exposes no storage (see
  *  connectPanel.test.tsx) — and devUser takes any StorageLike anyway. */

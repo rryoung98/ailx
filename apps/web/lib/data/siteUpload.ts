@@ -12,7 +12,7 @@
  * the event log (and is scored) whether or not the upload ever succeeds.
  */
 import { writeStoredZip, type ZipFile } from "@ailx/core";
-import { isServerMode } from "./mode";
+import { isServerMode } from "../mode";
 import type { StorageLike } from "@ailx/session";
 import { apiPath, canonicalSitePath, siteUrlPath } from "@ailx/contract";
 import { authHeaders } from "./authHeaders";

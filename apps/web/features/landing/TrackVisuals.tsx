@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { snapshotTrack } from "../../lib/instrument";
+import { snapshotTrack } from "../../lib/instrument/instrument";
 import { assetUrl } from "../../lib/mode";
 
 export interface VizMedia {

@@ -22,7 +22,7 @@ import { GalleryCard } from "../../components/GalleryCard";
 import { ModeratorThread } from "../../components/Moderation";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { ReviewActions } from "./ReviewActions";
-import { useService } from "../../lib/serviceFetch";
+import { useService } from "../../lib/data/serviceFetch";
 
 const EYEBROW = "MODERATION CASE";
 

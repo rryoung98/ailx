@@ -38,7 +38,7 @@ import { CREDENTIAL_ASSERTS, CREDENTIAL_ISSUER, CREDENTIAL_LIMITS } from "@ailx/
 import { credentialViewFrom } from "./credentialView";
 import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
-import { useService } from "../../lib/serviceFetch";
+import { useService } from "../../lib/data/serviceFetch";
 
 const EYEBROW = "AILX · CREDENTIAL VERIFICATION";
 

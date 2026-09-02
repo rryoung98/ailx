@@ -13,7 +13,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { project, saveAttempt, clearAttempt } from "@ailx/session";
 import { calibrationBins, t2ResponsesFromArtifact } from "@ailx/report";
-import { t2Items } from "../lib/instrument";
+import { t2Items } from "../lib/instrument/instrument";
 import { completedLog, memoryStorage } from "./helpers/completedAttempt";
 import ReportPage from "../app/report/page";
 

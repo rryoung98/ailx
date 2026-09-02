@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The funnel emitter (lib/funnel.ts), driven through injected deps so the
+ * The funnel emitter (lib/data/funnel.ts), driven through injected deps so the
  * clock, the stores, the id source and the sink are all fixtures.
  *
  * The properties under test are the four the module promises: silence with no
@@ -19,7 +19,7 @@ import {
   FUNNEL_SESSION_KEY,
   type Funnel,
   type FunnelDeps,
-} from "../lib/funnel";
+} from "../lib/data/funnel";
 
 /** A store that can be told to fail, because real ones do. */
 function store(broken = false) {

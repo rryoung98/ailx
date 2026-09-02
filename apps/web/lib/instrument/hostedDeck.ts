@@ -3,7 +3,7 @@
  * the T2 deck from `GET /api/attempts/:id/items`, and the T1/T3/T4 form from
  * `GET /api/attempts/:id/track/:trackId`.
  *
- * WHY THIS EXISTS: `lib/instrument.ts` builds a deck out of the bundled
+ * WHY THIS EXISTS: `lib/instrument/instrument.ts` builds a deck out of the bundled
  * RELEASED-PRACTICE tier, which is the only bank a browser may hold. In
  * hosted mode that is the wrong deck — the candidate must sit the OPERATIONAL
  * bank, which lives behind the server-only `@ailx/instrument` and reaches the
@@ -30,8 +30,8 @@ import {
   postT3Assist,
   postTranscriptTurn,
   type PresentedTrackView,
-} from "./persistence";
-import type { PresentedDeck } from "./persistence";
+} from "../data/persistence";
+import type { PresentedDeck } from "../data/persistence";
 
 /** A `RedactedItem` as it arrives on the wire. */
 type WireItem = Record<string, unknown>;
@@ -185,7 +185,7 @@ function plantsOf(v: PresentedTrackView): readonly T3RevealedPlant[] {
  * The seam the hosted T3 Runner talks to the exam service through.
  *
  * Transcript mirroring is SERIALIZED and best-effort in the same shape as the
- * response mirror in `lib/persistence.ts`: these rows are what the server's
+ * response mirror in `lib/data/persistence.ts`: these rows are what the server's
  * score reads for stances, and re-posting the same seq is a no-op there, so
  * ordering matters and a duplicate does not.
  */
@@ -227,7 +227,7 @@ export function hostedT3Bridge(attemptId: string): T3Hosted {
  * The config a HOSTED run presents for `trackId`, or null when this run's
  * content is this build's own — static demo, or a server-mode run the backend
  * never created. ONE entry point for every track: the fetch, the "is this the
- * server's run at all" test and the failure rule live in `lib/persistence.ts`,
+ * server's run at all" test and the failure rule live in `lib/data/persistence.ts`,
  * and only the per-track shaping differs.
  *
  * T1 is deliberately never fetched: its brief is PUBLIC by design (an open

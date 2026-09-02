@@ -40,9 +40,9 @@ import {
   type DailyResult,
   type DailyRound,
 } from "@ailx/report";
-import { DAILY_POOL } from "../../lib/demoItems";
+import { DAILY_POOL } from "../../lib/instrument/demoItems";
 import { readDailyLedger, recordDailyRoundLocally } from "./dailyState";
-import { funnel } from "../../lib/funnel";
+import { funnel } from "../../lib/data/funnel";
 import { assetUrl, basePath } from "../../lib/mode";
 import { ShareTargets } from "../../components/ShareTargets";
 import styles from "../practice/PracticeDrill.module.css";

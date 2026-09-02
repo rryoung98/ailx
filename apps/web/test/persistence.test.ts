@@ -9,7 +9,7 @@ import {
   fetchPresentedDeck,
   startServerAttempt,
   type AttemptPersistence,
-} from "../lib/persistence";
+} from "../lib/data/persistence";
 
 // ---------------------------------------------------------------------------
 // Doubles

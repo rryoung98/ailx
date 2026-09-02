@@ -52,7 +52,7 @@ When it is set:
 - The `ailx_dev_user` cookie no longer matters. `SameSite=Lax` prevents a
   browser from sending it to another origin. Identity travels in the
   `x-ailx-dev-user` header or, once Clerk is mounted, `Authorization: Bearer`.
-  `apps/web/lib/authHeaders.ts` sends that identity on every call.
+  `apps/web/lib/data/authHeaders.ts` sends that identity on every call.
   Server-rendered pages on THIS app still read the cookie. They also still
   read this app's own database.
 - The service must allow the frontend's origin. `AILX_ALLOWED_ORIGINS` on
@@ -140,7 +140,7 @@ data.
 
 `DevAuthProvider` also accepts identity from the `ailx_dev_user` cookie. The
 browser writes it alongside `localStorage["ailx:dev-user"]`. `devUser()` in
-`apps/web/lib/authHeaders.ts` is the only writer. The order of precedence is
+`apps/web/lib/data/authHeaders.ts` is the only writer. The order of precedence is
 the `x-ailx-dev-user` header, then `Authorization: Bearer dev:<id>`, then the
 cookie. Scripted callers and the Playwright suite are therefore unaffected.
 
@@ -200,7 +200,7 @@ POST /api/attempts/:id/site/finalize        { uploadId, seq }
 ```
 
 The app selects the path automatically by size using `DIRECT_UPLOAD_MIN_BYTES`
-(4 MB, `apps/web/lib/siteUpload.ts`). Below that threshold, the single POST
+(4 MB, `apps/web/lib/data/siteUpload.ts`). Below that threshold, the single POST
 uses one round trip and remains unchanged. Above it, the client requests a
 ticket. If the deployment has no Blob store, the ticket endpoint returns
 `501`, and the client falls back to the POST. This leaves

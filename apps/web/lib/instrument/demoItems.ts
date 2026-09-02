@@ -52,7 +52,7 @@ export const T2_ITEMS: T2Item[] = [
  */
 import { DAILY_IMAGE_STEM, dailyPoolFromPractice, type DailyCard } from "@ailx/report";
 import { snapshotTrack } from "./instrument";
-import { assetUrl } from "./mode";
+import { assetUrl } from "../mode";
 
 export type TeaserKind = "media" | "text" | "message";
 

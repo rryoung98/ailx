@@ -17,8 +17,8 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { FUNNEL_EVENTS_PATH, parseFunnelBatch, type FunnelEvent } from "@ailx/contract";
 import { DAILY_DECK_SIZE, PRACTICE_OPTIONS, dailyDay, dailyDeck } from "@ailx/report";
-import { funnel, resetFunnel } from "../lib/funnel";
-import { DAILY_POOL } from "../lib/demoItems";
+import { funnel, resetFunnel } from "../lib/data/funnel";
+import { DAILY_POOL } from "../lib/instrument/demoItems";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -40,7 +40,7 @@ const posts: { url: string; body: string; init: RequestInit }[] = [];
 /**
  * A `fetch` that records the funnel's own POSTs and hands everything else to
  * the test's stub. The emitter uses `fetch(keepalive)` rather than a beacon
- * (lib/funnel.ts says why), so this is where its traffic is observed.
+ * (lib/data/funnel.ts says why), so this is where its traffic is observed.
  */
 function stubFetch(handler: (url: unknown, init?: RequestInit) => Promise<Response>): void {
   vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {

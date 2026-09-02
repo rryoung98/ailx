@@ -13,7 +13,7 @@
  * is `SameSite=Lax` and is therefore NOT sent to another origin, so the
  * moment `NEXT_PUBLIC_AILX_API_BASE` names the exam service the cookie is
  * gone. So this page asks with `identified: true` and the id rides the
- * HEADER from `lib/authHeaders.ts`, which works on both hosts. The server's
+ * HEADER from `lib/data/authHeaders.ts`, which works on both hosts. The server's
  * precedence is unchanged: an explicit header is read first, and an illegal
  * one is refused outright rather than demoted to a cookie.
  *
@@ -51,10 +51,10 @@ import {
 } from "@ailx/report";
 import { apiPath } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
-import { hasAuthTokenSource } from "../../lib/authHeaders";
+import { hasAuthTokenSource } from "../../lib/data/authHeaders";
 import { ForgetBrowser } from "./ForgetBrowser";
 import { PageError, PageLoading } from "../../components/PageNotice";
-import { useService } from "../../lib/serviceFetch";
+import { useService } from "../../lib/data/serviceFetch";
 // The stylesheet stays co-located with the route it dresses (and is pinned
 // there by test/practiceDrill.test.tsx); only the markup moved out of app/.
 import styles from "../../app/progress/progress.module.css";

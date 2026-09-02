@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StorageLike } from "@ailx/session";
 import {
   checkpointKey, clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
-} from "../lib/checkpoints";
+} from "../lib/data/checkpoints";
 
 function memStorage(): StorageLike & { map: Map<string, string> } {
   const map = new Map<string, string>();

@@ -9,8 +9,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { validateT2Config } from "@ailx/track-t2";
-import { fetchHostedT2Config, fetchServerAnswerKeys, t2ConfigFromDeck } from "../lib/hostedDeck";
-import { syncKey, type PresentedDeck } from "../lib/persistence";
+import { fetchHostedT2Config, fetchServerAnswerKeys, t2ConfigFromDeck } from "../lib/instrument/hostedDeck";
+import { syncKey, type PresentedDeck } from "../lib/data/persistence";
 
 const sittingItem = (id: string, over: Record<string, unknown> = {}) => ({
   id,

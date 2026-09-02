@@ -7,8 +7,8 @@ import {
   type SequencedEntry,
 } from "@ailx/session";
 import { TOTAL_POINTS } from "@ailx/core";
-import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
-import { replayTrackScore, scoreTrack, trackScoredEntry } from "../../lib/registry";
+import { buildSampleAttemptLog } from "../../lib/instrument/sampleAttempt";
+import { replayTrackScore, scoreTrack, trackScoredEntry } from "../../lib/instrument/registry";
 import type { TrackId } from "@ailx/session";
 
 /**
@@ -54,9 +54,9 @@ import { CalibrationCurve } from "../../features/report/CalibrationCurve";
 import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPortrait";
 import { CredentialPanel } from "../../features/report/CredentialPanel";
 import { Diagnosis } from "../../features/report/Diagnosis";
-import { t2AnswerKeys } from "../../lib/instrument";
-import { fetchServerAnswerKeys } from "../../lib/hostedDeck";
-import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
+import { t2AnswerKeys } from "../../lib/instrument/instrument";
+import { fetchServerAnswerKeys } from "../../lib/instrument/hostedDeck";
+import { loadSiteSubmission, type SiteSubmission } from "../../lib/data/siteUpload";
 import { RelianceCard } from "../../features/report/RelianceCard";
 import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";

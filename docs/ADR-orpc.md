@@ -45,7 +45,7 @@ cost of adopting now and it is not the reason for the answer below.
 - the two frozen refusal bodies, `UNAUTHORIZED_RESULT` and `FORBIDDEN_RESULT`.
 
 `apps/web` reaches the service through one seam. `lib/mode.ts` `apiBase()`
-returns `/api` or `<origin>/v1`; `lib/serviceFetch.ts` is the only GET path
+returns `/api` or `<origin>/v1`; `lib/data/serviceFetch.ts` is the only GET path
 (`serviceFetch`, `useService`, four states); writes call `fetch` directly in
 `PracticeDrill.tsx`, `ReviewActions.tsx`, `Moderation.tsx`, `localPractice.ts`
 and `persistence.ts`. The private service mounts **38 `/v1` routes** on Hono
@@ -284,7 +284,7 @@ by two people.
 Add a **route manifest** to `packages/contract`: one exported table naming
 every `/v1` route, its method, its path template and its response type. Then
 
-- `apps/web/lib/serviceFetch.ts` takes a manifest key instead of a string, so
+- `apps/web/lib/data/serviceFetch.ts` takes a manifest key instead of a string, so
   no call site can spell a path, and the response type comes with the route;
 - the private repo asserts its Hono app mounts exactly the manifest's routes,
   no more and no fewer. It vendors the manifest byte for byte already, so that

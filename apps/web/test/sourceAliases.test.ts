@@ -47,7 +47,7 @@ describe("packages load from src at runtime", () => {
     expect(stack).not.toMatch(/\/packages\/[^\n]*\/dist\//);
   });
 
-  // A SUBPATH: `lib/validateChecks.ts` really imports `@ailx/core/dist/purity.js`,
+  // A SUBPATH: `lib/instrument/validateChecks.ts` really imports `@ailx/core/dist/purity.js`,
   // and a string alias would have rewritten it to `.../src/index.ts/dist/purity.js`.
   it("a `dist/`-spelled subpath import runs the source file", () => {
     const stack = throwSite(() => runPure(() => Date.now()));

@@ -16,8 +16,8 @@ import {
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock("../lib/registry", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../lib/registry")>();
+vi.mock("../lib/instrument/registry", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/instrument/registry")>();
   return {
     ...actual,
     loadTrackModule: async () => ({

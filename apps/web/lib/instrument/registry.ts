@@ -24,7 +24,7 @@ import { t1Plugin } from "@ailx/track-t1";
 import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
 import { plugin as t3Plugin, validateT3Config } from "@ailx/track-t3";
 import { t4Plugin } from "@ailx/track-t4";
-import { PlaceholderRunner } from "../components/PlaceholderRunner";
+import { PlaceholderRunner } from "../../components/PlaceholderRunner";
 import { snapshotRubricVersion, snapshotScoringDigest, trackConfig } from "./instrument";
 import { judgeT1, judgeT3, judgeT4 } from "@ailx/report";
 

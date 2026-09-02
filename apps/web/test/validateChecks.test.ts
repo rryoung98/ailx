@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runAllChecks } from "../lib/validateChecks";
+import { runAllChecks } from "../lib/instrument/validateChecks";
 
 describe("/validate checks (same code the page runs in-browser)", () => {
   const results = runAllChecks();

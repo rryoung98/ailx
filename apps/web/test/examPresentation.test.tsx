@@ -34,8 +34,8 @@ let screenId: string | null = null;
 /** Captured so a test can drive the runner the way a real one does. */
 let lastProps: TrackUIProps | null = null;
 
-vi.mock("../lib/registry", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../lib/registry")>();
+vi.mock("../lib/instrument/registry", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/instrument/registry")>();
   return {
     ...actual,
     loadTrackModule: async () => ({

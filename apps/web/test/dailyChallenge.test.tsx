@@ -35,7 +35,7 @@ import {
   serializeDailyLedger,
 } from "@ailx/report";
 import { DailyChallenge } from "../features/daily/DailyChallenge";
-import { DAILY_POOL } from "../lib/demoItems";
+import { DAILY_POOL } from "../lib/instrument/demoItems";
 import { ATTEMPT_KEY, LOCAL_PRACTICE_KEY } from "./helpers/keys";
 
 const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -364,7 +364,7 @@ describe("the result view gives the day away to nobody", () => {
 describe("the pool is published material and nothing else", () => {
   it("draws only on the practice corpus and the released-practice tier", async () => {
     const { PRACTICE_BANK } = await import("@ailx/report");
-    const { snapshotTrack } = await import("../lib/instrument");
+    const { snapshotTrack } = await import("../lib/instrument/instrument");
     const released = new Set(
       (snapshotTrack("t2").bank?.items ?? []).map((i) => (i as { id: string }).id),
     );
@@ -405,9 +405,9 @@ describe("the daily never touches the credential", () => {
   const DAILY_MODULES = ["features/daily/dailyState.ts", "features/daily/DailyChallenge.tsx"];
   /** The modules that score a sitting, keep its log, or show a credential. */
   const SCORING_MODULES = [
-    "lib/registry.ts",
-    "lib/persistence.ts",
-    "lib/checkpoints.ts",
+    "lib/instrument/registry.ts",
+    "lib/data/persistence.ts",
+    "lib/data/checkpoints.ts",
     "features/verify/credentialView.ts",
     "features/report/CredentialPanel.tsx",
   ];
@@ -426,7 +426,7 @@ describe("the daily never touches the credential", () => {
    * and moderation wire types. But the funnel event schema lives there too —
    * one schema, spelled once, because the browser emits the events and the
    * private service stores them — and the daily fires `play_started` and
-   * `play_completed` through `lib/funnel.ts`.
+   * `play_completed` through `lib/data/funnel.ts`.
    *
    * WHY THIS LIST IS SAFE, and a reader can check it in two steps:
    *
@@ -525,7 +525,7 @@ describe("the daily never touches the credential", () => {
 
   it("imports nothing from the exam, scoring or credential path", () => {
     // Transitive, and read from parsed imports rather than from the text: the
-    // page reaches lib/demoItems.ts and lib/instrument.ts, so a scoring module
+    // page reaches lib/instrument/demoItems.ts and lib/instrument/instrument.ts, so a scoring module
     // pulled in one step further along would be missed by a per-file grep.
     expect(SCORING_MODULES.filter((m) => DAILY_CLOSURE.includes(m))).toEqual([]);
     // The daily may import @ailx/report (the daily rules), @ailx/session (the
@@ -592,7 +592,7 @@ describe("the daily never touches the credential", () => {
     // The mirror of the mutations: the emitter's own import list, verbatim,
     // must pass. Otherwise the rule above could be "ban everything" and every
     // mutation would still be red.
-    const emitter = MODULE_GRAPH.get("lib/funnel.ts")?.imports ?? [];
+    const emitter = MODULE_GRAPH.get("lib/data/funnel.ts")?.imports ?? [];
     expect(emitter.some((i) => i.specifier === "@ailx/contract")).toBe(true);
     expect(forbiddenImports(emitter)).toEqual([]);
   });
@@ -681,10 +681,10 @@ describe("the daily never touches the credential", () => {
   });
 
   it("resolves both spellings of an app module, so the @/ alias is not a leaf", () => {
-    // tsconfig.json maps "@/*" onto apps/web, so "@/lib/persistence" and
-    // "../lib/persistence" are the same file and must resolve the same way.
-    expect(resolveImport("app/daily/page.tsx", "@/lib/persistence")).toBe("lib/persistence.ts");
-    expect(resolveImport("app/daily/page.tsx", "../../lib/persistence")).toBe("lib/persistence.ts");
+    // tsconfig.json maps "@/*" onto apps/web, so "@/lib/data/persistence" and
+    // "../lib/data/persistence" are the same file and must resolve the same way.
+    expect(resolveImport("app/daily/page.tsx", "@/lib/data/persistence")).toBe("lib/data/persistence.ts");
+    expect(resolveImport("app/daily/page.tsx", "../../lib/data/persistence")).toBe("lib/data/persistence.ts");
     expect(resolveImport("app/daily/page.tsx", "@ailx/report")).toBeNull();
   });
 });

@@ -25,8 +25,8 @@ import {
 let crashRunner = true;
 let runnerMounts = 0;
 
-vi.mock("../lib/registry", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../lib/registry")>();
+vi.mock("../lib/instrument/registry", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/instrument/registry")>();
   return {
     ...actual,
     loadTrackModule: async () => ({

@@ -28,7 +28,7 @@ import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { ShareTargets } from "../../components/ShareTargets";
 import { TrackRadar } from "../../components/TrackRadar";
-import { useService } from "../../lib/serviceFetch";
+import { useService } from "../../lib/data/serviceFetch";
 
 export interface SharedView {
   status: string;

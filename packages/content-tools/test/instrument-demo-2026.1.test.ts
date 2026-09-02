@@ -158,7 +158,7 @@ describe("T2 released bank", () => {
    */
   it("declares the block counts its bank actually holds", () => {
     // Bank item type to declared block id. The same map as
-    // apps/web/lib/instrument.ts TYPE_MAP; content-tools must not import the
+    // apps/web/lib/instrument/instrument.ts TYPE_MAP; content-tools must not import the
     // web app, so it is restated with this comment rather than shared.
     const BLOCK_OF: Record<string, string> = {
       "text-authenticity": "message-page",

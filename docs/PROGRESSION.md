@@ -258,7 +258,7 @@ credential — and never anywhere else.
 
 **Where an anonymous day lives, and why.** `localStorage`, in the visitor's own
 browser (`packages/report/src/localPractice.ts` holds the rules,
-`apps/web/lib/localPractice.ts` the storage and the network). Three candidates
+`apps/web/lib/data/localPractice.ts` the storage and the network). Three candidates
 were considered:
 
 | Option | Verdict |
@@ -344,7 +344,7 @@ comparison.
 | Practice corpus, deck sampling, grading | `packages/report/src/practice.ts` (pure) |
 | Local days, streak rule, progression shaping | `packages/report/src/progress.ts` (pure) |
 | The browser-kept ledger, the claim's rules and its wordings | `packages/report/src/localPractice.ts` (pure) |
-| Reading/writing that ledger, and POSTing a claim | `apps/web/lib/localPractice.ts` |
+| Reading/writing that ledger, and POSTing a claim | `apps/web/lib/data/localPractice.ts` |
 | Who the browser is, as something a view re-renders on | `apps/web/lib/auth/identityState.ts` |
 | The claim itself, fired once per account at sign-in | `apps/web/lib/auth/ClaimProgress.tsx` |
 | Claimed days (server side) | `practice_claims` + `POST /practice/claim` (PRIVATE backend repo) |

@@ -17,13 +17,13 @@
  */
 import { apiPath, DEFAULT_REPO_NAME } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
-import { authHeaders } from "../../lib/authHeaders";
+import { authHeaders } from "../../lib/data/authHeaders";
 import { isServerMode } from "../../lib/mode";
 import {
   browserApiOptions,
   getServerAttemptId,
   type ApiPersistenceOptions,
-} from "../../lib/persistence";
+} from "../../lib/data/persistence";
 
 /**
  * Why there is no v0 button.

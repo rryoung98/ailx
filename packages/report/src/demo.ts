@@ -7,7 +7,7 @@
  * forever, with no network. Clearly labelled `demo-*@1` in model manifests.
  *
  * NOTE (F1): the old fallback `demoScoreArtifact` is GONE. The exam path
- * scores exclusively through the real track plugins (lib/registry.ts) and
+ * scores exclusively through the real track plugins (lib/instrument/registry.ts) and
  * fails closed on malformed input.
  */
 

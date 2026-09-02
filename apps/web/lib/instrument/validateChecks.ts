@@ -16,8 +16,8 @@ import { t1Plugin } from "@ailx/track-t1";
 import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
 import { plugin as t3Plugin, validateT3Config } from "@ailx/track-t3";
 import { t4Plugin } from "@ailx/track-t4";
-import GOLDEN from "./fixtures/composite-golden.json";
-import PLUGIN_GOLDEN from "./fixtures/plugin-golden.json";
+import GOLDEN from "../fixtures/composite-golden.json";
+import PLUGIN_GOLDEN from "../fixtures/plugin-golden.json";
 import { scoreTrack, type TrackScoringRecord } from "./registry";
 import { buildSampleAttemptLog } from "./sampleAttempt";
 

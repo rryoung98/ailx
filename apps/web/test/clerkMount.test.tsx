@@ -10,7 +10,7 @@
  *     dev id instead of killing the run (the SERVER decides what is enough);
  *  3. the static GitHub Pages export mounts no provider and resolves no auth
  *     SDK — it is our only public deployment and it has no auth at all;
- *  4. `lib/authHeaders.ts` stays SDK-free, and the publishable key is read in
+ *  4. `lib/data/authHeaders.ts` stays SDK-free, and the publishable key is read in
  *     exactly one place.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -40,7 +40,7 @@ vi.mock("@clerk/nextjs", () => ({
 
 const { ClerkTokenBridge } = await import("../lib/auth/ClerkTokenBridge");
 const { AuthShell } = await import("../lib/auth/AuthShell");
-const { authHeaders, hasAuthTokenSource, setAuthTokenSource } = await import("../lib/authHeaders");
+const { authHeaders, hasAuthTokenSource, setAuthTokenSource } = await import("../lib/data/authHeaders");
 const { isClerkEnabled } = await import("../lib/mode");
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -232,11 +232,11 @@ function clerkImports(): string[] {
 describe("one place imports the SDK, one place reads the key", () => {
   it("sees the files it is judging (guards against a silent glob bug)", () => {
     expect(appAndLib.length).toBeGreaterThan(20);
-    expect(appAndLib.map((f) => relative(webDir, f))).toContain(join("lib", "authHeaders.ts"));
+    expect(appAndLib.map((f) => relative(webDir, f))).toContain(join("lib", "data", "authHeaders.ts"));
   });
 
-  it("lib/authHeaders.ts imports no auth SDK — the static bundle depends on it", () => {
-    const src = readFileSync(join(webDir, "lib", "authHeaders.ts"), "utf8");
+  it("lib/data/authHeaders.ts imports no auth SDK — the static bundle depends on it", () => {
+    const src = readFileSync(join(webDir, "lib", "data", "authHeaders.ts"), "utf8");
     expect(CLERK_IMPORT.test(src)).toBe(false);
   });
 

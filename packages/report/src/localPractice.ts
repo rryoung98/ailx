@@ -34,7 +34,7 @@
  * statistic — the same wall practice already stands behind.
  *
  * Pure, like everything else in this package: `now` and storage are the
- * caller's problem (`apps/web/lib/localPractice.ts` is the browser shell).
+ * caller's problem (`apps/web/lib/data/localPractice.ts` is the browser shell).
  */
 import { PRACTICE_DECK_SIZE } from "./practice.js";
 import type { PracticeDayCounts } from "./progress.js";

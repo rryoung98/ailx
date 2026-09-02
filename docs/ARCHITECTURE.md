@@ -18,7 +18,7 @@ evidence supports them. This document defines when.
 
 ### The precipitating fact (verified)
 
-`apps/web/lib/instrument.ts` statically imports `instruments/2026.1/snapshot.json`. The
+`apps/web/lib/instrument/instrument.ts` statically imports `instruments/2026.1/snapshot.json`. The
 snapshot carried all 104 T2 items with `key`, `rationale` and `provenance`. Since
 2026-08-30, it carries the 84 operational items. The other 20 moved to the released-practice
 tier `instruments/demo-2026.1` — see §10 step 1. The deployed static export leaks them:
@@ -95,7 +95,7 @@ follows this rule.
 ### 2.2 The static GitHub Pages demo — same call site, different provider
 
 ```ts
-// apps/web/lib/instrument.client.ts (bundled in BOTH builds)
+// apps/web/lib/instrument/instrument.client.ts (bundled in BOTH builds)
 export const trackConfig = isServerMode() ? fetchTrackConfig : demoTrackConfig;
 // demoTrackConfig comes from instruments/demo-2026.1 — the released practice tier:
 // 20 items, keys and rationales published ON PURPOSE, labelled "practice".
@@ -171,7 +171,7 @@ holds an interface, not a bank.
 The module has six methods. They hide package fetching, digest verification, bank parsing,
 locale fallback, the `material` transform, deck sampling, key custody, redaction policy,
 phase authorisation, exposure seconds, and rubric and scoring digest lookups. This covers all
-357 lines of today's `apps/web/lib/instrument.ts` plus the loader. Moving the module also
+357 lines of today's `apps/web/lib/instrument/instrument.ts` plus the loader. Moving the module also
 satisfies the FRONTEND.md §9 / PLAN.md Phase 1 requirement that `instrument.ts` leave
 `apps/web`. An injected `(path: string) => string` replaces the asset-URL coupling that
 blocked the move.
@@ -369,7 +369,7 @@ db/
 Each step can ship and be reverted on its own.
 
 1. **Stop the leak (highest value, smallest diff).** Create `packages/instrument`. Move
-   `apps/web/lib/instrument.ts` into it behind `Instrument`; add
+   `apps/web/lib/instrument/instrument.ts` into it behind `Instrument`; add
    `GET /api/attempts/:id/items` returning the `RedactedItem` union; publish
    `instruments/demo-2026.1` for the static build. Add the CI bundle-grep test. Ship. **The
    driver is now satisfied** even if no later step happens.
@@ -450,12 +450,12 @@ matching this one. Read §10.3 before adding a route handler here.
 that extension is the only thing keeping a database-backed page out of the static export,
 and it never obliged the file to be server-only — but the file is now a shell that exports
 `metadata` around a client component in `apps/web/lib/`. All seven go through ONE module,
-`apps/web/lib/serviceFetch.ts`, so the URL always comes from `apiBase()`, a non-200 keeps
+`apps/web/lib/data/serviceFetch.ts`, so the URL always comes from `apiBase()`, a non-200 keeps
 its status, and a thrown fetch becomes a sentence instead of a blank page. **Identity is
 now a header, everywhere.** The `ailx_dev_user` cookie is `SameSite=Lax`, so the moment the
 seam names another origin it is not sent at all; the three identity-carrying pages —
 `/progress`, `/review`, `/review/[id]` — pass `identified: true` and send
-`x-ailx-dev-user` (or the Clerk bearer) from `lib/authHeaders.ts`. `/world`, `/gallery`,
+`x-ailx-dev-user` (or the Clerk bearer) from `lib/data/authHeaders.ts`. `/world`, `/gallery`,
 `/s/[token]` and `/verify/[code]` send nothing, because a public wall, a capability link
 and a public credential must not depend on who is asking. Two consequences worth stating:
 `generateMetadata` for `/s/[token]` and `/verify/[code]` still runs on the SERVER and does
@@ -479,7 +479,7 @@ service is `AILX_AUTH=clerk`, every call carrying only `x-ailx-dev-user` is 401,
 frontend without a signed-in user is a dead page. Provider, sign-in route, token seam and
 the service's env therefore land together or not at all.
 
-What already exists, dormant and tested (`apps/web/lib/authHeaders.ts`,
+What already exists, dormant and tested (`apps/web/lib/data/authHeaders.ts`,
 `apps/web/test/authHeaders.test.ts`): every browser call gets its identity headers from
 `authHeaders()`. Register a source with `setAuthTokenSource(() => getToken())` and all of
 them send `Authorization: Bearer <jwt>` instead of the dev id — no call site changes. A
@@ -492,7 +492,7 @@ The remaining steps, in order:
 1. `pnpm --filter @ailx/web add @clerk/nextjs`.
 2. `apps/web/app/layout.tsx`: wrap the tree in `<ClerkProvider>`. Hosted build only — the
    static export has no auth and must keep rendering without one.
-3. A small client component mounted once (not in `lib/authHeaders.ts`, which must stay
+3. A small client component mounted once (not in `lib/data/authHeaders.ts`, which must stay
    SDK-free) that calls `setAuthTokenSource(() => getToken())` on sign-in and
    `setAuthTokenSource(null)` on sign-out.
 4. A `/sign-in` route, and whatever the run flow does when a candidate is anonymous.
@@ -530,7 +530,7 @@ sitting.
 - *The static export resolves a stub, not the SDK.* `app/layout.tsx` is ONE file for both
   builds, so the import of `@clerk/nextjs` sits in both graphs — and an import is enough to
   bundle it, whether or not the provider ever renders. `next.config.mjs` therefore aliases the
-  package to `lib/auth/clerkStub.tsx` in the export build. `lib/authHeaders.ts` stays SDK-free
+  package to `lib/auth/clerkStub.tsx` in the export build. `lib/data/authHeaders.ts` stays SDK-free
   as promised; the only modules that touch Clerk are `lib/auth/*` and the two sign-in pages,
   and a test pins that list.
 - *No middleware, and no `CLERK_SECRET_KEY` in this repo.* This app verifies no token: Clerk

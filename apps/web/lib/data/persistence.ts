@@ -23,10 +23,10 @@ import {
   type ValidatedLog,
 } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
-import { apiBase, isServerMode, siteApiRoot } from "./mode";
+import { apiBase, isServerMode, siteApiRoot } from "../mode";
 
 /**
- * Identity lives in `lib/authHeaders.ts` — one module owns "who is calling and
+ * Identity lives in `lib/data/authHeaders.ts` — one module owns "who is calling and
  * how does that travel", because the answer differs same-origin vs
  * cross-origin. Re-exported here so existing importers (and the E2E fixtures,
  * which seed `DEV_USER_KEY` directly) keep one import site.
@@ -417,7 +417,7 @@ export async function fetchPresentedDeck(
  *
  * `view` stays a bare record here on purpose. This module owns the transport;
  * which fields of a REDACTED view may be presented is a per-track question,
- * and it is answered in exactly one place — `lib/hostedDeck.ts`.
+ * and it is answered in exactly one place — `lib/instrument/hostedDeck.ts`.
  */
 export interface PresentedTrackView {
   phase: "sitting" | "review";

@@ -23,8 +23,8 @@ import {
 } from "@ailx/session";
 import {
   replayTrackScore, scoreTrack, trackScoredEntry, type TrackScoringRecord,
-} from "../lib/registry";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+} from "../lib/instrument/registry";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 import { judgeT1, judgeT4 } from "@ailx/report";
 
 /** The rows the demo jury EMITS, before anything canonicalizes them. */

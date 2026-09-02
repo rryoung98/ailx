@@ -7,7 +7,7 @@ import {
   PRACTICE_EFFICACY_NOTE_SHORT,
 } from "@ailx/report";
 import { DailyChallenge } from "../../features/daily/DailyChallenge";
-import { DAILY_POOL } from "../../lib/demoItems";
+import { DAILY_POOL } from "../../lib/instrument/demoItems";
 
 /**
  * /daily — the daily challenge.

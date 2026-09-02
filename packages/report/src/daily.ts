@@ -52,7 +52,7 @@
  *    all and cannot be reached from here — `packages/content-tools/test/
  *    public-tree.test.ts` and `apps/web/test/bundleSecrecy.test.ts` keep it
  *    that way. `dailyPoolFromPractice()` is the practice half; the released
- *    half is mapped in `apps/web/lib/demoItems.ts`, where the snapshot lives.
+ *    half is mapped in `apps/web/lib/instrument/demoItems.ts`, where the snapshot lives.
  *
  * 4. NO SCORE OF RECORD, EVER. A daily result is not a sitting. It reaches no
  *    `score()`, no composite, no credential and no report figure, exactly as

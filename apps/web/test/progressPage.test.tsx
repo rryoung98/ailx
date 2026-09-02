@@ -36,7 +36,7 @@ import {
   stubJsonFetch,
   type StubbedCall,
 } from "./helpers/clientPage";
-import { setAuthTokenSource } from "../lib/authHeaders";
+import { setAuthTokenSource } from "../lib/data/authHeaders";
 import { ProgressView } from "../features/progress/ProgressView";
 import { metadata } from "../app/progress/page.api";
 

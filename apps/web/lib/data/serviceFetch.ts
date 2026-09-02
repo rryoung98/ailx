@@ -14,7 +14,7 @@
  *    the route manifest in `@ailx/contract`, never a path spelled here (the
  *    seam is the only thing that knows which host answers, and the manifest is
  *    the only thing that knows which routes exist);
- *  - IDENTITY travels as a HEADER, from `lib/authHeaders.ts`. The
+ *  - IDENTITY travels as a HEADER, from `lib/data/authHeaders.ts`. The
  *    `ailx_dev_user` cookie is `SameSite=Lax` and is NOT sent cross-origin,
  *    so the moment `NEXT_PUBLIC_AILX_API_BASE` names another origin a cookie
  *    identity is simply gone. Any page that shows one person their own rows
@@ -29,7 +29,7 @@ import { useEffect, useState } from "react";
 import type { ApiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
-import { apiBase } from "./mode";
+import { apiBase } from "../mode";
 
 /** The four things a page can be, and nothing else. */
 export type ServiceState<T> =

@@ -14,7 +14,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { TEASER_ITEMS, type TeaserItem } from "../../lib/demoItems";
+import { TEASER_ITEMS, type TeaserItem } from "../../lib/instrument/demoItems";
 import {
   stampOpacity, swipeDir, swipeRotation, transitionFor,
   useSwipeCard, type SwipeDir,

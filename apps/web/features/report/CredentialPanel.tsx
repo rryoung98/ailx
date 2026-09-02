@@ -21,10 +21,10 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { API_ROUTES, apiPath, type OwnerCredential } from "@ailx/contract";
-import { authHeaders } from "../../lib/authHeaders";
+import { authHeaders } from "../../lib/data/authHeaders";
 import { CREDENTIAL_LIMITS, linkedInAddUrl } from "@ailx/report";
 import { basePath, isServerMode } from "../../lib/mode";
-import { browserApiOptions, getServerAttemptId } from "../../lib/persistence";
+import { browserApiOptions, getServerAttemptId } from "../../lib/data/persistence";
 
 type Phase = "loading" | "none" | "live" | "busy" | "error";
 

@@ -18,7 +18,7 @@
  *
  * IT PLAYS WITHOUT AN ACCOUNT. A visitor who has never signed in — and the
  * whole static export, which has no server at all — still gets a round and
- * still keeps a streak, in their own browser (`lib/localPractice.ts`, and
+ * still keeps a streak, in their own browser (`lib/data/localPractice.ts`, and
  * `@ailx/report`'s `localPractice.ts` for why it lives there). The page says
  * exactly where those days are kept and what ends them, and the ask to sign
  * in arrives after the round, naming what an account is for. Nothing here
@@ -41,9 +41,9 @@ import {
   type ProgressReport,
   type StreakSummary,
 } from "@ailx/report";
-import { authHeaders } from "../../lib/authHeaders";
+import { authHeaders } from "../../lib/data/authHeaders";
 import { useIdentity } from "../../lib/auth/identityState";
-import { funnel } from "../../lib/funnel";
+import { funnel } from "../../lib/data/funnel";
 import {
   localStreakSummary,
   readLastClaim,
@@ -51,7 +51,7 @@ import {
   subscribeLocalPractice,
   utcOffsetMinutes,
   type ClaimOutcome,
-} from "../../lib/localPractice";
+} from "../../lib/data/localPractice";
 import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
 
 import styles from "./PracticeDrill.module.css";

@@ -37,7 +37,7 @@ import {
 import { GalleryCard } from "../../components/GalleryCard";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { ReviewActions } from "./ReviewActions";
-import { firstValueQuery, useService } from "../../lib/serviceFetch";
+import { firstValueQuery, useService } from "../../lib/data/serviceFetch";
 
 const EYEBROW = "AILX MODERATION · STAFF ONLY";
 const TITLE = "What is waiting, and what we decided.";

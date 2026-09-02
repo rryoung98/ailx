@@ -6,7 +6,7 @@
  * ledger may contain, what buys a streak day, and why the days live in the
  * browser at all. This module owns only the impure half (FRONTEND.md §2.2).
  *
- * It is deliberately the same shape as `lib/localPractice.ts`, and it is
+ * It is deliberately the same shape as `lib/data/localPractice.ts`, and it is
  * deliberately a DIFFERENT store: a daily round is not a practice round, and
  * folding one into the other would inflate a streak that is supposed to mean
  * one specific thing.

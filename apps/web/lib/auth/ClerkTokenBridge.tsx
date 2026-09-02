@@ -2,7 +2,7 @@
 /**
  * The one place a Clerk session becomes an `Authorization` header.
  *
- * `lib/authHeaders.ts` owns WHICH credential travels with a request and stays
+ * `lib/data/authHeaders.ts` owns WHICH credential travels with a request and stays
  * SDK-free so the static export never pulls an auth provider into its bundle
  * (docs/ARCHITECTURE.md §10.2). This component is the other half: mounted once
  * inside `<ClerkProvider>`, it registers `() => getToken()` while somebody is
@@ -20,7 +20,7 @@
  */
 import { useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { setAuthTokenSource } from "../authHeaders";
+import { setAuthTokenSource } from "../data/authHeaders";
 import { publishIdentity } from "./identityState";
 
 export function ClerkTokenBridge(): null {

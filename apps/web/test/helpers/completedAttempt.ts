@@ -5,8 +5,8 @@
  * scoring walk would drift from this one.
  */
 import { append, project, type SequencedEntry, type TrackId } from "@ailx/session";
-import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
-import { scoreTrack, trackScoredEntry } from "../../lib/registry";
+import { buildSampleAttemptLog } from "../../lib/instrument/sampleAttempt";
+import { scoreTrack, trackScoredEntry } from "../../lib/instrument/registry";
 
 /**
  * The sample fixture stops at between_tracks (validate scores it itself);

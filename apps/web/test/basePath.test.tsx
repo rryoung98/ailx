@@ -48,16 +48,16 @@ describe.each(CONFIGS)("asset URLs under the $name basePath", ({ env, prefix }) 
     expect(assetUrl("/media/logo.svg")).not.toContain("//");
   });
 
-  it("the hosted API base is prefixed too (lib/persistence.ts)", async () => {
+  it("the hosted API base is prefixed too (lib/data/persistence.ts)", async () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
-    const { browserApiOptions } = await import("../lib/persistence");
+    const { browserApiOptions } = await import("../lib/data/persistence");
     // In server mode next.config bakes "" unless a basePath is configured.
     const expected = env === undefined ? "" : env;
     expect(browserApiOptions().baseUrl).toBe(`${expected}/api`);
   });
 
-  it("snapshot image items resolve under the basePath (lib/instrument.ts)", async () => {
-    const { t2Items } = await import("../lib/instrument");
+  it("snapshot image items resolve under the basePath (lib/instrument/instrument.ts)", async () => {
+    const { t2Items } = await import("../lib/instrument/instrument");
     // The T2 bank's image items reference real files under public/t2-media.
     const media = t2Items("en")
       .map((i) => String(i.material))
@@ -69,8 +69,8 @@ describe.each(CONFIGS)("asset URLs under the $name basePath", ({ env, prefix }) 
     }
   });
 
-  it("teaser media resolve under the basePath (lib/demoItems.ts)", async () => {
-    const { TEASER_ITEMS } = await import("../lib/demoItems");
+  it("teaser media resolve under the basePath (lib/instrument/demoItems.ts)", async () => {
+    const { TEASER_ITEMS } = await import("../lib/instrument/demoItems");
     const media = TEASER_ITEMS.filter((i) => i.kind === "media" && i.imgSrc);
     expect(media.length).toBeGreaterThan(0);
     for (const i of media) {

@@ -19,7 +19,7 @@
  * It lives in `apps/web` rather than `packages/core` on purpose: core is the
  * package the track plugins import, so a core test importing the plugins
  * would invert the layering. `apps/web` already depends on all four plugins
- * (`apps/web/lib/registry.ts`), which makes it the lowest place in the graph
+ * (`apps/web/lib/instrument/registry.ts`), which makes it the lowest place in the graph
  * that can see the real scorers at once.
  *
  * "Does not move" is proved, not assumed: the judgment substitutions used
@@ -39,8 +39,8 @@ import { t1Plugin } from "@ailx/track-t1";
 import { plugin as t2Plugin, validateT2Config } from "@ailx/track-t2";
 import { plugin as t3Plugin, validateT3Config } from "@ailx/track-t3";
 import { t4Plugin } from "@ailx/track-t4";
-import { fixtureArtifact } from "../lib/sampleAttempt";
-import { trackConfig } from "../lib/instrument";
+import { fixtureArtifact } from "../lib/instrument/sampleAttempt";
+import { trackConfig } from "../lib/instrument/instrument";
 
 const RUBRIC_VERSION = "test";
 

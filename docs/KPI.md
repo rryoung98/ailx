@@ -11,7 +11,7 @@ never come back is not traction.
 ## What is instrumented, and what is not
 
 The schema is `packages/contract/src/funnel.ts`. The browser half is
-`apps/web/lib/funnel.ts`. There is no third-party analytics script, no
+`apps/web/lib/data/funnel.ts`. There is no third-party analytics script, no
 cookie, and no consent banner, because there is nothing here to consent to.
 The POST is sent with `credentials: "omit"`, so no cookie travels with it
 either. A row carries an anonymous browser-minted id, a session id, the

@@ -52,7 +52,7 @@ This rule sets every other boundary.
 
 **`apps/web` may not contain a function whose output reaches a score, a report figure, or an
 audit digest.** If you are about to write one, you are in the wrong package. The derivation
-layer now lives in `@ailx/report` (§9 step 4); `lib/instrument.ts` and `lib/validateChecks.ts`
+layer now lives in `@ailx/report` (§9 step 4); `lib/instrument/instrument.ts` and `lib/instrument/validateChecks.ts`
 are the remaining holdouts, both coupled to the app's asset/base-path seam.
 
 Corollary: **the audit digest must not be computed in the browser.** `scoringDigest()` now reads
@@ -867,7 +867,7 @@ than assuming, and renumber nothing.
 
 1. **Error boundaries.** Add `app/global-error.tsx`, `app/error.tsx`, and an exam-scoped boundary
    around `<mod.Runner>` that records the crash as a track event and offers checkpoint resume
-   (`lib/checkpoints.ts` already exists). ~60 lines. Today one uncaught throw white-screens a
+   (`lib/data/checkpoints.ts` already exists). ~60 lines. Today one uncaught throw white-screens a
    candidate mid-exam with the clock running. *Gap: §5.*
 2. **T2 focus management.** Stop disabling the button the candidate just pressed; mark the deck
    `inert` instead, move focus to the confidence slider on sheet open, return it to "Lock in".

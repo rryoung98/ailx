@@ -46,7 +46,7 @@ export interface ApiRoute {
   /**
    * The shared parser that normalizes this route's query string, when one
    * exists. Absence does not mean the route takes no query: `uploadSite`
-   * carries `?seq=` (`apps/web/lib/siteUpload.ts`), which only the service
+   * carries `?seq=` (`apps/web/lib/data/siteUpload.ts`), which only the service
    * reads. A parser is named here when the browser and the service must clamp
    * the same input the same way.
    */

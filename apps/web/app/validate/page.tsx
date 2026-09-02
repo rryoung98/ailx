@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Annotation } from "../../components/ui/Annotation";
 import { useEffect, useState } from "react";
-import { runAllChecks, type CheckResult } from "../../lib/validateChecks";
+import { runAllChecks, type CheckResult } from "../../lib/instrument/validateChecks";
 import { assetUrl } from "../../lib/mode";
 import { Reveal } from "../../components/ui/Reveal";
 

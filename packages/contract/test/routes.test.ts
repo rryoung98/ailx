@@ -108,7 +108,7 @@ describe("query-parser coupling", () => {
   });
 
   it("does not claim these are the only routes that take a query", () => {
-    // `uploadSite` is called with `?seq=` (apps/web/lib/siteUpload.ts), through
+    // `uploadSite` is called with `?seq=` (apps/web/lib/data/siteUpload.ts), through
     // apiPath()'s third argument. No shared parser owns it: only the service
     // reads it. `queryParser` names a clamp both sides must agree on, and the
     // field name is the whole claim.

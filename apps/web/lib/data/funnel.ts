@@ -45,7 +45,7 @@ import {
 } from "@ailx/contract";
 import { daysBetween, localDay } from "@ailx/report";
 import type { StorageLike } from "@ailx/session";
-import { apiBase, apiOrigin } from "./mode";
+import { apiBase, apiOrigin } from "../mode";
 
 /** The browser's own record of who it is. localStorage: it outlives a tab. */
 export const FUNNEL_CLIENT_KEY = "ailx.funnel.client.v1";
