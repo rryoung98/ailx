@@ -820,8 +820,8 @@ export function Runner({ config, onEvent, onComplete, onPresentation, secondsRem
           </div>
           <p role="status" style={{ margin: "0.4rem 0 0", color: "var(--muted)", fontSize: "0.8rem" }}>
             {verifiedClaims.length === 0
-              ? "Verification is scored per claim: press Check source next to an assistant claim when you check it. Opening the source is not scored on its own."
-              : `Checked against the source: ${verifiedClaims.length} claim${verifiedClaims.length === 1 ? "" : "s"}. Re-checking the same claim adds nothing.`}
+              ? "Press Check source next to a claim when you check it. Opening the source is not scored on its own, and neither is the number of checks: what scores is checking a claim and then challenging or accepting it."
+              : `Checked against the source: ${verifiedClaims.length} claim${verifiedClaims.length === 1 ? "" : "s"}. Re-checking one claim adds nothing, and a check only scores once you challenge or accept that claim.`}
           </p>
         </div>
       </div>

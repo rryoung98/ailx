@@ -119,9 +119,21 @@ describe("report golden", () => {
    * moved — and no SCORE moved, which is the load-bearing half: the
    * aggregation these rows feed is order-invariant by construction now, so
    * re-ordering the evidence must not, and did not, change the number.
+   *
+   * It MOVED a sixth time when T3 started scoring DISCRIMINATING verification
+   * and recording the time condition a sitting ran under (TEN-30). EXACTLY 8
+   * leaves were ADDED and none changed or disappeared: the four new T3 raw
+   * keys (`verificationsChecked`, `discriminatingVerifications`,
+   * `discriminatingVerificationRate`, `condition.timeBudgetMinutes`) under
+   * `participant.tracks[2].rawSubscores` and under `research.scores[2].raw`.
+   * The sample attempt's T3 process points did not move, because its one
+   * check was already a check it resolved; the leaf-by-leaf diff against a
+   * worktree with this change stashed established that before this line was
+   * touched. No composite, no other track raw, no insight, no narrative, no
+   * player type, no calibration bin and no export field moved.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("073bc1592b708918a26e0dc8f2739fd655f0284b23de666eac5e0243ec1e2e3a");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("8dcb83f75239d0df8ca9f236775ba1f33581ac49c890eb389d8b66afac696f0e");
   });
 
   it("is stable across repeated derivation", () => {

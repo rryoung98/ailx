@@ -74,12 +74,21 @@ function validate(raw: unknown, secrets: boolean): T3PresentationConfig {
     }
   }
   const minWords = typeof cfg.minWords === "number" ? cfg.minWords : 1200;
+  // TEN-30: the time condition is a declared form parameter. Absent is the
+  // shipped behaviour; present, it must be a real positive number of minutes,
+  // because a sitting labelled with a nonsense budget is worse than one
+  // labelled with none.
+  const tb = cfg.timeBudgetMinutes;
+  if (tb !== undefined && (typeof tb !== "number" || !Number.isFinite(tb) || tb <= 0)) {
+    fail("timeBudgetMinutes must be a positive number of minutes when present");
+  }
   const base: T3PresentationConfig = {
     title: cfg.title as string,
     brief: cfg.brief as string,
     sourceTitle: cfg.sourceTitle as string,
     sourceExcerpt: cfg.sourceExcerpt as string,
     minWords,
+    ...(tb !== undefined ? { timeBudgetMinutes: tb as number } : {}),
     ...(hosted !== undefined ? { hosted: hosted as T3Hosted } : {}),
   };
   if (!secrets && cfg.plantedErrors === undefined) return base;
@@ -112,6 +121,17 @@ export function validateT3Config(raw: unknown): T3Config {
  */
 export function validateT3PresentationConfig(raw: unknown): T3PresentationConfig {
   return validate(raw, false);
+}
+
+/**
+ * The sitting clock a T3 form declares, in seconds, or undefined when it
+ * declares none. The ONE conversion from the form parameter to a session
+ * budget, so the condition a sitting ran under and the clock it was given
+ * cannot disagree.
+ */
+export function t3TimeBudgetSeconds(cfg: T3PresentationConfig): number | undefined {
+  const m = cfg.timeBudgetMinutes;
+  return typeof m === "number" && m > 0 ? Math.round(m * 60) : undefined;
 }
 
 const VERBS = new Set([

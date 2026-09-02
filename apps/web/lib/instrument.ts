@@ -18,6 +18,7 @@
  * pinned and asserted at test time.
  */
 import { D_PRIME_CEILING, maxAttainableDPrime, sampleT2DeckIds, t2DeckSeed } from "@ailx/track-t2";
+import { t3TimeBudgetSeconds, type T3PresentationConfig } from "@ailx/track-t3";
 import snapshotRaw from "../../../instruments/demo-2026.1/snapshot.json";
 import { assetUrl } from "./mode";
 
@@ -424,6 +425,18 @@ export const T3_SCENARIO_SHA256 =
  * scored deck is the presented deck. Omitted attemptId → fixed default
  * deck (fixtures, /validate). T1/T3/T4 demo briefs stay English.
  */
+/**
+ * The T3 sitting clock this build's form declares, in seconds, or undefined
+ * when it declares none (TEN-30). The static demo form declares nothing, so
+ * the demo budget is unchanged; a form built for the 30-minute condition sets
+ * the sitting clock here, in the one place the clock is chosen, so the record
+ * and the countdown cannot disagree. A HOSTED sitting takes its budget from
+ * the exam service, not from this function.
+ */
+export function t3FormBudgetSeconds(): number | undefined {
+  return t3TimeBudgetSeconds(T3_SCENARIO as T3PresentationConfig);
+}
+
 export function trackConfig(
   trackId: "t1" | "t2" | "t3" | "t4",
   locale: string = "en",
