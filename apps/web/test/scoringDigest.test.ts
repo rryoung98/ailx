@@ -14,7 +14,7 @@
 import { describe, expect, it } from "vitest";
 import { TRACK_IDS } from "@ailx/session";
 import SNAPSHOT from "../../../instruments/demo-2026.1/snapshot.json";
-import { scoringDigest } from "../lib/registry";
+import { scoringDigest } from "../lib/instrument/registry";
 
 const scorers = (SNAPSHOT as { scorers?: Array<{ trackId: string; digest: string; sources: Array<{ path: string }> }> }).scorers;
 

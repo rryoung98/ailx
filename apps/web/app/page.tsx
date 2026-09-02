@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { Annotation } from "../lib/Annotation";
-import { FunnelStep } from "../lib/FunnelStep";
-import { HeroCanvas } from "../lib/HeroCanvas";
-import { PillCTA } from "../lib/PillCTA";
-import { PracticeDrill } from "../lib/PracticeDrill";
-import { Reveal } from "../lib/Reveal";
-import { CharacterPortrait } from "../lib/CharacterPortrait";
-import { CampusJourney } from "../lib/track3d/CampusJourney";
-import { TrackBands } from "../lib/track3d/TrackBands";
+import { Annotation } from "../components/ui/Annotation";
+import { FunnelStep } from "../components/FunnelStep";
+import { HeroCanvas } from "../features/landing/HeroCanvas";
+import { PillCTA } from "../components/ui/PillCTA";
+import { PracticeDrill } from "../features/practice/PracticeDrill";
+import { Reveal } from "../components/ui/Reveal";
+import { CharacterPortrait } from "../components/CharacterPortrait";
+import { CampusJourney } from "../features/landing/track3d/CampusJourney";
+import { TrackBands } from "../features/landing/track3d/TrackBands";
 import { assetUrl, isServerMode } from "../lib/mode";
 import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
 
@@ -170,7 +170,7 @@ function ShowcaseRow({
  *
  * Every face prints its four-letter code as TEXT beside it, so the row still
  * says something with images off and in a screen reader; the portrait's own
- * alt describes the drawing (lib/CharacterPortrait.tsx).
+ * alt describes the drawing (components/CharacterPortrait.tsx).
  */
 function CastStrip() {
   return (

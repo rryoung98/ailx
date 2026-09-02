@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { WorldView } from "../../lib/WorldView";
+import { WorldView } from "../../features/world/WorldView";
 
 /**
  * /world — public aggregates.
@@ -11,7 +11,7 @@ import { WorldView } from "../../lib/WorldView";
  *
  * So this file is now a two-line server shell whose only job is `metadata`
  * (a client component may not export it). The page itself is
- * `lib/WorldView.tsx`, which fetches `apiBase()/aggregates` over HTTP instead
+ * `features/world/WorldView.tsx`, which fetches `apiBase()/aggregates` over HTTP instead
  * of importing an `@ailx/backend` handler in-process — docs/ARCHITECTURE.md
  * §10.1, step 2 of deleting the duplicate host.
  */

@@ -21,7 +21,7 @@
  * because it has nothing else to read (docs/SHARING.md §1).
  *
  * Pure: no clock, no network, no `window`. The React that renders the buttons
- * lives in `apps/web/lib/ShareTargets.tsx`.
+ * lives in `apps/web/components/ShareTargets.tsx`.
  */
 import { playerCharacter } from "./character.js";
 import { dailyGrid, dailyTally, type DailyCard, type DailyResult } from "./daily.js";

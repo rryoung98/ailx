@@ -23,7 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Loader, LOADER_FALLBACK_MS, LOADER_MARK, WIPE_ANIMATION } from "../lib/Loader";
+import { Loader, LOADER_FALLBACK_MS, LOADER_MARK, WIPE_ANIMATION } from "../components/Loader";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -173,7 +173,7 @@ describe("loader wordmark asset", () => {
   });
 
   it("stays out of the JS bundle and the prerendered HTML", () => {
-    const source = readFileSync(join(dir, "..", "lib", "Loader.tsx"), "utf8");
+    const source = readFileSync(join(dir, "..", "components", "Loader.tsx"), "utf8");
     expect(source.length).toBeLessThan(4000);
     expect(source).not.toMatch(/ 8214 c-29 /); // no traced path literal
     const html = renderToStaticMarkup(createElement(Loader));

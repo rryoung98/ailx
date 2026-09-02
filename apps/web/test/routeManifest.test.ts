@@ -201,7 +201,7 @@ describe("apps/web spells no service URL by hand", () => {
   it("reads the frontend it is guarding", () => {
     expect(files.length).toBeGreaterThan(50);
     const rel = files.map((f) => relative(webDir, f));
-    expect(rel).toContain(join("lib", "serviceFetch.ts"));
+    expect(rel).toContain(join("lib", "data", "serviceFetch.ts"));
     expect(rel).toContain(join("e2e", "fixtures.ts"));
     expect(rel).toContain(join("test", "routeManifest.test.ts"));
   });

@@ -14,8 +14,8 @@ import {
   hostedT3Bridge,
   t3ConfigFromView,
   t4ConfigFromView,
-} from "../lib/hostedDeck";
-import { syncKey } from "../lib/persistence";
+} from "../lib/instrument/hostedDeck";
+import { syncKey } from "../lib/data/persistence";
 
 const SITTING_T3 = {
   title: "Trilateral AI workforce readiness memorandum",

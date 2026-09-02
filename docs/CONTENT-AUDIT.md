@@ -68,7 +68,7 @@ stating no native-speaker review has occurred (gated by
 
 ## Landing teaser
 
-`apps/web/lib/demoItems.ts` now pins three real snapshot items by
+`apps/web/lib/instrument/demoItems.ts` now pins three real snapshot items by
 content-addressed id (AI photo-pair member, model-generated passage,
 credential-phishing lure); `apps/web/test/teaser.test.ts` asserts they exist
 in the snapshot and that keys/tells are projections of the bank item.

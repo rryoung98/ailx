@@ -2,7 +2,7 @@
 /**
  * Who the browser thinks it is, as something a component can RE-RENDER on.
  *
- * `lib/authHeaders.ts` already knows which credential travels with a request,
+ * `lib/data/authHeaders.ts` already knows which credential travels with a request,
  * but it is deliberately a plain module with no subscribers: a fetch asks it
  * once, at call time. A view has the opposite need — it must change when the
  * answer changes, because "signed in" decides whether a practice round is

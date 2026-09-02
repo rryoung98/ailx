@@ -18,7 +18,7 @@
  * needs to know that an identity arrived.
  */
 import { useEffect, useRef } from "react";
-import { claimLocalPractice } from "../localPractice";
+import { claimLocalPractice } from "../data/localPractice";
 import { useIdentity } from "./identityState";
 
 export function ClaimProgress(): null {

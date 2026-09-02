@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PageLoading } from "../../lib/PageNotice";
-import { ReviewView } from "../../lib/ReviewView";
+import { PageLoading } from "../../components/PageNotice";
+import { ReviewView } from "../../features/review/ReviewView";
 
 /**
  * /review — the moderation dashboard.
@@ -9,7 +9,7 @@ import { ReviewView } from "../../lib/ReviewView";
  * Still `page.api.tsx`: the extension keeps a database-backed page out of the
  * static GitHub Pages export (next.config.mjs `pageExtensions`). It does not
  * oblige the file to be server-only, so this is a shell around
- * `lib/ReviewView.tsx` that exists to export `metadata` — a client component
+ * `features/review/ReviewView.tsx` that exists to export `metadata` — a client component
  * may not.
  *
  * The view fetches `apiBase()/moderation/cases` and sends the reviewer's

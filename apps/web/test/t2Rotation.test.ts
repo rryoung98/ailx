@@ -19,8 +19,8 @@ import {
   t2DeckRecords,
   t2Items,
   trackConfig,
-} from "../lib/instrument";
-import { scoreTrack } from "../lib/registry";
+} from "../lib/instrument/instrument";
+import { scoreTrack } from "../lib/instrument/registry";
 import { T2_TOTAL_POINTS } from "@ailx/track-t2";
 
 type Item = ReturnType<typeof t2Items>[number];

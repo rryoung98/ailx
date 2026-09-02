@@ -15,8 +15,8 @@ import { describe, expect, it } from "vitest";
 import {
   DEMO_SCORE_NOTE, DEMO_SCORE_QUALIFIER, formatTrackScore, isDemoScored,
 } from "@ailx/report";
-import { scoreTrack } from "../lib/registry";
-import { t2Items } from "../lib/instrument";
+import { scoreTrack } from "../lib/instrument/registry";
+import { t2Items } from "../lib/instrument/instrument";
 
 const read = (rel: string) => readFileSync(fileURLToPath(new NodeURL(rel, import.meta.url)), "utf8");
 

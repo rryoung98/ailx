@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { apiPath } from "@ailx/contract";
-import { credentialViewFrom } from "../../../lib/credentialView";
+import { credentialViewFrom } from "../../../features/verify/credentialView";
 import { serverApiBase } from "../../../lib/server/page";
-import { VerifyView } from "../../../lib/VerifyView";
+import { VerifyView } from "../../../features/verify/VerifyView";
 
 /**
  * /verify/<code> — credential verification.
@@ -11,7 +11,7 @@ import { VerifyView } from "../../../lib/VerifyView";
  * static GitHub Pages export (next.config.mjs `pageExtensions`), because a
  * credential that cannot be verified live is worse than no credential. It
  * does not oblige the file to be server-only, so the page itself is
- * `lib/VerifyView.tsx`, which reads the public JSON twin through `apiBase()`.
+ * `features/verify/VerifyView.tsx`, which reads the public JSON twin through `apiBase()`.
  *
  * `generateMetadata` stays on the SERVER and does its own read, because the
  * tab title and description have to be honest about a revocation before any

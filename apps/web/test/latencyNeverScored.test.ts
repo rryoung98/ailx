@@ -21,8 +21,8 @@
 import { describe, expect, it } from "vitest";
 import { canonicalJson } from "@ailx/session";
 import type { TrackId } from "@ailx/session";
-import { fixtureArtifact } from "../lib/sampleAttempt";
-import { scoreTrackArtifact } from "../lib/registry";
+import { fixtureArtifact } from "../lib/instrument/sampleAttempt";
+import { scoreTrackArtifact } from "../lib/instrument/registry";
 
 const TRACKS: TrackId[] = ["t1", "t2", "t3", "t4"];
 

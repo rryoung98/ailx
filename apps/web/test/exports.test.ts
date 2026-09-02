@@ -3,8 +3,8 @@ import { append, project, TRACK_IDS } from "@ailx/session";
 import {
   candidateComposite, participantExport, researchExport,
 } from "@ailx/report";
-import { scoreTrack, trackScoredEntry } from "../lib/registry";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+import { scoreTrack, trackScoredEntry } from "../lib/instrument/registry";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 
 function scoredLog() {
   let log = buildSampleAttemptLog();

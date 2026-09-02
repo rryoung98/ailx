@@ -258,7 +258,7 @@ credential — and never anywhere else.
 
 **Where an anonymous day lives, and why.** `localStorage`, in the visitor's own
 browser (`packages/report/src/localPractice.ts` holds the rules,
-`apps/web/lib/localPractice.ts` the storage and the network). Three candidates
+`apps/web/lib/data/localPractice.ts` the storage and the network). Three candidates
 were considered:
 
 | Option | Verdict |
@@ -344,17 +344,17 @@ comparison.
 | Practice corpus, deck sampling, grading | `packages/report/src/practice.ts` (pure) |
 | Local days, streak rule, progression shaping | `packages/report/src/progress.ts` (pure) |
 | The browser-kept ledger, the claim's rules and its wordings | `packages/report/src/localPractice.ts` (pure) |
-| Reading/writing that ledger, and POSTing a claim | `apps/web/lib/localPractice.ts` |
+| Reading/writing that ledger, and POSTing a claim | `apps/web/lib/data/localPractice.ts` |
 | Who the browser is, as something a view re-renders on | `apps/web/lib/auth/identityState.ts` |
 | The claim itself, fired once per account at sign-in | `apps/web/lib/auth/ClaimProgress.tsx` |
 | Claimed days (server side) | `practice_claims` + `POST /practice/claim` (PRIVATE backend repo) |
 | Session persistence, server grading, day counting | `packages/backend/src/practice.ts` |
 | Tables | `db/schema.sql` — `practice_sessions`, `practice_answers`; migration in `db/README.md` |
 | API | `apps/web/app/api/practice/route.api.ts`, `.../[id]/route.api.ts` |
-| Drill UI | `apps/web/lib/PracticeDrill.tsx` + its CSS module |
+| Drill UI | `apps/web/features/practice/PracticeDrill.tsx` + its CSS module |
 | Daily deck, grid, daily ledger | `packages/report/src/daily.ts` (pure) |
 | Daily share words | `packages/report/src/shareText.ts` (pure), with the rest of the share copy |
-| Daily UI and its browser store | `apps/web/lib/DailyChallenge.tsx`, `apps/web/lib/dailyState.ts` |
+| Daily UI and its browser store | `apps/web/features/daily/DailyChallenge.tsx`, `apps/web/features/daily/dailyState.ts` |
 | Pages | `app/practice/page.tsx` and `app/daily/page.tsx` (both builds), `app/progress/page.api.tsx` (server only) |
 
 `/progress` reads the store, so it is a `page.api.tsx` and does not exist in the

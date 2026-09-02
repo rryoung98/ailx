@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Regenerates apps/web/lib/fixtures/plugin-golden.json — the pinned golden
+ * Regenerates apps/web/lib/instrument/fixtures/plugin-golden.json — the pinned golden
  * fixtures for the four REAL track plugin score() functions (F16).
  *
  * Run from the repo root AFTER `pnpm -r build`:
@@ -135,6 +135,6 @@ for (const t of ["t1", "t2", "t3", "t4"]) {
   out[t] = { ...f, expected: score[t](f) };
 }
 
-const dest = join(root, "apps/web/lib/fixtures/plugin-golden.json");
+const dest = join(root, "apps/web/lib/instrument/fixtures/plugin-golden.json");
 writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 console.log("wrote", dest);

@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement, StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { OPENROUTER_KEY_STORAGE, PKCE_VERIFIER_STORAGE, claimPkceCallback } from "@ailx/track-t1";
-import { ConnectPanel } from "../lib/ConnectPanel";
+import { ConnectPanel } from "../features/exam/ConnectPanel";
 import { QueryProvider } from "../lib/QueryProvider";
 import { flushAsync } from "./helpers/clientPage";
 

@@ -18,8 +18,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { flushAsync, withQueryClient } from "./helpers/clientPage";
 import { FUNNEL_EVENTS_PATH, parseFunnelBatch, type FunnelEvent } from "@ailx/contract";
 import { DAILY_DECK_SIZE, PRACTICE_OPTIONS, dailyDay, dailyDeck } from "@ailx/report";
-import { funnel, resetFunnel } from "../lib/funnel";
-import { DAILY_POOL } from "../lib/demoItems";
+import { funnel, resetFunnel } from "../lib/data/funnel";
+import { DAILY_POOL } from "../lib/instrument/demoItems";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -41,7 +41,7 @@ const posts: { url: string; body: string; init: RequestInit }[] = [];
 /**
  * A `fetch` that records the funnel's own POSTs and hands everything else to
  * the test's stub. The emitter uses `fetch(keepalive)` rather than a beacon
- * (lib/funnel.ts says why), so this is where its traffic is observed.
+ * (lib/data/funnel.ts says why), so this is where its traffic is observed.
  */
 function stubFetch(handler: (url: unknown, init?: RequestInit) => Promise<Response>): void {
   vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
@@ -155,7 +155,7 @@ describe("landing", () => {
 describe("the practice drill", () => {
   /** Play every card of the dealt round. */
   async function playRound(): Promise<void> {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     if (host === null) await render(PracticeDrill);
     for (let i = 0; ; i++) {
       const call = buttons().find((b) => PRACTICE_OPTIONS.includes((b.textContent ?? "") as never));
@@ -169,13 +169,13 @@ describe("the practice drill", () => {
   }
 
   it("counts no play until a card is actually called", async () => {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     await render(PracticeDrill);
     expect(await steps()).not.toContain("play_started");
   });
 
   it("counts one start and one completion for one round", async () => {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     await render(PracticeDrill);
     await playRound();
     const seen = await events();
@@ -191,7 +191,7 @@ describe("the practice drill", () => {
   });
 
   it("counts a second round in the same day as a second play", async () => {
-    const { PracticeDrill } = await import("../lib/PracticeDrill");
+    const { PracticeDrill } = await import("../features/practice/PracticeDrill");
     await render(PracticeDrill);
     await playRound();
     await click(/Another round/i);
@@ -214,7 +214,7 @@ describe("the daily", () => {
   }
 
   it("counts one start on the first card and one completion on the last", async () => {
-    const { DailyChallenge } = await import("../lib/DailyChallenge");
+    const { DailyChallenge } = await import("../features/daily/DailyChallenge");
     await render(DailyChallenge);
     expect(await steps()).not.toContain("play_started");
     await playDaily();
@@ -278,7 +278,7 @@ describe("the share path", () => {
       }),
     };
     stubFetch(async () => new Response(JSON.stringify({ share }), { status: 200 }));
-    const { ShareView } = await import("../lib/ShareView");
+    const { ShareView } = await import("../features/share/ShareView");
     await render(ShareView);
     const seen = await steps();
     expect(seen.filter((s) => s === "share_opened")).toHaveLength(1);
@@ -305,7 +305,7 @@ describe("the share path", () => {
         ? new Response(JSON.stringify({ share }), { status: 200 })
         : new Response("{}", { status: 404 }),
     );
-    const { ShareLink } = await import("../lib/ShareLink");
+    const { ShareLink } = await import("../features/report/ShareLink");
     await render(ShareLink, { attemptId: "11111111-1111-4111-8111-111111111111" });
     await click(/Create a share link/);
     const seen = await events();
@@ -319,7 +319,7 @@ describe("the share path", () => {
       useParams: () => ({ token: TOKEN }),
     }));
     stubFetch(async () => new Response("{}", { status: 404 }));
-    const { ShareView } = await import("../lib/ShareView");
+    const { ShareView } = await import("../features/share/ShareView");
     await expect(render(ShareView)).rejects.toThrow();
     expect(await steps()).not.toContain("share_opened");
     vi.doUnmock("next/navigation");

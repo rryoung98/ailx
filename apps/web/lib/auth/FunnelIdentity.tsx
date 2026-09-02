@@ -11,7 +11,7 @@
  * signed in during this session", which is the whole of what the funnel needs.
  */
 import { useEffect } from "react";
-import { funnel } from "../funnel";
+import { funnel } from "../data/funnel";
 import { useIdentity } from "./identityState";
 
 export function FunnelIdentity(): null {

@@ -6,12 +6,12 @@ import { OVER_RELIANCE_MIN_SURFACED, t3TimeBudgetSeconds, validateT3Config } fro
 import {
   SNAPSHOT, T3_SCENARIO, T3_SCENARIO_SHA256, snapshotRubricVersion,
   snapshotTrack, t2ExposureSeconds, t2Items, t3FormBudgetSeconds, trackConfig,
-} from "../lib/instrument";
+} from "../lib/instrument/instrument";
 import { canonicalJson, sha256Hex } from "@ailx/session";
 import { judgeT1, judgeT3, judgeT4 } from "@ailx/report";
 import {
   checkpointToArtifact, isValidArtifact, scoreTrack, scoreTrackArtifact,
-} from "../lib/registry";
+} from "../lib/instrument/registry";
 
 describe("instrument wiring (snapshot-derived, F3/F16)", () => {
   it("t2 bank adapts into a valid T2Config", () => {

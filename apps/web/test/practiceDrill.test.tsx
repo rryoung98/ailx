@@ -83,7 +83,7 @@ async function mount(serverMode: boolean, clerk = false): Promise<void> {
   // one, a hosted build runs on the asserted dev id — which IS an identity
   // the API accepts, so the drill records against it exactly as before.
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = clerk ? "pk_test_stub" : "";
-  const { PracticeDrill } = await import("../lib/PracticeDrill");
+  const { PracticeDrill } = await import("../features/practice/PracticeDrill");
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -625,7 +625,7 @@ describe("hosted build, nobody signed in", () => {
 
 describe("it can never show a scored item", () => {
   it("imports the practice corpus and no instrument content", () => {
-    const source = readFileSync(repoFile("lib/PracticeDrill.tsx"), "utf8");
+    const source = readFileSync(repoFile("features/practice/PracticeDrill.tsx"), "utf8");
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     expect(code).not.toMatch(/instruments|bank\.jsonl|demoItems|t2DeckRecords|lib\/instrument/);
   });
@@ -643,7 +643,7 @@ describe("it can never show a scored item", () => {
 
 describe("styling stays on the token palette", () => {
   it("hard-codes no colour, so the measured AA contrast still holds", () => {
-    for (const file of ["lib/PracticeDrill.module.css", "app/progress/progress.module.css"]) {
+    for (const file of ["components/PracticeDrill.module.css", "app/progress/progress.module.css"]) {
       const css = readFileSync(repoFile(file), "utf8");
       expect(css.match(/#[0-9a-fA-F]{3,8}\b/g), file).toBeNull();
       expect(css, file).not.toMatch(/rgb\(|hsl\(/);
@@ -651,13 +651,13 @@ describe("styling stays on the token palette", () => {
   });
 
   it("gives every interactive control a visible focus indicator (WCAG 2.4.13)", () => {
-    const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
+    const css = readFileSync(repoFile("components/PracticeDrill.module.css"), "utf8");
     expect(css).toMatch(/:focus-visible/);
     expect(css).toMatch(/outline: 2px/);
   });
 
   it("gates every animation on prefers-reduced-motion", () => {
-    const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
+    const css = readFileSync(repoFile("components/PracticeDrill.module.css"), "utf8");
     const declared = [...css.matchAll(/@keyframes\s+([\w-]+)/g)].map((m) => m[1]);
     expect(declared.length).toBeGreaterThan(0);
     const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
@@ -669,7 +669,7 @@ describe("styling stays on the token palette", () => {
     // Portrait and landscape cards alternate; with `height: auto` the two
     // calls jumped by ~200px between cards and started below the fold on a
     // phone.
-    const css = readFileSync(repoFile("lib/PracticeDrill.module.css"), "utf8");
+    const css = readFileSync(repoFile("components/PracticeDrill.module.css"), "utf8");
     expect(css).toMatch(/\.image\s*\{[^}]*height: min\(/);
     expect(css).toMatch(/\.image\s*\{[^}]*object-fit: contain/);
     // ...and a shorter one on a phone, where the wrapped primary nav already

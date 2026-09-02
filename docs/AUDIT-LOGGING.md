@@ -15,8 +15,8 @@ Each attempt has one append-only event log in `packages/session/src/machine.ts`.
 |---|---|---|
 | Runner emission | `props.onEvent(TrackEvent)` | `packages/tracks/*/src/Runner.tsx` |
 | Persistence | exam page `onEvent` → `append()` → `saveAttempt()` | `apps/web/app/exam/page.tsx` |
-| In-progress state | `onCheckpoint(state)` → `ailx:checkpoint:<attemptId>:<trackId>` | `apps/web/lib/checkpoints.ts` |
-| Completion | `track_completed` (artifact) + `track_scored` (score, judgments, rubricVersion, scoringDigest, modelManifest) | `apps/web/app/exam/page.tsx`, `apps/web/lib/registry.ts` |
+| In-progress state | `onCheckpoint(state)` → `ailx:checkpoint:<attemptId>:<trackId>` | `apps/web/lib/data/checkpoints.ts` |
+| Completion | `track_completed` (artifact) + `track_scored` (score, judgments, rubricVersion, scoringDigest, modelManifest) | `apps/web/app/exam/page.tsx`, `apps/web/lib/instrument/registry.ts` |
 | Report | projection of the log; verbatim Event log section | `apps/web/app/report/page.tsx` |
 | Export | individual tier (own data) + research tier (allowlist) | `apps/web/lib/exportTiers.ts` |
 
@@ -169,7 +169,7 @@ nothing imported them.
 
 ## Runner faults and the clock (2026-08, exam-integrity fix)
 
-`apps/web/lib/RunnerErrorBoundary.tsx` now catches a track Runner that throws.
+`apps/web/features/exam/RunnerErrorBoundary.tsx` now catches a track Runner that throws.
 The route-level `app/error.tsx` / `app/global-error.tsx` also catches these errors.
 Before this change, one uncaught render error unmounted the tree. It left the
 candidate on a white page while their own clock continued to run.

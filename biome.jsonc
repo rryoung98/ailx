@@ -112,7 +112,7 @@
 			// `noFocusedTests` flags any call to `fit(`, which is Jasmine's focused
 			// test — and also SwipeDeck's local layout function. Keep the rule where
 			// a stray `.only` actually costs coverage: in the test files.
-			"includes": ["**/src/**", "**/lib/**", "**/app/**"],
+			"includes": ["**/src/**", "**/lib/**", "**/app/**", "**/components/**", "**/features/**"],
 			"linter": { "rules": { "suspicious": { "noFocusedTests": "off" } } }
 		}
 	]

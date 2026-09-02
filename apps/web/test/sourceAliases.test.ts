@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core/dist/purity.js";
 import { calibrationBins } from "@ailx/report";
 import config from "../vitest.config";
+import { BROWSER_ROOTS } from "./helpers/browserSources";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../../..", import.meta.url));
@@ -46,7 +47,7 @@ describe("packages load from src at runtime", () => {
     expect(stack).not.toMatch(/\/packages\/[^\n]*\/dist\//);
   });
 
-  // A SUBPATH: `lib/validateChecks.ts` really imports `@ailx/core/dist/purity.js`,
+  // A SUBPATH: `lib/instrument/validateChecks.ts` really imports `@ailx/core/dist/purity.js`,
   // and a string alias would have rewritten it to `.../src/index.ts/dist/purity.js`.
   it("a `dist/`-spelled subpath import runs the source file", () => {
     const stack = throwSite(() => runPure(() => Date.now()));
@@ -109,7 +110,7 @@ function ailxSpecifiers(): string[] {
     }
   };
   // e2e/ is Playwright's and never runs under this config.
-  for (const dir of ["app", "lib", "test"]) walk(join(webRoot, dir));
+  for (const dir of [...BROWSER_ROOTS, "test"]) walk(join(webRoot, dir));
   return [...found].sort();
 }
 

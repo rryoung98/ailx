@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * `lib/serviceFetch.ts` — the ONE path a page takes to the exam service.
+ * `lib/data/serviceFetch.ts` — the ONE path a page takes to the exam service.
  *
  * Seven pages share it, so every rule it enforces is enforced seven times or
  * not at all: the URL comes from the seam, identity is a HEADER and only when
@@ -16,8 +16,8 @@ import {
   serviceFetch,
   useService,
   type ServiceState,
-} from "../lib/serviceFetch";
-import { setAuthTokenSource } from "../lib/authHeaders";
+} from "../lib/data/serviceFetch";
+import { setAuthTokenSource } from "../lib/data/authHeaders";
 import { installMemoryStorage, renderClient, renderClientPending } from "./helpers/clientPage";
 
 installMemoryStorage();

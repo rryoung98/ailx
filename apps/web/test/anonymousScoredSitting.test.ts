@@ -54,7 +54,7 @@ async function loadPersistence() {
   vi.resetModules();
   process.env.NEXT_PUBLIC_AILX_BACKEND = "1";
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_stub";
-  return import("../lib/persistence");
+  return import("../lib/data/persistence");
 }
 
 beforeEach(() => {
@@ -131,13 +131,13 @@ describe("the practice ledger is nowhere near a sitting", () => {
   });
 
   it("is imported by nothing on the exam or scoring path", () => {
-    for (const file of ["app/exam/page.tsx", "lib/persistence.ts", "lib/checkpoints.ts"]) {
+    for (const file of ["app/exam/page.tsx", "lib/data/persistence.ts", "lib/data/checkpoints.ts"]) {
       expect(read(file), file).not.toMatch(/localPractice/);
     }
   });
 
   it("imports nothing from the exam or scoring path itself", () => {
-    const source = read("lib/localPractice.ts");
+    const source = read("lib/data/localPractice.ts");
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     expect(code).not.toMatch(/persistence|checkpoints|scoreTrack|attempt|instrument/i);
   });
@@ -166,7 +166,7 @@ describe("the practice ledger is nowhere near a sitting", () => {
 
 describe("the drill's own separation holds for an anonymous player", () => {
   it("keeps practice out of every scored surface, in the drill and in the ledger", () => {
-    for (const file of ["lib/PracticeDrill.tsx", "lib/localPractice.ts"]) {
+    for (const file of ["features/practice/PracticeDrill.tsx", "lib/data/localPractice.ts"]) {
       const code = read(file).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
       // The drill may not reach the scored bank, the attempt log, or score().
       expect(code, file).not.toMatch(/bank\.jsonl|demoItems|scoreTrack|track_scored|\/attempts/);

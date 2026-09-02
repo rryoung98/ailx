@@ -6,7 +6,7 @@
  * calibration, both export tiers) and the result is content-addressed. Any
  * change to any of those functions moves the digest, so a silent shift in a
  * reported number cannot land. Build-dependent fields (`scoringDigest`) are
- * blanked: they identify the bundle, not the scoring values (lib/registry.ts).
+ * blanked: they identify the bundle, not the scoring values (lib/instrument/registry.ts).
  */
 import { describe, expect, it } from "vitest";
 import { append, canonicalJson, project, sha256Hex, TRACK_IDS, type SequencedEntry } from "@ailx/session";
@@ -14,9 +14,9 @@ import {
   calibrationBins, candidateComposite, identitySignals, narratives, participantExport,
   playerType, playerTypeFor, researchExport, t2ResponsesFromArtifact, trackInsights,
 } from "@ailx/report";
-import { t2AnswerKeys } from "../lib/instrument";
-import { scoreTrack, trackScoredEntry } from "../lib/registry";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+import { t2AnswerKeys } from "../lib/instrument/instrument";
+import { scoreTrack, trackScoredEntry } from "../lib/instrument/registry";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 
 /** Recursively blank every `scoringDigest` — it addresses the build, not a value. */
 function withoutBuildDigests<T>(v: T): T {

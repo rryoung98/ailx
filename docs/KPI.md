@@ -11,7 +11,7 @@ never come back is not traction.
 ## What is instrumented, and what is not
 
 The schema is `packages/contract/src/funnel.ts`. The browser half is
-`apps/web/lib/funnel.ts`. There is no third-party analytics script, no
+`apps/web/lib/data/funnel.ts`. There is no third-party analytics script, no
 cookie, and no consent banner, because there is nothing here to consent to.
 The POST is sent with `credentials: "omit"`, so no cookie travels with it
 either. A row carries an anonymous browser-minted id, a session id, the
@@ -35,12 +35,12 @@ They are not funnel metrics and must never be copied into one.
 |---|---|---|---|---|
 | 1 | Session | `visit_started` | the emitter, on the first event of a browsing session | a browser opened AILX. Carries `newClient`. |
 | 2 | Landing | `landing_viewed` | `app/page.tsx` | somebody was on the front page. |
-| 3 | Play started | `play_started` | `lib/PracticeDrill.tsx`, `lib/DailyChallenge.tsx` | a person called their FIRST card of a round. |
+| 3 | Play started | `play_started` | `features/practice/PracticeDrill.tsx`, `features/daily/DailyChallenge.tsx` | a person called their FIRST card of a round. |
 | 4 | Play completed | `play_completed` | the same two components | the last card of that round was called. Carries `answered`. |
 | 5 | Return D1/D7 | derived, see below | (none) | the same client id came back. |
 | 6 | Identity | `signed_in` | `lib/auth/FunnelIdentity.tsx` | an account exists and this browser holds it. |
 | 7 | Sitting | `sitting_started` | `app/exam/page.tsx` | a scored run began. |
-| 8 | Share | `share_created`, then `share_opened` | `lib/ShareLink.tsx`, `lib/ShareView.tsx` | a link was minted; a link was opened and the card resolved. |
+| 8 | Share | `share_created`, then `share_opened` | `features/report/ShareLink.tsx`, `features/share/ShareView.tsx` | a link was minted; a link was opened and the card resolved. |
 
 Two decisions inside those rows are load-bearing.
 

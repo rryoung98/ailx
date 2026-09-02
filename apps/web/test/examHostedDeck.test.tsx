@@ -14,13 +14,13 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Runner as T2Runner } from "@ailx/track-t2";
 import { append, saveAttempt, type SessionConfig } from "@ailx/session";
-import { syncKey } from "../lib/persistence";
-import { trackConfig } from "../lib/instrument";
+import { syncKey } from "../lib/data/persistence";
+import { trackConfig } from "../lib/instrument/instrument";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock("../lib/registry", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../lib/registry")>();
+vi.mock("../lib/instrument/registry", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/instrument/registry")>();
   return { ...actual, loadTrackModule: async () => ({ placeholder: false, Runner: T2Runner }) };
 });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { project } from "@ailx/session";
 import { narratives, trackInsights } from "@ailx/report";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 
 describe("event-derived process insights", () => {
   const state = project(buildSampleAttemptLog());

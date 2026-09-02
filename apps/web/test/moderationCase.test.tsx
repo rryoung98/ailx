@@ -87,8 +87,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
-const { ModerationCaseView } = await import("../lib/ModerationCaseView");
-const { CandidateThread } = await import("../lib/Moderation");
+const { ModerationCaseView } = await import("../features/review/ModerationCaseView");
+const { CandidateThread } = await import("../components/Moderation");
 
 function stubCaseService(): void {
   vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {

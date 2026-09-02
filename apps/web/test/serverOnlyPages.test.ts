@@ -144,7 +144,7 @@ describe("server-only files carry a server-only extension", () => {
  * static export. `lib/` has a DIRECTORY convention instead: only
  * `lib/server/**` may reach server capability. The operational item bank is
  * now server capability, so this test is what stops
- * `apps/web/lib/instrument.ts` from importing it again — the import that put
+ * `apps/web/lib/instrument/instrument.ts` from importing it again — the import that put
  * 104 answer keys into a public GitHub Pages bundle.
  */
 describe("no client-reachable module reaches the operational item bank", () => {
@@ -166,9 +166,9 @@ describe("no client-reachable module reaches the operational item bank", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("lib/instrument.ts reads the PUBLIC released-practice tier, not the exam", () => {
-    const client = libFiles.find((f) => f.rel === "instrument.ts");
-    expect(client, "apps/web/lib/instrument.ts").toBeDefined();
+  it("lib/instrument/instrument.ts reads the PUBLIC released-practice tier, not the exam", () => {
+    const client = libFiles.find((f) => f.rel === "instrument/instrument.ts");
+    expect(client, "apps/web/lib/instrument/instrument.ts").toBeDefined();
     const imports = client!.source.match(/^import .*$/gm) ?? [];
     expect(imports.join("\n")).toContain("instruments/demo-2026.1/snapshot.json");
     expect(imports.filter((l) => /instruments\/2026\.1/.test(l))).toEqual([]);

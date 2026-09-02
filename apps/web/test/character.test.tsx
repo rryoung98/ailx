@@ -17,8 +17,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ALL_SHARE_SECTIONS, playerCharacter, sharePayloadFrom, type SharePayload } from "@ailx/report";
-import { CharacterPortrait, CharacterVoice } from "../lib/CharacterPortrait";
-import { GalleryCard } from "../lib/GalleryCard";
+import { CharacterPortrait, CharacterVoice } from "../components/CharacterPortrait";
+import { GalleryCard } from "../components/GalleryCard";
 import { characterDataUrl } from "../lib/server/portrait";
 
 const CODE = "MSVD";

@@ -80,8 +80,8 @@ Timings are estimates; that is what the load test is for.
 
 ### 2.1 The sitting path (first)
 
-During a run, the browser makes these calls from `apps/web/lib/persistence.ts` and
-`apps/web/lib/hostedDeck.ts`:
+During a run, the browser makes these calls from `apps/web/lib/data/persistence.ts` and
+`apps/web/lib/instrument/hostedDeck.ts`:
 
 | Request | Blocking for the candidate? | DB round trips | Peak memory |
 | --- | --- | --- | --- |

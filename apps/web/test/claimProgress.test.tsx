@@ -92,7 +92,7 @@ async function load() {
   process.env.NEXT_PUBLIC_AILX_BACKEND = "1";
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = "pk_test_stub";
   return {
-    localPractice: await import("../lib/localPractice"),
+    localPractice: await import("../lib/data/localPractice"),
     identity: await import("../lib/auth/identityState"),
     claimProgress: await import("../lib/auth/ClaimProgress"),
   };

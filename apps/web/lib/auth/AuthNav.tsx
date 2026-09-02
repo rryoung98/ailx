@@ -20,7 +20,7 @@
  * every page, is worse than a nav item that appears a moment late.
  */
 import { UserButton, useAuth } from "@clerk/nextjs";
-import { NavLink } from "../NavLink";
+import { NavLink } from "../../components/ui/NavLink";
 
 export function AuthNav() {
   const { isSignedIn } = useAuth();

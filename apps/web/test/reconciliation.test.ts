@@ -23,9 +23,9 @@ import { t4Plugin } from "@ailx/track-t4";
 import {
   candidateComposite, researchExport,
 } from "@ailx/report";
-import { trackConfig } from "../lib/instrument";
-import { scoreTrack, trackScoredEntry, type TrackScoringRecord } from "../lib/registry";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+import { trackConfig } from "../lib/instrument/instrument";
+import { scoreTrack, trackScoredEntry, type TrackScoringRecord } from "../lib/instrument/registry";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 
 function memStorage(): StorageLike {
   const map = new Map<string, string>();

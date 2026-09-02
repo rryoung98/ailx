@@ -6,7 +6,7 @@
  * key/rationale string and any operational item id, and fails the build. The
  * leak we just found must not be findable twice."
  *
- * That leak was real: apps/web/lib/instrument.ts statically imported
+ * That leak was real: apps/web/lib/instrument/instrument.ts statically imported
  * instruments/2026.1/snapshot.json, whose embedded T2 bank carried `key`,
  * `rationale` and `provenance` for all 104 items in that bank, so the deployed
  * static export handed every participant the marking scheme. The bank has
@@ -39,7 +39,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
-import { T3_SCENARIO } from "../lib/instrument";
+import { T3_SCENARIO } from "../lib/instrument/instrument";
 
 /**
  * The OPERATIONAL instrument, if this checkout can see one. Unset in this
@@ -49,7 +49,7 @@ import { T3_SCENARIO } from "../lib/instrument";
  * test that pins one leaked string only guards that string.
  *
  * It is also the reason the demo does not self-trip. The released-practice
- * tier publishes item keys on purpose, and `apps/web/lib/instrument.ts`
+ * tier publishes item keys on purpose, and `apps/web/lib/instrument/instrument.ts`
  * publishes the T3 practice scenario on purpose; neither may supply a needle.
  */
 const OPERATIONAL_SNAPSHOT = process.env.AILX_OPERATIONAL_SNAPSHOT;
@@ -535,7 +535,7 @@ describe("no operational answer key reaches a built client bundle", () => {
 
     it("takes nothing from the released-practice tier, so the demo cannot self-trip", () => {
       // instruments/demo-2026.1 publishes item keys on purpose, and
-      // apps/web/lib/instrument.ts publishes T3_SCENARIO as the released
+      // apps/web/lib/instrument/instrument.ts publishes T3_SCENARIO as the released
       // PRACTICE scenario. Both are meant to be in the bundle; if a needle
       // came from either, this guard would fail on a correct build forever.
       const published = JSON.stringify(T3_SCENARIO) + readFileSync(DEMO_BANK, "utf8");

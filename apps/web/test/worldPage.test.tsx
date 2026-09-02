@@ -21,7 +21,7 @@ import {
   stubJsonFetch,
   type StubbedCall,
 } from "./helpers/clientPage";
-import { WorldView } from "../lib/WorldView";
+import { WorldView } from "../features/world/WorldView";
 import { metadata } from "../app/world/page.api";
 
 const shapes = (n: number): TrackRawScores[] =>

@@ -37,7 +37,7 @@ const workspacePackageDirs: Record<string, string> = {
  * Two entries per package, most specific first:
  *
  *  - a SUBPATH, e.g. `@ailx/core/dist/purity.js` (which
- *    `apps/web/lib/validateChecks.ts` really imports) -> `packages/core/src/purity`.
+ *    `apps/web/lib/instrument/validateChecks.ts` really imports) -> `packages/core/src/purity`.
  *    The `dist/` segment and the `.js` extension are both dropped so vite
  *    resolves the real source file, `.ts` or `.tsx`;
  *  - the bare specifier -> that package's `src/index`.

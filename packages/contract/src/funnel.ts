@@ -5,7 +5,7 @@
  * It lives in the contract package because the browser emits these events and
  * the exam service stores them, and a type copied into two repositories is a
  * type that drifts. Everything here is pure: no clock, no storage, no fetch.
- * The browser half is `apps/web/lib/funnel.ts`; the sink is the service's.
+ * The browser half is `apps/web/lib/data/funnel.ts`; the sink is the service's.
  *
  * WHAT THIS MAY CARRY. An anonymous client id, a session id, a local calendar
  * day, and the few counts a step needs to be readable. Nothing else.
@@ -14,7 +14,7 @@
  *
  *  - No name, no email, no account id, no IP, no referrer, no user agent
  *    string. The id is minted by the browser, rotates (see
- *    `apps/web/lib/funnel.ts`), and identifies nobody.
+ *    `apps/web/lib/data/funnel.ts`), and identifies nobody.
  *  - No SHARE TOKEN. A token is a capability: whoever holds it can open a
  *    candidate's card. A capability in a metrics table is a leak with a
  *    retention policy. So `share_created` and `share_opened` carry no token,

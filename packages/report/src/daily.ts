@@ -6,7 +6,7 @@
  * day, a spoiler-free grid, and a streak. Everything that decides WHICH cards
  * and WHAT the grid says is here, pure and injectable; the words that travel
  * with the grid are in `./shareText.ts` (one module owns share copy), the
- * browser state is `apps/web/lib/dailyState.ts`, and the page is
+ * browser state is `apps/web/features/daily/dailyState.ts`, and the page is
  * `apps/web/app/daily`.
  *
  * FOUR RULES THIS MODULE EXISTS TO HOLD.
@@ -52,7 +52,7 @@
  *    all and cannot be reached from here — `packages/content-tools/test/
  *    public-tree.test.ts` and `apps/web/test/bundleSecrecy.test.ts` keep it
  *    that way. `dailyPoolFromPractice()` is the practice half; the released
- *    half is mapped in `apps/web/lib/demoItems.ts`, where the snapshot lives.
+ *    half is mapped in `apps/web/lib/instrument/demoItems.ts`, where the snapshot lives.
  *
  * 4. NO SCORE OF RECORD, EVER. A daily result is not a sitting. It reaches no
  *    `score()`, no composite, no credential and no report figure, exactly as

@@ -7,8 +7,8 @@ import {
   type SequencedEntry,
 } from "@ailx/session";
 import { TOTAL_POINTS } from "@ailx/core";
-import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
-import { replayTrackScore, scoreTrack, trackScoredEntry } from "../../lib/registry";
+import { buildSampleAttemptLog } from "../../lib/instrument/sampleAttempt";
+import { replayTrackScore, scoreTrack, trackScoredEntry } from "../../lib/instrument/registry";
 import type { TrackId } from "@ailx/session";
 
 /**
@@ -50,20 +50,20 @@ import {
   participantExport, playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact,
   TRACK_META, trackInsights,
 } from "@ailx/report";
-import { CalibrationCurve } from "../../lib/CalibrationCurve";
-import { CharacterPortrait, CharacterVoice } from "../../lib/CharacterPortrait";
-import { CredentialPanel } from "../../lib/CredentialPanel";
-import { Diagnosis } from "../../lib/Diagnosis";
-import { t2AnswerKeys } from "../../lib/instrument";
-import { fetchServerAnswerKeys } from "../../lib/hostedDeck";
-import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
-import { RelianceCard } from "../../lib/RelianceCard";
-import { Reveal } from "../../lib/Reveal";
-import { SiteLink } from "../../lib/SiteLink";
-import { SiteExportPanel } from "../../lib/SiteExportPanel";
-import { downloadBlob } from "../../lib/siteExport";
-import { ShareLink } from "../../lib/ShareLink";
-import { TrackRadar } from "../../lib/TrackRadar";
+import { CalibrationCurve } from "../../features/report/CalibrationCurve";
+import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPortrait";
+import { CredentialPanel } from "../../features/report/CredentialPanel";
+import { Diagnosis } from "../../features/report/Diagnosis";
+import { t2AnswerKeys } from "../../lib/instrument/instrument";
+import { fetchServerAnswerKeys } from "../../lib/instrument/hostedDeck";
+import { loadSiteSubmission, type SiteSubmission } from "../../lib/data/siteUpload";
+import { RelianceCard } from "../../features/report/RelianceCard";
+import { Reveal } from "../../components/ui/Reveal";
+import { SiteLink } from "../../components/ui/SiteLink";
+import { SiteExportPanel } from "../../features/report/SiteExportPanel";
+import { downloadBlob } from "../../features/report/siteExport";
+import { ShareLink } from "../../features/report/ShareLink";
+import { TrackRadar } from "../../components/TrackRadar";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 
@@ -147,7 +147,7 @@ function SiteLiveLink({ attemptId }: { attemptId?: string }) {
 
 function download(filename: string, data: unknown) {
   // One save mechanism for both downloads on this page (the JSON export here
-  // and the T1 site ZIP in SiteExportPanel) — see lib/siteExport.ts.
+  // and the T1 site ZIP in SiteExportPanel) — see features/report/siteExport.ts.
   downloadBlob(filename, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
 }
 

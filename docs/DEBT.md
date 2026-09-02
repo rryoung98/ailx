@@ -12,7 +12,7 @@ Before: 216 diagnostics, 7 of them errors, so `pnpm lint` exited 1 and the CI
 | Rule | Sites | What was wrong |
 |---|---|---|
 | `a11y/useAriaPropsSupportedByRole` | 1 | `aria-label` on a role-less div in `app/report/page.tsx`. A screen reader dropped the player-type code. Added `role="img"`. |
-| `correctness/noUnusedVariables` | 3 | `ssoBusy` state in the T1 runner, left behind when the connect panel moved to `apps/web/lib/ConnectPanel.tsx` and never read since; `ghostBtn` in the T2 runner; `today` in `practiceDrill.test.tsx`. |
+| `correctness/noUnusedVariables` | 3 | `ssoBusy` state in the T1 runner, left behind when the connect panel moved to `apps/web/features/exam/ConnectPanel.tsx` and never read since; `ghostBtn` in the T2 runner; `today` in `practiceDrill.test.tsx`. |
 | `correctness/noUnusedImports` | 9 | Dead imports. `apps/web/test/a11y.test.tsx` also dropped `act`, `createRoot` and its `IS_REACT_ACT_ENVIRONMENT` line: that suite walks a static element tree and mounts nothing. |
 | `suspicious/noExportsInTest` | 3 | `packages/report/test/efficacyClaims.test.ts` exported three helpers nothing imports. The `export` keywords are gone; the helpers stay. |
 | `suspicious/useIterableCallbackReturn` | 1 | `keys.forEach((k, i) => seen[i].add(k))` returned the `Set`. Given a block body. |
@@ -35,7 +35,7 @@ test-clock expression in `apps/web/test/practiceDrill.test.tsx`.
 
 | Rule | Count | Why it is deferred |
 |---|---|---|
-| `a11y/useButtonType` | 41 | The HTML default is `submit`, which only matters inside a `<form>`. The one form in the tree (`lib/Moderation.tsx`) has no flagged button, so nothing behaves wrongly today. 41 files touched for no defect is not a reviewable diff; clear it when a file is being edited anyway. |
+| `a11y/useButtonType` | 41 | The HTML default is `submit`, which only matters inside a `<form>`. The one form in the tree (`components/Moderation.tsx`) has no flagged button, so nothing behaves wrongly today. 41 files touched for no defect is not a reviewable diff; clear it when a file is being edited anyway. |
 | `style/useTemplate` | 32 | `"a" + b` versus a template literal, across 17 files. No behaviour change. |
 | `correctness/useExhaustiveDependencies` | 32 | Read all 32. Every one is deliberate: mount-only checkpoint rehydration, the one-shot OAuth PKCE exchange, and scroll or reset effects whose extra dependency is the trigger. 19 sit at hooks that already carry an `eslint-disable` line saying so. Widening the T2 deck dependency lists would restart the exposure clock mid-item. React Compiler (FRONTEND.md 7.3) changes what the right answer is, so the rewrite waits for it. |
 | `suspicious/noArrayIndexKey` | 14 | Every flagged list is append-only or fixed order: chat logs, option buttons, SVG point sets. Index keys break on reorder, and none of these reorder. |
