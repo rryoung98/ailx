@@ -82,6 +82,7 @@ export function DailyChallenge() {
   const [stimulusFailed, setStimulusFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [justFinished, setJustFinished] = useState(false);
 
   // Mount: the device tells us the day, and the day tells us the deck.
   useEffect(() => {
@@ -94,7 +95,16 @@ export function DailyChallenge() {
     });
   }, []);
 
+  // The round ending replaces the whole view, so focus moves to the new
+  // view's heading rather than being dropped on <body> (FRONTEND.md §5).
+  useEffect(() => {
+    if (!justFinished) return;
+    headingRef.current?.focus();
+    setJustFinished(false);
+  }, [justFinished]);
+
   const finish = useCallback((round: DailyRound, deckSize: number) => {
+    setJustFinished(true);
     setToday((prev) =>
       prev === null
         ? prev
@@ -211,7 +221,16 @@ export function DailyChallenge() {
         stimulusFailed ? (
           <div role="alert">
             <p>{STIMULUS_FAILED}</p>
-            <button type="button" className="btn small-btn" onClick={() => setReload((n) => n + 1)}>
+            <button
+              type="button"
+              className="btn small-btn"
+              onClick={() => {
+                // Clear the failure and remount the <img>, which is what
+                // actually re-requests it. `onError` fires again if it fails.
+                setStimulusFailed(false);
+                setReload((n) => n + 1);
+              }}
+            >
               Try loading it again
             </button>{" "}
             <button type="button" className="btn small-btn" onClick={() => commit([...answers, null])}>
