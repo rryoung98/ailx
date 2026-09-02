@@ -148,7 +148,7 @@ describe("one seam, not seven", () => {
       join("lib", "persistence.ts"), // doc comment on ApiPersistenceOptions
       join("lib", "origin.ts"), // doc comment
       join("components", "ui", "SiteLink.tsx"), // doc comment about the visible text
-      join("lib", "Moderation.tsx"), // doc comment naming the route
+      join("components", "Moderation.tsx"), // doc comment naming the route
     ]);
     const offenders: string[] = [];
     for (const file of browserSources()) {

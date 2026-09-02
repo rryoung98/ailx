@@ -12,7 +12,7 @@
  * reader. An unknown code renders nothing rather than a broken tile.
  */
 import { playerCharacter } from "@ailx/report";
-import { assetUrl } from "./mode";
+import { assetUrl } from "../lib/mode";
 
 export function CharacterPortrait({
   code,

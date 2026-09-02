@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Annotation } from "../components/ui/Annotation";
-import { FunnelStep } from "../lib/FunnelStep";
+import { FunnelStep } from "../components/FunnelStep";
 import { HeroCanvas } from "../lib/HeroCanvas";
 import { PillCTA } from "../components/ui/PillCTA";
 import { PracticeDrill } from "../lib/PracticeDrill";
 import { Reveal } from "../components/ui/Reveal";
-import { CharacterPortrait } from "../lib/CharacterPortrait";
+import { CharacterPortrait } from "../components/CharacterPortrait";
 import { CampusJourney } from "../lib/track3d/CampusJourney";
 import { TrackBands } from "../lib/track3d/TrackBands";
 import { assetUrl, isServerMode } from "../lib/mode";
@@ -170,7 +170,7 @@ function ShowcaseRow({
  *
  * Every face prints its four-letter code as TEXT beside it, so the row still
  * says something with images off and in a screen reader; the portrait's own
- * alt describes the drawing (lib/CharacterPortrait.tsx).
+ * alt describes the drawing (components/CharacterPortrait.tsx).
  */
 function CastStrip() {
   return (

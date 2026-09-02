@@ -23,8 +23,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiPath, type GalleryListing, type GalleryQuery } from "@ailx/contract";
-import { GalleryCard } from "./GalleryCard";
-import { PageError, PageLoading } from "./PageNotice";
+import { GalleryCard } from "../components/GalleryCard";
+import { PageError, PageLoading } from "../components/PageNotice";
 import { firstValueQuery, useService } from "./serviceFetch";
 
 const EYEBROW = "PUBLIC GALLERY · PUBLISHED BY THEIR OWNERS";

@@ -34,8 +34,8 @@ import {
   type CaseListing,
   type ModerationCase,
 } from "@ailx/contract";
-import { GalleryCard } from "./GalleryCard";
-import { PageError, PageLoading } from "./PageNotice";
+import { GalleryCard } from "../components/GalleryCard";
+import { PageError, PageLoading } from "../components/PageNotice";
 import { ReviewActions } from "./ReviewActions";
 import { firstValueQuery, useService } from "./serviceFetch";
 

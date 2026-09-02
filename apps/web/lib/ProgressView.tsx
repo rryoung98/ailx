@@ -53,7 +53,7 @@ import { apiPath } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 import { hasAuthTokenSource } from "./authHeaders";
 import { ForgetBrowser } from "./ForgetBrowser";
-import { PageError, PageLoading } from "./PageNotice";
+import { PageError, PageLoading } from "../components/PageNotice";
 import { useService } from "./serviceFetch";
 // The stylesheet stays co-located with the route it dresses (and is pinned
 // there by test/practiceDrill.test.tsx); only the markup moved out of app/.

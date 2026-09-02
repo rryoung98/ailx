@@ -44,7 +44,7 @@ import { DAILY_POOL } from "./demoItems";
 import { readDailyLedger, recordDailyRoundLocally } from "./dailyState";
 import { funnel } from "./funnel";
 import { assetUrl, basePath } from "./mode";
-import { ShareTargets } from "./ShareTargets";
+import { ShareTargets } from "../components/ShareTargets";
 import styles from "./PracticeDrill.module.css";
 
 /** Minutes EAST of UTC — the sign convention `dailyDay` expects. */

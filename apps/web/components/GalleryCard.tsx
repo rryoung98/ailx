@@ -16,7 +16,7 @@ import { shareUrlPath } from "@ailx/contract";
 import { shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait } from "./CharacterPortrait";
-import { siteHref } from "./mode";
+import { siteHref } from "../lib/mode";
 import { TrackRadar } from "./TrackRadar";
 
 export function GalleryCard({

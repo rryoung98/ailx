@@ -9,7 +9,7 @@
  * and keep the same chrome as the page they replace.
  */
 import type { ReactNode } from "react";
-import { SERVICE_ERROR_COPY } from "./serviceFetch";
+import { SERVICE_ERROR_COPY } from "../lib/serviceFetch";
 
 export function PageNotice({
   eyebrow,

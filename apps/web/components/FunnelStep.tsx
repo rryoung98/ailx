@@ -12,7 +12,7 @@
  * page is the same visit, not a second one.
  */
 import { useEffect } from "react";
-import { funnel, type BareFunnelStep } from "./funnel";
+import { funnel, type BareFunnelStep } from "../lib/funnel";
 
 export function FunnelStep({ step }: { step: BareFunnelStep }): null {
   useEffect(() => {

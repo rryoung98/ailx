@@ -26,9 +26,9 @@ import {
   type CandidateThread as Thread,
   type ModerationComment,
 } from "@ailx/contract";
-import { apiBase, isServerMode } from "./mode";
-import { authHeaders } from "./authHeaders";
-import { browserApiOptions, getServerAttemptId } from "./persistence";
+import { apiBase, isServerMode } from "../lib/mode";
+import { authHeaders } from "../lib/authHeaders";
+import { browserApiOptions, getServerAttemptId } from "../lib/persistence";
 
 const AUTHOR_LABEL: Record<string, string> = {
   reviewer: "AILX moderator",

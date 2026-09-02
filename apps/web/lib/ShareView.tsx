@@ -22,12 +22,12 @@ import { notFound, useParams } from "next/navigation";
 import { apiPath, shareUrlPath } from "@ailx/contract";
 import { shareMinutes, type SharePayload } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
-import { CharacterPortrait, CharacterVoice } from "./CharacterPortrait";
-import { FunnelStep } from "./FunnelStep";
+import { CharacterPortrait, CharacterVoice } from "../components/CharacterPortrait";
+import { FunnelStep } from "../components/FunnelStep";
 import { siteHref } from "./mode";
-import { PageError, PageLoading } from "./PageNotice";
-import { ShareTargets } from "./ShareTargets";
-import { TrackRadar } from "./TrackRadar";
+import { PageError, PageLoading } from "../components/PageNotice";
+import { ShareTargets } from "../components/ShareTargets";
+import { TrackRadar } from "../components/TrackRadar";
 import { useService } from "./serviceFetch";
 
 export interface SharedView {

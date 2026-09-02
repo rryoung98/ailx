@@ -51,7 +51,7 @@ import {
   TRACK_META, trackInsights,
 } from "@ailx/report";
 import { CalibrationCurve } from "../../lib/CalibrationCurve";
-import { CharacterPortrait, CharacterVoice } from "../../lib/CharacterPortrait";
+import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPortrait";
 import { CredentialPanel } from "../../lib/CredentialPanel";
 import { Diagnosis } from "../../lib/Diagnosis";
 import { t2AnswerKeys } from "../../lib/instrument";
@@ -63,7 +63,7 @@ import { SiteLink } from "../../components/ui/SiteLink";
 import { SiteExportPanel } from "../../lib/SiteExportPanel";
 import { downloadBlob } from "../../lib/siteExport";
 import { ShareLink } from "../../lib/ShareLink";
-import { TrackRadar } from "../../lib/TrackRadar";
+import { TrackRadar } from "../../components/TrackRadar";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 

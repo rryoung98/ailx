@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { PageLoading } from "../../lib/PageNotice";
+import { PageLoading } from "../../components/PageNotice";
 import { ReviewView } from "../../lib/ReviewView";
 
 /**

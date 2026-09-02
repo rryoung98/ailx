@@ -28,7 +28,7 @@ import Link from "next/link";
 import { apiPath } from "@ailx/contract";
 import { TRACK_META, type WorldAggregates } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
-import { PageError, PageLoading } from "./PageNotice";
+import { PageError, PageLoading } from "../components/PageNotice";
 import { useService } from "./serviceFetch";
 
 const EYEBROW = "PUBLIC AGGREGATES · DISTRIBUTIONS ONLY";

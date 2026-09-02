@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { GalleryView } from "../../lib/GalleryView";
-import { PageLoading } from "../../lib/PageNotice";
+import { PageLoading } from "../../components/PageNotice";
 
 /**
  * /gallery — the public wall.

@@ -1501,7 +1501,7 @@ main .card {
 .ptype-axes { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .ptype-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }
 
-/* The player-type CHARACTER (apps/web/lib/CharacterPortrait.tsx). The assets
+/* The player-type CHARACTER (apps/web/components/CharacterPortrait.tsx). The assets
    are drawn on the paper background, so the tile is a rounded chip in the
    same colour: the picture reads as pinned paper rather than as a pasted
    square, on the white card and on the paper page alike. */

@@ -35,7 +35,7 @@ test-clock expression in `apps/web/test/practiceDrill.test.tsx`.
 
 | Rule | Count | Why it is deferred |
 |---|---|---|
-| `a11y/useButtonType` | 41 | The HTML default is `submit`, which only matters inside a `<form>`. The one form in the tree (`lib/Moderation.tsx`) has no flagged button, so nothing behaves wrongly today. 41 files touched for no defect is not a reviewable diff; clear it when a file is being edited anyway. |
+| `a11y/useButtonType` | 41 | The HTML default is `submit`, which only matters inside a `<form>`. The one form in the tree (`components/Moderation.tsx`) has no flagged button, so nothing behaves wrongly today. 41 files touched for no defect is not a reviewable diff; clear it when a file is being edited anyway. |
 | `style/useTemplate` | 32 | `"a" + b` versus a template literal, across 17 files. No behaviour change. |
 | `correctness/useExhaustiveDependencies` | 32 | Read all 32. Every one is deliberate: mount-only checkpoint rehydration, the one-shot OAuth PKCE exchange, and scroll or reset effects whose extra dependency is the trigger. 19 sit at hooks that already carry an `eslint-disable` line saying so. Widening the T2 deck dependency lists would restart the exposure clock mid-item. React Compiler (FRONTEND.md 7.3) changes what the right answer is, so the rewrite waits for it. |
 | `suspicious/noArrayIndexKey` | 14 | Every flagged list is append-only or fixed order: chat logs, option buttons, SVG point sets. Index keys break on reorder, and none of these reorder. |

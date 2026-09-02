@@ -179,7 +179,7 @@ colours are asserted equal to the `:root` tokens in `app/globals.css`.
 ### 4.1 The share targets — where a link actually goes
 
 A preview only matters once the link is somewhere. The report and the share
-view both render `apps/web/lib/ShareTargets.tsx`: the OS share sheet
+view both render `apps/web/components/ShareTargets.tsx`: the OS share sheet
 (`navigator.share`, feature-detected after mount so the server and the client
 render the same tree), X, LinkedIn, WhatsApp, and copy link as the fallback
 that needs no app, no popup and no integration.

@@ -31,8 +31,8 @@ import {
 } from "@ailx/report";
 import { funnel } from "./funnel";
 import { assetUrl, basePath, isServerMode } from "./mode";
-import { ShareTargets } from "./ShareTargets";
-import { CandidateThread } from "./Moderation";
+import { ShareTargets } from "../components/ShareTargets";
+import { CandidateThread } from "../components/Moderation";
 import { browserApiOptions, getServerAttemptId } from "./persistence";
 import { loadSiteSubmission } from "./siteUpload";
 
@@ -340,7 +340,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
           />
           {/* Copy is the fallback, not the loop: the OS sheet and the three
               networks are the paths a link actually travels down. All of them
-              read the same frozen payload (lib/ShareTargets.tsx). */}
+              read the same frozen payload (components/ShareTargets.tsx). */}
           <ShareTargets url={url} payload={share.payload} perspective="mine">
             <a className="btn small-btn" href={url} target="_blank" rel="noreferrer">
               Open it <span aria-hidden>↗</span>

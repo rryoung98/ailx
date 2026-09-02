@@ -18,9 +18,9 @@
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { apiPath, type ModerationCaseDetail } from "@ailx/contract";
-import { GalleryCard } from "./GalleryCard";
-import { ModeratorThread } from "./Moderation";
-import { PageError, PageLoading } from "./PageNotice";
+import { GalleryCard } from "../components/GalleryCard";
+import { ModeratorThread } from "../components/Moderation";
+import { PageError, PageLoading } from "../components/PageNotice";
 import { ReviewActions } from "./ReviewActions";
 import { useService } from "./serviceFetch";
 

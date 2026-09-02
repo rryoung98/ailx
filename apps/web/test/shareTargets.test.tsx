@@ -20,7 +20,7 @@ import {
   shareText,
   shareTitle,
 } from "@ailx/report";
-import { ShareTargets } from "../lib/ShareTargets";
+import { ShareTargets } from "../components/ShareTargets";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
