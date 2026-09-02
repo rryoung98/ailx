@@ -312,10 +312,13 @@ which is exactly what the process component scores — and that higher confidenc
 less critical thinking. RSR/RAIR come with a survey literature. Nothing in T2's evidence base is
 this aligned.
 
-The weakness: **45 of 100 points are an LLM jury**, and the evidence for that is conditional. Naive
-LLM essay scoring runs at QWK < 0.30 against a human ceiling of 0.72. The locked-rubric,
-evidence-anchored, distribution-calibrated version reaches QWK 0.708–0.712 — **but requires ~200
-human-labelled calibration examples**, per rubric, per language. Until those exist, the 45 points
+The weakness: **45 of 100 points are an LLM jury**, and the evidence for that is conditional — and
+weaker than this paragraph originally said (corrected 2026-09-02, TEN-34). Naive LLM essay scoring
+runs at QWK 0.02–0.48, not "< 0.30", and human–human agreement on ASAP is a *range*, 0.63–0.85 with
+median 0.76, not a 0.72 ceiling. The locked-rubric, evidence-anchored, distribution-calibrated
+version reaches QWK 0.708–0.712 in **one unreviewed preprint** (arXiv:2601.08654), on one dataset
+with one model family — below that median human pair — **and it requires ~200 human-labelled
+calibration examples**, per rubric, per language. Until those exist, the 45 points
 are not the measurement the spec describes. Also: three models from three families is the adopted
 design, but the demo path (`packages/report/src/judging.ts::judgeT3`) returns three *seeded samples
 of one stub*, and the stub's score is essentially a length band. Heterogeneity is a plan, not a fact.
@@ -713,7 +716,9 @@ behavioural, keyless, symmetric and immune to demand characteristics — but it 
 AILX's own construction with no external validity evidence**, in the scorer's module comment and
 in spec §T3. The same check found no corroboration for the QWK 0.708–0.712 figure the spec quotes
 for a calibrated jury; what the base contains is one small study (n = 67) with a low,
-non-significant result. Those 45 points are marked unimplemented for more reasons than one.
+non-significant result. A follow-up spike (2026-09-02, TEN-32) then traced the figure itself to one
+unreviewed preprint, arXiv:2601.08654 — one model family, one dataset — and measured human–human
+QWK on ASAP at 0.63–0.85, median 0.76, which puts 0.71 below the median human pair. Those 45 points are marked unimplemented for more reasons than one.
 
 Two other citation corrections: Verhavert's bands are SSR .70 at ~13 comparisons, .80 at 19–20,
 .90 at **26–37** — so r = 30 is inside the .90 band, as §3.3 says. Diel et al. is k = 137 across

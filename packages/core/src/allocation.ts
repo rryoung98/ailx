@@ -246,7 +246,10 @@ const T3: TrackAllocation = {
       note:
         "The heterogeneous three-family jury is one stub returning three " +
         "seeded samples, and the ~200-example human-labelled calibration set " +
-        "the QWK 0.708-0.712 result depends on does not exist.",
+        "the QWK 0.708-0.712 result depends on does not exist. That result " +
+        "itself is one unreviewed preprint (arXiv:2601.08654), one model " +
+        "family on one dataset, and 0.71 is BELOW the median human-human " +
+        "pair on ASAP (0.63-0.85, median 0.76).",
     },
   ],
 };
