@@ -617,13 +617,27 @@ short_form:
       every_respondent: true
     - id: t2-link-a
       minutes: 8.5
-    - id: t3-reliance-a
+      family: t2-link
+    - id: t2-link-b
+      minutes: 8.5
+      family: t2-link
+    - id: t3-scenario-a
       minutes: 20
+      family: t3-scenario
+    - id: t3-scenario-b
+      minutes: 20
+      family: t3-scenario
 ```
+
+Two rotated **families**, and a respondent takes one block from each. That is what makes four T2 link
+blocks and four T3 scenarios sixteen forms rather than eight (§3.1). The example shows two members
+per family; the real form has four in each.
 
 `target_minutes` is the **testing** budget, not the 53 minutes of §1.3: consent, instructions, the
 warm-up, the background items and the debrief are not blocks and are not declared here. This design's
-blocks cost 42 minutes on the longest path, inside a declared 45.
+blocks cost 42 minutes on the longest path — 13.5 + 8.5 + 20 — inside a declared 45. The canary probe
+is not declared either: it goes to one respondent in eight and is a leak probe, not a design factor
+(§3.3), so §1.3 counts its 3.5 minutes and the manifest does not.
 
 `packages/content-tools` validates it in `parseManifest`, in the same style as the `anchor` block.
 Three rules are enforced rather than documented, because they are the three that a fielding cannot
@@ -631,17 +645,16 @@ recover from:
 
 - **At least one `every_respondent` block.** That is the common set of §5.1. A matrix design without
   one is sixteen unlinked short tests.
-- **At least two rotated blocks**, or the form is fixed and the word "matrix" is decoration.
-- **The longest respondent path fits `target_minutes`** — every common block plus the **longest**
-  rotated block, not the sum of all of them, because a respondent takes one rotation. A form that
-  overruns does not fail loudly at fielding. It fails as break-off, and break-off costs low scorers
-  first (`docs/SAMPLING.md` §8.3).
+- **Every rotated family has at least two members**, or that family rotates nothing and the word
+  "matrix" is decoration. A rotated block must name its family; a common block may not have one.
+- **The longest respondent path fits `target_minutes`** — every common block plus the longest member
+  of **each** family. Summing all rotated blocks would reject a legal design; taking one maximum
+  across all of them would let a two-family form overrun in silence. A form that overruns does not
+  fail loudly at fielding. It fails as break-off, and break-off costs low scorers first
+  (`docs/SAMPLING.md` §8.3).
 
 Unknown keys are rejected on the form and on a block, so a misspelled `minutes` cannot drop a block
-out of the budget in silence. Minutes are a positive number rather than a whole number, because 32
-items at 25 seconds is 13.5. All of it is tested (`packages/content-tools/test/loader.test.ts`).
-
-What the code does **not** do: assign a respondent to a block, sample anything, count exposure, hold
+out of the budget in silence. What the code does **not** do: assign a respondent to a block, sample anything, count exposure, hold
 the item-to-block mapping, or link anything. `content-tools` reads content and never sees a sitting.
 Rotation and assignment belong to the exam service in the private repo. **No sampler, no IRT model
 and no plausible-value generator is being built by this document**, and §4.5 says why the last two
@@ -672,8 +685,8 @@ That rule is already enforced and needed no change.
 10. The shed order under break-off pressure is fixed in advance (§1.5); the anchor core is never
     shed.
 11. A wave-0 randomised length experiment runs **before** the wave-1 contract is signed.
-12. The manifest carries `short_form.id`, `target_minutes` and its blocks, and the loader checks the
-    longest respondent path against the target.
+12. The manifest carries `short_form.id`, `target_minutes` and its blocks, grouped into rotated
+    families, and the loader checks the longest respondent path against the target.
 
 ---
 

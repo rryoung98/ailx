@@ -52,7 +52,10 @@ export interface ShortForm {
   blocks: ShortFormBlock[];
 }
 
-/** One block of a short form. Either common to every form, or rotated. */
+/**
+ * One block of a short form. Either common to every form, or a member of a
+ * rotated FAMILY, from which each respondent takes exactly one block.
+ */
 export interface ShortFormBlock {
   /** Block id, unique within the form, e.g. `anchor-core`. */
   id: string;
@@ -65,6 +68,14 @@ export interface ShortFormBlock {
    * (docs/SHORT-FORM.md §5).
    */
   every_respondent?: boolean;
+  /**
+   * The rotated family this block belongs to, e.g. `t3-scenario`. Required
+   * on a rotated block, forbidden on a common one. A respondent takes ONE
+   * block from each family, so the families multiply: four T2 link blocks
+   * and four T3 scenarios are sixteen forms, not eight
+   * (docs/SHORT-FORM.md §3.1).
+   */
+  family?: string;
 }
 
 export interface InstrumentManifest {
