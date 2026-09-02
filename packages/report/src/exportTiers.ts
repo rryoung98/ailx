@@ -11,6 +11,14 @@
  *    digests, judgment rows, event VERBS + timings (no free-text payloads),
  *    per-track eventCounts (audit tallies), and T2 item ids + responses. It never copies raw artifacts, HTML,
  *    transcripts, notes, or arbitrary event result/context fields (F15).
+ *
+ * JUDGMENT ROWS ARE COPIED IN THE STORED ORDER — this file never sorts them.
+ * It relies on the log already being canonical: `assertJudgmentsAttested`
+ * (`packages/session/src/machine.ts`) refuses a `track_scored` entry whose
+ * evidence is missing, mutated, unordered or duplicated, `@ailx/core`
+ * (`packages/core/src/judgments.ts`) owns THE canonical row order, and
+ * `loadAttemptValidated` truncates a tampered stored log. Both halves of that
+ * coupling are pinned by `packages/report/test/exportJudgmentOrder.test.ts`.
  */
 
 import type {
