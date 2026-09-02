@@ -53,28 +53,38 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
     const full = join(dir, name);
     if (statSync(full).isDirectory()) sourceFiles(full, out);
     // Keys are "/"-spelled whatever the platform, so a test can name one.
-    else if (/\.(ts|tsx)$/.test(name)) out.push(relative(WEB_ROOT, full).split(sep).join("/"));
+    // `.js`/`.jsx` are read too: next.config.mjs keeps them in pageExtensions,
+    // so a page written in JavaScript is a page.
+    else if (/\.(ts|tsx|js|jsx|mjs)$/.test(name)) out.push(relative(WEB_ROOT, full).split(sep).join("/"));
   }
   return out;
 }
 
-function parseSpecifiers(source: string, name = "in.tsx"): string[] {
+/** One import: where it points, and the names it brings in ("" when none). */
+interface ParsedImport {
+  specifier: string;
+  bindings: string;
+}
+
+function parseImports(source: string, name = "in.tsx"): ParsedImport[] {
   const file = ts.createSourceFile(name, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX);
-  const out: string[] = [];
+  const out: ParsedImport[] = [];
   const visit = (node: ts.Node): void => {
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
       node.moduleSpecifier &&
-      ts.isStringLiteral(node.moduleSpecifier)
+      ts.isStringLiteralLike(node.moduleSpecifier)
     ) {
-      out.push(node.moduleSpecifier.text);
+      const clause = ts.isImportDeclaration(node) ? node.importClause : node.exportClause;
+      out.push({ specifier: node.moduleSpecifier.text, bindings: clause?.getText() ?? "" });
     }
     if (
       ts.isCallExpression(node) &&
       node.expression.kind === ts.SyntaxKind.ImportKeyword &&
-      ts.isStringLiteral(node.arguments[0])
+      node.arguments[0] &&
+      ts.isStringLiteralLike(node.arguments[0])
     ) {
-      out.push(node.arguments[0].text);
+      out.push({ specifier: node.arguments[0].text, bindings: "" });
     }
     node.forEachChild(visit);
   };
@@ -82,13 +92,21 @@ function parseSpecifiers(source: string, name = "in.tsx"): string[] {
   return out;
 }
 
-const importSpecifiers = (rel: string): string[] =>
-  parseSpecifiers(readFileSync(join(WEB_ROOT, rel), "utf8"), rel);
+const parseSpecifiers = (source: string): string[] => parseImports(source).map((i) => i.specifier);
 
-/** A relative specifier as a path under `apps/web`, or null if it is a package. */
+const fileImports = (rel: string): ParsedImport[] =>
+  parseImports(readFileSync(join(WEB_ROOT, rel), "utf8"), rel);
+
+/**
+ * A specifier as a path under `apps/web`, or null if it is a package. Both
+ * spellings of an app module resolve: relative, and the `@/*` alias that
+ * `apps/web/tsconfig.json` points at this same root.
+ */
 function resolveImport(from: string, spec: string): string | null {
-  if (!spec.startsWith(".")) return null;
-  const base = join(WEB_ROOT, dirname(from), spec);
+  if (!spec.startsWith(".") && !spec.startsWith("@/")) return null;
+  const base = spec.startsWith("@/")
+    ? join(WEB_ROOT, spec.slice(2))
+    : join(WEB_ROOT, dirname(from), spec);
   for (const candidate of [base, `${base}.ts`, `${base}.tsx`, join(base, "index.ts"), join(base, "index.tsx")]) {
     if (existsSync(candidate) && statSync(candidate).isFile()) {
       return relative(WEB_ROOT, candidate).split(sep).join("/");
@@ -97,13 +115,13 @@ function resolveImport(from: string, spec: string): string | null {
   return null;
 }
 
-const MODULE_GRAPH = new Map<string, { specifiers: string[]; files: string[] }>(
+const MODULE_GRAPH = new Map<string, { imports: ParsedImport[]; files: string[] }>(
   [...sourceFiles(join(WEB_ROOT, "app")), ...sourceFiles(join(WEB_ROOT, "lib"))].map((rel) => {
-    const specifiers = importSpecifiers(rel);
-    const files = specifiers
-      .map((s) => resolveImport(rel, s))
+    const imports = fileImports(rel);
+    const files = imports
+      .map((i) => resolveImport(rel, i.specifier))
       .filter((f): f is string => f !== null);
-    return [rel, { specifiers, files }];
+    return [rel, { imports, files }];
   }),
 );
 
@@ -123,12 +141,26 @@ function reachable(start: string): Set<string> {
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 const store = new Map<string, string>();
+/** Every storage call the app made, so a test can prove one was never made. */
+const touched: string[] = [];
 Object.defineProperty(window, "localStorage", {
   value: {
-    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-    setItem: (k: string, v: string) => void store.set(k, String(v)),
-    removeItem: (k: string) => void store.delete(k),
-    clear: () => void store.clear(),
+    getItem: (k: string) => {
+      touched.push(k);
+      return store.has(k) ? store.get(k)! : null;
+    },
+    setItem: (k: string, v: string) => {
+      touched.push(k);
+      store.set(k, String(v));
+    },
+    removeItem: (k: string) => {
+      touched.push(k);
+      store.delete(k);
+    },
+    clear: () => {
+      touched.push("*");
+      store.clear();
+    },
   },
   configurable: true,
 });
@@ -143,6 +175,7 @@ const fetchSpy = vi.fn();
 
 beforeEach(() => {
   store.clear();
+  touched.length = 0;
   fetchSpy.mockReset();
   vi.stubGlobal("fetch", fetchSpy);
   vi.useFakeTimers();
@@ -357,6 +390,7 @@ describe("the daily never touches the credential", () => {
     const practice = '{"days":[{"day":"2026-03-16","sessions":1,"answered":6,"correct":4}]}';
     store.set(ATTEMPT_KEY, attempt);
     store.set(LOCAL_PRACTICE_KEY, practice);
+    touched.length = 0;
 
     mount();
     const deck = dailyDeck(DAY, DAILY_POOL);
@@ -371,6 +405,9 @@ describe("the daily never touches the credential", () => {
     expect([...store.keys()].sort()).toEqual(
       [ATTEMPT_KEY, DAILY_LEDGER_KEY, LOCAL_PRACTICE_KEY].sort(),
     );
+    // Equal bytes at the end would also hold for a read, or for a write and a
+    // restore, so every storage CALL is recorded and only one key was named.
+    expect([...new Set(touched)]).toEqual([DAILY_LEDGER_KEY]);
   });
 
   it("imports nothing from the exam, scoring or credential path", () => {
@@ -382,9 +419,16 @@ describe("the daily never touches the credential", () => {
     // daily may import @ailx/report (the daily rules) and @ailx/session (the
     // StorageLike type), and does. That the daily asks the service for nothing
     // at all is pinned above, where a round is played with fetch stubbed.
-    const packages = DAILY_CLOSURE.flatMap((f) => MODULE_GRAPH.get(f)?.specifiers ?? [])
-      .filter((s) => /^(@ailx\/(core|contract)|@clerk)/.test(s));
-    expect(packages).toEqual([]);
+    const packageImports = DAILY_CLOSURE.flatMap((f) => MODULE_GRAPH.get(f)?.imports ?? []).filter(
+      (i) => !i.specifier.startsWith(".") && !i.specifier.startsWith("@/"),
+    );
+    expect(packageImports.filter((i) => /^(@ailx\/(core|contract)|@clerk)/.test(i.specifier))).toEqual([]);
+    // A package is a leaf, so the NAMES it brings in matter too: @ailx/report
+    // holds the daily rules and a credential helper in one barrel, and
+    // @ailx/track-t2 holds the item pool and a scorer.
+    expect(
+      packageImports.filter((i) => /credential|composite|judg|scor|percentile|band/i.test(i.bindings)),
+    ).toEqual([]);
   });
 
   it("is reached by no page that scores or shows a credential", () => {
@@ -401,6 +445,19 @@ describe("the daily never touches the credential", () => {
       .map(({ page, reaches }) => ({ page, daily: DAILY_MODULES.filter((m) => reaches.has(m)) }))
       .filter((r) => r.daily.length > 0);
     expect(offenders, JSON.stringify(offenders)).toEqual([]);
+  });
+
+  it("is reached by no layout, which Next wraps around every page", () => {
+    // A page closure holds what the page imports. Next also renders each page
+    // inside its ancestor layouts, so those are read here rather than folded
+    // into the page closures: the root layout mounts the auth shell, and
+    // folding it in would make every page an identity-reaching page.
+    const layouts = [...MODULE_GRAPH.keys()].filter((f) => /^app\/.*(layout|template)\.tsx?$/.test(f));
+    expect(layouts).toContain("app/layout.tsx");
+    for (const layout of layouts) {
+      const reaches = reachable(layout);
+      expect(DAILY_MODULES.filter((m) => reaches.has(m)), layout).toEqual([]);
+    }
   });
 
   it("classifies the pages this guard depends on, so it cannot pass by finding nothing", () => {
@@ -432,5 +489,20 @@ describe("the daily never touches the credential", () => {
     expect(parseSpecifiers('import type { S } from "@ailx/session";')).toEqual(["@ailx/session"]);
     expect(parseSpecifiers('export { a } from "./dailyState";')).toEqual(["./dailyState"]);
     expect(parseSpecifiers('const m = await import("./DailyChallenge");')).toEqual(["./DailyChallenge"]);
+    // A constant template literal is a specifier, not a computed one.
+    expect(parseSpecifiers("const m = await import(`./persistence`);")).toEqual(["./persistence"]);
+    // The names an import brings in are kept, so a package leaf can be judged
+    // by what it hands over.
+    expect(parseImports('import { credentialView as v } from "@ailx/report";')[0].bindings).toContain(
+      "credentialView",
+    );
+  });
+
+  it("resolves both spellings of an app module, so the @/ alias is not a leaf", () => {
+    // tsconfig.json maps "@/*" onto apps/web, so "@/lib/persistence" and
+    // "../lib/persistence" are the same file and must resolve the same way.
+    expect(resolveImport("app/daily/page.tsx", "@/lib/persistence")).toBe("lib/persistence.ts");
+    expect(resolveImport("app/daily/page.tsx", "../../lib/persistence")).toBe("lib/persistence.ts");
+    expect(resolveImport("app/daily/page.tsx", "@ailx/report")).toBeNull();
   });
 });
