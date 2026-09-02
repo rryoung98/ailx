@@ -1,8 +1,8 @@
 # TREND-FORM.md — the frozen anchor, and what a change in the index may be blamed on
 
-Status: design document, first draft. Public on purpose, like `docs/SAMPLING.md`: the method is a
-credibility asset, the item bank is the secret. Nothing in this file names an item, an asset, a key
-or a generator prompt.
+Status: design document, first draft. Public on purpose, like `docs/SAMPLING.md`: the method is
+publishable, the item bank is not. Nothing in this file names an item, an asset, a key or a
+generator prompt.
 
 Companion documents: `docs/SAMPLING.md` §12.1 (the basket problem, which this file answers),
 `docs/TRACK-REVIEW.md` §2 and §9 (what T2 measures and what shipped),
@@ -19,13 +19,13 @@ and have not pretended to.
 
 AILX re-versions its operational form every year against a frontier that moves faster than the form
 does. On a re-versioned instrument a fall in the score cannot be told apart from generators getting
-better, which is the CPI's new-product bias with the sign that flatters nobody. So AILX carries a
-second instrument that never changes: a **frozen anchor form** of T2 discrimination items on pinned
-generator vintages, fielded in the panel wave beside the operational form, scored by arithmetic with
-no model in the loop. The headline **trend** is reported on the frozen line only. The operational
-form is reported as a **level**, never as a change. The frozen line answers one narrow question —
-*can adults still tell 2026-vintage synthetic media apart from camera-captured media?* — and it is
-not a trend in AI literacy. Saying which of the two we measured is the whole point of the design.
+better. That is the CPI's new-product bias. So AILX carries a second instrument that never changes:
+a **frozen anchor form** of T2 discrimination items on pinned generator vintages, fielded in the
+panel wave beside the operational form, scored by arithmetic with no model in the loop. The headline
+**trend** is reported on the frozen line only. The operational form is reported as a **level**, never
+as a change. The frozen line answers one narrow question — *can adults still tell 2026-vintage
+synthetic media and hostile messages apart from camera-captured media and legitimate mail?* — and it
+is not a trend in AI literacy. Saying which of the two we measured is the point of the design.
 
 ---
 
@@ -34,16 +34,18 @@ not a trend in AI literacy. Saying which of the two we measured is the whole poi
 ### 1.1 The contents
 
 **The anchor form is T2 only: 40 discrimination items, of which 32 are media and 8 are message.**
-Fixed presentation order, fixed exposure time per item, fixed instructions, fixed renderer. It is an
-**external anchor**: its items are scored for the trend line and contribute nothing to the
-candidate's operational composite.
+Every respondent sees the 32-item **core**; the 8 **canary** items go to a random one-in-eight
+subsample and exist to detect a leak (§2.4), so mean exposure is 33 items. Fixed presentation
+order, fixed exposure time per item, fixed instructions, fixed renderer. It is an **external
+anchor**: its items are scored for the trend line and contribute nothing to the candidate's
+operational composite.
 
 Why T2 and nothing else, in order of weight:
 
 1. **It is keyed.** Every anchor item has a right answer stored beside it. Scoring is arithmetic on
    response data with zero marginal cost at any n (`docs/TRACK-REVIEW.md` §2.3). A trend line whose
    scoring cost is zero can be recomputed in 2031 by anyone holding the responses.
-2. **No model is in the loop, so no model version can move the series.** This is not a small point.
+2. **No model is in the loop, so no model version can move the series.**
    Sunkavalli (2026, arXiv:2608.29517; 2,377 essays, 12 judges, 4 providers) measured all five
    model-version contrasts moving judge severity beyond a permutation null, **up to 133 points of
    1,000**, with one judge deprecated mid-study. **VERIFIED** (private evidence base,
@@ -74,7 +76,8 @@ reliance block (planted errors, no judge, 115 of T3's 160 points) survives compr
 rater. It still needs a live assistant, so freezing it means freezing a model. If a pinned open-weights
 assistant is ever run on our own infrastructure at fixed weights, decode settings and serving stack,
 that block becomes anchorable and the composite gets a second frozen leg. **We do not know what that
-costs**; what would tell us is one wave's serving bill for a pinned 8B-class assistant at panel volume.
+costs.** What would tell us is one wave's serving bill for a pinned 8B-class assistant at panel
+volume. It is not in scope here.
 
 ### 1.3 Why the anchor is bigger than the spec's secure block
 
@@ -89,12 +92,12 @@ marks this as its own arithmetic, not a published result). **VERIFIED as arithme
 That interval is the *per-person* one, and a population mean over n = 1,500 is far tighter than any
 one person's rate. The two uses must not be confused:
 
-- **For the population mean, 40 items is enough.** The binding uncertainty is the linking error and
-  item-level drift, not item count (§4.4).
-- **For an individual anchor score, 40 items is not enough** (±0.16 at p = 0.5). The anchor form
+- **For the population mean, 33 items is enough.** The binding uncertainty is item-level drift, not
+  item count (§4.4).
+- **For an individual anchor score, 33 items is not enough** (±0.17 at p = 0.5). The anchor form
   therefore issues no individual score and appears on no report.
 
-40 rather than 97 is a deliberate trade against testing minutes (§6). We are buying a cohort mean,
+33 rather than 97 is a deliberate trade against testing minutes (§6). We are buying a cohort mean,
 not a person score.
 
 ---
@@ -108,9 +111,10 @@ away.
 
 ### 2.1 Exposure budget
 
-**12,000 administrations per cycle, hard cap 15,000. DECLARED.** The arithmetic: up to four
-countries × 3,000 panel completes is 12,000 (`docs/SAMPLING.md` §4, §13.3 option C), and the cap
-leaves headroom for replacements and a device substudy without a decision being made by accident.
+**12,000 administrations per cycle. DECLARED.** The arithmetic: up to four countries × 3,000 panel
+completes is 12,000 (`docs/SAMPLING.md` §4, §13.3 option C). One number, not a target plus a cap:
+a budget with headroom above it is a budget nobody enforces. Exceeding it does not void the wave —
+it opens the §3 replacement review, and the overrun is reported with the wave.
 
 Two rules go with it:
 
@@ -162,10 +166,9 @@ thresholds so the analysis is not read backwards.
 2. **Near-perfect clustering.** In a 2,000-person synthetic-media detection study, **0.1% got
    everything right** (`AILX-Spec-2026.1.md` §09). **VERIFIED.** Flag: more than **1%** of a wave's
    sittings above the previous wave's 99th percentile of anchor accuracy. DECLARED.
-3. **Item-level drift on a canary subset.** The anchor splits into a **core of 32 items served to
-   everyone** and **8 canary items served to a 1-in-8 random subsample**. Canary items are far less
-   exposed, so a core-minus-canary gap that opens over waves is contamination telemetry rather than
-   population change. This is ARC-AGI's public-vs-secure gap method, which the spec already adopts,
+3. **Item-level drift on the canary subset.** The 8 canary items go to a one-in-eight random
+   subsample and so accumulate an eighth of the core's exposure. A core-minus-canary gap that opens
+   over waves is therefore contamination telemetry rather than population change. This is ARC-AGI's public-vs-secure gap method, which the spec already adopts,
    applied inside the anchor. The cost is that the canary items carry an eighth of the sample and so
    detect only a gross leak; **we do not know the smallest gap this design can detect**, and what
    would tell us is a simulation on wave-1 response data.
@@ -181,11 +184,12 @@ against a vendor's scraped corpus under an NDA at acceptable cost. What would te
 
 Pre-decided, so that nobody argues about it while holding the result:
 
-1. **Publish no trend for the affected wave.** Publish the level, with the leak disclosed in the same
-   release, not in an annex.
-2. **Re-equate on the surviving items.** Drop every item that is known-leaked or that flagged on two
-   of the four signals. If **fewer than 20 items survive**, or the media/message balance collapses,
-   there is no trend statement for that wave at all. The 20 is the standard common-item floor (§4.2).
+1. **Disclose the leak in the release, not in an annex**, whatever step 2 concludes.
+2. **Rebuild the line on the surviving items.** Drop every item that is known-leaked or that flagged
+   on two of the four signals, and recompute the whole back series on that reduced set so the
+   comparison stays like-for-like. If **fewer than 20 items survive**, or the media/message balance
+   collapses, there is no trend statement for that wave — publish the level only. The 20 is the
+   standard common-item floor (§4.2).
 3. **Start the successor** and run it beside the incumbent for the following wave, accepting that the
    bridge is contaminated on one side and reporting the linking error as unbounded.
 4. **Do not quietly patch the form.** An anchor that gained four replacement items in 2029 is a
@@ -216,7 +220,7 @@ about that number.
 | Trigger | Why it ends the form |
 |---|---|
 | A confirmed leak (§2.5) | The number stays comparable-looking after it stops being comparable. |
-| Drift beyond threshold on more than 20% of items | The form is no longer measuring what it measured. |
+| More than 20% of core items drift | An item drifts when its accuracy moves by more than **10 percentage points** against its baseline wave, in either direction. DECLARED, and re-set against wave 1 (§9). Above a fifth of the core, the form is no longer the form. |
 | Mean accuracy above 90%, or at chance for over half of respondents | A ceiling or a floor carries no trend information. `docs/TRACK-REVIEW.md` §2.1 says the floor is the likelier end. |
 | An asset must be withdrawn for legal or consent reasons | Not negotiable, and `AILX-Spec-2026.1.md` §15 makes it foreseeable. |
 | A media format stops rendering in shipped browsers | A codec deprecation is a silent form change. This is the trigger people forget. |
@@ -225,8 +229,8 @@ about that number.
 **NAEP is the reference, and we differ from it in four ways.** NAEP runs a Long-Term Trend
 assessment beside main NAEP: substantially unchanged items, first fielded in the early 1970s,
 administered to fixed ages rather than grades, on a less frequent cycle, with bridge studies when
-anything must change. **UNVERIFIED at source level** — this paragraph is written from the published
-design rather than from a re-read of the NCES documentation, and the dates and cycle must be checked
+anything must change. **UNVERIFIED at source level** — written from the standard account of the
+design, not from a re-read of the NCES documentation. The dates and the cycle must be checked
 before publication. The differences that matter for us:
 
 1. **NAEP's construct does not rot; ours does.** Reading in 1971 is reading in 2026. Detecting
@@ -242,31 +246,45 @@ before publication. The differences that matter for us:
 
 ## 4. Equating
 
-### 4.1 The design
+### 4.1 Three links, and only two of them are equating
 
-**Common-item non-equivalent groups (NEAT), with the anchor form as an external anchor.** Each wave
-draws a different sample; the anchor items are the only thing common to both. External, not
-internal: internal anchoring would put frozen items inside the reported operational score, which
-would drag old content into the headline and defeat the re-versioning the operational form exists to
-do.
+The word "equating" hides three different jobs here, and they have different designs.
+
+1. **Wave to wave on the frozen line: no equating.** The items, the order, the exposure time and the
+   renderer are identical, so the 2029 rate and the 2027 rate are already on one scale. The samples
+   are non-equivalent, but that is the population change we are trying to measure, not a scaling
+   problem. What this link needs is not a method; it is assumption 2 in §4.3 holding, and §4.4 says
+   why it may not.
+2. **Anchor to successor anchor, at replacement: a single-group link.** In the overlap wave the same
+   respondents take both frozen forms, in randomised order. Single group, so no group difference to
+   adjust for, and a linking error that enters the series exactly once per anchor generation (§5.2).
+3. **Operational form to the frozen line, within a wave: common-item non-equivalent groups (NEAT).**
+   The panel short form is matrix-sampled, so different respondents see different operational blocks
+   and the anchor core is what they have in common. This link is only needed if we ever want to
+   express an operational result on the frozen scale, which §5.1 says we do not publish.
+
+The anchor is an **external** anchor in all three: its items are scored for the trend line and
+contribute nothing to the operational composite. Internal anchoring would put frozen items inside
+the reported score, drag old content into the headline, and defeat the re-versioning the operational
+form exists to do.
 
 ### 4.2 The method, and why
 
-**Chained equipercentile equating as the primary method, with Levine observed-score linear equating
-as the published sensitivity check.** Reasons, in order:
+For links 2 and 3: **chained equipercentile equating as the primary method, with Levine
+observed-score linear equating as the published sensitivity check.** Reasons, in order:
 
 - It does not require an IRT fit. T2's response data has a documented distributional problem — a
   large fraction of a general population lands at or near chance (`docs/TRACK-REVIEW.md` §2.1) — and
   a lump at the bottom is exactly what breaks an IRT scaling.
-- Chained methods are the standard choice when the groups differ substantially in ability, which
-  two panel waves in different years may. Levine's assumptions fail differently from chained ones, so
-  running both and publishing the gap is a real check rather than a decoration.
+- Chained methods are the standard choice when the groups differ in ability, which two matrix blocks
+  or two panel years may. Levine's assumptions fail differently from chained ones, so the gap between
+  them is informative; publish both.
 - Standard guidance is that a common-item set should be **at least 20 items or 20% of the form,
   whichever is larger**, and should mirror the full form in content and difficulty (Kolen & Brennan,
   *Test Equating, Scaling, and Linking*). **UNVERIFIED at source level** — written from the standard
-  guidance, not re-read tonight; confirm the exact wording before publication. Our anchor is 40 items
-  and is itself the common set, so the floor is met with margin, and the 20-item figure is what §2.5
-  falls back to after a leak.
+  guidance, not from a re-read; confirm the exact wording before publication. The anchor core is 32
+  items and is itself the common set, so the floor is met with margin, and the 20-item figure is what
+  §2.5 falls back to after a leak.
 
 **Equate on item-level correct/incorrect responses, not on the reported T2 points.** The reported
 score passes through d′ with a declared floor of `D_PRIME_FLOOR = −1.0`, a criterion term and a
@@ -274,9 +292,10 @@ scaling (`docs/TRACK-REVIEW.md` §9.3). Every one of those is a policy constant 
 and equating on top of them would tie the trend line to a scoring decision instead of to the
 responses. The raw responses are the durable object.
 
-**No equating engine is being built tonight**, and none is needed before wave 1: there is nothing to
-equate until a second wave exists. What wave 1 must do is *store what equating will need* — item-level
-responses, item ids, per-item timing, device class, and the anchor form id.
+**No equating engine is being built in this change**, and none is needed before wave 1: there is
+nothing to link until a second wave or a successor anchor exists. What wave 1 must do is *store what
+the link will need* — item-level responses, item ids, per-item timing, device class, and the anchor
+form id.
 
 ### 4.3 The assumptions
 
@@ -312,14 +331,14 @@ responses, item ids, per-item timing, device class, and the anchor form id.
 
 ## 5. What the index may and may not attribute a change to
 
-The deliverable. A fall in the AILX number can mean at least five different things, and the design
+The deliverable. A fall in the AILX number can mean at least seven different things. The design
 separates some of them and not others.
 
 | Candidate explanation | Separable? | By what |
 |---|---|---|
 | **The generators got better** | **Yes, for the anchor construct.** | Generator vintage is frozen in the anchor. The operational-minus-anchor gap is the frontier effect, confounded with the operational form's content change, so it is an indication and not an estimate. |
 | **The judge or assistant model changed** | **Yes, by construction.** | The anchor has no model in it. Severity shifts of up to 133/1,000 points (§1.1) cannot reach the frozen line. |
-| **The candidates changed** | **Partly.** | Only within the frozen construct, and only after the other four explanations are excluded. It is the residual, never the first reading. |
+| **The candidates changed** | **Partly.** | Only within the frozen construct, and only after the other six explanations are excluded. It is the residual, never the first reading. |
 | **The form was burned** | **No, not from the score.** | A leak looks exactly like improvement. The four side signals in §2.4 are the only defence, and none is conclusive alone. |
 | **The cohort changed** | **Partly, for Track B; no, for Track A.** | Weighting, the reporting floors and the published NRBA (`docs/SAMPLING.md` §9, §10) handle composition. They do not handle a change in who agrees to sit a 45-minute test. Not at all for the self-selected web cohort. |
 | **The devices changed** | **Partly.** | Invariance testing across device classes decides whether means may be compared. If only metric invariance holds, we may compare relationships and not means, and we say so instead of averaging anyway. |
@@ -327,9 +346,9 @@ separates some of them and not others.
 
 ### 5.1 The sentences this licenses, and the ones it does not
 
-**May say:** "Detection of 2026-vintage synthetic media among internet-using adults 18–65 in
-[country] changed by X points between 2027 and 2029 (95% CI a–b, including a linking error of L),
-measured on a frozen 40-item form held constant across both waves."
+**May say:** "Detection of 2026-vintage synthetic media and hostile messages among internet-using
+adults 18–65 in [country] changed by X points between 2027 and 2029 (95% CI a–b), measured on a
+32-item core held byte-identical, and identically administered, across both waves."
 
 **May say:** "On the current form, which re-versions annually against the frontier, the 2029 level is
 Y. It is not comparable to 2027."
@@ -342,13 +361,17 @@ better, at spotting *these* fakes.
 **May not say:** anything about the frontier's effect as a number. The operational-minus-anchor gap
 mixes the frontier with the new form's content, and we cannot pull them apart.
 
-### 5.2 The linking error is not a footnote
+### 5.2 The linking error, and when it applies
 
-Any trend statement adds a linking-error term to the standard error of the difference, and it does
-not shrink with sample size. PIAAC Cycle 2's cross-cycle linking error is **3.27 for literacy and
-2.95 for numeracy** on a 500-point scale, roughly ±0.07 SD — larger than our entire sampling error at
-n = 1,500. **VERIFIED** (`docs/SAMPLING.md` §4.2). Ours is unknown until two waves exist, and there is
-no honest way to guess it. What would tell us: wave 2.
+While one anchor is live there is no linking error, because there is no link: the items are the same
+bytes. The term enters the series **once per anchor generation**, at the overlap wave (§4.1, link 2),
+and from then on it sits inside every comparison that spans the replacement. It does not shrink with
+sample size. PIAAC Cycle 2's cross-cycle linking error is **3.27 for literacy and 2.95 for numeracy**
+on a 500-point scale, roughly ±0.07 SD — larger than our entire sampling error at n = 1,500.
+**VERIFIED** (`docs/SAMPLING.md` §4.2). Ours is unknown until an anchor is replaced. Guessing it
+before then would be inventing a number. `docs/SAMPLING.md` §4.2 requires the term in any trend
+interval; on a live anchor that requirement is satisfied by a term of zero, and the release must say
+which of the two cases it is in.
 
 ### 5.3 The renderer is part of the instrument
 
@@ -367,18 +390,18 @@ Per cycle, per country, unless stated.
 
 | Line | Quantity | Note |
 |---|---|---|
-| Items authored, once | 40 per language × 3 = **120 shipped** | Media items are largely language-free, so the true authoring load is nearer 40 media + 8 message × 3. Weighting the form toward media is partly a translation-cost decision. |
-| Items drafted to ship those | **~360** | Three drafted per one shipped; SWE-bench Verified filtered **68.3%** of candidates (`AILX-Spec-2026.1.md` §09). **VERIFIED** as their figure, **ESTIMATE** as ours. |
+| Items authored, once | **56 units**: 32 media authored once, plus 8 message items × 3 languages = 24 | Media items carry no text of their own, so they are authored once and reused across locales; only the message items are written three times. Weighting the form toward media is partly a translation-cost decision. |
+| Items drafted to ship those | **~170** | Three drafted per one shipped; SWE-bench Verified filtered **68.3%** of candidates (`AILX-Spec-2026.1.md` §09). **VERIFIED** as their figure, **ESTIMATE** as ours. |
 | Human rater burden | **0** | No judged items. This is the strongest cost argument for a T2-only anchor. |
 | LLM judge calls | **0** | A judged anchor would instead need ~200 labelled calibration examples per language and a paired 20-item severity monitor per wave (`EVIDENCE-JUDGE-AGREEMENT.md` §1, §2). |
-| Testing minutes | **~17 min** of a 45–60 minute panel form | 40 items at ~25 s, from T2's 120 items in 50 minutes. 28–38% of the panel form, traded against response rate (`docs/SAMPLING.md` §8.3). **ESTIMATE.** |
+| Testing minutes | **~14 min** for the 32-item core; **~17 min** for the one-in-eight who also get the canary items | 25 s per item, from T2's 120 items in 50 minutes. 23–31% of a 45–60 minute panel form, traded against response rate (`docs/SAMPLING.md` §8.3). **ESTIMATE.** |
 | Marginal scoring cost per wave | **~0** | Arithmetic on response data (`docs/TRACK-REVIEW.md` §2.3). |
 | Leak-detection analysis per wave | **3–5 analyst days** | Four signals, per item, within device class. **ESTIMATE**, no basis but the work involved. |
-| Overlap (bridge) wave, at replacement | **one extra ~17-minute block**, once per anchor generation | The cost of keeping the series across a planned replacement. |
+| Overlap (bridge) wave, at replacement | **one extra ~14-minute block**, once per anchor generation | The cost of keeping the series across a planned replacement. It doubles the anchor's minutes in that wave. |
 
-The number to argue about is 17 minutes. Everything else is small. `docs/SAMPLING.md` §8.3 says
-length costs low scorers rather than refusals, which biases the mean; that is the real price of the
-frozen line and it should be paid deliberately.
+The 14 minutes is the line to argue about; the rest is small. `docs/SAMPLING.md` §8.3 says length
+costs low scorers rather than refusals, which biases the mean. That is the price of the frozen line,
+and it should be paid deliberately.
 
 ---
 
@@ -395,36 +418,42 @@ anchor:
 `packages/content-tools` validates it (`parseManifest`): the id is a stable lowercase slug that
 outlives the instrument version, the budget is a positive whole number of administrations, and **a
 redacted package must not declare an anchor at all** — a redacted package publishes its keys on
-purpose, so an anchor inside one is a burned form that still looks comparable. That last rule is the
-only part of this document a test can check, and it is checked
-(`packages/content-tools/test/loader.test.ts`).
+purpose, so an anchor inside one is a burned form that still looks comparable. Unknown keys are
+rejected, so a misspelled `exposure_budget` fails the load instead of disabling the budget quietly.
+All of it is tested (`packages/content-tools/test/loader.test.ts`).
 
-What the code deliberately does not do: count administrations, enforce the budget, or equate
-anything. `content-tools` reads content and never sees a sitting. The count belongs to the exam
-service in the private repo, and the equating belongs to a wave that does not exist yet.
+What the code does not do: count administrations, enforce the budget, bind the anchor id to a
+particular set of items, or link anything. `content-tools` reads content and never sees a sitting,
+and the anchor's items are not in this repository at all — so the count and the item-set binding
+belong to the exam service in the private repo, and the linking belongs to a wave that does not
+exist yet. The manifest field is the smallest thing that makes an anchor declarable and its budget
+findable.
 
 ---
 
 ## 8. Decisions taken in this document
 
-1. The anchor form is T2 only, 40 items (32 media, 8 message), external, panel-only.
+1. The anchor form is T2 only: a 32-item core plus 8 canary items served to one respondent in eight.
+   External, panel-only.
 2. No composite trend is ever published. The frozen line is a named subscale.
-3. Exposure budget 12,000 administrations per cycle, hard cap 15,000, no repeat inside 24 months.
+3. Exposure budget 12,000 administrations per cycle — one number, no cap above it — and no repeat
+   inside 24 months.
 4. Track A never sees the anchor.
 5. Release only after the successor has been fielded twice; retired anchor items never re-enter an
    operational form.
 6. Leak detection runs four signals every wave, with thresholds declared in advance (§2.4).
 7. Hold three waves minimum, six target; replacement runs an overlap wave; six forced-replacement
    triggers, one of which is a renderer change.
-8. Chained equipercentile equating on item-level responses, with Levine as the published sensitivity
-   check. No equating engine before wave 2.
+8. Wave to wave on a live anchor needs no equating. The successor link is a single-group overlap
+   wave; the operational-to-anchor link is NEAT. Both use chained equipercentile on item-level
+   responses, with Levine as the published sensitivity check. No equating code before wave 2.
 9. No standby anchor is authored. The residual risk is stated in §2.5.
 10. The manifest carries `anchor.id` and `anchor.exposure_budget`, and a redacted package may not
     declare either.
 
 ## 9. Open questions
 
-- **The linking error.** Unknown until wave 2. Nothing can substitute for it.
+- **The linking error at anchor replacement.** Unknown until an overlap wave exists.
 - **The smallest leak the canary subset can detect.** Unknown. A simulation on wave-1 responses would
   tell us.
 - **Our practice effect at 24 months.** Unknown; the literature gives no size
@@ -433,5 +462,5 @@ service in the private repo, and the equating belongs to a wave that does not ex
 - **Whether asset monitoring on the open web is buyable.** Unknown. One vendor quote settles it.
 - **Whether a pinned self-hosted assistant makes the T3 reliance block anchorable**, and at what
   serving cost. That is the only route to a frozen line for 0.40 of the composite.
-- **The 30% / 5 pp / 1% / 20% thresholds in §2.4 and §3 are DECLARED, not derived.** Wave 1 gives the
+- **The 30% / 5 pp / 1% / 10 pp / 20% thresholds in §2.4 and §3 are DECLARED, not derived.** Wave 1 gives the
   first baseline against which they can be re-set, and they should be re-set in public.

@@ -92,15 +92,22 @@ describe("parseManifest anchor", () => {
     expect(() => parseManifest(`${BASE}redacted: true\nanchor:\n  id: ltt-2026a\n  exposure_budget: 4000\n`))
       .toThrow(/redacted package must not declare an 'anchor'/);
   });
-  it("rejects an anchor that is not a mapping", () => {
+  it("rejects an anchor that is not a mapping, including an empty one", () => {
     expect(() => parseManifest(`${BASE}anchor: ltt-2026a\n`)).toThrow(/'anchor' must be a mapping/);
     expect(() => parseManifest(`${BASE}anchor: [ltt-2026a]\n`)).toThrow(/'anchor' must be a mapping/);
+    // `anchor:` alone is null, which is a half-written block, not an absent one.
+    expect(() => parseManifest(`${BASE}anchor:\n`)).toThrow(/'anchor' must be a mapping/);
+  });
+  it("rejects an unknown anchor field, so a misspelled budget cannot disable it", () => {
+    expect(() =>
+      parseManifest(`${BASE}anchor:\n  id: ltt-2026a\n  exposure_budget: 10\n  exposure_budegt: 99\n`),
+    ).toThrow(/unknown anchor field 'exposure_budegt'/);
   });
   it("rejects an anchor without an id", () => {
     expect(() => parseManifest(`${BASE}anchor:\n  exposure_budget: 10\n`)).toThrow(/missing required field 'id'/);
   });
   it("rejects an id that is not a lowercase slug", () => {
-    for (const id of ["LTT-2026a", "ltt 2026a", "-ltt", "''"]) {
+    for (const id of ["LTT-2026a", "ltt 2026a", "-ltt", "ltt-", "ltt--2026a", "''"]) {
       expect(() => parseManifest(`${BASE}anchor:\n  id: ${id}\n  exposure_budget: 10\n`))
         .toThrow(/anchor id/);
     }

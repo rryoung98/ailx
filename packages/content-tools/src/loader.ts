@@ -67,12 +67,21 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
  * later exposure count has something to compare against.
  */
 function parseAnchor(raw: unknown, path: string): AnchorForm | undefined {
-  if (raw === undefined || raw === null) return undefined;
-  if (typeof raw !== "object" || Array.isArray(raw)) fail(path, "'anchor' must be a mapping");
+  if (raw === undefined) return undefined;
+  // `anchor:` with nothing under it parses as null. That is a half-written
+  // block, not a package without an anchor, and the two must not look alike.
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    fail(path, "'anchor' must be a mapping");
+  }
   const a = raw as Record<string, unknown>;
+  for (const key of Object.keys(a)) {
+    // A misspelled `exposure_budget` would otherwise turn the budget off in
+    // silence, which is the one thing a budget may not do.
+    if (key !== "id" && key !== "exposure_budget") fail(path, `unknown anchor field '${key}'`);
+  }
   const id = req<unknown>(a, "id", `${path} anchor`);
-  if (typeof id !== "string" || !/^[a-z0-9][a-z0-9-]*$/.test(id)) {
-    fail(path, `anchor id '${String(id)}' must be lowercase alphanumeric with hyphens`);
+  if (typeof id !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
+    fail(path, `anchor id '${String(id)}' must be lowercase alphanumeric with single hyphens`);
   }
   const budget = req<unknown>(a, "exposure_budget", `${path} anchor`);
   if (typeof budget !== "number" || !Number.isSafeInteger(budget) || budget <= 0) {
