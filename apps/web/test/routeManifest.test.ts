@@ -11,6 +11,12 @@
  * not matter. A literal outside such a call passes, because
  * `<Link href="/gallery">` and `router.push("/gallery")` are frontend pages.
  *
+ * One gap, stated so it cannot be mistaken for coverage. The check does not
+ * resolve identifiers, so a path parked in a variable first
+ * (`const url = "/attempts"; fetch(url)`) goes through. Resolving that needs a
+ * type checker over the whole project, and the test below pins the gap so a
+ * reader is not told the guard is wider than it is.
+ *
  * `offences()` is fed each shape it exists to catch, so a regression in the
  * detector fails here instead of going quiet.
  */
@@ -146,6 +152,10 @@ describe("the detector catches what it exists to catch", () => {
     expect(offences('const a = <Link href="/gallery">the wall</Link>;')).toEqual([]);
     expect(offences('router.push("/gallery");')).toEqual([]);
     expect(offences('const paths = ["/attempts"];')).toEqual([]);
+  });
+
+  it("does not see a path parked in a variable first — the known gap", () => {
+    expect(offences('const url = `${apiBase()}/attempts`; await fetch(url);')).toEqual([]);
   });
 
   it("does not flag a frontend page path that is not a manifest segment", () => {

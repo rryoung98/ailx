@@ -136,18 +136,18 @@ type PathParams<P extends string> = P extends `${string}:${infer Name}/${infer R
  * errors, not runtime throws.
  */
 type ApiPathArgs<K extends ApiRouteKey> = [PathParams<(typeof API_ROUTES)[K]["path"]>] extends [never]
-  ? [params?: Readonly<Record<never, string>>, query?: string]
+  ? [params?: Readonly<Record<string, never>>, query?: string]
   : [params: Readonly<Record<PathParams<(typeof API_ROUTES)[K]["path"]>, string>>, query?: string];
 
 /**
  * The path for one route, parameters substituted and percent-encoded.
  *
  * Still throws rather than guesses, because a value can be empty or arrive
- * from an `any`: a missing parameter used to produce `/attempts/undefined
- * /items` — a real request, a 404, and nothing to read in the log. `query` is
- * appended verbatim and must be empty or start with "?"; it is not parsed
- * here, because the parser that owns it is named on the route
- * (`API_QUERY_PARSERS`) and runs server-side.
+ * from an `any`. A missing parameter used to produce
+ * `/attempts/undefined/items`, which is a real request, a 404, and nothing to
+ * read in the log. `query` is appended verbatim and must be empty or start
+ * with "?". It is not parsed here, because the parser that owns it is named on
+ * the route (`API_QUERY_PARSERS`) and runs server-side.
  */
 export function apiPath<K extends ApiRouteKey>(routeKey: K, ...args: ApiPathArgs<K>): ApiPath {
   const [params = {}, query = ""] = args as [Readonly<Record<string, string>>?, string?];
