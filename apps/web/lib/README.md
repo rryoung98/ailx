@@ -1,7 +1,9 @@
 # apps/web/lib
 
-`lib/` is the frontend's cross-cutting, non-visual, browser-safe layer.
-Nothing in it renders. `mode.ts` stays at the top level and does not move: it
+`lib/` is the frontend's cross-cutting, non-visual, browser-safe layer, with
+two named exceptions: `auth/` mounts the Clerk provider and its nav, and
+`instrument/registry.ts` falls back to `components/PlaceholderRunner.tsx`
+when a track has no runner. `mode.ts` stays at the top level and does not move: it
 is the only reader of `NEXT_PUBLIC_AILX_API_BASE` and `NEXT_PUBLIC_BASE_PATH`,
 and `test/apiBase.test.ts`, `test/basePath.test.tsx` and
 `packages/core/test/frontendOnly.test.ts` name that exact path. `data/` holds

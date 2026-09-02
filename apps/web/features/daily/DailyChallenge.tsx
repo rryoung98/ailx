@@ -45,7 +45,7 @@ import { readDailyLedger, recordDailyRoundLocally } from "./dailyState";
 import { funnel } from "../../lib/data/funnel";
 import { assetUrl, basePath } from "../../lib/mode";
 import { ShareTargets } from "../../components/ShareTargets";
-import styles from "../practice/PracticeDrill.module.css";
+import styles from "../../components/PracticeDrill.module.css";
 
 /** Minutes EAST of UTC — the sign convention `dailyDay` expects. */
 function utcOffsetMinutes(): number {

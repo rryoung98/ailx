@@ -54,7 +54,7 @@ import {
 } from "../../lib/data/localPractice";
 import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
 
-import styles from "./PracticeDrill.module.css";
+import styles from "../../components/PracticeDrill.module.css";
 
 /**
  * One card the round has finished with.
