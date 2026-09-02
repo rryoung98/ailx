@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { ALL_SHARE_SECTIONS, sharePayloadFrom } from "@ailx/report";
 
 import { FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "../src/api.js";
 import {
   GALLERY_MAX_PAGE_SIZE,
   GALLERY_PAGE_SIZE,
   PLAYER_TYPE_CODE_RE,
+  galleryListingSchema,
   parseGalleryQuery,
   publicEntry,
   type GalleryEntry,
@@ -28,8 +30,14 @@ import { DEV_USER_COOKIE, DEV_USER_HEADER } from "../src/identity.js";
  */
 
 describe("parseGalleryQuery", () => {
+  const ok = (raw?: Record<string, string | undefined>) => {
+    const result = parseGalleryQuery(raw);
+    if (!result.ok) throw new Error(`refused: ${result.message}`);
+    return result.query;
+  };
+
   it("defaults everything when nothing is asked for", () => {
-    expect(parseGalleryQuery()).toEqual({
+    expect(ok()).toEqual({
       type: null,
       sort: "recent",
       withSite: false,
@@ -38,24 +46,116 @@ describe("parseGalleryQuery", () => {
     });
   });
 
-  it("refuses an injected sort key and a hostile page size", () => {
-    expect(
-      parseGalleryQuery({ sort: "s.id; DROP TABLE share_links", limit: "1000000000", offset: "-5" }),
-    ).toEqual({ type: null, sort: "recent", withSite: false, limit: GALLERY_MAX_PAGE_SIZE, offset: 0 });
-    // Not a number at all: the default, never NaN in a LIMIT clause.
-    expect(parseGalleryQuery({ limit: "many" }).limit).toBe(GALLERY_PAGE_SIZE);
+  /**
+   * The behaviour change this package took on purpose. Every row below used to
+   * be HTTP 200 over an answer nobody asked for (docs/ADR-zod-tanstack.md §4).
+   * The last row is the sharpest: `Number.parseInt("1e9")` is 1, so a hostile
+   * page size used to return ONE card, quietly.
+   */
+  it("REFUSES an injected sort key, a hostile page size and a negative offset", () => {
+    for (const raw of [
+      { sort: "s.id; DROP TABLE share_links" },
+      { limit: "1000000000" },
+      { limit: "1e9" },
+      { limit: "many" },
+      { limit: "0" },
+      { limit: "24.5" },
+      { offset: "-5" },
+      { type: "nope" },
+      { site: "true" },
+    ]) {
+      const result = parseGalleryQuery(raw);
+      expect({ raw, ok: result.ok }).toEqual({ raw, ok: false });
+      if (!result.ok) expect(result.message.length).toBeGreaterThan(0);
+    }
   });
 
-  it("keeps a player-type code only when it is one", () => {
-    expect(parseGalleryQuery({ type: "MSVD" }).type).toBe("MSVD");
-    expect(parseGalleryQuery({ type: "nope" }).type).toBeNull();
+  it("accepts every value the service will act on", () => {
+    expect(ok({ type: "MSVD" }).type).toBe("MSVD");
+    expect(ok({ sort: "oldest" }).sort).toBe("oldest");
+    expect(ok({ site: "1" }).withSite).toBe(true);
+    expect(ok({ limit: String(GALLERY_MAX_PAGE_SIZE) }).limit).toBe(GALLERY_MAX_PAGE_SIZE);
+    expect(ok({ offset: "24" }).offset).toBe(24);
     expect(PLAYER_TYPE_CODE_RE.test("MSVD")).toBe(true);
     expect(PLAYER_TYPE_CODE_RE.test("XSVD")).toBe(false);
   });
 
-  it("treats site=1 as the only truthy spelling", () => {
-    expect(parseGalleryQuery({ site: "1" }).withSite).toBe(true);
-    expect(parseGalleryQuery({ site: "true" }).withSite).toBe(false);
+  /**
+   * A gallery link shared with a tracking parameter on the end must still open
+   * the gallery. This is the one place the package is NOT strict, and it is a
+   * decision, not an oversight.
+   */
+  it("ignores a key the route does not act on", () => {
+    expect(ok({ utm_source: "twitter", sort: "oldest" }).sort).toBe("oldest");
+  });
+
+  it("reads an absent key as absent, not as an empty string", () => {
+    expect(ok({ type: undefined, limit: undefined })).toEqual({
+      type: null,
+      sort: "recent",
+      withSite: false,
+      limit: GALLERY_PAGE_SIZE,
+      offset: 0,
+    });
+  });
+});
+
+describe("the gallery response schema", () => {
+  const PAYLOAD = sharePayloadFrom({ t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 }, "Distinction", {
+    instrument: "ailx 2026.1",
+    sections: ALL_SHARE_SECTIONS,
+  });
+
+  const entry = (over: Partial<GalleryEntry> = {}): GalleryEntry => ({
+    id: "11111111-2222-3333-4444-555555555555",
+    token: "g".repeat(43),
+    at: "2026-03-01T12:00:00.000Z",
+    payload: PAYLOAD,
+    approvedBy: "auto:card",
+    ...over,
+  });
+
+  const listing = (over: Record<string, unknown> = {}) => ({
+    entries: [publicEntry(entry())],
+    total: 1,
+    facets: [{ code: "MSVD", name: "Method Sceptic", count: 1 }],
+    query: {
+      type: null,
+      sort: "recent",
+      withSite: false,
+      limit: GALLERY_PAGE_SIZE,
+      offset: 0,
+    },
+    ...over,
+  });
+
+  it("accepts what the service sends", () => {
+    expect(galleryListingSchema.safeParse(listing()).success).toBe(true);
+  });
+
+  /**
+   * The drift docs/ADR-orpc.md §7 found by reading code: the browser declared
+   * `approvedBy` on a listing entry and the service has never sent it. The
+   * schema is now the type, so the wrong shape is the one that fails.
+   */
+  it("REFUSES a listing entry carrying approvedBy", () => {
+    expect(galleryListingSchema.safeParse(listing({ entries: [entry()] })).success).toBe(false);
+  });
+
+  it("refuses a missing field, a wrong type and an unknown key", () => {
+    const { total: _total, ...noTotal } = listing();
+    expect(galleryListingSchema.safeParse(noTotal).success).toBe(false);
+    expect(galleryListingSchema.safeParse(listing({ total: "1" })).success).toBe(false);
+    expect(galleryListingSchema.safeParse({ ...listing(), extra: 1 }).success).toBe(false);
+  });
+
+  it("refuses a payload that is not a share payload", () => {
+    const broken = listing({ entries: [{ ...publicEntry(entry()), payload: { v: 99 } }] });
+    expect(galleryListingSchema.safeParse(broken).success).toBe(false);
+  });
+
+  it("refuses a query the parser would have refused", () => {
+    expect(galleryListingSchema.safeParse(listing({ query: { ...listing().query, limit: 1000 } })).success).toBe(false);
   });
 });
 
