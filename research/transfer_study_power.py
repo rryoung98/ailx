@@ -64,7 +64,7 @@ import argparse
 from dataclasses import dataclass
 
 import numpy as np
-from scipy import stats
+from scipy import optimize, stats
 
 # ---------------------------------------------------------------------------
 # Assumptions. Every one of them is varied in the sensitivity section.
@@ -73,6 +73,7 @@ from scipy import stats
 MU_OVER = 0.40  # mean over-reliance rate: accepts 40% of planted errors
 MU_UNDER = 0.20  # mean under-reliance rate: rejects 20% of correct advice
 RHO_TRAIT = 0.0  # correlation of the two candidate traits
+RHO_STATE = 0.0  # correlation of the two sitting-level shocks
 RHO_EVENT = 0.10  # within-sitting correlation between events
 TRUE_ICCS = (0.3, 0.4, 0.5, 0.6, 0.7)
 N_GRID = (30, 50, 75, 100, 150, 200, 300, 400, 600, 800, 1200)
@@ -86,6 +87,44 @@ def logit(p: float) -> float:
 
 def expit(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-x))
+
+
+_GH_X, _GH_W = np.polynomial.hermite.hermgauss(64)
+
+
+def _marginal_mean(mu: float, sigma: float) -> float:
+    """E[expit(mu + sigma Z)], Z standard normal, by Gauss-Hermite quadrature."""
+    return float((_GH_W * expit(mu + sigma * np.sqrt(2) * _GH_X)).sum() / np.sqrt(np.pi))
+
+
+def _marginal_sd(mu: float, sigma: float) -> float:
+    m = _marginal_mean(mu, sigma)
+    second = float(
+        (_GH_W * expit(mu + sigma * np.sqrt(2) * _GH_X) ** 2).sum() / np.sqrt(np.pi)
+    )
+    return float(np.sqrt(max(second - m * m, 0.0)))
+
+
+def calibrate_intercept(target_mean: float, sigma: float) -> float:
+    """Intercept whose MARGINAL mean rate is target_mean at latent SD sigma.
+
+    logit(target_mean) is the conditional MEDIAN, not the population mean,
+    because E[expit(x)] != expit(E[x]). Every mean rate quoted in this file is
+    a marginal mean, so the intercept is solved for numerically.
+    """
+    return float(
+        optimize.brentq(lambda mu: _marginal_mean(mu, sigma) - target_mean, -12, 12)
+    )
+
+
+def calibrate_mean_and_sd(target_mean: float, target_sd: float) -> tuple[float, float]:
+    """Intercept and latent SD giving a marginal mean and marginal SD."""
+
+    def gap(sigma: float) -> float:
+        return _marginal_sd(calibrate_intercept(target_mean, sigma), sigma) - target_sd
+
+    sigma = float(optimize.brentq(gap, 1e-4, 12))
+    return calibrate_intercept(target_mean, sigma), sigma
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +162,7 @@ class Design:
     n_errors: int = 20  # planted errors per sitting (over-reliance denominator)
     n_correct: int = 20  # correct-advice opportunities (under-reliance denom.)
     rho_trait: float = RHO_TRAIT
+    rho_state: float = RHO_STATE
     rho_event: float = RHO_EVENT
     mu_over: float = MU_OVER
     mu_under: float = MU_UNDER
@@ -131,21 +171,40 @@ class Design:
 def simulate_sittings(
     rng: np.random.Generator, design: Design, reps: int, n: int
 ) -> dict[str, np.ndarray]:
-    """Return observed rates, shape (reps, n, 2 sittings), per measure."""
-    sigma_b, sigma_s = _sigmas(design.true_icc)
-    cov = np.array([[1.0, design.rho_trait], [design.rho_trait, 1.0]])
-    trait = rng.multivariate_normal([0.0, 0.0], cov, size=(reps, n)) * sigma_b
-    state = rng.normal(0.0, sigma_s, size=(reps, n, 2, 2))
+    """Return observed rates, shape (reps, n, 2 sittings), per measure.
 
-    lo = logit(design.mu_over) + trait[:, :, None, 0] + state[:, :, :, 0]
-    lu = logit(design.mu_under) + trait[:, :, None, 1] + state[:, :, :, 1]
-    p_over, p_under = expit(lo), expit(lu)
+    `rho_trait` correlates the two stable traits; `rho_state` correlates the two
+    sitting-level shocks. Both matter for a difference score, so both are
+    parameters rather than assumptions.
+    """
+    sigma_b, sigma_s = _sigmas(design.true_icc)
+    trait_cov = np.array([[1.0, design.rho_trait], [design.rho_trait, 1.0]])
+    state_cov = np.array([[1.0, design.rho_state], [design.rho_state, 1.0]])
+    trait = rng.multivariate_normal([0.0, 0.0], trait_cov, size=(reps, n)) * sigma_b
+    state = rng.multivariate_normal([0.0, 0.0], state_cov, size=(reps, n, 2)) * sigma_s
+
+    sigma_total = float(np.hypot(sigma_b, sigma_s))
+    a_over = calibrate_intercept(design.mu_over, sigma_total)
+    a_under = calibrate_intercept(design.mu_under, sigma_total)
+    p_over = expit(a_over + trait[:, :, None, 0] + state[:, :, :, 0])
+    p_under = expit(a_under + trait[:, :, None, 1] + state[:, :, :, 1])
 
     k_over = beta_binomial(rng, design.n_errors, p_over, design.rho_event)
     k_under = beta_binomial(rng, design.n_correct, p_under, design.rho_event)
     over = k_over / design.n_errors
     under = k_under / design.n_correct
-    return {"over": over, "under": under, "index": over - under}
+    # index follows production: packages/tracks/t3-reasoning/src/scoring.ts
+    # returns `index: under - over`.
+    return {"over": over, "under": under, "index": under - over}
+
+
+def observed_icc(rng: np.random.Generator, design: Design, measure: str) -> float:
+    """The ICC a very large study would report for this design.
+
+    Computed once on a large simulated population, so it is not the median of
+    small-sample estimates and carries none of their bias.
+    """
+    return float(np.median(icc21(simulate_sittings(rng, design, 5, 4000)[measure])))
 
 
 # ---------------------------------------------------------------------------
@@ -212,20 +271,18 @@ def q1_icc_table(rng: np.random.Generator, reps: int) -> str:
     study reports and the number §3.2 pre-commits against.
     """
     rows = [
-        "| events per sitting | true latent ICC | measure | observed ICC (median) | n for CI width <= 0.30 | n to rule 0.5 OUT (upper < 0.5) | n to rule 0.5 IN (lower > 0.5) |",
+        "| events per sitting | true latent ICC | measure | observed ICC (large sample) | n for CI width <= 0.30 | n to rule 0.5 OUT (upper < 0.5) | n to rule 0.5 IN (lower > 0.5) |",
         "|---|---|---|---|---|---|---|",
     ]
     for events in (20, 40, 97):
         for true_icc in TRUE_ICCS:
             design = Design(true_icc=true_icc, n_errors=events, n_correct=events)
             for measure in ("over", "under", "index"):
-                observed: float | None = None
+                observed = observed_icc(rng, design, measure)
                 n_width = n_out = n_in = "> 1200"
                 for n in N_GRID:
                     data = simulate_sittings(rng, design, reps, n)[measure]
-                    est, lo, hi = icc21_ci(data)
-                    if observed is None:
-                        observed = float(np.median(est))
+                    _, lo, hi = icc21_ci(data)
                     if n_width == "> 1200" and float(np.median(hi - lo)) <= 0.30:
                         n_width = str(n)
                     if n_out == "> 1200" and float(np.mean(hi < 0.5)) >= 0.80:
@@ -262,23 +319,29 @@ def q6_pilot(rng: np.random.Generator, reps: int) -> str:
 
 def q5_index_penalty(rng: np.random.Generator, reps: int) -> str:
     rows = [
-        "| true latent ICC | trait correlation | ICC over | ICC under | ICC index | CI width at n = 200: over | CI width at n = 200: index |",
-        "|---|---|---|---|---|---|---|",
+        "| true latent ICC | trait correlation | state correlation | ICC over | ICC under | ICC index | CI width at n = 200: over | CI width at n = 200: index |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for true_icc in (0.4, 0.6):
         for rho_trait in (-0.3, 0.0, 0.3):
-            design = Design(true_icc=true_icc, rho_trait=rho_trait)
-            data = simulate_sittings(rng, design, reps, 200)
-            iccs = {m: float(np.median(icc21(data[m]))) for m in data}
-            widths = {}
-            for m in ("over", "index"):
-                _, lo, hi = icc21_ci(data[m])
-                widths[m] = float(np.median(hi - lo))
-            rows.append(
-                f"| {true_icc:.1f} | {rho_trait:+.1f} | {iccs['over']:.2f} | "
-                f"{iccs['under']:.2f} | {iccs['index']:.2f} | "
-                f"{widths['over']:.2f} | {widths['index']:.2f} |"
-            )
+            for rho_state in (0.0, 0.3):
+                design = Design(
+                    true_icc=true_icc, rho_trait=rho_trait, rho_state=rho_state
+                )
+                iccs = {
+                    m: observed_icc(rng, design, m)
+                    for m in ("over", "under", "index")
+                }
+                data = simulate_sittings(rng, design, reps, 200)
+                widths = {}
+                for m in ("over", "index"):
+                    _, lo, hi = icc21_ci(data[m])
+                    widths[m] = float(np.median(hi - lo))
+                rows.append(
+                    f"| {true_icc:.1f} | {rho_trait:+.1f} | {rho_state:+.1f} | "
+                    f"{iccs['over']:.2f} | {iccs['under']:.2f} | {iccs['index']:.2f} | "
+                    f"{widths['over']:.2f} | {widths['index']:.2f} |"
+                )
     return "\n".join(rows)
 
 
@@ -308,22 +371,51 @@ def wilson_halfwidth(p: float, n_eff: float, alpha: float = ALPHA) -> float:
 
 
 def q2_event_table(rng: np.random.Generator, reps: int) -> str:
+    """How precisely one sitting's rate estimates the candidate's rate.
+
+    Two different estimands, and they are not the same question:
+
+      * the SITTING's realised propensity - only binomial noise stands between
+        the observed count and it, so a Wilson interval at the event count is
+        the right interval and should cover at 95%;
+      * the CANDIDATE's stable rate - the sitting's own propensity varies
+        around it whenever events are correlated within a sitting, and that
+        variation is error too.
+
+    The columns report the second estimand honestly: the empirical half-width
+    of (observed rate - candidate's rate), and the coverage of a Wilson
+    interval widened by the design effect 1 + (m-1)*rho. If that coverage is
+    near 0.95 the widened interval is a usable approximation; if it is low, no
+    closed-form interval at this event count is safe and the study must report
+    the empirical one.
+    """
+    draws = max(reps, 20000)
     rows = [
-        "| planted errors per sitting | +/- Wald (the quoted figure) | +/- Wilson, independent events | +/- Wilson, rho_event = 0.10 | +/- Wilson, rho_event = 0.20 | empirical +/- at rho = 0.10 |",
-        "|---|---|---|---|---|---|",
+        "| planted errors per sitting | +/- Wald | +/- Wilson (sitting propensity) | rho 0.10: +/- design-effect Wilson | rho 0.10: +/- empirical | rho 0.10: coverage | rho 0.20: +/- empirical | rho 0.20: coverage |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for e in EVENT_GRID:
-        cells = []
-        for rho in (0.0, 0.10, 0.20):
+        cells = [f"{wald_halfwidth(0.5, e):.3f}", f"{wilson_halfwidth(0.5, e):.3f}"]
+        for rho in (0.10, 0.20):
             n_eff = e / (1 + (e - 1) * rho)
-            cells.append(wilson_halfwidth(0.5, n_eff))
-        p = np.full((max(reps, 20000), 1), 0.5)
-        draws = beta_binomial(rng, e, p, 0.10) / e
-        emp = float((np.percentile(draws, 97.5) - np.percentile(draws, 2.5)) / 2)
-        rows.append(
-            f"| {e} | {wald_halfwidth(0.5, e):.3f} | {cells[0]:.3f} | "
-            f"{cells[1]:.3f} | {cells[2]:.3f} | {emp:.3f} |"
-        )
+            half_formula = wilson_halfwidth(0.5, n_eff)
+            p = np.full((draws,), 0.5)
+            k = beta_binomial(rng, e, p, rho)
+            p_hat = k / e
+            err = p_hat - 0.5
+            emp = float((np.percentile(err, 97.5) - np.percentile(err, 2.5)) / 2)
+            z = stats.norm.ppf(1 - ALPHA / 2)
+            denom = 1 + z * z / n_eff
+            centre = (p_hat + z * z / (2 * n_eff)) / denom
+            widened = (z / denom) * np.sqrt(
+                p_hat * (1 - p_hat) / n_eff + z * z / (4 * n_eff * n_eff)
+            )
+            coverage = float(np.mean(np.abs(centre - 0.5) <= widened))
+            if rho == 0.10:
+                cells += [f"{half_formula:.3f}", f"{emp:.3f}", f"{coverage:.2f}"]
+            else:
+                cells += [f"{emp:.3f}", f"{coverage:.2f}"]
+        rows.append("| " + " | ".join([str(e), *cells]) + " |")
     return "\n".join(rows)
 
 
@@ -378,26 +470,48 @@ def q3_correlation_table(rng: np.random.Generator, reps: int) -> str:
 def q4_arm_table(rng: np.random.Generator, reps: int) -> str:
     """Per-arm n for 80% power on a between-arm difference in over-reliance.
 
-    The only published effect is Rosbach et al. 2026: weight of advice 0.48 ->
-    0.54 with SD 0.13, t(27) = 2.55, p = .017, a paired 10 s countdown in
-    computational pathology. Read as a between-subject standardised effect that
-    is 0.06 / 0.13 = 0.46. AILX's arms are between-subject and the outcome is a
-    RATE, not a weight, so the assumed shift is 0.48 -> 0.54 on the rate.
+    The only published effect is Rosbach et al., MELBA 2026
+    (arXiv:2603.11821): a normalised weight of advice of 0.48 without a timer
+    and 0.54 with one, SD 0.13 in each condition, t(27) = 2.55, p = .017, in a
+    PAIRED design with 28 pathologists. Two things do not transfer and are
+    stated rather than assumed away:
+
+      * the outcome there is a weight of advice, not the RATE of error
+        adoption that `reliance.over` counts. The same group's earlier study
+        (arXiv:2411.00998) found the rate unmoved, p = 0.19;
+      * a paired effect is not a between-subject effect. Here the arms are
+        between-subject, so the assumed effect is a shift in the MARGINAL mean
+        rate from 0.48, with the between-candidate SD taken from that paper
+        (0.13) and from a wider alternative (0.20).
+
+    The latent intercept and SD are solved numerically so the simulated
+    marginal mean and SD are the stated ones, and the realised values are
+    printed beside the requirement.
     """
     rows = [
-        "| assumed shift in over-reliance rate | events per sitting | rho_event | n per arm for 80% power |",
-        "|---|---|---|---|",
+        "| shift in marginal rate | between-candidate SD | events per sitting | rho_event | realised control mean (SD) | n per arm for 80% power |",
+        "|---|---|---|---|---|---|",
     ]
     for shift in (0.06, 0.03):
-        for n_errors in (8, 20, 40):
-            for rho in (0.0, 0.10):
-                need = "> 2000"
-                for n in (25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 500, 600, 800, 1000, 1400, 2000):
-                    sig = _arm_power(rng, reps, n, n_errors, shift, rho)
-                    if sig >= 0.80:
-                        need = str(n)
-                        break
-                rows.append(f"| {shift:+.2f} | {n_errors} | {rho:.2f} | {need} |")
+        for sd in (0.13, 0.20):
+            mu_c, sigma = calibrate_mean_and_sd(0.48, sd)
+            mu_t = calibrate_intercept(0.48 + shift, sigma)
+            for n_errors in (8, 20, 40):
+                for rho in (0.0, 0.10):
+                    need = "> 2000"
+                    realised = ""
+                    for n in (25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 500,
+                              600, 800, 1000, 1400, 2000):
+                        power, realised = _arm_power(
+                            rng, reps, n, n_errors, mu_c, mu_t, sigma, rho
+                        )
+                        if power >= 0.80:
+                            need = str(n)
+                            break
+                    rows.append(
+                        f"| {shift:+.2f} | {sd:.2f} | {n_errors} | {rho:.2f} | "
+                        f"{realised} | {need} |"
+                    )
     return "\n".join(rows)
 
 
@@ -406,19 +520,20 @@ def _arm_power(
     reps: int,
     n_per_arm: int,
     n_errors: int,
-    shift: float,
+    mu_control: float,
+    mu_timed: float,
+    sigma: float,
     rho_event: float,
-) -> float:
-    """Two-sample t-test on the observed rate, both arms n_per_arm."""
-    sigma_b, sigma_s = _sigmas(0.5)
-    base = logit(0.48)
+) -> tuple[float, str]:
+    """Two-sample t-test on the observed rate. Returns power and the realised
+    control-arm mean and SD of the observed rate, so the assumption is visible."""
     out = []
-    for mu in (base, logit(0.48 + shift)):
-        lat = mu + rng.normal(0, np.hypot(sigma_b, sigma_s), size=(reps, n_per_arm))
-        p = expit(lat)
+    for mu in (mu_control, mu_timed):
+        p = expit(rng.normal(mu, sigma, size=(reps, n_per_arm)))
         out.append(beta_binomial(rng, n_errors, p, rho_event) / n_errors)
-    t, pval = stats.ttest_ind(out[1], out[0], axis=1)
-    return float(np.mean(pval < ALPHA))
+    _, pval = stats.ttest_ind(out[1], out[0], axis=1)
+    realised = f"{float(out[0].mean()):.3f} ({float(out[0].std()):.3f})"
+    return float(np.mean(pval < ALPHA)), realised
 
 
 # ---------------------------------------------------------------------------
@@ -441,7 +556,25 @@ def self_checks(rng: np.random.Generator, reps: int) -> list[str]:
     cov = float(np.mean((lo <= truth) & (truth <= hi)))
     out.append(f"CI coverage of the attenuated truth {truth:.3f} at n=200: {cov:.3f}")
     assert 0.88 <= cov <= 0.99, cov
-    # 3. The Wald half-width at 8 events reproduces the documented +/-0.35, and
+    # 3. Small-sample CI coverage, where the ICC estimate can go negative and
+    #    the degrees-of-freedom term has to be clipped. If this drops, the
+    #    30-candidate pilot table is not trustworthy.
+    design = Design(true_icc=0.5)
+    data30 = simulate_sittings(rng, design, reps, 30)["over"]
+    truth30 = observed_icc(rng, design, "over")
+    _, lo30, hi30 = icc21_ci(data30)
+    cov30 = float(np.mean((lo30 <= truth30) & (truth30 <= hi30)))
+    out.append(f"CI coverage at n=30 (clipped df term): {cov30:.3f}")
+    assert 0.85 <= cov30 <= 0.99, cov30
+    # 4. The simulated marginal mean rates are the ones the file quotes.
+    design = Design(true_icc=0.5, n_errors=200, n_correct=200)
+    sample = simulate_sittings(rng, design, 20, 2000)
+    got_over = float(sample["over"].mean())
+    got_under = float(sample["under"].mean())
+    out.append(f"marginal mean rates: over {got_over:.3f}, under {got_under:.3f}")
+    assert abs(got_over - MU_OVER) < 0.01, got_over
+    assert abs(got_under - MU_UNDER) < 0.01, got_under
+    # 5. The Wald half-width at 8 events reproduces the documented +/-0.35, and
     #    Wilson is narrower, which is why both are reported in Q2.
     wald = wald_halfwidth(0.5, 8)
     wilson = wilson_halfwidth(0.5, 8)
@@ -465,9 +598,10 @@ def main() -> None:
     for line in self_checks(rng, args.reps):
         print(f"- {line}")
     print(
-        f"\nStanding assumptions: mean over-reliance {MU_OVER}, mean under-reliance "
-        f"{MU_UNDER}, 20 planted errors and 20 correct-advice events per sitting, "
-        f"two sittings, event correlation {RHO_EVENT}, trait correlation {RHO_TRAIT}."
+        f"\nStanding assumptions: marginal mean over-reliance {MU_OVER}, marginal "
+        f"mean under-reliance {MU_UNDER}, 20 planted errors and 20 correct-advice "
+        f"events per sitting, two sittings, event correlation {RHO_EVENT}, trait "
+        f"correlation {RHO_TRAIT}, state correlation {RHO_STATE}."
     )
     print("\n## Q1 - candidates for a usable ICC(2,1)\n")
     print(q1_icc_table(rng, args.reps))
