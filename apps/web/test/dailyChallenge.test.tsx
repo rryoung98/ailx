@@ -16,6 +16,9 @@
  *    being safe in a unit test is not the same as the page being safe.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -31,6 +34,9 @@ import {
 } from "@ailx/report";
 import { DailyChallenge } from "../lib/DailyChallenge";
 import { DAILY_POOL } from "../lib/demoItems";
+import { ATTEMPT_KEY, LOCAL_PRACTICE_KEY } from "./helpers/keys";
+
+const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -221,6 +227,60 @@ describe("the pool is published material and nothing else", () => {
       expect([0, 1]).toContain(card.key);
       expect(card.stem.length).toBeGreaterThan(0);
       expect(card.tell.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+/**
+ * TEN-18's second constraint, as a test rather than a promise: a daily result
+ * may be ranked and shared, and it may never touch the credential.
+ *
+ * `packages/report/test/daily.test.ts` proves the GRID carries no key. This
+ * proves the other half — that the daily is a separate store and a separate
+ * module graph from the sitting, so a daily streak cannot become a score of
+ * record, an attempt, or a line on a credential. It is the same guard the
+ * practice ledger already has in `anonymousScoredSitting.test.ts`; the daily
+ * had none, and a future "post your streak to your profile" is exactly the
+ * change that would quietly need one.
+ */
+describe("the daily never touches the credential", () => {
+  const read = (rel: string): string => readFileSync(join(WEB_ROOT, rel), "utf8");
+  /** Source with comments stripped: a module note may name what code may not. */
+  const code = (rel: string): string =>
+    read(rel).replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+
+  it("keeps its days in a store neither the sitting nor practice reads", () => {
+    for (const other of [ATTEMPT_KEY, LOCAL_PRACTICE_KEY]) {
+      expect(DAILY_LEDGER_KEY).not.toBe(other);
+      expect(DAILY_LEDGER_KEY.startsWith(other)).toBe(false);
+      expect(other.startsWith(DAILY_LEDGER_KEY)).toBe(false);
+    }
+  });
+
+  it("imports nothing from the exam, scoring or credential path", () => {
+    for (const file of ["lib/dailyState.ts", "lib/DailyChallenge.tsx", "app/daily/page.tsx"]) {
+      expect(code(file), file).not.toMatch(
+        /persistence|checkpoints|credentialView|CredentialPanel|scoreTrack|track_scored|\/attempts|registry/,
+      );
+    }
+  });
+
+  it("is imported by nothing on the exam, scoring or credential path", () => {
+    for (const file of [
+      "app/exam/page.tsx",
+      "lib/persistence.ts",
+      "lib/checkpoints.ts",
+      "lib/credentialView.ts",
+      "lib/CredentialPanel.tsx",
+      "lib/registry.ts",
+    ]) {
+      expect(read(file), file).not.toMatch(/dailyState|DailyChallenge/);
+    }
+  });
+
+  it("reaches no identity, so a signed-in player's daily is the same daily", () => {
+    for (const file of ["lib/dailyState.ts", "lib/DailyChallenge.tsx"]) {
+      expect(code(file), file).not.toMatch(/lib\/auth|useAuth|identityState|authHeaders/);
     }
   });
 });
