@@ -109,8 +109,10 @@ export function componentKeys(key: string): ReadonlyArray<string> {
 
 /**
  * One component's points out of a stored `raw` record, 0 when absent.
- * A non-numeric or non-finite stored value is treated as absent: a report
- * prints 0 rather than NaN.
+ *
+ * "Absent" means no number under any spelling of the key. A stored `NaN` is
+ * a number and is returned as one, which is what the inline lookup this
+ * replaced did. Rejecting it would be a presentation fix, not a rename.
  */
 export function componentValue(
   raw: Readonly<Record<string, unknown>> | undefined,
@@ -119,7 +121,7 @@ export function componentValue(
   if (!raw) return 0;
   for (const k of componentKeys(key)) {
     const v = raw[k];
-    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "number") return v;
   }
   return 0;
 }

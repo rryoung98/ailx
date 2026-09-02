@@ -120,19 +120,12 @@ describe("report golden", () => {
    * aggregation these rows feed is order-invariant by construction now, so
    * re-ordering the evidence must not, and did not, change the number.
    *
-   * It MOVED a sixth time when T3's two reliance components were renamed
-   * (TEN-38). `rsr` and `rair` are Schemmer et al.'s published statistics
-   * (IUI '23), which condition on an independent first-stage answer T3 never
-   * collects; the components now carry the names of the rates T3 actually
-   * measures, `overReliance` and `underReliance`. EXACTLY 8 leaves changed.
-   * Six are the renamed T3 raw keys, three under `participant.tracks[]` and
-   * three under `research.scores[]`, and each renamed key carries the SAME
-   * value it did before (50, 30, 1). The other two are T3's `rubricVersion`,
-   * because the published criterion names in rubric.yaml were renamed with
-   * them. No composite, no scaled score, no insight, no narrative, no player
-   * type, no calibration bin and no export field moved. That was established
-   * by dumping the whole derivation before and after and diffing it leaf by
-   * leaf before this line was touched.
+   * It MOVED a sixth time when T3's `rsr`/`rair` components were renamed to
+   * `overReliance`/`underReliance` (TEN-38). Exactly 8 leaves changed, found
+   * by diffing the whole derivation leaf by leaf: 6 renamed T3 raw keys, each
+   * carrying the same value as before (50, 30, 1), and T3's `rubricVersion`
+   * in two places, because the criterion names moved with them. No score, no
+   * insight and no export field moved.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
     expect(sha256Hex(canonicalJson(derivedReport()))).toBe("7e245e5165ca002d5a132e68becc205572ee44e3275224f12c620b2a90f963b1");

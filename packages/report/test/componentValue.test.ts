@@ -45,13 +45,19 @@ describe("componentValue", () => {
     expect(componentValue({ process: 35 }, "overReliance")).toBe(0);
   });
 
-  it("treats a non-numeric or non-finite stored value as absent", () => {
-    // A corrupt record must print 0, never NaN.
-    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, "50", null, {}]) {
+  it("treats a non-numeric stored value as absent", () => {
+    for (const bad of ["50", null, {}, undefined]) {
       expect(componentValue({ overReliance: bad } as Record<string, unknown>, "overReliance")).toBe(0);
     }
-    // ...and an alias still answers when the current key is corrupt.
-    expect(componentValue({ overReliance: Number.NaN, rsr: 50 }, "overReliance")).toBe(50);
+    // A JSON round trip turns NaN into null, so a corrupt current key still
+    // lets the older spelling answer.
+    expect(componentValue({ overReliance: null, rsr: 50 } as Record<string, unknown>, "overReliance")).toBe(50);
+  });
+
+  it("passes a stored NaN through, as the lookup it replaced did", () => {
+    // Not a presentation fix. Changing it here would be a behaviour change
+    // inside a rename.
+    expect(componentValue({ overReliance: Number.NaN, rsr: 50 }, "overReliance")).toBeNaN();
   });
 
   it("keeps 0 as a real value, not a miss", () => {
