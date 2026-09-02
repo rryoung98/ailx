@@ -85,6 +85,20 @@ export interface T3PresentationConfig {
   /** Primary-source excerpt (demo-scale stand-in for the 50-70 page doc). */
   sourceExcerpt: string;
   minWords: number;
+  /**
+   * TIME CONDITION (TEN-30). Minutes this form gives the candidate: 90 in the
+   * shipped design, 30 in the pressure condition. Absent means the form
+   * declares no condition, which is every form before this parameter existed;
+   * the sitting then keeps whatever budget the session config carries and the
+   * record says 0.
+   *
+   * It is a declared form parameter and not a hard-coded timer so the two
+   * conditions are the SAME task, and so a sitting's record names the
+   * condition it ran under. What may be concluded from a comparison is
+   * bounded: see `AILX-Spec-2026.1.md` §T3, "Verification under a declared
+   * time budget".
+   */
+  timeBudgetMinutes?: number;
   /** Static/released-practice only — the answer key, published on purpose. */
   plantedErrors?: ReadonlyArray<T3PlantedError>;
   correctAdvice?: ReadonlyArray<T3CorrectAdvice>;

@@ -976,21 +976,21 @@
         },
         {
           "path": "src/plugin.ts",
-          "sha256": "106cc9de59492fc5f0dfddfe47b9997ce6f0484f593916e8a212843401d41439"
+          "sha256": "95e088f0be6b5b49a9c3bd9dd59703e62f76d1e4c3f3a621366b885b0c06409c"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "8361d3cc0ac883f5c1f9b60a67f6a79989e0a283215cd59f6112eb5013e0c433"
+          "sha256": "8c7ee8bcfa32b94339f1b2da3b92f5f74e16a9d600bd37dd714a129c3835a004"
         },
         {
           "path": "src/types.ts",
-          "sha256": "b88e47f09a79021fce6c34f0a247de541824a5cf56cd25302745a7b75cd8b736"
+          "sha256": "b689942581c83b729d30916dd3d0298e69d2322023803ab49871ecef84de1800"
         }
       ],
       "externals": [
         "@ailx/core@0.2.0"
       ],
-      "digest": "fe4c7af29c3a00c105a637f1652797d756f81a262b0a87b258d2c771adb3dee6"
+      "digest": "846545dee12f37f8fde71ce4806e8f487de7b774e6b531f3da52175476725dea"
     },
     {
       "trackId": "t4",

@@ -127,10 +127,14 @@ describe("T3 score()", () => {
       { verb: "verified", object: "claim:ca-equity", claimIds: ["ca-equity"], seq: 4, clientTs: "2026-02-01T10:04:00Z" },
     ];
     expect(verifiedClaimIds(two).size).toBe(2);
-    // Two distinct claims max out the verification quarter; three presses of
-    // one claim do not.
-    const q = config.weights.process / 4;
-    expect(score(two, goodAnswer).raw.process - score(repeat, goodAnswer).raw.process).toBeCloseTo(q / 2, 6);
+    // TEN-30: neither run pays. Checking two claims used to max out the
+    // verification quarter on its own; now a check pays only once the
+    // candidate resolves the claim, and neither run takes a stance.
+    expect(score(two, goodAnswer).raw.process).toBe(score(repeat, goodAnswer).raw.process);
+    expect(score(two, goodAnswer).raw.discriminatingVerifications).toBe(0);
+    // The volume count is still recorded, and still counts claims not clicks.
+    expect(score(two, goodAnswer).raw.verificationCount).toBe(2);
+    expect(score(repeat, goodAnswer).raw.verificationCount).toBe(1);
   });
 
   it("F5: a claim that never surfaced cannot be verified", () => {
@@ -214,7 +218,10 @@ describe("T3 score()", () => {
           "adviceSurfaced": 2,
           "analysis": 33,
           "analysis.lengthGate": 1,
+          "condition.timeBudgetMinutes": 0,
           "deliberationRate": 1,
+          "discriminatingVerificationRate": 1,
+          "discriminatingVerifications": 4,
           "jurySpread": 0.2,
           "meanJuryBand": 0.733,
           "overReliance": 50,
@@ -229,6 +236,7 @@ describe("T3 score()", () => {
           "revisionChainLength": 2,
           "underReliance": 30,
           "verificationCount": 4,
+          "verificationsChecked": 4,
           "wordCount": 192,
         },
         "scaled": 148,
@@ -245,7 +253,10 @@ describe("T3 score()", () => {
           "adviceSurfaced": 1,
           "analysis": 33,
           "analysis.lengthGate": 1,
+          "condition.timeBudgetMinutes": 0,
           "deliberationRate": 1,
+          "discriminatingVerificationRate": 0,
+          "discriminatingVerifications": 0,
           "jurySpread": 0.2,
           "meanJuryBand": 0.733,
           "overReliance": 0,
@@ -260,6 +271,7 @@ describe("T3 score()", () => {
           "revisionChainLength": 0,
           "underReliance": 15,
           "verificationCount": 0,
+          "verificationsChecked": 0,
           "wordCount": 192,
         },
         "scaled": 59.667,

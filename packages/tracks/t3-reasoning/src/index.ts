@@ -1,12 +1,14 @@
 export {
-  plugin, validateT3Config, validateT3PresentationConfig, type T3Score,
+  plugin, t3TimeBudgetSeconds, validateT3Config, validateT3PresentationConfig,
+  type T3Score,
 } from "./plugin.js";
 export { Runner } from "./Runner.js";
 export {
   scoreT3, revisionChainLength, adoptionCreditForClaim, verifiedClaimIds,
-  relianceIndex, relianceBand,
+  relianceIndex, relianceBand, verificationTally,
   RUBRIC_BAND_MAX, OVER_RELIANCE_MIN_SURFACED, RELIANCE_CALIBRATED_BAND,
-  type T3Raw, type Reliance, type RelianceBand,
+  DISCRIMINATING_MIN_CHECKS,
+  type T3Raw, type Reliance, type RelianceBand, type VerificationTally,
 } from "./scoring.js";
 export { encodeT3Checkpoint, decodeT3Checkpoint, type T3CheckpointState, type T3ChatMsg } from "./checkpoint.js";
 export { assistantReply, DEMO_ASSISTANT_ID, type AssistantReply } from "./assistant.js";

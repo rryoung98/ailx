@@ -3,7 +3,8 @@
  *   50 overReliance   planted-error detection: caught & rejected seeded wrong
  *                     outputs
  *   30 underReliance  deliberate adoption of correct advice
- *   35        process quality from the transcript
+ *   35        process quality from the transcript (a quarter of it is
+ *             DISCRIMINATING verification — see {@link verificationTally})
  *   45        analysis quality from STORED jury judgments (never called here)
  * 115 of 160 points are model-free measurement of behaviour.
  * No I/O, no clock, no randomness.
@@ -59,6 +60,16 @@
  * source after it surfaced — before its acceptance earns full credit. A blind
  * instant accept of correct advice earns half credit: the candidate happened
  * to be right, but exhibited the same behaviour that swallows planted errors.
+ *
+ * VERIFICATION (TEN-30): the verification quarter of Process scores checks
+ * that RESOLVED a claim, never the number of checks. Rationale and the limit
+ * of what the transcript can show are on {@link verificationTally}.
+ *
+ * TIME CONDITION (TEN-30): a form may declare `timeBudgetMinutes`, so the
+ * same task can be run at 90 minutes or at 30 and the record says which. The
+ * value is copied into raw as `condition.timeBudgetMinutes` and changes no
+ * arithmetic. A form that declares nothing records 0 and behaves exactly as
+ * before.
  *
  * Analysis (F6): stored jury judgment values are NORMALIZED [0,1] by contract
  * (JudgeResponse.value); out-of-range stored values throw. The word-count
@@ -161,8 +172,18 @@ export interface T3Raw {
   adviceDeliberated: number;
   promptCount: number;
   revisionChainLength: number;
-  /** DISTINCT surfaced claims checked against the source (`verifiedClaimIds`). */
+  /**
+   * DISTINCT surfaced claims checked against the source (`verifiedClaimIds`).
+   * VOLUME. Reported as a diagnostic and scored nowhere — see
+   * {@link verificationTally}.
+   */
   verificationCount: number;
+  /** Checks that could be judged: known-status claims, checked before the answer was final. */
+  verificationsChecked: number;
+  /** Of those, the ones whose check was followed by the right call on the claim. */
+  discriminatingVerifications: number;
+  /** The scored rate, `discriminating / max(checked, DISCRIMINATING_MIN_CHECKS)`. */
+  discriminatingVerificationRate: number;
   deliberationRate: number;
   meanJuryBand: number;
   jurySpread: number;
@@ -180,6 +201,14 @@ export interface T3Raw {
   "reliance.index": number;
   /** 1 when the form surfaced fewer than OVER_RELIANCE_MIN_SURFACED plants. */
   "overReliance.underpowered": number;
+  /**
+   * The time budget the FORM declared for this sitting, in minutes, or 0 when
+   * it declared none (every sitting before TEN-30). Carried into the stored
+   * record so a later analysis can compare the 90- and 30-minute conditions
+   * without guessing what a sitting ran under. It is a label, not a score:
+   * nothing in score() branches on it.
+   */
+  "condition.timeBudgetMinutes": number;
 }
 
 /** Final stance per claim id: last challenged/accepted turn wins. */
@@ -191,6 +220,121 @@ function finalStances(transcript: ReadonlyArray<T3Turn>): Map<string, "challenge
     }
   }
   return stance;
+}
+
+/**
+ * Checks needed before the verification term can pay in full. Two distinct
+ * DISCRIMINATING checks, the same scale as the volume rule this replaced.
+ */
+export const DISCRIMINATING_MIN_CHECKS = 2;
+
+/**
+ * What one sitting's verification behaviour was worth.
+ *
+ * `checked` is the denominator: distinct claims of KNOWN truth status that
+ * the candidate checked after the assistant raised them and before the
+ * answer was final. `discriminating` is the subset the check resolved.
+ */
+export interface VerificationTally {
+  checked: number;
+  discriminating: number;
+  /** `discriminating / max(checked, DISCRIMINATING_MIN_CHECKS)`, in [0,1]. */
+  rate: number;
+}
+
+/**
+ * DISCRIMINATING VERIFICATION — the scored verification measure (TEN-30).
+ *
+ * The old rule paid for volume: two distinct claims checked, full quarter of
+ * the Process component, whatever the checks found. Volume is the wrong
+ * target. A candidate who knows the transcript is scored can check every
+ * claim and learn nothing, and that performative checking is the behaviour
+ * this track exists to detect.
+ *
+ * A check counts as discriminating when all of these hold:
+ *
+ *  1. it names the claim it checked (`object: 'claim:<id>'`) and that claim
+ *     was raised by the assistant first — the existing {@link verifiedClaimIds}
+ *     rule;
+ *  2. the form knows whether the claim was true: it is a planted error or a
+ *     correct-advice claim. A surfaced claim in neither list is dropped from
+ *     numerator AND denominator, because nothing in the record says whether
+ *     there was an error to find;
+ *  3. the check happened before the `submitted` turn. A check after the
+ *     answer is final cost the candidate nothing and changed nothing;
+ *  4. the candidate's final stance BEFORE the answer was final was recorded
+ *     after the check, and it resolves the claim the right way: challenged a
+ *     planted error, accepted correct advice. A stance taken after the
+ *     `submitted` turn changed nothing the candidate wrote, so it neither
+ *     earns nor removes credit.
+ *
+ * Repeat checks of one claim count once, in both halves of the fraction.
+ *
+ * WHAT THIS CANNOT SEE, stated plainly. The transcript records that a claim
+ * was checked, not what the candidate read. So "discriminating" here means
+ * *the check was followed by the right call on that claim*, not *the
+ * candidate found the discrepancy in the source*. A lucky call after an
+ * idle press scores the same as a real one. Separating those two needs an
+ * event we do not record — which passage the candidate opened, and whether
+ * they marked a mismatch — and inventing that event before the timed/untimed
+ * arm of `docs/TRANSFER-STUDY.md` §3.5 runs would be building an instrument
+ * for a study nobody has designed. What the rule DOES buy is that checking
+ * everything no longer pays: every check the candidate does not resolve, or
+ * resolves the wrong way, sits in their denominator and pays nothing.
+ *
+ * The planted half overlaps the over-reliance component by construction
+ * (that component pays for the stance, this pays for the check that preceded
+ * it). That is deliberate: the two components measure the outcome and the
+ * process that produced it, and the verification term is a quarter of
+ * Process, not a second over-reliance component.
+ */
+export function verificationTally(
+  transcript: ReadonlyArray<T3Turn>,
+  plantedIds: ReadonlyArray<string>,
+  adviceIds: ReadonlyArray<string>,
+): VerificationTally {
+  const planted = new Set(plantedIds);
+  const advice = new Set(adviceIds);
+  const submittedAt = transcript.findIndex((t) => t.verb === "submitted");
+  const answerFinalAt = submittedAt < 0 ? transcript.length : submittedAt;
+
+  const surfacedAt = new Map<string, number>();
+  const finalStanceAt = new Map<string, { at: number; verb: "challenged" | "accepted" }>();
+  transcript.forEach((t, i) => {
+    if (t.verb === "assisted" && t.claimIds) {
+      for (const id of t.claimIds) if (!surfacedAt.has(id)) surfacedAt.set(id, i);
+    }
+    // Both halves of the coupling stop at the answer: a stance recorded after
+    // the candidate submitted changed nothing they wrote.
+    if (i < answerFinalAt && (t.verb === "challenged" || t.verb === "accepted") && t.object.startsWith("claim:")) {
+      finalStanceAt.set(t.object.slice("claim:".length), { at: i, verb: t.verb });
+    }
+  });
+
+  const firstCheckAt = new Map<string, number>();
+  transcript.forEach((t, i) => {
+    if (i >= answerFinalAt) return;
+    if (t.verb !== "verified" || !t.object.startsWith("claim:")) return;
+    const id = t.object.slice("claim:".length);
+    if (!planted.has(id) && !advice.has(id)) return;
+    const raisedAt = surfacedAt.get(id);
+    if (raisedAt === undefined || i <= raisedAt) return;
+    if (!firstCheckAt.has(id)) firstCheckAt.set(id, i);
+  });
+
+  let discriminating = 0;
+  for (const [id, checkedAt] of firstCheckAt) {
+    const stance = finalStanceAt.get(id);
+    if (!stance || stance.at <= checkedAt) continue;
+    const resolves = planted.has(id) ? "challenged" : "accepted";
+    if (stance.verb === resolves) discriminating++;
+  }
+  const checked = firstCheckAt.size;
+  return {
+    checked,
+    discriminating,
+    rate: discriminating / Math.max(checked, DISCRIMINATING_MIN_CHECKS),
+  };
 }
 
 /**
@@ -333,11 +477,12 @@ export function scoreT3(
   const verificationCount = verifiedClaimIds(transcript).size;
   const actedOn = [...surfacedIds].filter((id) => stance.has(id)).length;
   const deliberationRate = surfacedIds.size > 0 ? actedOn / surfacedIds.size : 0;
+  const verification = verificationTally(transcript, plantedIds, adviceIds);
   const q = cfg.weights.process / 4;
   const process =
     q * clamp01(promptCount / 3) +      // decomposition into multiple prompts
     q * clamp01(chain / 2) +            // iterative revision chain (revision_of)
-    q * clamp01(verificationCount / 2) + // checked 2 distinct claims at source
+    q * verification.rate +             // checks that RESOLVED a claim (TEN-30)
     q * deliberationRate;               // deliberate stance on surfaced claims
 
   // --- Analysis (45): stored jury judgments only — F6 ----------------------
@@ -372,6 +517,9 @@ export function scoreT3(
     promptCount,
     revisionChainLength: chain,
     verificationCount,
+    verificationsChecked: verification.checked,
+    discriminatingVerifications: verification.discriminating,
+    discriminatingVerificationRate: round3(verification.rate),
     deliberationRate: round3(deliberationRate),
     meanJuryBand: round3(meanJury),
     jurySpread: round3(jurySpread),
@@ -382,6 +530,7 @@ export function scoreT3(
     "reliance.index": round3(reliance.index),
     "overReliance.underpowered":
       plantedSurfaced.length < OVER_RELIANCE_MIN_SURFACED ? 1 : 0,
+    "condition.timeBudgetMinutes": cfg.timeBudgetMinutes ?? 0,
   };
   return {
     raw,

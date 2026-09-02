@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { runPure } from "@ailx/core";
 import { itemId } from "@ailx/session";
 import { validateT2Config } from "@ailx/track-t2";
-import { OVER_RELIANCE_MIN_SURFACED, validateT3Config } from "@ailx/track-t3";
+import { OVER_RELIANCE_MIN_SURFACED, t3TimeBudgetSeconds, validateT3Config } from "@ailx/track-t3";
 import {
   SNAPSHOT, T3_SCENARIO, T3_SCENARIO_SHA256, snapshotRubricVersion,
-  snapshotTrack, t2ExposureSeconds, t2Items, trackConfig,
+  snapshotTrack, t2ExposureSeconds, t2Items, t3FormBudgetSeconds, trackConfig,
 } from "../lib/instrument";
 import { canonicalJson, sha256Hex } from "@ailx/session";
 import { judgeT1, judgeT3, judgeT4 } from "@ailx/report";
@@ -124,6 +124,24 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
     expect(cfg.plantedErrors[0].claim).toContain("61 months");
     expect(cfg.plantedErrors[0].truth).toContain("38 months");
     expect(cfg.sourceExcerpt).toContain("38 months");
+  });
+
+  it("the demo T3 form declares no time condition, so the demo clock is unchanged", () => {
+    // TEN-30. `timeBudgetMinutes` is a form parameter and it is inert until a
+    // form sets it: the static demo form sets nothing, so `demoConfig()` in
+    // app/exam/page.tsx falls back to TRACK_META.t3.demoBudgetSeconds exactly
+    // as it did before, and the record reads condition 0.
+    expect(validateT3Config(trackConfig("t3")).timeBudgetMinutes).toBeUndefined();
+    expect(t3FormBudgetSeconds()).toBeUndefined();
+    const rec = scoreTrack("t3", { transcript: [], finalAnswer: "" });
+    expect(rec.score.raw["condition.timeBudgetMinutes"]).toBe(0);
+  });
+
+  it("converts a declared T3 condition into the sitting clock", () => {
+    // The one conversion, so a sitting's clock and its recorded condition
+    // cannot disagree. 90 minutes is the shipped budget, 30 the pressure arm.
+    expect(t3TimeBudgetSeconds({ ...validateT3Config(trackConfig("t3")), timeBudgetMinutes: 90 })).toBe(5400);
+    expect(t3TimeBudgetSeconds({ ...validateT3Config(trackConfig("t3")), timeBudgetMinutes: 30 })).toBe(1800);
   });
 
   it("per-track rubricVersion comes from the committed snapshot (F12)", () => {
