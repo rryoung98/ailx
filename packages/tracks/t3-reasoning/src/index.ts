@@ -6,10 +6,16 @@ export { Runner } from "./Runner.js";
 export {
   scoreT3, revisionChainLength, adoptionCreditForClaim, verifiedClaimIds,
   relianceIndex, relianceBand, verificationTally,
+  wilsonInterval, proportionDifferenceInterval,
   RUBRIC_BAND_MAX, OVER_RELIANCE_MIN_SURFACED, RELIANCE_CALIBRATED_BAND,
   DISCRIMINATING_MIN_CHECKS,
   type T3Raw, type Reliance, type RelianceBand, type VerificationTally,
+  type Interval,
 } from "./scoring.js";
+export {
+  relianceReportFromRaw, formatInterval, formatRate,
+  type RelianceReport, type RelianceRow,
+} from "./relianceReport.js";
 export { encodeT3Checkpoint, decodeT3Checkpoint, type T3CheckpointState, type T3ChatMsg } from "./checkpoint.js";
 export { assistantReply, DEMO_ASSISTANT_ID, type AssistantReply } from "./assistant.js";
 export {

@@ -99,12 +99,93 @@ export const RUBRIC_BAND_MAX = 5;
 export const OVER_RELIANCE_MIN_SURFACED = 8;
 
 /**
- * |relianceIndex| within this band is reported as CALIBRATED. Declared
- * constant, not a fitted threshold — there is no validation set to fit it on.
+ * |relianceIndex| within this band is reported as CALIBRATED.
+ *
+ * ARBITRARY. 0.25 is a declared cutline, not a derived one: no cohort has sat
+ * this instrument, so there is nothing to fit it on, and no published
+ * reliability figure exists for any behavioural reliance measure (TEN-32
+ * evidence review; the one direct test-retest study of advice taking found
+ * ICC < 0.5 — Karvelis et al., PLoS ONE 19(11):e0312255, 2024).
+ *
+ * What would derive it: reliance rates from a cohort that sat this form, plus
+ * a test-retest sitting on a parallel form ≥ 14 days later. The band should
+ * then be set no narrower than the measurement error it must survive — the
+ * width of the interval on a single candidate's rate, and the ICC(2,1) of
+ * `reliance.over` and `reliance.under` across the two sittings. Until then
+ * the band is a presentation choice and moves no points.
  */
 export const RELIANCE_CALIBRATED_BAND = 0.25;
 
 export type RelianceBand = "over-reliant" | "calibrated" | "under-reliant";
+
+/** A two-sided 95% interval on a rate or on a difference of two rates. */
+export interface Interval {
+  lo: number;
+  hi: number;
+}
+
+/** 95% two-sided normal quantile. */
+const Z95 = 1.959963985;
+
+/**
+ * Wilson score interval for a proportion — TEN-35.
+ *
+ * A reliance rate is estimated from 8 events at most, and the interval is the
+ * point of reporting it: at p = 0.5 on 8 trials the 95% interval is about
+ * ±0.35, so 5 of 8 and 7 of 8 do not separate.
+ *
+ * Wilson, not Wald: the Wald interval p ± z·sqrt(p(1−p)/n) has coverage far
+ * below nominal at small n and collapses to zero width at p = 0 and p = 1,
+ * which is exactly where an 8-event reliance rate lands most often. Wilson
+ * keeps its bounds inside [0, 1], stays non-degenerate at the extremes, and
+ * is the interval Newcombe (1998, Statistics in Medicine 17:857–872) puts
+ * first for small samples. Clopper–Pearson would also be defensible but is
+ * conservative and needs an incomplete beta function; Wilson is closed form,
+ * so it stays pure and needs no numerical library.
+ *
+ * `n = 0` returns [0, 1]: nothing was observed, so nothing is excluded.
+ */
+export function wilsonInterval(successes: number, n: number): Interval {
+  if (n <= 0) return { lo: 0, hi: 1 };
+  const p = successes / n;
+  const d = 1 + (Z95 * Z95) / n;
+  const centre = (p + (Z95 * Z95) / (2 * n)) / d;
+  const half = (Z95 / d) * Math.sqrt((p * (1 - p)) / n + (Z95 * Z95) / (4 * n * n));
+  // At p = 0 the bound is 0 and at p = 1 it is 1, exactly; the arithmetic
+  // above leaves ~1e-17 of float residue there. Pin the two ends.
+  return {
+    lo: successes <= 0 ? 0 : Math.max(0, centre - half),
+    hi: successes >= n ? 1 : Math.min(1, centre + half),
+  };
+}
+
+/**
+ * Interval on `secondRate − firstRate` by Newcombe's hybrid score method
+ * (method 10 of Newcombe 1998, Statistics in Medicine 17:873–890), built
+ * from the two Wilson intervals.
+ *
+ * The index is a difference of two independent rates, and a difference score
+ * is the least reliable object in this literature (Hedge, Powell & Sumner,
+ * Behav. Res. Methods 50:1166–1186, 2018; Enkavi et al., PNAS 2019, median
+ * contrast ICC 0.174). Naively adding the two half-widths overstates the
+ * width; the square-and-add form below is the standard fix and keeps the
+ * bounds inside [−1, 1].
+ */
+export function proportionDifferenceInterval(
+  firstSuccesses: number,
+  firstN: number,
+  secondSuccesses: number,
+  secondN: number,
+): Interval {
+  const p1 = firstN > 0 ? firstSuccesses / firstN : 0;
+  const p2 = secondN > 0 ? secondSuccesses / secondN : 0;
+  const a = wilsonInterval(firstSuccesses, firstN);
+  const b = wilsonInterval(secondSuccesses, secondN);
+  const d = p2 - p1;
+  const lo = d - Math.sqrt((p2 - b.lo) ** 2 + (a.hi - p1) ** 2);
+  const hi = d + Math.sqrt((b.hi - p2) ** 2 + (p1 - a.lo) ** 2);
+  return { lo: Math.max(-1, lo), hi: Math.min(1, hi) };
+}
 
 export interface Reliance {
   /** Surfaced planted errors the candidate did NOT challenge, in [0,1]. */

@@ -980,7 +980,7 @@
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "8c7ee8bcfa32b94339f1b2da3b92f5f74e16a9d600bd37dd714a129c3835a004"
+          "sha256": "3d686bf19e5111f7684ca416ee3ea6122188265d9dadbabe1e95e51644de33e8"
         },
         {
           "path": "src/types.ts",
@@ -990,7 +990,7 @@
       "externals": [
         "@ailx/core@0.2.0"
       ],
-      "digest": "846545dee12f37f8fde71ce4806e8f487de7b774e6b531f3da52175476725dea"
+      "digest": "848753edbadfa1b2a6d30f8301f68cf9bf24e80427f2c8b75a769181ed6c5bd2"
     },
     {
       "trackId": "t4",
