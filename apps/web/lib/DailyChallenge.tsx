@@ -42,6 +42,7 @@ import {
 } from "@ailx/report";
 import { DAILY_POOL } from "./demoItems";
 import { readDailyLedger, recordDailyRoundLocally } from "./dailyState";
+import { funnel } from "./funnel";
 import { assetUrl, basePath } from "./mode";
 import { ShareTargets } from "./ShareTargets";
 import styles from "./PracticeDrill.module.css";
@@ -105,6 +106,7 @@ export function DailyChallenge() {
 
   const finish = useCallback((round: DailyRound, deckSize: number) => {
     setJustFinished(true);
+    funnel().playCompleted("daily", round.results.length);
     setToday((prev) =>
       prev === null
         ? prev
@@ -137,6 +139,9 @@ export function DailyChallenge() {
 
   function call(choice: number | null) {
     if (current === undefined) return;
+    // "Play started" is the first card called, the same rule the practice
+    // drill uses: a dealt deck nobody touched is not a play (docs/KPI.md).
+    if (answers.length === 0) funnel().playStarted("daily");
     setAnswers([...answers, choice]);
     setShowing("feedback");
   }

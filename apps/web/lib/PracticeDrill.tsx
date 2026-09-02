@@ -42,6 +42,7 @@ import {
 } from "@ailx/report";
 import { authHeaders } from "./authHeaders";
 import { useIdentity } from "./auth/identityState";
+import { funnel } from "./funnel";
 import {
   localStreakSummary,
   readLastClaim,
@@ -274,12 +275,20 @@ export function PracticeDrill() {
       setPhase("card");
     } else {
       setPhase("done");
+      // "Play completed" is the last card being called, not the submit
+      // landing: a round played offline is a completed round.
+      funnel().playCompleted("practice", after.filter((p) => p.result !== null).length);
       void submit(after);
     }
   }
 
   function answer(choice: number): void {
     if (current === undefined || stimulus === "failed") return;
+    // "Play started" is the first CARD CALLED, not the deck being dealt: this
+    // drill is embedded in the landing hero, so a dealt deck would count a
+    // play for everyone who scrolled past it (docs/KPI.md). A reload mid-play
+    // resumes the same play, so the step is not counted twice.
+    if (!roundBegun.current) funnel().playStarted("practice");
     roundBegun.current = true;
     setPlayed([
       ...played,
