@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import type {
   AnchorForm, InstrumentManifest, InstrumentPackage, InstrumentTrack, ItemBank,
   BankItem, BandAnchor, JudgePrompt, Rubric, TrackConfigFile, Locale,
+  ShortForm, ShortFormBlock,
 } from "./types.js";
 
 export class InstrumentValidationError extends Error {
@@ -40,6 +41,7 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
     fail(path, "'redacted' must be a boolean");
   }
   const anchor = parseAnchor(doc.anchor, path);
+  const short_form = parseShortForm(doc.short_form, path);
   // Published keys and a frozen trend line cannot both be true of one package.
   // A redacted package publishes every key on purpose, so declaring an anchor
   // in it would ship a burned form that still looks comparable — the failure
@@ -55,6 +57,7 @@ export function parseManifest(raw: string, path = "manifest.yaml"): InstrumentMa
   return {
     id, version, ...(notice ? { notice } : {}), ...(redacted === true ? { redacted: true } : {}),
     effective_from, locales, tracks, ...(anchor ? { anchor } : {}),
+    ...(short_form ? { short_form } : {}),
   };
 }
 
@@ -88,6 +91,116 @@ function parseAnchor(raw: unknown, path: string): AnchorForm | undefined {
     fail(path, "anchor 'exposure_budget' must be a positive whole number of administrations");
   }
   return { id, exposure_budget: budget as number };
+}
+
+/**
+ * The manifest's optional panel short form (docs/SHORT-FORM.md).
+ *
+ * Three things are checked here, and they are the three a fielding cannot
+ * recover from:
+ *  - a common block exists, because it is what links the rotated forms;
+ *  - every rotated family has at least two members, because a family of one
+ *    is a fixed block wearing the word "matrix";
+ *  - the longest respondent path fits the declared minutes.
+ * Everything else about the design — which items are in a block, who gets
+ * which rotation — belongs to the exam service, which is the only thing that
+ * sees a sitting.
+ */
+function parseShortForm(raw: unknown, path: string): ShortForm | undefined {
+  if (raw === undefined) return undefined;
+  // `short_form:` with nothing under it parses as null: a half-written block,
+  // not a package without a short form.
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    fail(path, "'short_form' must be a mapping");
+  }
+  const f = raw as Record<string, unknown>;
+  for (const key of Object.keys(f)) {
+    if (key !== "id" && key !== "target_minutes" && key !== "blocks") {
+      fail(path, `unknown short_form field '${key}'`);
+    }
+  }
+  const id = req<unknown>(f, "id", `${path} short_form`);
+  if (typeof id !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
+    fail(path, `short_form id '${String(id)}' must be lowercase alphanumeric with single hyphens`);
+  }
+  const target = req<unknown>(f, "target_minutes", `${path} short_form`);
+  if (typeof target !== "number" || !Number.isFinite(target) || target <= 0) {
+    fail(path, "short_form 'target_minutes' must be a positive number of minutes");
+  }
+  const rawBlocks = req<unknown>(f, "blocks", `${path} short_form`);
+  if (!Array.isArray(rawBlocks) || rawBlocks.length === 0) {
+    fail(path, "short_form 'blocks' must be a non-empty list");
+  }
+  const blocks = rawBlocks.map((b) => parseShortFormBlock(b, path));
+  const ids = new Set<string>();
+  for (const b of blocks) {
+    if (ids.has(b.id)) fail(path, `duplicate short_form block id '${b.id}'`);
+    ids.add(b.id);
+  }
+  const common = blocks.filter((b) => b.every_respondent);
+  if (common.length === 0) {
+    fail(path, "short_form needs at least one 'every_respondent' block to link the rotated forms");
+  }
+  // A respondent takes every common block plus ONE block from each family, so
+  // the longest path sums the families' longest members. Summing all rotated
+  // blocks would reject a legal design; taking one maximum over all of them
+  // would let a two-family form overrun in silence.
+  const families = new Map<string, number>();
+  for (const b of blocks) {
+    if (b.every_respondent) continue;
+    const seen = families.get(b.family as string);
+    families.set(b.family as string, seen === undefined ? b.minutes : Math.max(seen, b.minutes));
+  }
+  if (families.size === 0) fail(path, "short_form needs at least one rotated family of blocks");
+  for (const family of families.keys()) {
+    const members = blocks.filter((b) => !b.every_respondent && b.family === family).length;
+    if (members < 2) {
+      fail(path, `short_form family '${family}' has one block, so nothing rotates in it`);
+    }
+  }
+  const longest = blocks.filter((b) => b.every_respondent).reduce((s, b) => s + b.minutes, 0)
+    + [...families.values()].reduce((s, m) => s + m, 0);
+  if (longest > target) {
+    fail(path, `short_form longest path is ${longest} min, over its target_minutes of ${target}`);
+  }
+  return { id, target_minutes: target, blocks };
+}
+
+function parseShortFormBlock(raw: unknown, path: string): ShortFormBlock {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    fail(path, "each short_form block must be a mapping");
+  }
+  const b = raw as Record<string, unknown>;
+  for (const key of Object.keys(b)) {
+    if (key !== "id" && key !== "minutes" && key !== "every_respondent" && key !== "family") {
+      fail(path, `unknown short_form block field '${key}'`);
+    }
+  }
+  const id = req<unknown>(b, "id", `${path} short_form block`);
+  if (typeof id !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
+    fail(path, `short_form block id '${String(id)}' must be lowercase alphanumeric with single hyphens`);
+  }
+  const minutes = req<unknown>(b, "minutes", `${path} short_form block '${id}'`);
+  if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes <= 0) {
+    fail(path, `short_form block '${id}' needs a positive number of 'minutes'`);
+  }
+  const every = b.every_respondent;
+  if (every !== undefined && typeof every !== "boolean") {
+    fail(path, `short_form block '${id}': 'every_respondent' must be a boolean`);
+  }
+  const family = b.family;
+  if (every === true) {
+    // A block everybody takes is in no rotation, so a family label on it is a
+    // contradiction rather than extra detail.
+    if (family !== undefined) {
+      fail(path, `short_form block '${id}' is in every form, so it cannot have a 'family'`);
+    }
+    return { id, minutes, every_respondent: true };
+  }
+  if (typeof family !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(family)) {
+    fail(path, `short_form block '${id}' rotates, so it needs a lowercase slug 'family'`);
+  }
+  return { id, minutes, family };
 }
 
 export function parseTrackConfig(raw: string, path: string): TrackConfigFile {
