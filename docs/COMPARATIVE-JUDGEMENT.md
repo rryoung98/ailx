@@ -34,8 +34,9 @@ If raters are a fixed expert panel, `raters = P` is constant and per-expert burd
   Blinded, randomised pairs | **Participants as raters**".
 - `AILX-Spec-2026.1.md`, T1 score allocation: "60 pts — Comparative visual merit … Blinded
   forced-choice pairwise comparison **by the full cohort**".
-- `AILX-Spec-2026.1.md`, "The comparative judgement design": "45 items x 45 raters … comparisons
-  *per candidate-rater* are r ÷ 2, **independent of cohort size**".
+- `AILX-Spec-2026.1.md`, "The comparative judgement design": "one artefact per candidate, and
+  every candidate judges … a rater makes r ÷ 2 = **15 comparisons** … the same in a cohort of 40
+  and a cohort of 40,000".
 
 So the issue's fear is real for a panel design and does not apply to the design AILX actually
 specifies. What does not cancel is **rater turnout**: the flat per-rater number assumes every
@@ -96,8 +97,8 @@ priced here at all. What the candidate model buys is that nobody is invoiced, no
 A candidate who rates peers also has an interest in the outcome. The spec's handling is mandatory self-exclusion (a candidate never sees their own
 artefact), author identity never shown, randomised pairs, and per-rater bias and reliability
 estimated in the fit. That covers self-favouring and blunt collusion. It does not cover a rater who
-recognises a classmate's work in a small cohort, and it cannot: at N = 45 in one room, style is
-identifying. The mitigation there is the fit, not the blinding — a rater whose judgements do not
+recognises a classmate's work in a small cohort, and it cannot: in one room of a few dozen
+people, style is identifying. The mitigation there is the fit, not the blinding — a rater whose judgements do not
 agree with the panel is downweighted, whatever their motive. **State the residual honestly in the
 report: peer judgement is the criterion, and at small N the blinding is imperfect.**
 

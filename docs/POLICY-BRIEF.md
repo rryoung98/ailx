@@ -305,7 +305,7 @@ window for item material is this year, not 2028.
   option module.
 - **What they will ask for and we do not have:** IRT item statistics from a real field trial,
   translation and adaptation procedures, and measurement invariance across countries. We have item
-  statistics from a calibration cohort of about 45 people (`docs/SAMPLING.md` §11, Stage 0). That
+  statistics from a small calibration cohort (`docs/SAMPLING.md` §11, Stage 0). That
   is not a field trial.
 
 ## 5. The five talking points
@@ -479,5 +479,5 @@ one link.
   the method; a second wave with harder items would close most of the gap in one field period.
   PIAAC Cycle 3 is the slower, larger candidate. Recheck §3 before every meeting.
 - **We get asked for our own number.** The answer is that we have none, followed by
-  `docs/SAMPLING.md` §11 Stage 0. A calibration cohort of about 45 people supports item statistics
+  `docs/SAMPLING.md` §11 Stage 0. A small calibration cohort supports item statistics
   and nothing with a population noun in it.

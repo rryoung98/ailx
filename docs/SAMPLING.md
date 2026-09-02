@@ -927,7 +927,7 @@ This is the section that will be used most and read least carefully, so the lang
 in full rather than described. The moment credibility is spent or kept is the first publication that
 happens **before** a panel exists — which is the stage we are at now.
 
-### Stage 0 — calibration cohort (today; n ≈ 45, summit)
+### Stage 0 — calibration cohort (today; small, self-selected)
 
 **May say:** item difficulty and discrimination estimates; that the instrument spreads a capable
 cohort; qualitative findings; that this is a calibration and item-development cohort, as the spec

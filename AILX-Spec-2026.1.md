@@ -184,7 +184,7 @@ Track raw scores are **not** summed. Summing raw scores implicitly weights each 
 3.  The composite is put through a **normalised area transformation** — rank → percentile → inverse-normal → rescale to mean 50, SD 15 — and reported on a 0–100 scale, truncated at the bounds.
 4.  Every report also carries the three scored track scores, the T4 showcase index marked as such, the percentile, and the performance band.
 
-The normalised transformation *forces* a normal distribution rather than hoping for one. At n = 45 an empirically normal raw distribution is unlikely, and a plain linear transform will push extreme scores outside 0–100. This is disclosed openly in every export: the composite is normalised, and raw-distribution shape is preserved separately in the data.
+The normalised transformation *forces* a normal distribution rather than hoping for one. At the size of a first calibration cohort an empirically normal raw distribution is unlikely, and a plain linear transform will push extreme scores outside 0–100. This is disclosed openly in every export: the composite is normalised, and raw-distribution shape is preserved separately in the data.
 
 ### Performance bands
 
@@ -205,7 +205,7 @@ Build a personal website. It has to actually work, and then it has to survive be
 
 ### The task
 
-Candidates receive a brief 48 hours before the summit: build a personal site that communicates who they are and what they work on, to a stated audience. Required content elements are specified (so brief compliance is machine-checkable). AI assistance is unrestricted and expected — the prompt log is a required submission artefact, not a confession. Submission is a ZIP of static assets; no build step runs on our infrastructure (see §12).
+Candidates receive a brief 48 hours before the sitting: build a personal site that communicates who they are and what they work on, to a stated audience. Required content elements are specified (so brief compliance is machine-checkable). AI assistance is unrestricted and expected — the prompt log is a required submission artefact, not a confession. Submission is a ZIP of static assets; no build step runs on our infrastructure (see §12).
 
 ### Score allocation
 
@@ -240,7 +240,7 @@ This is the single largest deviation from the original concept, and the evidence
 
 Evidence against model-scored aesthetics, and for pairwise human judgement.
 
-The last row is the one that ends the argument for a trilateral instrument. The aesthetic predictor that filtered the training data for most open text-to-image systems was built from a photo-contest scrape and 294 Discord raters, and it scores non-Western art at zero. Handing final aesthetic authority to a model trained in that lineage, at a US–Japan–Korea summit, is not a technical shortcut. It is a defect with a paper trail.
+The last row is the one that ends the argument for a trilateral instrument. The aesthetic predictor that filtered the training data for most open text-to-image systems was built from a photo-contest scrape and 294 Discord raters, and it scores non-Western art at zero. Handing final aesthetic authority to a model trained in that lineage, in a US–Japan–Korea instrument, is not a technical shortcut. It is a defect with a paper trail.
 
 > **What the vision model does instead**
 >
@@ -251,7 +251,7 @@ The last row is the one that ends the argument for a trilateral instrument. The 
 The up/down vote becomes a **forced-choice pair**. The instinct behind up/down voting is right — put the judgement in human hands — but forcing a choice between two specific artefacts is what the measurement literature supports, and it is strictly more informative than an isolated thumb.
 
 - **Question wording:** a single decision-relevant question — *"Which of these two would you rather put your own name on?"* — not "which is prettier." UI-Bench's framing; it produces sharper judgements than an aesthetic abstraction.
-- **Volume:** 45 items × 45 raters. At *r* = **30** comparisons per item, total C = 675, which is **15 comparisons per rater** — roughly 19 minutes at ~75 s per forced-choice pair. Verhavert et al.'s meta-analysis of 49 comparative-judgement assessments puts Scale Separation Reliability .70 at **10–14** comparisons per representation (average 13), .80 at 19–20, and **.90 at 26–37** — all three verified against the accepted author version, and all three estimated on non-adaptive pairing only. See `docs/COMPARATIVE-JUDGEMENT.md`. The previous *r* = 24 sat between the .80 and .90 bands and was reported as if it bought .90. It bought something above .80; the paper's posterior does not license a point estimate in that gap, so "roughly .85" is gone rather than defended. Note also what the arithmetic does at scale — each comparison informs two artefacts, so comparisons *per candidate-rater* are r ÷ 2, **independent of cohort size**. T1's judging cost per candidate is flat in N; what does not scale is rater turnout.
+- **Volume:** one artefact per candidate, and every candidate judges. At *r* = **30** comparisons per artefact, each comparison informs two artefacts, so a rater makes r ÷ 2 = **15 comparisons** — roughly 19 minutes at ~75 s per forced-choice pair. That burden is the same in a cohort of 40 and a cohort of 40,000; the total is 15 × N. Verhavert et al.'s meta-analysis of 49 comparative-judgement assessments puts Scale Separation Reliability .70 at **10–14** comparisons per representation (average 13), .80 at 19–20, and **.90 at 26–37** — all three verified against the accepted author version, and all three estimated on non-adaptive pairing only. See `docs/COMPARATIVE-JUDGEMENT.md`. The previous *r* = 24 sat between the .80 and .90 bands and was reported as if it bought .90. It bought something above .80; the paper's posterior does not license a point estimate in that gap, so "roughly .85" is gone rather than defended. T1's judging cost per candidate is flat in N; what does not scale is rater turnout.
 - **Pairing:** randomised or balanced-incomplete-block. **Not adaptive.** Bramley's simulation produced Scale Separation Reliability up to 0.89 *on pure noise* under adaptive pairing, while non-adaptive methods correctly returned below 0.25. Adaptive pairing would make the instrument look more reliable than it is, which is the worst possible failure mode for a benchmark.
 - **Model:** Bayesian Bradley–Terry with an explicit tie / abstain parameter. Ties are not rare — Chatbot Arena runs at 20.4% — and unmodelled ties produce \>10% error.
 - **Style control:** measured page properties (word count, image count, palette size, DOM depth, animation presence) enter the fit as covariates, so the reported score is merit *controlled for surface style*.
@@ -536,7 +536,7 @@ The quota is not a cost-control measure disguised as a rule — though it is als
 
 1. **It duplicated T1.** Forty points of blinded pairwise comparative merit on the same Bradley–Terry machinery, twenty points of process evidence from a prompt log, ten of provenance hygiene, and the same `[Proxy]` claim type. §03 maps T1 to "Create with AI 1–3, Manage AI 1–3" and T4 to "Create with AI 1, 2, 4" — an overlap, not a distinction. Whether the two scores correlate above ~.6 in the calibration cohort is now a question the recorded showcase index can still answer.
 2. **It could never enter the population statistic.** Seventy of its hundred points — comparative 40 plus the blind-viewer panel 30 — need human panels a probability panel structurally cannot supply: panellists are paid once and do not come back to judge each other. §6 of `docs/TRACK-REVIEW.md` states the criterion plainly: a track that cannot be shortened cannot contribute at all. A compressed T4 block would have yielded craft and provenance, 30 points measuring prompt-log shape and metadata hygiene, which is not T4.
-3. **Its governance model does not survive scale.** The gallery is approval-required, and a human approves every asset before it is publicly visible. At four assets per candidate and N = 50,000 that is 200,000 approvals — roughly 1,100 person-hours at 20 seconds each. That commitment is correct for a 45-person summit with three foreign ministries watching. It is not a growth plan, and the alternatives (sampled approval, takedown-based moderation) are exactly the weaker posture this document refused.
+3. **Its governance model does not survive scale.** The gallery is approval-required, and a human approves every asset before it is publicly visible. At four assets per candidate and N = 50,000 that is 200,000 approvals — roughly 1,100 person-hours at 20 seconds each. Reviewing every asset is affordable at pilot size. It is not a growth plan, and the alternatives (sampled approval, takedown-based moderation) are exactly the weaker posture this document refused.
 4. **It was the largest block of judge-resolved points in the instrument** — 96 of 100, including the one objective component whose entire defence was that a *human* panel decides it (see §04's implemented column, and `plugin.ts` routing `judge-t4-brief-fit` to the model `judge` queue).
 
 **What survives, and where it went.** The distinctive thing T4 measured — *did the artefact communicate what it was meant to communicate* — is a rubric dimension, not a track. It moves into T3, which already produces a written analysis for a named stakeholder: "would the stakeholder understand the position" is the same construct on material that is cheaper, compressible and already collected. This follows `docs/FUTURE-TRACKS.md`'s own pattern of preferring an item family or a rubric dimension over a new track.
@@ -547,7 +547,7 @@ The quota is not a cost-control measure disguised as a rule — though it is als
 
 ### Gallery governance
 
-The public gallery is **approval-required, not takedown-based**. For a summit with three foreign ministries in the room, a human approves every asset before it becomes publicly visible; safety filters at generation time and a second classification pass on stored assets are inputs to that decision, not substitutes for it. Per-item unpublish is available within minutes. This is slower than the alternative and it is the correct trade.
+The public gallery is **approval-required, not takedown-based**. A human approves every asset before it becomes publicly visible; safety filters at generation time and a second classification pass on stored assets are inputs to that decision, not substitutes for it. Per-item unpublish is available within minutes. This is slower than the alternative and it is the correct trade.
 
 ### Model selection
 
@@ -562,9 +562,9 @@ Model IDs are resolved via `gcloud ai models list` and **pinned by date suffix**
 
 ## 09 · Psychometrics
 
-Forty-five people is a good summit and a small sample. The honest design says so up front, does the things that are valid at n = 45, and defers the claims that are not.
+The first cohort is a calibration cohort and it is small. The honest design says so up front, does the things a small sample supports, and defers the claims that need a larger one.
 
-### What n = 45 can and cannot support
+### What a calibration cohort can and cannot support
 
 Linacre's Rasch sample-size table is the relevant authority, and it is unambiguous:
 
@@ -580,15 +580,15 @@ Sample size required for Rasch item calibration at stated precision.
 
 > **The Year 1 posture, stated plainly**
 >
-> The 2026 cohort is a **calibration and item-development cohort**. Rasch is used diagnostically to rank item difficulty and cull misfitting items at ±1 logit — which n = 45 supports. Person ability logits are *not* reported as scores. 2PL and 3PL are off the table entirely: GLAT needed n = 355 for 2PL, AICOS needed 514 for 3PL. Absolute cut scores and certification claims are deferred until pooled n across cohorts crosses 250. Year 1 reports percentiles and bands, not competence certifications.
+> The 2026 cohort is a **calibration and item-development cohort**. Rasch is used diagnostically to rank item difficulty and cull misfitting items at ±1 logit — which the table puts at about 30 people, its lowest bar. Person ability logits are *not* reported as scores. 2PL and 3PL are off the table entirely: GLAT needed n = 355 for 2PL, AICOS needed 514 for 3PL. Absolute cut scores and certification claims are deferred until pooled n across cohorts crosses 250. Year 1 reports percentiles and bands, not competence certifications.
 
 ### The anchor-block move
 
-The single highest-leverage step available is to embed an **anchor block of published, externally normed items** — AICOS-SV (18 items, normed on n = 514 adults, mean age 32.9) is the closest match to this cohort. It costs about eight minutes of testing time and buys the ability to express the cohort's standing against a real external norm group rather than only against forty-four peers. It also creates the cross-form linkage that makes Year 2 comparable to Year 1.
+The single highest-leverage step available is to embed an **anchor block of published, externally normed items** — AICOS-SV (18 items, normed on n = 514 adults, mean age 32.9) is the closest match to this cohort. It costs about eight minutes of testing time and buys the ability to express the cohort's standing against a real external norm group rather than only against the rest of the cohort. It also creates the cross-form linkage that makes Year 2 comparable to Year 1.
 
 ### Producing a normal distribution
 
-An elite summit cohort is a restricted, high-ability sample, so the dominant threat is a **ceiling effect**, not a floor one. The item-difficulty plan compensates deliberately.
+A self-selected expert cohort is a restricted, high-ability sample, so the dominant threat is a **ceiling effect**, not a floor one. The item-difficulty plan compensates deliberately.
 
 - **Target the guessing-corrected midpoint, not p = .50.** For binary items the ideal difficulty is 85%, for 4-option MC 74%, for 3-option 77%. Aiming every item at .50 maximises variance per item but, with correlated items, tends toward a bimodal rather than normal curve.
 - **Spread difficulties, do not cluster them.** A few easy anchors at p ≈ .85 to protect the floor and keep candidates engaged; the bulk at p = .50–.75; and a deliberate hard tail at p \< .25 to separate the top of the distribution.
@@ -606,14 +606,14 @@ An elite summit cohort is a restricted, high-ability sample, so the dominant thr
 | **Separability**                                                    | Bradley–Terry fits                                                                                         | Fraction of item pairs with non-overlapping CIs. Arena-Hard's 87.4% is the reference point                                                          |
 | **QWK**, with **Spearman beside it**                                | T3 analysis rubric vs. human panel                                                                         | Reported against measured human–human agreement (ASAP spans 0.63–0.85, median 0.76 — a range, not a 0.72 ceiling), with the protocol named. Spearman is mandatory: anchored calibration can match the human score distribution while rank-order agreement stays near zero (Yeadon et al., arXiv:2603.14732), and QWK alone cannot tell the two apart |
 
-Consistency-type ICC is *not* used: rubric scores feed directly into reported scores, so absolute agreement is the correct form. Koo & Li's design guidance — at least 30 heterogeneous samples and at least 3 raters — is satisfiable at n = 45 with a three-judge panel, which is a genuine strength of this cohort size.
+Consistency-type ICC is *not* used: rubric scores feed directly into reported scores, so absolute agreement is the correct form. Koo & Li's design guidance — at least 30 heterogeneous samples and at least 3 raters — sets the floor: 30 candidates and a three-judge panel.
 
 ### Standard setting
 
-**Modified Angoff, 8–10 subject-matter experts, two rounds with discussion between.** It is the only method that is defensible *without examinee data*, which matters because cut scores must be set before the pilot rather than reverse-engineered from forty-five results afterwards.
+**Modified Angoff, 8–10 subject-matter experts, two rounds with discussion between.** It is the only method that is defensible *without examinee data*, which matters because cut scores must be set before the pilot rather than reverse-engineered from the pilot's results afterwards.
 
-- **Bookmark is ruled out:** it requires pre-computed IRT item parameters, which n = 45 cannot produce.
-- **Contrasting Groups is ruled out:** its documented failure mode is bias toward the smaller group when scores are normally distributed and group sizes differ greatly — guaranteed at n = 45.
+- **Bookmark is ruled out:** it requires pre-computed IRT item parameters, which a cohort sized for ±1 logit item calibration cannot produce.
+- **Contrasting Groups is ruled out:** its documented failure mode is bias toward the smaller group when scores are normally distributed and group sizes differ greatly, and a calibration cohort cannot be split into two groups of workable size.
 - Method choice materially moves the cut: severity ranks Ebel \> Borderline \> Angoff \> Contrasting Groups \> Nedelsky, with Angoff producing higher standards than Nedelsky in 80% of compared cases. Disclosing the method is part of disclosing the standard.
 
 ### Cross-year comparability
@@ -629,7 +629,7 @@ Annual re-versioning creates a real tension, and it has to be resolved explicitl
 
 > **AILX takes the AP model with ARC-AGI's calibration discipline — not the IMO's**
 >
-> The IMO analogy is right for the *feel* of the exam and wrong for its measurement design. IMO makes no attempt to equate across years; it achieves comparability purely by rank-based quota. AILX cannot do that and also claim a stable standard. So: **Year 1 is norm-referenced by quota** (n = 45 leaves no alternative), while the **secure anchor block is built from day one** so that Year 2 onward can be equated. The standard, once set by Angoff, is held fixed and the raw cut floats — the AP model. And every new annual form is human-calibrated against the prior form's difficulty before release, the ARC-AGI way.
+> The IMO analogy is right for the *feel* of the exam and wrong for its measurement design. IMO makes no attempt to equate across years; it achieves comparability purely by rank-based quota. AILX cannot do that and also claim a stable standard. So: **Year 1 is norm-referenced by quota** (a calibration cohort leaves no alternative), while the **secure anchor block is built from day one** so that Year 2 onward can be equated. The standard, once set by Angoff, is held fixed and the raw cut floats — the AP model. And every new annual form is human-calibrated against the prior form's difficulty before release, the ARC-AGI way.
 
 ### Three-tier item pool
 
@@ -690,7 +690,7 @@ Google Cloud and GitHub, with Clerk for identity and SES for mail. One deploymen
 | Layer          | Choice                                                                                                                                                 | Why not the alternative                                                                                                                                                                                                                                                                                                                         |
 |----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | App hosting    | **Cloud Run** — Next.js in standalone output, behind a global external Application Load Balancer                                                       | Firebase App Hosting abstracts away the load balancer needed for Cloud Armor and per-host header injection. GKE is unjustified now that Cloud Run worker pools cover persistent pull-based workers.                                                                                                                                             |
-| Database       | **Cloud SQL for PostgreSQL, Enterprise** — 2 vCPU / 8 GB at pilot, HA enabled for the summit window                                                    | Firestore cannot give relational integrity across participants × instruments × items × responses × judgments, nor transactional vote uniqueness, nor row-level security. AlloyDB is ~1.6× the cost and becomes right only when score analytics or transcript vector search outgrow Postgres — and that migration is a `pg_dump`, not a rewrite. |
+| Database       | **Cloud SQL for PostgreSQL, Enterprise** — 2 vCPU / 8 GB at pilot, HA enabled for the exam window                                                      | Firestore cannot give relational integrity across participants × instruments × items × responses × judgments, nor transactional vote uniqueness, nor row-level security. AlloyDB is ~1.6× the cost and becomes right only when score analytics or transcript vector search outgrow Postgres — and that migration is a `pg_dump`, not a rewrite. |
 | Object storage | **Cloud Storage**, four buckets, all uniform bucket-level access, served only via LB + Cloud CDN                                                       | Direct GCS internet egress is \$0.12/GiB against CDN egress at \$0.08–0.09 — never serve media from a public bucket.                                                                                                                                                                                                                            |
 | Job execution  | **Cloud Tasks** as the pipeline spine; Cloud Run Jobs for batch; Pub/Sub for telemetry fan-out only; Workflows only for human-in-the-loop adjudication | Per-queue rate limiting is exactly how a Vertex AI quota gets protected. Pub/Sub has no per-message rate control. Workflows becomes a second home for business logic and its step retries interact badly with model non-determinism.                                                                                                            |
 | Inference      | **Vertex AI**, regional endpoints, model IDs pinned by date suffix                                                                                     | The Gemini Developer API has no IAM, no regional endpoint, no VPC-SC, no CMEK, no batch discount. Fine for prototyping, no place in the delivered system.                                                                                                                                                                                       |
@@ -879,7 +879,7 @@ Everyone gets one, regardless of band, and it should be the artefact people scre
 - **No visible score during any scored block.** It changes risk-taking behaviour and therefore changes the criterion being measured.
 - **No streaks, combos, or time bonuses.** They reward speed over judgement, which is the opposite of the construct in T3 and T4.
 - **No live leaderboard during the exam.** Post-hoc rankings only, after all judging closes.
-- **No cosmetic unlocks or currency.** The audience is adult professionals at a diplomatic summit; the tone should be closer to a well-made instrument than to a mobile game.
+- **No cosmetic unlocks or currency.** The audience is adult professionals; the tone should be closer to a well-made instrument than to a mobile game.
 - **No adaptive difficulty presented as a challenge ramp.** Adaptive item selection is separately ruled out for measurement reasons (§T1, §9); it must not re-enter through the interface.
 
 The target feeling is a well-made instrument that happens to be a pleasure to operate — a good camera rather than a slot machine. Tight input latency, motion that responds rather than decorates, sound used once or twice and never again, and an interface that gets out of the way of the content. The swipe deck and the replay are where the interaction budget should be spent.
@@ -1080,7 +1080,7 @@ A frontier lab does not need another human ranking. What it does not currently h
 
 - **Human d′ on 2026-current synthetic media**, by modality, by generator, at fixed exposure — directly comparable to detector benchmarks, and currently unavailable at this quality anywhere.
 - **Human rejection rates for planted model errors**, by error type — a direct empirical measure of over-reliance in a professional adult population, which is a question labs are actively asked by regulators.
-- **Human comparative aesthetic judgements** on 45 real artefacts with full pairwise data — a clean external validation set for the VLM aesthetic-judgement gap documented in §T1.
+- **Human comparative aesthetic judgements** on the cohort's real artefacts with full pairwise data — a clean external validation set for the VLM aesthetic-judgement gap documented in §T1.
 - **Full prompt logs and interaction transcripts** from adults working under time pressure on a hard task, with consent for research release.
 
 De-identification is structural rather than post-hoc: participants are keyed to a `pid` from registration onward, names never enter exam artefacts, and the research tier is generated from tables that never contained identifiers. Consent for research release is separate, granular, and revocable, and the export pipeline honours revocation on the next build.
@@ -1091,9 +1091,9 @@ Response events are emitted as xAPI-shaped statements to Pub/Sub and land in Big
 
 ## 17 · Cost model
 
-Unit prices are verified as of 21 August 2026. Usage volumes are estimates and are the largest source of error — instrument the pilot and re-derive.
+Unit prices are verified as of 21 August 2026. Usage volumes are estimates and are the largest source of error — instrument the pilot and re-derive. The three columns are worked examples at N = 45, 1,000 and 25,000. No cohort size is planned here; the small column is kept because it shows which lines are fixed cost and which scale with candidates.
 
-| Line                                                | 45 pilot  | 1,000       | 25,000       |
+| Line                                                | N = 45    | 1,000       | 25,000       |
 |-----------------------------------------------------|-----------|-------------|--------------|
 | Cloud Run — app + origin shim                       | 88        | 190         | 1,650        |
 | Cloud SQL PostgreSQL                                | 220       | 440         | 3,100        |
@@ -1263,10 +1263,5 @@ Everything below is unverified or unresolved. It is listed because a document th
 - [Korea NEC on election deepfakes](https://www.nec.go.kr/site/eng/ex/bbs/View.do?cbIdx=1270&bcIdx=226657)
 - [Japan's AI Promotion Act](https://fpf.org/blog/understanding-japans-ai-promotion-act-an-innovation-first-blueprint-for-ai-regulation/)
 - [Japan APPI reform — key changes](https://www.bakermckenzie.com/en/insight/publications/2026/05/japan-appi-reform-key-changes)
-
-#### Summit
-
-- [U.S. Embassy Seoul — 2026 Young Trilateral Leaders Summit](https://kr.usembassy.gov/030626-2026-young-trilateral-leaders-summit/)
-- [Summit details — CU Boulder Center for Asian Studies](https://www.colorado.edu/cas/2026/03/10/us-embassy-seoul-2026-young-trilateral-leaders-summit)
 
 **AILX-SPEC-2026.1** — Specification & Technical Design Document. Draft for partner review, 21 August 2026. Every unverified claim in this document is marked and listed in Appendix A. Unit prices verified 21 August 2026; usage volumes are estimates. Nothing here constitutes legal advice — the jurisdictional analysis in §15 requires review by Korean and Japanese counsel before any candidate registers.
