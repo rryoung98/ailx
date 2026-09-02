@@ -43,9 +43,10 @@ export interface ShortForm {
   /** Stable id of the short form, e.g. `psf-2026a`. */
   id: string;
   /**
-   * The minutes one respondent may be asked for, end to end. The longest
-   * respondent path — every common block plus the longest rotated block —
-   * must fit inside it.
+   * The TESTING minutes one respondent's form may cost: the longest
+   * respondent path, meaning every common block plus the longest rotated
+   * block. Consent, instructions and debrief are not blocks and are not
+   * counted here (docs/SHORT-FORM.md §8).
    */
   target_minutes: number;
   blocks: ShortFormBlock[];
