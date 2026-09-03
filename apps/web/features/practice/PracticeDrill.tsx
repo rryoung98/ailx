@@ -41,7 +41,7 @@ import {
   type ProgressReport,
   type StreakSummary,
 } from "@ailx/report";
-import { authHeaders } from "../../lib/data/authHeaders";
+import { serviceHeaders } from "../../lib/data/traceparent";
 import { useIdentity } from "../../lib/auth/identityState";
 import { funnel } from "../../lib/data/funnel";
 import {
@@ -194,7 +194,7 @@ export function PracticeDrill() {
       if (recorded) {
         const res = await fetch(`${apiBase()}${apiPath("startPractice")}`, {
           method: "POST",
-          headers: await authHeaders(window.localStorage),
+          headers: await serviceHeaders(window.localStorage),
         });
         if (!res.ok) throw new Error(`could not start practice (${res.status})`);
         const body = (await res.json()) as { session: { id: string; itemIds: string[] } };
@@ -357,7 +357,7 @@ export function PracticeDrill() {
     try {
       const res = await fetch(`${apiBase()}${apiPath("submitPractice", { id: sessionId })}`, {
         method: "POST",
-        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
+        headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({
           tzOffsetMinutes: utcOffsetMinutes(),
           // Dropped cards are omitted entirely: the server grades what it is
