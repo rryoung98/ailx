@@ -359,8 +359,8 @@ export function Runner(props: TrackUIProps) {
   };
 
   /**
-   * Real vibe-coding loop (BYOK): send brief + current document + request to
-   * OpenRouter, expect the COMPLETE updated document in one ```html fence,
+   * Real vibe-coding loop: send brief + current document + request to the
+   * connected endpoint, expect the COMPLETE updated document in one ```html fence,
    * apply it to the editor and refresh the sandboxed preview. The CSP
    * srcdoc wrapper is unchanged — the artifact stays a contained site.
    * Errors surface inline and never crash the runner.

@@ -12,7 +12,15 @@ behind ngrok.
 - Runtime: Node. The handlers use `pg`, `node:zlib` and `node:crypto`. Do not
   move them to the Edge runtime.
 - The `services/openrouter-proxy` Vercel project is separate. This deployment
-  does not affect it.
+  does not affect it. It is still deployed from THIS repo, and it stays: the
+  exam service's `/v1/model/*` gateway refuses an unauthenticated caller by
+  design, so the GitHub Pages export has no way to reach it (TEN-62, AGENTS.md
+  "The shared demo has no anonymous path").
+- `OPENROUTER_KEY`, `AILX_PROVIDER_KEY_SECRET` and `AILX_MODEL_CALLBACK_URL`
+  belong to the EXAM SERVICE, not to this project. `AILX_MODEL_CALLBACK_URL`
+  must name a page of THIS frontend (`https://<origin>/exam`): the provider
+  returns the browser there with `?code=&state=`, and the page hands both to
+  the service, which does the exchange. The browser never receives a key.
 
 ## 1. Environment variables
 

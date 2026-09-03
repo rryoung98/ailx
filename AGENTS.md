@@ -19,7 +19,7 @@ browser called a route the deployed service did not have. Do not bring either ba
 - `instruments/demo-2026.1/` — the ONLY instrument in this repo. PUBLIC released-practice tier for the static demo: 20 T2 items whose keys/rationales are published on purpose, no score of record. Self-contained and REDACTED — `manifest.yaml` sets `redacted: true`, and the content-tools loader refuses the package if a rubric `description`, a `band_anchors` block or a `prompts/` directory ever appears. Regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`
 - The OPERATIONAL tier (`instruments/2026.1`: 84 keyed T2 items, T1/T3/T4 judge prompts, rubric marking detail, the T1/T3/T4 `form.json` files) lives in the PRIVATE backend repo and must never be added here. `packages/content-tools/test/public-tree.test.ts` fails the build if it comes back
 - `instruments/characters/2026.1/` — the sixteen player-type characters (art direction, prompts, vetting ledger); assets ship in `apps/web/public/characters/`
-- `services/` — openrouter-proxy (the shared demo MODEL proxy; it holds no exam content and answers no exam route)
+- `services/` — openrouter-proxy (the shared demo MODEL proxy; it holds no exam content and answers no exam route). TEN-62 moved the proxy INTO the exam service and put auth in front of it, and it STAYS HERE ANYWAY: every `/v1/model/*` route is mounted through `apiRoute`, so an anonymous caller gets 401 before a body is read, and the GitHub Pages export has no service and no identity to offer. Deleting it would leave the static demo with no way to call a model at all. See "The shared demo has no anonymous path" below
 - `infra/` — GCP infrastructure
 
 ## The repository split
@@ -165,6 +165,40 @@ See the PRIVATE repo's README §3. If you want to set `DATABASE_URL` here, run
 - `AILX_E2E_API_BASE` — Playwright only: the exam service the suite drives. No default, and no
   staging (every spec appends rows). `AILX_E2E_BASE_URL` / `AILX_E2E_PORT` pick the frontend
   under test.
+
+## The model gateway, and why the browser holds no key
+
+A candidate's OpenRouter key lives on the EXAM SERVICE, sealed AES-256-GCM
+against their identity, and the service does the OAuth PKCE exchange (TEN-62;
+`packages/model-proxy` in the private repo). The browser redirects, comes back
+with a code it hands straight over, and is told a 12-hex FINGERPRINT. It never
+receives a provider credential and cannot build an `Authorization` header for
+one: `ailx:openrouter-key` is gone, and no request builder in
+`packages/tracks/*` takes a key parameter.
+
+- The six routes are in the frozen manifest (`packages/contract/src/routes.ts`,
+  `MODEL_ROOT`). `apps/web/lib/data/modelGateway.ts` is the only client, and
+  `apiBase()` in `lib/mode.ts` is still the only reader of
+  `NEXT_PUBLIC_AILX_API_BASE`.
+- A "connection" is now an ENDPOINT in one browser slot (`ailx:llm-base-url`),
+  never a key: the service's gateway hosted, the capped demo proxy or a local
+  server statically. The run-start panel owns that slot; the runners read it
+  and get identity from the host's `modelFetch` (`TrackUIProps`).
+- **Do not put the copy back.** "Your key stays in this browser" was true and
+  is not. The replacement is stronger and is said plainly: the browser never
+  receives the key, the service holds it sealed against your account, and
+  disconnecting deletes it.
+
+### The shared demo has no anonymous path
+
+Checked against the deployed service, not assumed: all six `/v1/model/*` routes
+go through `apiRoute`, which refuses an unauthenticated caller with 401 before
+reading a body, and `handleChatCompletion` needs a `ProxyContext` that cannot
+exist without an `authRef`. There is no anonymous cap and no anonymous route.
+So the GitHub Pages export — no service, no identity — keeps
+`services/openrouter-proxy`, and it has NO personal-key affordance at all: no
+sign-in, no paste box. The static tier issues no score of record, so it does
+not need a credential.
 
 ## Shared-demo proxy environment (`services/openrouter-proxy`)
 - `AILX_ALLOWED_ORIGINS` — optional comma/whitespace separated list of extra allowed CORS
