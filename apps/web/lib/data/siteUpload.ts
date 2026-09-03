@@ -14,7 +14,7 @@
 import { writeStoredZip, type ZipFile } from "@ailx/core";
 import { isServerMode } from "../mode";
 import type { StorageLike } from "@ailx/session";
-import { apiPath, canonicalSitePath, siteUrlPath } from "@ailx/contract";
+import { CLIENT_TS_HEADER, apiPath, canonicalSitePath, siteUrlPath } from "@ailx/contract";
 import { serviceHeaders } from "./traceparent";
 import {
   browserApiOptions,
@@ -230,7 +230,7 @@ async function uploadSiteZipDirect(
       headers: {
         "content-type": "application/json",
         ...(await serviceHeaders(storage)),
-        "x-ailx-client-ts": new Date().toISOString(),
+        [CLIENT_TS_HEADER]: new Date().toISOString(),
       },
       body: JSON.stringify({ uploadId: ticket.uploadId, seq: T1_SITE_SEQ }),
     });
@@ -284,7 +284,7 @@ export async function uploadSiteZip(
         headers: {
           "content-type": "application/zip",
           ...(await serviceHeaders(storage)),
-          "x-ailx-client-ts": new Date().toISOString(),
+          [CLIENT_TS_HEADER]: new Date().toISOString(),
         },
         body: zip,
       },

@@ -57,6 +57,14 @@ export {
   type HeaderMap,
 } from "./identity.js";
 export {
+  AUTHORIZATION_HEADER,
+  BROWSER_REQUEST_HEADERS,
+  CLIENT_TS_HEADER,
+  CONTENT_TYPE_HEADER,
+  TRACEPARENT_HEADER,
+  isAllowedRequestHeader,
+} from "./headers.js";
+export {
   DEFAULT_REPO_NAME,
   SITE_INDEX,
   T1_SITE_RESPONSE_KIND,

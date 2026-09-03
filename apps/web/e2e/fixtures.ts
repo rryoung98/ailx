@@ -1,7 +1,7 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { ATTEMPT_KEY, TRACK_IDS, append, type SequencedEntry, type SessionConfig, type TrackId } from "@ailx/session";
-import { apiPath, DEV_USER_HEADER } from "@ailx/contract";
+import { apiPath, CLIENT_TS_HEADER, DEV_USER_HEADER } from "@ailx/contract";
 import { fixtureArtifact } from "../lib/instrument/sampleAttempt";
 import { completedLog } from "../test/helpers/completedAttempt";
 import { DEV_USER_KEY, syncKey } from "../lib/data/persistence";
@@ -328,7 +328,7 @@ export const test = base.extend<AilxFixtures>({
         headers: {
           [DEV_USER_HEADER]: devUser,
           "content-type": "application/zip",
-          "x-ailx-client-ts": new Date().toISOString(),
+          [CLIENT_TS_HEADER]: new Date().toISOString(),
         },
         data: Buffer.from(buildSiteZip(files)),
       });
