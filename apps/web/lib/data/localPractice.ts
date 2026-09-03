@@ -31,7 +31,7 @@ import {
 } from "@ailx/report";
 import { apiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
-import { authHeaders } from "./authHeaders";
+import { serviceHeaders } from "./traceparent";
 import { apiBase } from "../mode";
 
 /** Minutes EAST of UTC — the sign convention `localDay` expects. */
@@ -162,7 +162,7 @@ export async function claimLocalPractice(
   try {
     const res = await fetchFn(`${apiBase()}${apiPath("claimPractice")}`, {
       method: "POST",
-      headers: { "content-type": "application/json", ...(await authHeaders(storage)) },
+      headers: { "content-type": "application/json", ...(await serviceHeaders(storage)) },
       body: JSON.stringify({ days }),
     });
     if (!res.ok) throw new Error(`claim failed (${res.status})`);

@@ -28,7 +28,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ApiPath, ResponseSchema } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
-import { authHeaders } from "./authHeaders";
+import { serviceHeaders, traceHeaders } from "./traceparent";
 import { apiBase } from "../mode";
 
 /** The four things a page can be, and nothing else. */
@@ -84,7 +84,11 @@ export async function serviceFetch<T>(
 ): Promise<ServiceState<T>> {
   try {
     const storage = opts.identified === true ? browserStorage() : null;
-    const headers = storage === null ? {} : await authHeaders(storage);
+    // A trace goes on EVERY read, identified or not. `/wall` and `/gallery`
+    // are anonymous and still worth being able to follow into the service;
+    // the header is 55 characters of random hex and says nothing about who
+    // asked (lib/data/traceparent.ts).
+    const headers = storage === null ? traceHeaders() : await serviceHeaders(storage);
     const res = await fetch(`${apiBase()}${path}`, {
       headers,
       cache: "no-store",
