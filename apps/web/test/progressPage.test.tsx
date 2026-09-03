@@ -25,7 +25,7 @@ import {
   type ProgressReport,
   type SittingPoint,
 } from "@ailx/report";
-import { TRACK_IDS, type TrackRawScores } from "@ailx/session";
+import type { TrackRawScores } from "@ailx/session";
 import { DEV_USER_HEADER } from "@ailx/contract";
 import {
   installMemoryStorage,
@@ -42,8 +42,11 @@ import { metadata } from "../app/progress/page.api";
 
 installMemoryStorage();
 
-const shape = (n: number): TrackRawScores =>
-  Object.fromEntries(TRACK_IDS.map((t, i) => [t, n + i])) as TrackRawScores;
+// Spelled out rather than folded from TRACK_IDS: `Object.fromEntries` returns
+// `{ [k: string]: number }`, which is not a `TrackRawScores` and only looked
+// like one through a cast. A fifth track now fails to compile here, which is
+// the answer we want from a fixture that feeds the composite.
+const shape = (n: number): TrackRawScores => ({ t1: n, t2: n + 1, t3: n + 2, t4: n + 3 });
 
 const TODAY = "2026-03-10";
 const back = (n: number): string =>
