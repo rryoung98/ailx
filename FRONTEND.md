@@ -316,8 +316,12 @@ testable.
   `services/openrouter-proxy` or a `route.api.ts`, never in the bundle.
 - `NEXT_PUBLIC_AILX_BACKEND` and `NEXT_PUBLIC_BASE_PATH` are the only permitted public vars;
   both are non-secret build facts read through `lib/mode.ts`.
-- A candidate-supplied model key is held in memory for the session and never persisted to
-  `localStorage` or sent to our backend.
+- **A candidate-supplied model key never reaches the browser at all** (TEN-62). The exam
+  service does the OAuth exchange and stores the key sealed against the caller's identity;
+  this app starts the connection, hands back the `?code=&state=` it was redirected with, and
+  displays a 12-hex fingerprint. There is no key slot in `localStorage`, and no request
+  builder in `packages/tracks/*` takes a key parameter, so no call site can send one. What a
+  model call carries from here is IDENTITY, through `TrackUIProps.modelFetch`.
 
 ### 4.4 XSS and URL handling in our own UI
 

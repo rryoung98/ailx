@@ -23,6 +23,7 @@ export { type ApiResult, FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "./api.js"
 export { API_QUERY_PARSERS, API_RESPONSE_SCHEMAS, type ResponseSchema } from "./tables.js";
 export {
   API_ROUTES,
+  MODEL_ROOT,
   apiPath,
   type ApiMethod,
   type ApiPath,

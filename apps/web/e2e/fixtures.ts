@@ -7,7 +7,7 @@ import { completedLog } from "../test/helpers/completedAttempt";
 import { DEV_USER_KEY, syncKey } from "../lib/data/persistence";
 import { checkpointKey } from "../lib/data/checkpoints";
 import { buildSiteZip, T1_SITE_SEQ, type SiteFile } from "../lib/data/siteUpload";
-import { OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
+import { LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
 import { apiRoot } from "./service";
 
 export { expect };
@@ -60,8 +60,13 @@ export interface RunSeed {
   log: SequencedEntry[];
   /** Per-track runner checkpoint, written exactly as the app stores it. */
   checkpoints?: ReadonlyArray<{ trackId: TrackId; state: unknown }>;
-  /** Seed a model connection (the T1 runner's BYOK slot). */
-  modelKey?: string;
+  /**
+   * Seed a model connection: the OpenAI-compatible ENDPOINT the runners talk
+   * to. There is no key to seed — the browser holds none in either build
+   * (TEN-62), so a spec that wants a failing model call points this at a host
+   * it then routes to a failure.
+   */
+  modelEndpoint?: string;
 }
 
 /**
@@ -79,7 +84,7 @@ export async function seedRun(page: Page, devUser: string, seed: RunSeed): Promi
   // hydrating. Specs that need to jump forward pause it explicitly.
   await page.clock.resume();
   await page.addInitScript(
-    ({ devUserKey, devUserId, attemptKey, attemptId, log, syncStateKey, checkpoints, modelKeyStorage, modelKey }) => {
+    ({ devUserKey, devUserId, attemptKey, attemptId, log, syncStateKey, checkpoints, modelBaseStorage, modelEndpoint }) => {
       window.localStorage.setItem(devUserKey, devUserId);
       window.localStorage.setItem(attemptKey, JSON.stringify({ formatVersion: 1, rev: 1, log }));
       window.localStorage.setItem(
@@ -87,7 +92,7 @@ export async function seedRun(page: Page, devUser: string, seed: RunSeed): Promi
         JSON.stringify({ serverAttemptId: attemptId, syncedThrough: 0, finalized: false }),
       );
       for (const cp of checkpoints) window.localStorage.setItem(cp.key, cp.value);
-      if (modelKey !== null) window.localStorage.setItem(modelKeyStorage, modelKey);
+      if (modelEndpoint !== null) window.localStorage.setItem(modelBaseStorage, modelEndpoint);
     },
     {
       devUserKey: DEV_USER_KEY,
@@ -105,8 +110,8 @@ export async function seedRun(page: Page, devUser: string, seed: RunSeed): Promi
           state: cp.state,
         }),
       })),
-      modelKeyStorage: OPENROUTER_KEY_STORAGE,
-      modelKey: seed.modelKey ?? null,
+      modelBaseStorage: LLM_BASE_URL_STORAGE,
+      modelEndpoint: seed.modelEndpoint ?? null,
     },
   );
 }
