@@ -52,7 +52,9 @@ describe("run start screen", () => {
 
     const connect = host.querySelector('section[aria-label="AI connection"]');
     expect(connect, "ConnectPanel must render on the start screen").not.toBeNull();
-    expect(connect!.textContent).toContain("Connect OpenRouter");
+    // The static export (this test's build) offers the capped shared demo,
+    // never a sign-in: there is no service to hold a key against (TEN-62).
+    expect(connect!.textContent).toContain("Try the shared demo model");
 
     const list = host.querySelector("ul.rule-rows");
     expect(list).not.toBeNull();
@@ -90,8 +92,10 @@ describe("run start screen", () => {
     expect(connect.className).toContain("connect-attention");
   });
 
-  it("enables the start once a key is stored (and after ConnectPanel announces a change)", async () => {
-    window.localStorage.setItem("ailx:openrouter-key", "sk-or-test");
+  it("enables the start once an endpoint is stored (and after ConnectPanel announces a change)", async () => {
+    // The gate reads the ENDPOINT slot and nothing else: the key slot it also
+    // used to read no longer exists in either build.
+    window.localStorage.setItem("ailx:llm-base-url", "https://exam.example/v1/model");
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
@@ -106,7 +110,7 @@ describe("run start screen", () => {
     expect(host.textContent).toContain("Ready");
   });
 
-  it("a custom base URL (local model, no key) also opens the gate", async () => {
+  it("a local endpoint also opens the gate", async () => {
     window.localStorage.setItem("ailx:llm-base-url", "http://localhost:11434/v1");
     host = document.createElement("div");
     document.body.appendChild(host);

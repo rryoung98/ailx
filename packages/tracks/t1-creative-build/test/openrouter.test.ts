@@ -12,12 +12,13 @@ import {
   chatCompletionsUrl,
   modelsUrl,
   CURATED_MODELS,
-  DEFAULT_BASE_URL,
+  hasModelEndpoint,
   LLM_BASE_URL_STORAGE,
-  OPENROUTER_CHAT_URL,
-  OPENROUTER_KEY_STORAGE,
   OpenRouterError,
 } from "../src/openrouter.js";
+
+/** Any endpoint at all; the module has no default and must not grow one. */
+const BASE = "https://exam.example/v1/model";
 
 const DOC = "<!doctype html><html><head><title>x</title></head><body>hi</body></html>";
 
@@ -68,16 +69,19 @@ describe("buildVibeRequest / buildFetchInit", () => {
     expect(user).toContain(DOC);
     expect(user).toContain("add a project grid");
   });
-  it("fetch init is a POST with bearer auth and JSON body (key injected, never hardcoded)", () => {
-    const init = buildFetchInit("sk-or-test123", payload);
+  it("fetch init is a POST with a JSON body and NO credential (TEN-62)", () => {
+    const init = buildFetchInit(payload);
     expect(init.method).toBe("POST");
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer sk-or-test123");
     expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
     expect(JSON.parse(init.body as string)).toEqual(payload);
   });
-  it("no key material ships in the module (public repo)", () => {
-    // The storage key name is the only 'key' constant.
-    expect(OPENROUTER_KEY_STORAGE).toBe("ailx:openrouter-key");
+  it("cannot send an Authorization header: there is no header but content-type", () => {
+    // The signature is the guard. `buildFetchInit` takes no key, so no call
+    // site can pass one, and the built headers are exactly one entry.
+    expect(Object.keys(buildFetchInit(payload).headers as Record<string, string>)).toEqual([
+      "Content-Type",
+    ]);
+    expect(buildFetchInit.length).toBe(1);
   });
 });
 
@@ -95,22 +99,29 @@ describe("requestVibeCompletion (mocked fetch — no network)", () => {
       status: 200,
       json: async () => ({ choices: [{ message: { content: "reply-text" } }] }),
     });
-    const text = await requestVibeCompletion(fetchMock, "sk-or-x", payload);
+    const text = await requestVibeCompletion(fetchMock, payload, BASE);
     expect(text).toBe("reply-text");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(OPENROUTER_CHAT_URL);
-    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer sk-or-x");
+    expect(url).toBe(`${BASE}/chat/completions`);
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
   });
 
   it("maps 401/429/other statuses to inline-safe OpenRouterError messages", async () => {
     const at = (status: number) =>
       requestVibeCompletion(
         vi.fn().mockResolvedValue({ ok: false, status, json: async () => ({}) }),
-        "k",
         payload,
+        BASE,
       );
-    await expect(at(401)).rejects.toThrow(/401.*key|key.*401/i);
+    // 401 is no longer "check your key" — this browser has none. It means the
+    // endpoint would not accept the SITTING.
+    await expect(at(401)).rejects.toThrow(/401/);
+    await expect(at(401)).rejects.toThrow(/sitting/i);
+    await expect(at(401)).rejects.not.toThrow(/check the key/i);
+    // 402 is the shared demo budget, which only exists now that somebody
+    // else's key is paying.
+    await expect(at(402)).rejects.toThrow(/budget/i);
     await expect(at(429)).rejects.toThrow(/429/);
     await expect(at(500)).rejects.toThrow(/500/);
     await expect(at(401)).rejects.toBeInstanceOf(OpenRouterError);
@@ -118,13 +129,13 @@ describe("requestVibeCompletion (mocked fetch — no network)", () => {
 
   it("wraps network failures and malformed bodies", async () => {
     await expect(
-      requestVibeCompletion(vi.fn().mockRejectedValue(new TypeError("offline")), "k", payload),
+      requestVibeCompletion(vi.fn().mockRejectedValue(new TypeError("offline")), payload, BASE),
     ).rejects.toThrow(/network/i);
     await expect(
       requestVibeCompletion(
         vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ nope: 1 }) }),
-        "k",
         payload,
+        BASE,
       ),
     ).rejects.toThrow(/no message content/i);
   });
@@ -151,26 +162,47 @@ describe("model list", () => {
     expect(parseModelsResponse({ data: "x" })).toEqual([]);
   });
   it("fetchModelIds never throws (mocked fetch)", async () => {
-    expect(await fetchModelIds(vi.fn().mockRejectedValue(new Error("x")), "k")).toEqual([]);
+    expect(await fetchModelIds(vi.fn().mockRejectedValue(new Error("x")), BASE)).toEqual([]);
     expect(
       await fetchModelIds(
         vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ data: [{ id: "m/1" }] }) }),
-        "k",
+        BASE,
       ),
     ).toEqual(["m/1"]);
   });
 });
 
-describe("custom API base URL (local OpenAI-compatible servers)", () => {
-  it("normalizeBaseUrl trims, strips trailing slashes and defaults", () => {
-    expect(normalizeBaseUrl(undefined)).toBe(DEFAULT_BASE_URL);
-    expect(normalizeBaseUrl("")).toBe(DEFAULT_BASE_URL);
-    expect(normalizeBaseUrl("   ")).toBe(DEFAULT_BASE_URL);
+describe("the endpoint (the exam gateway, the demo proxy, a local server)", () => {
+  it("normalizeBaseUrl trims and strips trailing slashes, and has NO default", () => {
+    // The old default was `https://openrouter.ai/api/v1`, which worked only
+    // because a key sat beside it in this browser. Empty must stay empty, or
+    // "not connected" silently becomes "call the provider with no key".
+    expect(normalizeBaseUrl(undefined)).toBe("");
+    expect(normalizeBaseUrl(null)).toBe("");
+    expect(normalizeBaseUrl("")).toBe("");
+    expect(normalizeBaseUrl("   ")).toBe("");
     expect(normalizeBaseUrl("http://localhost:11434/v1/")).toBe("http://localhost:11434/v1");
     expect(normalizeBaseUrl(" http://localhost:11434/v1// ")).toBe("http://localhost:11434/v1");
   });
+  it("hasModelEndpoint is the connected predicate", () => {
+    expect(hasModelEndpoint(undefined)).toBe(false);
+    expect(hasModelEndpoint(null)).toBe(false);
+    expect(hasModelEndpoint("  ")).toBe(false);
+    expect(hasModelEndpoint("/")).toBe(false);
+    expect(hasModelEndpoint(BASE)).toBe(true);
+  });
+  it("no module constant names the provider's own origin", async () => {
+    const mod: Record<string, unknown> = await import("../src/openrouter.js");
+    for (const [name, value] of Object.entries(mod)) {
+      if (typeof value !== "string") continue;
+      expect({ name, namesProvider: value.includes("openrouter.ai") }).toEqual({
+        name,
+        namesProvider: false,
+      });
+    }
+  });
   it("derives chat/models endpoints from any base", () => {
-    expect(chatCompletionsUrl()).toBe(OPENROUTER_CHAT_URL);
+    expect(chatCompletionsUrl(BASE)).toBe(`${BASE}/chat/completions`);
     expect(chatCompletionsUrl("http://localhost:11434/v1")).toBe(
       "http://localhost:11434/v1/chat/completions",
     );
@@ -179,34 +211,28 @@ describe("custom API base URL (local OpenAI-compatible servers)", () => {
   it("the storage slot is declared", () => {
     expect(LLM_BASE_URL_STORAGE).toBe("ailx:llm-base-url");
   });
-  it("an empty key omits the Authorization header (keyless local servers)", () => {
-    const payload = buildVibeRequest({ model: "m", brief: "b", currentHtml: "<p/>", userPrompt: "p" });
-    const init = buildFetchInit("", payload);
-    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
-    expect((init.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
-  });
-  it("requestVibeCompletion targets the custom base, keyless (mocked fetch)", async () => {
+  it("requestVibeCompletion targets the given base and sends no credential", async () => {
     const payload = buildVibeRequest({ model: "kimi-k3", brief: "b", currentHtml: "<p/>", userPrompt: "p" });
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({ choices: [{ message: { content: "ok" } }] }),
     });
-    await requestVibeCompletion(fetchMock, "", payload, "http://localhost:11434/v1/");
+    await requestVibeCompletion(fetchMock, payload, "http://localhost:11434/v1/");
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:11434/v1/chat/completions");
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
   });
-  it("fetchModelIds targets the custom base without auth when keyless", async () => {
+  it("fetchModelIds targets the given base and sends no credential", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
       json: async () => ({ data: [{ id: "kimi-k3" }] }),
     });
-    expect(await fetchModelIds(fetchMock, "", "http://localhost:11434/v1")).toEqual(["kimi-k3"]);
+    expect(await fetchModelIds(fetchMock, "http://localhost:11434/v1")).toEqual(["kimi-k3"]);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:11434/v1/models");
-    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    expect(init.headers).toBeUndefined();
   });
 });
 
@@ -216,14 +242,15 @@ describe("clearLlmConnection", () => {
     return { removed, removeItem: (k: string) => void removed.push(k) };
   };
 
-  it("removes BOTH connection slots (key alone would keep real mode alive)", () => {
+  it("removes the endpoint slot — the only slot a connection now has", () => {
     const s = spy();
     clearLlmConnection(s);
-    expect(s.removed).toEqual([OPENROUTER_KEY_STORAGE, LLM_BASE_URL_STORAGE]);
+    expect(s.removed).toEqual([LLM_BASE_URL_STORAGE]);
   });
 
-  it("covers exactly the documented key list", () => {
-    expect(LLM_CONNECTION_KEYS).toEqual([OPENROUTER_KEY_STORAGE, LLM_BASE_URL_STORAGE]);
+  it("covers exactly the documented slot list, and it names no key", () => {
+    expect(LLM_CONNECTION_KEYS).toEqual([LLM_BASE_URL_STORAGE]);
+    expect(LLM_CONNECTION_KEYS.join(" ")).not.toContain("openrouter-key");
   });
 
   it("is a no-op for null/undefined storage (SSR, private mode)", () => {
@@ -231,20 +258,18 @@ describe("clearLlmConnection", () => {
     expect(() => clearLlmConnection(undefined)).not.toThrow();
   });
 
-  it("keeps clearing the remaining slots when one removal throws", () => {
-    const removed: string[] = [];
-    clearLlmConnection({
-      removeItem: (k: string) => {
-        if (k === OPENROUTER_KEY_STORAGE) throw new Error("blocked");
-        removed.push(k);
-      },
-    });
-    expect(removed).toEqual([LLM_BASE_URL_STORAGE]);
+  it("never throws when a removal is blocked (private mode)", () => {
+    expect(() =>
+      clearLlmConnection({
+        removeItem: () => {
+          throw new Error("blocked");
+        },
+      }),
+    ).not.toThrow();
   });
 
-  it("leaves unrelated keys alone", () => {
+  it("leaves unrelated slots alone", () => {
     const store = new Map([
-      [OPENROUTER_KEY_STORAGE, "sk-or-1"],
       [LLM_BASE_URL_STORAGE, "http://localhost:11434/v1"],
       ["ailx:attempt", "keep-me"],
     ]);

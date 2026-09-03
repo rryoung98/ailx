@@ -12,7 +12,7 @@ import {
   VIDEO_MODEL_ID,
 } from "./imageModel.js";
 import {
-  OPENROUTER_KEY_STORAGE,
+  hasModelEndpoint,
   LLM_BASE_URL_STORAGE,
   CURATED_IMAGE_MODELS,
   buildImageRequest,
@@ -158,9 +158,8 @@ export function Runner(props: TrackUIProps) {
   const [finishStep, setFinishStep] = useState<null | "notes" | "submit">(null);
   /** Armed only when Submit is pressed with an EMPTY scored note. */
   const [confirmSkipNote, setConfirmSkipNote] = useState(false);
-  // BYOK OpenRouter image generation — SAME key slot as T1's assist panel;
-  // the key lives only in the candidate's browser.
-  const [orKey, setOrKey] = useState("");
+  // Real image generation — SAME endpoint slot as T1's assist panel. This
+  // browser holds no provider key: the endpoint does (TEN-62).
   const [baseUrl, setBaseUrl] = useState<string | undefined>(undefined);
   const [model, setModel] = useState<string>(CURATED_IMAGE_MODELS[0]);
   const [customModel, setCustomModel] = useState("");
@@ -198,11 +197,12 @@ export function Runner(props: TrackUIProps) {
     onPresentation?.(submitted ? "t4-gallery" : null);
   }, [onPresentation, submitted]);
 
-  // Load the shared BYOK key/base on mount (browser only — SSR safe).
+  /**
+   * The endpoint this run talks to, from the ONE shared slot T1 reads too, so
+   * one connection serves the whole exam. A URL, never a credential.
+   */
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(OPENROUTER_KEY_STORAGE);
-      if (stored) setOrKey(stored);
       const storedBase = window.localStorage.getItem(LLM_BASE_URL_STORAGE);
       if (storedBase) setBaseUrl(storedBase);
     } catch {
@@ -210,22 +210,30 @@ export function Runner(props: TrackUIProps) {
     }
   }, []);
 
-  const updateKey = (value: string) => {
-    setOrKey(value);
+  /**
+   * Stop using the endpoint for the rest of this run and fall back to the
+   * offline simulator. Not a disconnection: a key the service holds is still
+   * held, and the host decides what else to forget.
+   */
+  const dropEndpoint = () => {
+    setBaseUrl(undefined);
     setGenError(null);
     try {
-      // Same slot T1 writes — connecting here connects the whole exam.
-      if (value.trim().length > 0) {
-        window.localStorage.setItem(OPENROUTER_KEY_STORAGE, value.trim());
-      } else {
-        window.localStorage.removeItem(OPENROUTER_KEY_STORAGE);
-      }
+      window.localStorage.removeItem(LLM_BASE_URL_STORAGE);
     } catch {
       /* non-fatal */
     }
+    props.onModelDisconnect?.();
   };
 
-  const hasKey = orKey.trim().length > 0;
+  /** How a model call is issued: the host attaches identity, or plain fetch. */
+  const modelFetch = useMemo(
+    () => props.modelFetch ?? ((url: string, init?: RequestInit) => fetch(url, init)),
+    [props.modelFetch],
+  );
+
+  /** Real mode is exactly "there is an endpoint to call", never "there is a key". */
+  const realMode = hasModelEndpoint(baseUrl);
   const effectiveModel = customModel.trim() || model;
 
   const now = () => new Date().toISOString();
@@ -261,7 +269,7 @@ export function Runner(props: TrackUIProps) {
    * recovers the candidate's text when nothing was produced.
    */
   const runGeneration = async (p: string, onFail: () => void = () => {}) => {
-    if (!hasKey) {
+    if (!realMode) {
       // No key → deterministic offline demo, labeled as such. Repeating the
       // same prompt gets a fresh VARIATION (like a real model's sampling):
       // the nonce is how many drafts already used this exact prompt.
@@ -290,8 +298,7 @@ export function Runner(props: TrackUIProps) {
     setGenError(null);
     try {
       const { dataUri, modelId } = await requestImage(
-        fetch,
-        orKey.trim(),
+        modelFetch,
         buildImageRequest(p, effectiveModel),
         baseUrl,
       );
@@ -612,8 +619,8 @@ export function Runner(props: TrackUIProps) {
           >
             {drafts.length === 0 && (
               <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-                {hasKey
-                  ? "Real image generation (your OpenRouter key, your browser only). Every draft is logged with the model id; finals keep the full-resolution image."
+                {realMode
+                  ? "Real image generation. This browser holds no provider key — the call goes to the endpoint above, which pays for it. Every draft is logged with the model id; finals keep the full-resolution image."
                   : "demo simulator — deterministic offline demo: same prompt, same image. Name colors, objects and composition to steer it. Every draft is logged. Connect a model on the run start screen to generate real images here."}
               </p>
             )}
@@ -672,7 +679,7 @@ export function Runner(props: TrackUIProps) {
               prompt box for the same attention. */}
           {finishStep !== null ? null : (
           <>
-          {hasKey ? (
+          {realMode ? (
             <div className="t4-row-model" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <select
                 aria-label="Image model"
@@ -697,7 +704,7 @@ export function Runner(props: TrackUIProps) {
                 type="button"
                 className="t4-btn ghost"
                 style={{ padding: "4px 10px", fontSize: 12 }}
-                onClick={() => updateKey("")}
+                onClick={dropEndpoint}
               >
                 Disconnect
               </button>
