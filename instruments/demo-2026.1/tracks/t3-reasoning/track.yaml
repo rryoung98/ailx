@@ -5,9 +5,16 @@ config:
   analysis_word_target: 1200
   source_document_pages: [50, 70]     # long, dense, unfamiliar, non-searchable
   transcript_recorded: true           # prompts, revisions, latencies, regenerations
+  # The planted-error component carries 50 of T3's 160 points and its item
+  # count IS the number of plants a form surfaces, so this number is a
+  # measurement decision, not bookkeeping. `count_per_form` is checked against
+  # the form the browser deals at instrument load: a declaration the form does
+  # not satisfy refuses the package (it used to say 4 against a form of 8, and
+  # every sitting quietly raised `errorCatchRate.underpowered`).
   seeded_errors:                      # known-incorrect outputs at predetermined points
     kinds: [misattributed-figure, false-causal-claim, fabricated-citation, wrong-calculation]
-    count_per_form: 4
+    count_per_form: 8                 # two instances of each of the four kinds; the
+                                      # scorer's floor (ERROR_CATCH_MIN_SURFACED) is 8
   reliance_constructs: [over-reliance, under-reliance]   # objective, model-free
   jury:
     kind: heterogeneous-three-model   # three models from three families

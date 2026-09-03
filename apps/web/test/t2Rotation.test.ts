@@ -10,8 +10,9 @@
  * /validate). The operational instrument uses fixed forms; this rotation is
  * demo-only.
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  snapshotTrack,
   t2AnswerKeys,
   t2BankSha256,
   t2DeckComposition,
@@ -189,5 +190,52 @@ describe("T2 deck rotation (demo-only)", () => {
     expect(deck.filter(isMedia)).toHaveLength(2 * declared.mediaPairs);
     expect(deck.filter((i) => !isMedia(i) && i.type !== "provenance")).toHaveLength(declared.text);
     expect(deck.filter((i) => i.type === "provenance")).toHaveLength(declared.provenance);
+  });
+});
+
+/**
+ * TEN-73's second finding. The sampler is capped by the pool it is handed, so
+ * an oversized `config.deck` used to be dealt SHORT and scored — a deck nobody
+ * declared, reported as the form. It now refuses against the canonical en
+ * bank. A thin TRANSLATION still degrades: that is a bank fact with a written
+ * policy, not a wrong declaration.
+ */
+describe("an oversized t2 deck declaration refuses", () => {
+  const deckDecl = () => snapshotTrack("t2").config.deck as Record<string, number>;
+  const AS_DECLARED = { ...deckDecl() };
+  afterEach(() => {
+    Object.assign(deckDecl(), AS_DECLARED);
+  });
+
+  it("refuses a stratum the en bank cannot deal, naming the shortfall", () => {
+    for (const [field, value, needle] of [
+      ["media_pairs", 3, /media_pairs 3 against 2/],
+      ["text", 9, /text 9 against 4/],
+      ["provenance", 5, /provenance 5 against 2/],
+    ] as const) {
+      Object.assign(deckDecl(), AS_DECLARED, { [field]: value });
+      expect(() => t2DeckItemIds("en")).toThrow(needle);
+      expect(() => t2DeckItemIds("en", "att-oversized")).toThrow(/cannot deal/);
+      // Refused for every locale: the declaration is one global statement.
+      expect(() => t2DeckItemIds("ja", "att-oversized")).toThrow(/cannot deal/);
+      expect(() => t2Items("en", "att-oversized")).toThrow(/track.yaml/);
+      expect(() => trackConfig("t2", "en", "att-oversized")).toThrow(/cannot deal/);
+    }
+    Object.assign(deckDecl(), { media_pairs: 3, text: 9, provenance: 5 });
+    expect(() => t2DeckItemIds("en")).toThrow(/media_pairs 3.*text 9.*provenance 5/s);
+  });
+
+  it("deals a declaration the bank can exactly satisfy", () => {
+    Object.assign(deckDecl(), { media_pairs: 2, text: 4, provenance: 2 });
+    expect(t2DeckItemIds("en", "att-full")).toHaveLength(2 * 2 + 4 + 2);
+  });
+
+  it("a thin translation locale still degrades rather than refusing", () => {
+    // ja and ko hold one provenance item against a declared two. Refusing them
+    // would close the Japanese and Korean demo instead of closing the defect.
+    for (const locale of ["ja", "ko"]) {
+      expect(t2DeckItemIds(locale, "att-thin")).toHaveLength(5);
+    }
+    expect(t2DeckItemIds("en", "att-thin")).toHaveLength(6);
   });
 });
