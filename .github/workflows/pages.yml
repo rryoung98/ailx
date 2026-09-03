@@ -55,7 +55,7 @@ jobs:
             "$AILX_SHA" "${{ github.ref_name }}" "${{ github.run_id }}" \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > apps/web/out/version.json
           touch apps/web/out/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: apps/web/out
 
