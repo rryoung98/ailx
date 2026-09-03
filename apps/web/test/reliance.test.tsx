@@ -2,7 +2,7 @@
 /**
  * Reliance is never shown as a bare number — TEN-35.
  *
- * T3's `overReliance` is 50 points and `underReliance` is 30, both estimated from at most 8
+ * T3's `errorCatchRate` is 50 points and `adviceUptakeRate` is 30, both estimated from at most 8
  * planted errors and the correct-advice claims beside them. On 8 events the
  * 95% interval on a rate is wider than half the scale, so a two-decimal rate
  * printed on its own claims a precision the instrument does not have.
@@ -99,7 +99,7 @@ describe("the report never shows a reliance rate without its interval", () => {
     await render(createElement(ReportPage));
     const raw = completedState().tracks.t3.score!.raw;
     const warned = host.querySelector('[data-testid="reliance-underpowered"]');
-    expect(Boolean(warned)).toBe(raw["overReliance.underpowered"] === 1);
+    expect(Boolean(warned)).toBe(raw["errorCatchRate.underpowered"] === 1);
     if (warned) {
       expect(warned.textContent).toBe(relianceReportFromRaw(raw)!.underpoweredNote);
       expect(warned.textContent).toContain(`surfaced ${raw.plantedSurfaced} planted error`);
@@ -114,7 +114,7 @@ describe("RelianceCard on its own", () => {
     plantedCaught,
     adviceSurfaced: 4,
     adviceAdopted: 3,
-    "overReliance.underpowered": plantedSurfaced < 8 ? 1 : 0,
+    "errorCatchRate.underpowered": plantedSurfaced < 8 ? 1 : 0,
   });
 
   it("says in plain English that an underpowered sitting is underpowered", async () => {

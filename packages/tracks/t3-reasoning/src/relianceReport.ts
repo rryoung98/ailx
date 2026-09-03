@@ -10,7 +10,7 @@
  * most 8 planted errors and the correct-advice claims beside them. On 8 events
  * a rate near 0.5 carries a 95% interval about 0.57 wide, so 5 of 8 (0.31 to
  * 0.86) and 7 of 8 (0.53 to 0.98) sit inside each other's noise while 12.5 of
- * the 50 RSR points ride on the difference. A two-decimal rate on its own reads as a measurement it is not.
+ * the 50 planted-error points ride on the difference. A two-decimal rate on its own reads as a measurement it is not.
  * Every rate below therefore carries its interval, and the report says how
  * many events it rests on.
  *
@@ -29,7 +29,7 @@
  * sitting that surfaced nothing has not shown that.
  */
 import {
-  OVER_RELIANCE_MIN_SURFACED, proportionDifferenceInterval, relianceBand, wilsonInterval,
+  ERROR_CATCH_MIN_SURFACED, proportionDifferenceInterval, relianceBand, wilsonInterval,
   type Interval, type RelianceBand,
 } from "./scoring.js";
 
@@ -52,7 +52,7 @@ export interface RelianceReport {
   band: RelianceBand | null;
   plantedSurfaced: number;
   adviceSurfaced: number;
-  /** True when the form surfaced fewer than OVER_RELIANCE_MIN_SURFACED plants. */
+  /** True when the form surfaced fewer than ERROR_CATCH_MIN_SURFACED plants. */
   underpowered: boolean;
   /** Set only when {@link RelianceReport.underpowered}. */
   underpoweredNote: string | null;
@@ -111,12 +111,12 @@ export function relianceReportFromRaw(raw: Record<string, number>): RelianceRepo
   const under = underDefined ? underCount / adviceSurfaced : 0;
   // Derived, not trusted: a stored record with the flag missing or stale must
   // not silence the warning. The flag agreeing is asserted in the T3 scorer.
-  // `rsr.underpowered` is the pre-TEN-38 spelling of the same flag; a record
-  // stored before the rename still has to warn.
+  // Only the current spelling is read. The two earlier spellings of this flag
+  // (TEN-38, TEN-72) were never written by a production sitting, so a reader
+  // for them would buy nothing and keep a dead name alive.
   const underpowered =
-    raw["overReliance.underpowered"] === 1 ||
-    raw["rsr.underpowered"] === 1 ||
-    plantedSurfaced < OVER_RELIANCE_MIN_SURFACED;
+    raw["errorCatchRate.underpowered"] === 1 ||
+    plantedSurfaced < ERROR_CATCH_MIN_SURFACED;
   return {
     rows: [
       {
@@ -162,7 +162,7 @@ export function relianceReportFromRaw(raw: Record<string, number>): RelianceRepo
     underpoweredNote: underpowered
       ? `This sitting surfaced ${plural(plantedSurfaced, "planted error", "planted errors")}. ` +
         "The floor for reporting a rate is " +
-        `${OVER_RELIANCE_MIN_SURFACED}. The over-reliance rate and the band rest on ` +
+        `${ERROR_CATCH_MIN_SURFACED}. The over-reliance rate and the band rest on ` +
         `${plural(plantedSurfaced, "event", "events")}, so treat both as provisional.`
       : null,
     precisionNote:

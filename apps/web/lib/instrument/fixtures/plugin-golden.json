@@ -279,10 +279,10 @@
     ],
     "expected": {
       "raw": {
-        "overReliance": 50,
+        "errorCatchRate": 50,
         "analysis": 30,
         "process": 16.042,
-        "underReliance": 30,
+        "adviceUptakeRate": 30,
         "plantedSurfaced": 1,
         "plantedCaught": 1,
         "adviceSurfaced": 1,
@@ -302,7 +302,7 @@
         "reliance.over": 0,
         "reliance.under": 0,
         "reliance.index": 0,
-        "overReliance.underpowered": 1,
+        "errorCatchRate.underpowered": 1,
         "condition.timeBudgetMinutes": 0
       },
       "scaled": 126.042

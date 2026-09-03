@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { runPure } from "@ailx/core";
 import { itemId } from "@ailx/session";
 import { validateT2Config } from "@ailx/track-t2";
-import { OVER_RELIANCE_MIN_SURFACED, t3TimeBudgetSeconds, validateT3Config } from "@ailx/track-t3";
+import { ERROR_CATCH_MIN_SURFACED, t3TimeBudgetSeconds, validateT3Config } from "@ailx/track-t3";
 import {
   SNAPSHOT, T3_SCENARIO, T3_SCENARIO_SHA256, snapshotRubricVersion,
   snapshotTrack, t2ExposureSeconds, t2Items, t3FormBudgetSeconds, trackConfig,
@@ -94,7 +94,7 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
     // points and its item count IS the number of plants that surface. The
     // scorer declares the same floor and flags any sitting under it.
     expect(cfg.plantedErrors.length).toBe(8);
-    expect(cfg.plantedErrors.length).toBeGreaterThanOrEqual(OVER_RELIANCE_MIN_SURFACED);
+    expect(cfg.plantedErrors.length).toBeGreaterThanOrEqual(ERROR_CATCH_MIN_SURFACED);
     expect(cfg.correctAdvice.length).toBe(4);
     expect(sha256Hex(canonicalJson(T3_SCENARIO))).toBe(T3_SCENARIO_SHA256);
     // Trilateral-memorandum content upgrade kept the contract-pinned claim

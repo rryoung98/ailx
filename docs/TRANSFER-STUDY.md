@@ -247,7 +247,7 @@ AILX say its numbers behave like the literature's.
 
 ### 3.3 Enough events per sitting for a rate to be estimable
 
-The shipped floor is eight planted errors (`OVER_RELIANCE_MIN_SURFACED`). Eight binary
+The shipped floor is eight planted errors (`ERROR_CATCH_MIN_SURFACED`). Eight binary
 events give a 95% binomial interval of about ±0.35 on a rate. That interval
 cannot support an individual score.
 

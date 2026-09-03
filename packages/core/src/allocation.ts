@@ -209,19 +209,23 @@ const T2: TrackAllocation = {
  * T3 · Calibrated Reliance — 160 pts, the centre of the instrument.
  *
  * The named construct is knowing when NOT to use the model, measured
- * two-tailed: `overReliance` is the non-reliance half (did you reject seeded
- * wrong output), `underReliance` is the positive half (did you adopt correct
- * advice after deliberating). Over-reliance and under-reliance are both
- * failures, so the reported index is signed and the two halves carry points
- * separately.
+ * two-tailed: `errorCatchRate` is the non-reliance half (did you reject
+ * seeded wrong output), `adviceUptakeRate` is the positive half (did you
+ * adopt correct advice after deliberating). Over-reliance and under-reliance
+ * are both failures, so the reported index is signed and the two halves carry
+ * points separately.
  *
- * These two keys were called `rsr` and `rair` until 2026-09-02. Those are
- * Schemmer et al.'s published statistics (IUI '23,
- * doi:10.1145/3581641.3584066), which condition on an independent first-stage
- * answer T3 never collects, so the names claimed a design this instrument
- * does not have. The rates T3 does measure are over- and under-reliance
- * (Passi & Vorvoreanu, MSR-TR-2022-12). See spec §T3, "Stated against our
- * own case".
+ * These two keys have been renamed twice, and both renames were the same
+ * lesson. They were `rsr` and `rair` until 2026-09-02: Schemmer et al.'s
+ * published statistics (IUI '23, doi:10.1145/3581641.3584066), which condition
+ * on an independent first-stage answer T3 never collects, so the names claimed
+ * a design this instrument does not have. TEN-38 made them `overReliance` and
+ * `underReliance`, and that was backwards: a component holds the POINTS a
+ * candidate EARNED, so a candidate who caught every plant scored high on a
+ * field called `overReliance`. TEN-72 named what the candidate did instead.
+ * The FAILURE rates keep the literature's names and live in the raw record as
+ * `reliance.over` and `reliance.under` (Passi & Vorvoreanu, MSR-TR-2022-12).
+ * See spec §T3, "Stated against our own case".
  */
 const T3: TrackAllocation = {
   code: "T3",
@@ -232,17 +236,17 @@ const T3: TrackAllocation = {
   compositeWeight: 160 / 375,
   components: [
     {
-      key: "overReliance",
+      key: "errorCatchRate",
       rubricId: "planted-error-detection",
-      label: "Planted-error detection (over-reliance tail)",
+      label: "Planted errors caught",
       points: 50,
       resolvedBy: "model-free",
       implemented: true,
     },
     {
-      key: "underReliance",
+      key: "adviceUptakeRate",
       rubricId: "appropriate-reliance",
-      label: "Deliberate adoption of correct advice (under-reliance tail)",
+      label: "Correct advice taken up after deliberation",
       points: 30,
       resolvedBy: "model-free",
       implemented: true,

@@ -1,8 +1,8 @@
 /**
  * T3 pure scoring — spec §T3 "Score allocation". 160 points.
- *   50 overReliance   planted-error detection: caught & rejected seeded wrong
- *                     outputs
- *   30 underReliance  deliberate adoption of correct advice
+ *   50 errorCatchRate    planted errors caught: the candidate rejected the
+ *                      seeded wrong output
+ *   30 adviceUptakeRate  correct advice taken up after deliberation
  *   35        process quality from the transcript (a quarter of it is
  *             DISCRIMINATING verification — see {@link verificationTally})
  *   45        analysis quality from STORED jury judgments (never called here)
@@ -29,9 +29,9 @@
  * The design that survives all three is not to ask but to make the model
  * genuinely asymmetric and measure what the candidate did. On a planted-error
  * claim the assistant is actively harmful, so rejecting it is appropriate
- * NON-reliance (the `overReliance` component). On a correct-advice claim it
+ * NON-reliance (the `errorCatchRate` component). On a correct-advice claim it
  * is right and faster, so adopting it is appropriate reliance (the
- * `underReliance` component). The key is then an empirical
+ * `adviceUptakeRate` component). The key is then an empirical
  * one — did the model make the answer better — not a normative one, and it is
  * two-tailed by construction. {@link relianceIndex} reports both tails.
  *
@@ -46,6 +46,14 @@
  * carry those names. Spec §T3, "Stated against our own case", states this
  * in full; `docs/TRANSFER-STUDY.md` §3.1 is the block that would let us
  * report the published RSR and RAIR beside them.
+ *
+ * The COMPONENTS are named for what the candidate did, and that is a second
+ * correction (TEN-72). They were `overReliance` and `underReliance` for a
+ * day, and a component holds the points a candidate EARNED: catching every
+ * plant scored 50 out of 50 on a field called `overReliance`, which reads as
+ * the opposite of what happened. The failure RATES keep the literature's
+ * names — `reliance.over` and `reliance.under` in the raw record — because
+ * those really do count failures.
  *
  * The two-tailed INDEX below is AILX's own construction: we have found no published index or scoring scheme for
  * calibrated reliance to inherit, and no published validity evidence for this
@@ -92,11 +100,11 @@ export const RUBRIC_BAND_MAX = 5;
  * Four was the shipped number and 50 points now ride on it. A four-item
  * subtest cannot have usable reliability: catching 2 of 4 versus 3 of 4 is a
  * 12.5-point difference decided by essentially one event. Eight is the floor
- * this file will report against; `raw['overReliance.underpowered']` is 1 when
+ * this file will report against; `raw['errorCatchRate.underpowered']` is 1 when
  * a sitting came in under it, so an underpowered rate is visible in the
  * record rather than inferred from the form.
  */
-export const OVER_RELIANCE_MIN_SURFACED = 8;
+export const ERROR_CATCH_MIN_SURFACED = 8;
 
 /**
  * |relianceIndex| within this band is reported as CALIBRATED.
@@ -240,10 +248,10 @@ export function relianceIndex(
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 
 export interface T3Raw {
-  overReliance: number;
+  errorCatchRate: number;
   analysis: number;
   process: number;
-  underReliance: number;
+  adviceUptakeRate: number;
   /** Diagnostics */
   plantedSurfaced: number;
   plantedCaught: number;
@@ -280,8 +288,8 @@ export interface T3Raw {
   "reliance.over": number;
   "reliance.under": number;
   "reliance.index": number;
-  /** 1 when the form surfaced fewer than OVER_RELIANCE_MIN_SURFACED plants. */
-  "overReliance.underpowered": number;
+  /** 1 when the form surfaced fewer than ERROR_CATCH_MIN_SURFACED plants. */
+  "errorCatchRate.underpowered": number;
   /**
    * The time budget the FORM declared for this sitting, in minutes, or 0 when
    * it declared none (every sitting before TEN-30). Carried into the stored
@@ -465,7 +473,7 @@ export function revisionChainLength(transcript: ReadonlyArray<T3Turn>): number {
 
 /**
  * Adoption credit for one correct-advice claim, in {0, 0.5, 1} — F5.
- * This is what the `underReliance` component pays: 1 for a deliberated
+ * This is what the `adviceUptakeRate` component pays: 1 for a deliberated
  * adoption, 0.5 for a blind instant accept, 0 for a refusal.
  * Order is read from transcript array position (the transcript is
  * append-only; array order is event order).
@@ -532,24 +540,24 @@ export function scoreT3(
     if (t.verb === "assisted" && t.claimIds) for (const id of t.claimIds) surfacedIds.add(id);
   }
 
-  // --- Over-reliance (50): reject the seeded wrong outputs -----------------
+  // --- Planted errors caught (50): reject the seeded wrong outputs --------
   const plantedIds = cfg.plantedErrors.map((e) => e.id);
   const plantedSurfaced = plantedIds.filter((id) => surfacedIds.has(id));
   const plantedCaught = plantedSurfaced.filter((id) => stance.get(id) === "challenged");
-  const overReliance =
+  const errorCatchRate =
     plantedSurfaced.length > 0
-      ? cfg.weights.overReliance * (plantedCaught.length / plantedSurfaced.length)
+      ? cfg.weights.errorCatchRate * (plantedCaught.length / plantedSurfaced.length)
       : 0;
 
-  // --- Under-reliance (30): deliberate adoption of correct advice — F5 -----
+  // --- Correct advice taken up (30): deliberate adoption — F5 -------------
   const adviceIds = cfg.correctAdvice.map((a) => a.id);
   const adviceSurfaced = adviceIds.filter((id) => surfacedIds.has(id));
   const adviceAdopted = adviceSurfaced.filter((id) => stance.get(id) === "accepted");
   const credits = adviceSurfaced.map((id) => adoptionCreditForClaim(transcript, id));
   const adviceDeliberated = credits.filter((c) => c === 1).length;
-  const underReliance =
+  const adviceUptakeRate =
     adviceSurfaced.length > 0
-      ? cfg.weights.underReliance * (credits.reduce((s, c) => s + c, 0) / adviceSurfaced.length)
+      ? cfg.weights.adviceUptakeRate * (credits.reduce((s, c) => s + c, 0) / adviceSurfaced.length)
       : 0;
 
   // --- Process (20): decomposition, iteration, verification, deliberation --
@@ -586,10 +594,10 @@ export function scoreT3(
   );
 
   const raw: T3Raw = {
-    overReliance: round3(overReliance),
+    errorCatchRate: round3(errorCatchRate),
     analysis: round3(analysis),
     process: round3(process),
-    underReliance: round3(underReliance),
+    adviceUptakeRate: round3(adviceUptakeRate),
     plantedSurfaced: plantedSurfaced.length,
     plantedCaught: plantedCaught.length,
     adviceSurfaced: adviceSurfaced.length,
@@ -609,13 +617,13 @@ export function scoreT3(
     "reliance.over": round3(reliance.over),
     "reliance.under": round3(reliance.under),
     "reliance.index": round3(reliance.index),
-    "overReliance.underpowered":
-      plantedSurfaced.length < OVER_RELIANCE_MIN_SURFACED ? 1 : 0,
+    "errorCatchRate.underpowered":
+      plantedSurfaced.length < ERROR_CATCH_MIN_SURFACED ? 1 : 0,
     "condition.timeBudgetMinutes": cfg.timeBudgetMinutes ?? 0,
   };
   return {
     raw,
-    scaled: round3(raw.overReliance + raw.analysis + raw.process + raw.underReliance),
+    scaled: round3(raw.errorCatchRate + raw.analysis + raw.process + raw.adviceUptakeRate),
     reliance,
   };
 }
