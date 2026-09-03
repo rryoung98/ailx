@@ -22,6 +22,7 @@ import {
   maxAttainableDPrime,
   sampleT2DeckIds,
   t2DeckSeed,
+  type T2DeckCandidate,
   type T2DeckComposition,
 } from "@ailx/track-t2";
 import { t3TimeBudgetSeconds, type T3PresentationConfig } from "@ailx/track-t3";
@@ -270,8 +271,8 @@ export function t2DeckComposition(): T2DeckComposition {
  * seeds from the LOCAL attempt id; server mode seeds from the SERVER
  * attempt id (the session adopts it at start), same derivation.
  */
-export function t2DeckItemIds(locale: string = "en", attemptId?: string): string[] {
-  const candidates = t2TransformedItems(locale).map((i) => ({
+function t2DeckCandidates(locale: string): T2DeckCandidate[] {
+  return t2TransformedItems(locale).map((i) => ({
     id: i.id,
     kind:
       i.type === "provenance"
@@ -282,9 +283,54 @@ export function t2DeckItemIds(locale: string = "en", attemptId?: string): string
     signal: i.signal === i.key,
     difficulty: i.difficulty,
   }));
+}
+
+/**
+ * AN OVERSIZED DECLARATION REFUSES; A THIN TRANSLATION DEGRADES (TEN-73).
+ *
+ * The sampler is capped by the pool it is handed, so a `config.deck` no bank
+ * can satisfy is dealt SHORT and scored — a deck nobody declared, reported as
+ * if it were the form. That is refused here, against the CANONICAL `en` bank:
+ * the declaration is one global statement, and `en` is the inventory it is a
+ * statement about (it is also the locale every unpopulated locale falls back
+ * to).
+ *
+ * `ja` and `ko` are deliberately NOT refused. They hold one provenance item
+ * each against a declared two, so they are dealt 5 where `en` is dealt 6, and
+ * t2's scoring already scales to the deck it was given. Refusing them would
+ * close the Japanese and Korean demo instead of the defect, and the policy is
+ * already written down in t2's `track.yaml`: a locale that cannot supply a
+ * stratum deals fewer items rather than an unbalanced deck. Making a thin
+ * translation refuse needs new items in the released bank — a bank change, a
+ * new bank hash and a re-vendor — not a guard.
+ */
+function assertT2DeckDeclarationIsDealable(deck: T2DeckComposition): void {
+  const pool = t2DeckCandidates("en");
+  const n = (kind: T2DeckCandidate["kind"], signal?: boolean) =>
+    pool.filter((c) => c.kind === kind && (signal === undefined || c.signal === signal)).length;
+  const short: string[] = [];
+  // A media PAIR needs one of each class, so each class caps the pair count.
+  const pairs = Math.min(n("media", true), n("media", false));
+  if (deck.mediaPairs > pairs) short.push(`media_pairs ${deck.mediaPairs} against ${pairs}`);
+  if (deck.text > n("text")) short.push(`text ${deck.text} against ${n("text")}`);
+  if (deck.provenance > n("provenance")) {
+    short.push(`provenance ${deck.provenance} against ${n("provenance")}`);
+  }
+  if (short.length > 0) {
+    throw new Error(
+      `instrument declares a t2 deck the released en bank cannot deal: ${short.join("; ")} ` +
+        "— fix config.deck in instruments/demo-2026.1/tracks/t2-discrimination/track.yaml, " +
+        "or add the items. A short deal would be scored as if it were the declared form.",
+    );
+  }
+}
+
+export function t2DeckItemIds(locale: string = "en", attemptId?: string): string[] {
+  const deck = t2DeckComposition();
+  assertT2DeckDeclarationIsDealable(deck);
   return sampleT2DeckIds(
-    candidates,
-    t2DeckComposition(),
+    t2DeckCandidates(locale),
+    deck,
     attemptId === undefined ? undefined : t2DeckSeed(attemptId, t2BankSha256()),
   );
 }
