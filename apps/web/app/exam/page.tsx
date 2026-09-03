@@ -26,7 +26,8 @@ import { t3FormBudgetSeconds, trackConfig } from "../../lib/instrument/instrumen
 import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META } from "@ailx/report";
 import { Annotation } from "../../components/ui/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/ConnectPanel";
-import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
+import { modelGatewayFetch } from "../../lib/data/modelGateway";
+import { hasModelEndpoint, LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
 import { PersistWarning } from "../../features/exam/PersistWarning";
 import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
 import { PillCTA } from "../../components/ui/PillCTA";
@@ -139,15 +140,15 @@ export default function ExamPage() {
     setHydrated(true);
   }, []);
 
-  // Track the model connection (key OR custom base URL) — the Start pill
-  // is gated on it. Re-read on ConnectPanel changes and cross-tab storage.
+  // Track the model connection — the Start pill is gated on it. There is
+  // exactly one thing to read now: the ENDPOINT this browser talks to. The
+  // key slot it used to read as well is gone, because the browser no longer
+  // holds a key in either build (TEN-62). Re-read on ConnectPanel changes and
+  // cross-tab storage.
   useEffect(() => {
     const read = () => {
       try {
-        setConnected(
-          Boolean(window.localStorage.getItem(OPENROUTER_KEY_STORAGE)?.trim()) ||
-          Boolean(window.localStorage.getItem(LLM_BASE_URL_STORAGE)?.trim()),
-        );
+        setConnected(hasModelEndpoint(window.localStorage.getItem(LLM_BASE_URL_STORAGE)));
       } catch {
         setConnected(false);
       }
@@ -772,6 +773,21 @@ export default function ExamPage() {
     checkpoint: initialCheckpoint,
     onCheckpoint: (cp: unknown) => {
       if (state.attemptId) saveCheckpoint(window.localStorage, state.attemptId, t, cp);
+    },
+    // The host attaches WHO is asking. It has no provider key to attach, in
+    // either build: hosted, the gateway spends a key it holds sealed against
+    // this identity; static, the endpoint is a capped proxy or a local server
+    // and the identity headers are ignored by both.
+    modelFetch: modelGatewayFetch,
+    // A runner that gives up on a dead endpoint mid-run clears the shared
+    // slot; the gate above must hear it or the Start pill lies on the next
+    // screen.
+    onModelDisconnect: () => {
+      try {
+        window.dispatchEvent(new Event(CONNECTION_CHANGED_EVENT));
+      } catch {
+        /* non-fatal */
+      }
     },
   };
 

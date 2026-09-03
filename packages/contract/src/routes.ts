@@ -56,6 +56,18 @@ export interface ApiRoute {
   readonly queryParser?: ApiQueryParserName;
 }
 
+/**
+ * The model gateway's own root, below the versioned root.
+ *
+ * Named once because two things need it and they must not drift: the six
+ * route templates below, and the OpenAI-compatible BASE URL a track runner is
+ * handed (`apps/web/lib/data/modelGateway.ts`). `<root>/model` + `/chat/
+ * completions` is exactly the shape an OpenAI client already builds, so the
+ * runners keep one request builder for both the hosted gateway and a local
+ * endpoint.
+ */
+export const MODEL_ROOT = "/model";
+
 export const API_ROUTES = {
   // ---- attempts -----------------------------------------------------------
   createAttempt: { method: "POST", path: "/attempts", response: "{ attempt: { id }, decks?: DeckRecord[] }" },
@@ -99,6 +111,17 @@ export const API_ROUTES = {
   submitPractice: { method: "POST", path: "/practice/:id", response: "{ result, progress: ProgressReport }" },
   progress: { method: "GET", path: "/progress", response: "{ progress: ProgressReport, claimedDays?: string[] }" },
   aggregates: { method: "GET", path: "/aggregates", response: "{ aggregates: WorldAggregates }" },
+  // ---- model gateway ------------------------------------------------------
+  // The provider key is held by the SERVICE, sealed against the caller's
+  // identity, and no route here returns it. Every one is mounted behind the
+  // service's auth seam, so an anonymous browser gets 401 before a body is
+  // read — which is why the static export cannot use any of them (TEN-62).
+  modelCatalog: { method: "GET", path: `${MODEL_ROOT}/models`, response: "{ data: { id: string }[] }" },
+  modelChat: { method: "POST", path: `${MODEL_ROOT}/chat/completions`, response: "the provider's chat-completion body, verbatim" },
+  modelKey: { method: "GET", path: `${MODEL_ROOT}/key`, response: "{ connected, provider, fingerprint?, connectedAt? }" },
+  disconnectModelKey: { method: "DELETE", path: `${MODEL_ROOT}/key`, response: "{ connected: false, provider, removed }" },
+  startModelConnect: { method: "POST", path: `${MODEL_ROOT}/connect/start`, response: "{ provider, state, authorizeUrl, expiresAt }" },
+  finishModelConnect: { method: "POST", path: `${MODEL_ROOT}/connect/callback`, response: "{ connected: true, provider, fingerprint }" },
   // ---- public reads (the token or the code IS the capability) -------------
   shareView: { method: "GET", path: "/share/:token", response: "{ share: SharedView }" },
   countShareView: { method: "POST", path: "/share/:token/views", response: "{ views: number }" },

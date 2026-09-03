@@ -24,4 +24,4 @@ matters is per run; the cohort total is that number times N.
 ## Distributing access to the cohort
 Do NOT embed a funded key in the public site. Two workable paths:
 1. **Provisioned keys**: mint one key per participant with a $0.25 hard limit each via the OpenRouter provisioning API (needs a Provisioning key from the dashboard: POST /api/v1/keys with `limit`), hand one code per participant.
-2. **OAuth PKCE** (already built): participants connect their own OpenRouter account; reimburse or gift credits out-of-band.
+2. **OAuth PKCE** (already built, and SERVER-SIDE since TEN-62): participants connect their own OpenRouter account in the hosted build; the exam service exchanges the code and holds the key sealed against their identity, so the browser never sees it. Reimburse or gift credits out-of-band. Not available in the static export, which has no service to hold a key against.

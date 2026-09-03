@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Runner } from "../src/Runner.js";
-import { OPENROUTER_KEY_STORAGE } from "../src/imagegen.js";
+import { LLM_BASE_URL_STORAGE } from "../src/imagegen.js";
 import { generateImage } from "../src/imageModel.js";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -68,7 +68,7 @@ const flush = () => act(async () => {});
 
 describe("T4 sequential generations", () => {
   it("real key: two prompts store two distinct dataUris and the NEWEST renders first", async () => {
-    lsStore.set(OPENROUTER_KEY_STORAGE, "sk-test");
+    lsStore.set(LLM_BASE_URL_STORAGE, "https://exam.example/v1/model");
     const uris = ["data:image/png;base64,Zmlyc3Q=", "data:image/png;base64,c2Vjb25k"];
     let call = 0;
     vi.stubGlobal("fetch", vi.fn(async () => ({

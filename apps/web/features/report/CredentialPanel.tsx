@@ -21,7 +21,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { API_ROUTES, apiPath, type OwnerCredential } from "@ailx/contract";
-import { authHeaders } from "../../lib/data/authHeaders";
+import { serviceHeaders } from "../../lib/data/traceparent";
 import { CREDENTIAL_LIMITS, linkedInAddUrl } from "@ailx/report";
 import { basePath, isServerMode } from "../../lib/mode";
 import { browserApiOptions, getServerAttemptId } from "../../lib/data/persistence";
@@ -44,7 +44,7 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
         method: API_ROUTES[route].method,
         headers: {
           "content-type": "application/json",
-          ...(await authHeaders(window.localStorage)),
+          ...(await serviceHeaders(window.localStorage)),
         },
       });
     },

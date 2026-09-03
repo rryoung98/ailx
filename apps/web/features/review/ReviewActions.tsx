@@ -13,7 +13,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiPath, REJECT_REASON_MAX } from "@ailx/contract";
-import { authHeaders } from "../../lib/data/authHeaders";
+import { serviceHeaders } from "../../lib/data/traceparent";
 import { apiBase } from "../../lib/mode";
 
 
@@ -38,7 +38,7 @@ export function ReviewActions({ shareId, name }: { shareId: string; name: string
       // not sent at all. Same id either way — see lib/persistence devUser.
       const res = await fetch(`${apiBase()}${apiPath("reviewDecision")}`, {
         method: "POST",
-        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
+        headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({ shareId, decision, reason }),
       });
       if (!res.ok) {

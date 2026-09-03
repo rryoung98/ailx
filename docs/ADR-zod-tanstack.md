@@ -319,9 +319,12 @@ findings; five were real and are fixed on this branch.
 - **The `response` string and the schema drift.** Nothing compares them. If that
   happens once, the fix is to make the manifest hold the schema and derive the
   string from it, which is a bigger change than this branch.
-- **TEN-62 moves the OpenRouter token exchange into the exam service.** Then the
-  `useMutation` in `ConnectPanel` disappears with the code it wraps, and the
-  library's only write-path caller goes with it.
+- **TEN-62 moved the OpenRouter token exchange into the exam service.** It did
+  NOT take the mutation with it, as predicted here. The browser still makes one
+  non-idempotent call it must not retry — it now hands the service a `code` and
+  a `state` instead of redeeming them itself — so `ConnectPanel` keeps
+  `useMutation`, and gained two more for connect and disconnect. What
+  disappeared is the provider key, not the write path.
 - **A response schema rejects a body the service legitimately changed.** Strict
   objects refuse unknown keys, so an additive field on the service side breaks
   the page until this repo ships. That is the intended failure, and it is only

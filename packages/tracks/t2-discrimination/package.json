@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@ailx/core": "workspace:*",
-    "three": "^0.182.0",
+    "three": "^0.185.1",
     "@react-three/fiber": "^9.0.0",
     "@react-three/drei": "^10.0.0",
     "@ailx/session": "workspace:*"
@@ -29,7 +29,7 @@
     "@types/react": "^19.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@types/three": "^0.182.0",
+    "@types/three": "^0.185.4",
     "jsdom": "^25.0.1"
   }
 }

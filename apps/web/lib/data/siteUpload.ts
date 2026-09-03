@@ -15,7 +15,7 @@ import { writeStoredZip, type ZipFile } from "@ailx/core";
 import { isServerMode } from "../mode";
 import type { StorageLike } from "@ailx/session";
 import { apiPath, canonicalSitePath, siteUrlPath } from "@ailx/contract";
-import { authHeaders } from "./authHeaders";
+import { serviceHeaders } from "./traceparent";
 import {
   browserApiOptions,
   getAttemptPersistence,
@@ -162,7 +162,7 @@ async function requestUploadTicket(
   try {
     res = await opts.fetchFn(`${opts.baseUrl}${apiPath("siteUploadTicket", { id: serverAttemptId })}`, {
       method: "POST",
-      headers: await authHeaders(storage),
+      headers: await serviceHeaders(storage),
     });
   } catch {
     return null;
@@ -229,7 +229,7 @@ async function uploadSiteZipDirect(
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(await authHeaders(storage)),
+        ...(await serviceHeaders(storage)),
         "x-ailx-client-ts": new Date().toISOString(),
       },
       body: JSON.stringify({ uploadId: ticket.uploadId, seq: T1_SITE_SEQ }),
@@ -283,7 +283,7 @@ export async function uploadSiteZip(
         method: "POST",
         headers: {
           "content-type": "application/zip",
-          ...(await authHeaders(storage)),
+          ...(await serviceHeaders(storage)),
           "x-ailx-client-ts": new Date().toISOString(),
         },
         body: zip,

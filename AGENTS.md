@@ -19,7 +19,7 @@ browser called a route the deployed service did not have. Do not bring either ba
 - `instruments/demo-2026.1/` — the ONLY instrument in this repo. PUBLIC released-practice tier for the static demo: 20 T2 items whose keys/rationales are published on purpose, no score of record. Self-contained and REDACTED — `manifest.yaml` sets `redacted: true`, and the content-tools loader refuses the package if a rubric `description`, a `band_anchors` block or a `prompts/` directory ever appears. Regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`
 - The OPERATIONAL tier (`instruments/2026.1`: 84 keyed T2 items, T1/T3/T4 judge prompts, rubric marking detail, the T1/T3/T4 `form.json` files) lives in the PRIVATE backend repo and must never be added here. `packages/content-tools/test/public-tree.test.ts` fails the build if it comes back
 - `instruments/characters/2026.1/` — the sixteen player-type characters (art direction, prompts, vetting ledger); assets ship in `apps/web/public/characters/`
-- `services/` — openrouter-proxy (the shared demo MODEL proxy; it holds no exam content and answers no exam route)
+- `services/` — openrouter-proxy (the shared demo MODEL proxy; it holds no exam content and answers no exam route). TEN-62 moved the proxy INTO the exam service and put auth in front of it, and it STAYS HERE ANYWAY: every `/v1/model/*` route is mounted through `apiRoute`, so an anonymous caller gets 401 before a body is read, and the GitHub Pages export has no service and no identity to offer. Deleting it would leave the static demo with no way to call a model at all. See "The shared demo has no anonymous path" below
 - `infra/` — GCP infrastructure
 
 ## The repository split
@@ -56,6 +56,7 @@ handler requires a decision in front of a reviewer.
 - `pnpm test:reap` — kill vitest workers orphaned by an interrupted run (reparented to pid 1, each still holding its heap). The capped pool and the per-file PGlite close make this rare rather than routine.
 - `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). This command is deliberately outside `pnpm test`. It boots the frontend but needs a RUNNING EXAM SERVICE. Set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). It has no default, on purpose. Guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
 - Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page". Also run `rm -rf apps/web/.next` between the builds. A build over the OTHER mode's leftover output failed twice on 2026-09-01. One failure reported a prerender "Cannot read properties of undefined (reading 'call')". The other reported a missing `next-font-manifest.json`. Neither error names the real cause.
+- A green `next build` is NOT a green deploy. Vercel traces server files AFTER the build prints "Done", and that step is where every Production deployment failed until 2026-09-03 (docs/DEPLOY.md §6.1). Prove a deploy locally with `cd apps/web && rm -rf .next .vercel/output && AILX_BACKEND=1 npx vercel build --prod`. `.github/workflows/deploy-status.yml` fails a run when Vercel reports a failed Production deployment, so a dead staging site is visible without anyone looking.
 - Never run `next dev` in `apps/web` while anyone is testing. It leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps that exact directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
 - The e2e suite always boots its own server. `AILX_E2E_REUSE_SERVER=1` reuses whatever is already on the port for a fast inner loop — and then YOU own what is on that port. It is opt-in because a next-server orphaned by a dead agent once held 3210 for a day and the suite silently tested it, green.
 
@@ -104,6 +105,15 @@ handler requires a decision in front of a reviewer.
   inside a sitting is instrumented; the session's own `visit_started` still
   rides along when the sitting is the first thing a browser does.
 
+## Analytics and session replay
+- `docs/ADR-analytics.md` — GA4 and (deferred) self-hosted OpenReplay: measured
+  bundle cost in both build modes, why no tracker may go in the static GitHub
+  Pages export, which surfaces a recorder may run on at all (never inside a
+  sitting and never on the report — the screen carries operational item content
+  and the candidate's own answers), the consent rules including that refusing
+  analytics may not change anything about a sitting, and the concrete mechanism
+  that keeps a share token out of a third party's URL log. Nothing is installed.
+
 ## Frontend/backend separation
 - `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
   the exam: why content custody (a private, digest-pinned item bank plus a
@@ -129,6 +139,20 @@ handler requires a decision in front of a reviewer.
   concurrency exceeds the pool. It checks what this repo decided, not what is
   deployed: the Terraform half of the check is in the private repo and §8.4
   quotes it.
+
+## Dependency weight
+- `docs/DEPS.md` — what is installed and who pulls it in, which duplicate
+  versions are free and which are pinned by a real peer constraint, what knip
+  reported and what was rejected as a false positive, and what each build mode
+  actually ships to a browser. The gate is
+  `apps/web/test/bundleBudget.test.ts`: total client JS, the bytes shared by
+  every page, and eight named pages each have a budget, in BOTH build modes:
+  the measured number plus 5% for a page, plus 2% for the total, which is
+  tighter because it is the only one that sees a chunk loaded after hydration.
+  It skips the mode it cannot see, so it is free in a run with no build output;
+  CI builds both modes before the tests, so both halves run on every PR.
+  Re-measure by running either build and reading the failure, which always
+  prints measured bytes next to the budget.
 
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
@@ -165,6 +189,40 @@ See the PRIVATE repo's README §3. If you want to set `DATABASE_URL` here, run
 - `AILX_E2E_API_BASE` — Playwright only: the exam service the suite drives. No default, and no
   staging (every spec appends rows). `AILX_E2E_BASE_URL` / `AILX_E2E_PORT` pick the frontend
   under test.
+
+## The model gateway, and why the browser holds no key
+
+A candidate's OpenRouter key lives on the EXAM SERVICE, sealed AES-256-GCM
+against their identity, and the service does the OAuth PKCE exchange (TEN-62;
+`packages/model-proxy` in the private repo). The browser redirects, comes back
+with a code it hands straight over, and is told a 12-hex FINGERPRINT. It never
+receives a provider credential and cannot build an `Authorization` header for
+one: `ailx:openrouter-key` is gone, and no request builder in
+`packages/tracks/*` takes a key parameter.
+
+- The six routes are in the frozen manifest (`packages/contract/src/routes.ts`,
+  `MODEL_ROOT`). `apps/web/lib/data/modelGateway.ts` is the only client, and
+  `apiBase()` in `lib/mode.ts` is still the only reader of
+  `NEXT_PUBLIC_AILX_API_BASE`.
+- A "connection" is now an ENDPOINT in one browser slot (`ailx:llm-base-url`),
+  never a key: the service's gateway hosted, the capped demo proxy or a local
+  server statically. The run-start panel owns that slot; the runners read it
+  and get identity from the host's `modelFetch` (`TrackUIProps`).
+- **Do not put the copy back.** "Your key stays in this browser" was true and
+  is not. The replacement is stronger and is said plainly: the browser never
+  receives the key, the service holds it sealed against your account, and
+  disconnecting deletes it.
+
+### The shared demo has no anonymous path
+
+Checked against the deployed service, not assumed: all six `/v1/model/*` routes
+go through `apiRoute`, which refuses an unauthenticated caller with 401 before
+reading a body, and `handleChatCompletion` needs a `ProxyContext` that cannot
+exist without an `authRef`. There is no anonymous cap and no anonymous route.
+So the GitHub Pages export — no service, no identity — keeps
+`services/openrouter-proxy`, and it has NO personal-key affordance at all: no
+sign-in, no paste box. The static tier issues no score of record, so it does
+not need a credential.
 
 ## Shared-demo proxy environment (`services/openrouter-proxy`)
 - `AILX_ALLOWED_ORIGINS` — optional comma/whitespace separated list of extra allowed CORS
