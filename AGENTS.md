@@ -130,6 +130,17 @@ handler requires a decision in front of a reviewer.
   deployed: the Terraform half of the check is in the private repo and §8.4
   quotes it.
 
+## Dependency weight
+- `docs/DEPS.md` — what is installed and who pulls it in, which duplicate
+  versions are free and which are pinned by a real peer constraint, what knip
+  reported and what was rejected as a false positive, and what each build mode
+  actually ships to a browser. The gate is
+  `apps/web/test/bundleBudget.test.ts`: total client JS, the bytes shared by
+  every page, and eight named pages each have a budget of the measured number
+  plus 5%, in BOTH build modes. It skips the mode it cannot see, so it is free
+  in a run with no build output. Re-measure by running either build and reading
+  the failure, which always prints measured bytes next to the budget.
+
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
 
