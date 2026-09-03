@@ -7,7 +7,12 @@
  * page of `undefined` that still looks like a verification.
  */
 import { describe, expect, it } from "vitest";
-import { buildCredentialClaim, credentialDocument, type CredentialClaim } from "@ailx/report";
+import {
+  buildCredentialClaim,
+  credentialDocument,
+  type CredentialClaim,
+  type CredentialState,
+} from "@ailx/report";
 import { initialState, TRACK_IDS, type SessionState } from "@ailx/session";
 import { credentialViewFrom } from "../features/verify/credentialView";
 
@@ -34,15 +39,20 @@ const claim: CredentialClaim = buildCredentialClaim(
   { artifact: "/api/site/sha256:abc/index.html" },
 )!;
 
-const state = {
+// Typed as the SHARED `CredentialState`, not as its own literal shape. The
+// fixture used to be inferred (`status: "valid" as const`, `revokedAt: null`),
+// which made `Partial<typeof state>` a type in which a revocation cannot be
+// expressed — and a revoked credential still resolves (docs/CREDENTIAL.md), so
+// the revocation case is a real state, not an impossible one.
+const state: CredentialState = {
   code: CODE,
-  status: "valid" as const,
+  status: "valid",
   issuedAt: "2026-02-04T09:30:00.000Z",
   revokedAt: null,
   revokeReason: null,
 };
 
-const doc = (over: Partial<typeof state> = {}): Record<string, unknown> =>
+const doc = (over: Partial<CredentialState> = {}): Record<string, unknown> =>
   credentialDocument(claim, { ...state, ...over }, ORIGIN);
 
 describe("a real document", () => {
