@@ -71,7 +71,15 @@ export const MODEL_ROOT = "/model";
 export const API_ROUTES = {
   // ---- attempts -----------------------------------------------------------
   createAttempt: { method: "POST", path: "/attempts", response: "{ attempt: { id }, decks?: DeckRecord[] }" },
-  getAttempt: { method: "GET", path: "/attempts/:id", response: "{ attempt: AttemptRecord }" },
+  getAttempt: {
+    method: "GET",
+    path: "/attempts/:id",
+    // `scores` is the attempt's scores of record, including the ones the
+    // judging pass issues after finalize has answered (TEN-69). It is a field
+    // on this read rather than a route of its own, so this manifest keeps the
+    // same URLs it froze.
+    response: "{ attempt: AttemptRecord, decks?: DeckRecord[], scores?: AttemptScores }",
+  },
   appendResponse: { method: "POST", path: "/attempts/:id/responses", response: "{ response: AppendResult }" },
   appendTranscript: { method: "POST", path: "/attempts/:id/transcripts", response: "{ transcript: AppendResult }" },
   finalizeAttempt: { method: "POST", path: "/attempts/:id/finalize", response: "{ attempt: AttemptRecord }" },
