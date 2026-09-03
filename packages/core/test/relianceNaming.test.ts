@@ -62,8 +62,11 @@ function walk(dir: string, out: string[]): string[] {
  *
  * String and template literals are tracked, so a `//` inside a URL literal
  * cannot hide the rest of the line from the check.
+ *
+ * Not exported: a test file that exports a helper reads as a module other
+ * tests may import, and the lint says so. Its own cases sit below it.
  */
-export function stripComments(src: string): string {
+function stripComments(src: string): string {
   let out = "";
   let i = 0;
   type Mode = "code" | "line" | "block" | "'" | '"' | "`";
@@ -137,7 +140,10 @@ describe("the T3 reliance component names cannot drift back", () => {
     expect(stripComments("/* overReliance */ const b = 1;")).toContain("const b = 1;");
     expect(stripComments("/* overReliance */ const b = 1;")).not.toContain("overReliance");
     expect(stripComments('const c = "overReliance";')).toContain("overReliance");
-    expect(stripComments("const d = `a ${x} // b`;\nconst e = 2;")).toContain("const e = 2;");
+    // Assembled, not written literally: a `${` inside a source string is
+    // itself a lint finding, and the case is about the SCANNER, not the text.
+    const tpl = ["const d = `a ", "${", "x} // b`;", "\nconst e = 2;"].join("");
+    expect(stripComments(tpl)).toContain("const e = 2;");
     // A line comment ends at the newline, and the next line is still code.
     expect(stripComments("// overReliance\nconst f = 3;")).toContain("const f = 3;");
   });
