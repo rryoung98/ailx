@@ -401,7 +401,7 @@ it feeds points, feeds a diagnostic, or feeds nothing.
 | `T2Response.latencyMs` | recorded in `packages/tracks/t2-discrimination/src/Runner.tsx`, typed in `types.ts` | **Nothing scored.** `scoreT2` never reads it. It leaves the browser in the research export only (`packages/report/src/exportTiers.ts`) |
 | T2 exposure lapse (`choice = -1`) | `Runner.tsx` countdown; consumed by `scoring.ts` | **Points.** A lapsed item is a miss on a signal item, a false alarm on a noise item, and is excluded from the Brier mean. This is the one place a clock reaches a T2 score — see §6.2 |
 | `T2Item.exposureSeconds` | `types.ts`, set per item type from the snapshot | **Points, by design.** It is a declared measurement decision, identical for every candidate on that item |
-| `T1 promptLog[].clientTs` | T1 artifact | **Nothing.** `processSignal` counts distinct prompts and completed prompt→revise cycles. It never subtracts two timestamps |
+| `T1 promptLog[].clientTs` | T1 artifact | **Nothing.** `processSignal` counts distinct prompts and completed prompt→revise cycles, it never subtracts two timestamps — and since TEN-80 the count itself scores **zero points** and is reported as a diagnostic (spec §04, "What is collected and deliberately not scored") |
 | `T3 transcript[].clientTs` | T3 artifact | **Nothing.** RSR, RAIR and the deliberation rule are SEQUENCE tests: a claim must have been challenged or checked *before* it was accepted. Order, not elapsed time |
 | `T4 drafts[]/finals[].clientTs` | T4 artifact | **Nothing.** Copied through ingest normalisation and never read by `score()` |
 | `activeMs`, `runningSince`, `timedOut` | `packages/session/src/machine.ts` | **Neither.** Budget accounting. `timedOut` is derived from the accounting and refused if the caller disagrees. No scorer sees any of it |
@@ -1031,7 +1031,7 @@ contents, exposure budget, leak detection, refresh policy, equating method and a
 are worked out in `docs/TREND-FORM.md`. The short version is that the frozen line is T2 only, so it
 carries a named subscale trend and never a composite one.
 
-**12.2 The composite problem.** AILX sums four heterogeneous tracks to 400 points, and the
+**12.2 The composite problem.** AILX sums three scored heterogeneous tracks to 375 points, and the
 across-track weighting is a design choice, not an estimated parameter. Kreiner and Christensen
 dismantled PISA's country rankings by showing the ordering was not robust to defensible alternative
 models. A hand-weighted four-track composite is *more* exposed to that attack than PISA is. **Before

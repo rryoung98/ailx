@@ -48,12 +48,17 @@ describe("composite pipeline (spec \u00a704)", () => {
    * of the composite to a third, i.e. promoted the track the point
    * allocation had just demoted.
    */
-  it("weights the scored tracks by their share of the 400 points", () => {
-    expect(TRACK_WEIGHTS).toEqual({ t1: 0.4, t2: 0.2, t3: 0.4, t4: 0 });
+  it("weights the scored tracks by their share of the 375 points", () => {
+    expect(TRACK_WEIGHTS).toEqual({
+      t1: 135 / 375,
+      t2: 80 / 375,
+      t3: 160 / 375,
+      t4: 0,
+    });
     const scored = SCORED_TRACKS.map((t) => TRACK_WEIGHTS[t]);
     expect(scored.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 12);
     for (const t of SCORED_TRACKS) {
-      expect(TRACK_WEIGHTS[t]).toBeCloseTo(trackPoints(t) / 400, 12);
+      expect(TRACK_WEIGHTS[t]).toBeCloseTo(trackPoints(t) / 375, 12);
     }
   });
 

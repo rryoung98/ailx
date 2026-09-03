@@ -132,9 +132,32 @@ describe("report golden", () => {
    * already a check it resolved. No composite, no other track raw, no
    * insight, no narrative, no player type, no calibration bin and no export
    * field moved.
+   *
+   * It MOVED a seventh time when T1 stopped scoring the prompt log (TEN-80).
+   * The 25-point `process` component was REMOVED, not redistributed — no
+   * published study validates a volume-monotone process score of AI-assisted
+   * work against an independent outcome — so T1 is 135 points and the
+   * instrument is 375, and the composite weights, which are proportional to
+   * points by construction, moved with it. EXACTLY 57 leaves changed and they
+   * are, in full: 2 REMOVED (`participant.tracks[0].rawSubscores.process` and
+   * `research.scores[0].raw.process`, the 25-point component); T1's `outOf`
+   * 160 -> 135, its `scaled` and `composite.trackRaw.t1` 105.555 -> 88.888 in
+   * both exports, and its `rubricVersion` in two places because the published
+   * rubric lost a criterion; the demo cohort's 22 moved `cohortComposites`
+   * entries in each export, which are OTHER candidates re-weighted; the
+   * candidate's own `zComposite` 1.248976 -> 1.257005; and the two
+   * score-only player-type leaves that quote T1's number.
+   *
+   * What did NOT move is the load-bearing half. `process.signal` is still in
+   * `rawSubscores`, still 0.667, unchanged in key and value: the diagnostic is
+   * still collected and still means what it meant. The candidate's composite
+   * (84.298), percentile, band and every band cutline are identical, as are
+   * every T2/T3/T4 raw, every insight, every narrative and every calibration
+   * bin. The diff was taken leaf by leaf against a stash of this branch's
+   * parent before this digest was touched.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("7b0efa759f0ef5d583cf9f2175e6c0f77a2a621e0c6633bee62ab3b9d4d680fd");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("9e88ddb5fb27fde6bc1a9be6d89b187e53e1b0487b9df77edb48096aad1b7dce");
   });
 
   it("is stable across repeated derivation", () => {

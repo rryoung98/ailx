@@ -207,12 +207,12 @@ describe("T4 is a showcase index, not a score", () => {
     expect(sum).toBe(100);
   });
 
-  it("cannot contribute a point to the 400-point instrument", () => {
+  it("cannot contribute a point to the 375-point instrument", () => {
     const scored = (["t1", "t2", "t3", "t4"] as const)
       .filter((t) => SCORE_ALLOCATION[t].scored)
       .reduce((a, t) => a + trackPoints(t), 0);
     expect(scored).toBe(TOTAL_POINTS);
-    expect(TOTAL_POINTS).toBe(400);
+    expect(TOTAL_POINTS).toBe(375);
   });
 });
 

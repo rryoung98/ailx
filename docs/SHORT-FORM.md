@@ -161,7 +161,7 @@ Writing the order down now stops it being decided at 2 a.m. by whoever holds the
 |---|---|---|---|
 | **T2 Discrimination** (80 pts) | 120 items, 50 min | **In**: 32 frozen anchor items + 20 operational items | The only track that compresses cleanly: short discrete items, fixed exposure, no rater, no artefact, no window (`docs/TRACK-REVIEW.md` §2.6). |
 | **T3 Calibrated Reliance** (160 pts) | 90 min, planted errors + 1,200-word analysis | **Half in**: the model-free planted-error block, 20 min. The analysis and its judge are out. | 115 of T3's 160 points are model-free and survive compression. You cannot write a defensible analysis in a matrix block, and the analysis is what the LLM judge marks (`docs/TRACK-REVIEW.md` §4.6). |
-| **T1 Creative Build** (160 pts) | 48-hour build window, blinded pairwise human judgement | **Out** | Two independent blockers. The build window is not a matrix block, and the 40 comparative points need a rater pool: panellists are paid once and do not return to judge each other (`docs/TRACK-REVIEW.md` §3.6). |
+| **T1 Creative Build** (135 pts) | 48-hour build window, blinded pairwise human judgement | **Out** | Two independent blockers. The build window is not a matrix block, and the 40 comparative points need a rater pool: panellists are paid once and do not return to judge each other (`docs/TRACK-REVIEW.md` §3.6). |
 | **T4 Generative Direction** (0 pts) | 60 min | **Out** | 60 minutes is the whole budget, 70 of its 100 designed points need human panels, and it issues no points anyway since 2026-09-01 (`docs/TRACK-REVIEW.md` §5.6, §9.1). |
 
 **`docs/SAMPLING.md` §5 kept T1 alive as option (a): a 30-minute reduced-scope build for a random

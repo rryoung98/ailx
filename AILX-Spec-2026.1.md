@@ -1,7 +1,7 @@
 # AILX — The AI Literacy Examination
 
 **Specification & Technical Design Document**  
-AILX-SPEC-2026.1 · Draft for partner review · 21 August 2026 · Instrument v2026.1, 4 tracks, 400 pts
+AILX-SPEC-2026.1 · Draft for partner review · 21 August 2026 · Instrument v2026.1, 4 tracks, 375 pts
 
 Web version: <https://claude.ai/code/artifact/569a7a59-fcae-4236-a55e-cf68c64a2f37>
 
@@ -14,7 +14,7 @@ A performance-based benchmark that measures what a person can actually do with, 
 There are hundreds of benchmarks for AI systems and effectively none for the people who use them. AILX is an examination for humans: four timed, performance-based tracks that put a candidate in front of real tools and real adversarial content and score what they produce. It is designed to be hard, to spread a capable cohort across a normal curve, to be re-cut every year as the technology moves, and to export clean enough data that a ministry or a frontier lab can audit every score back to its inputs.
 
 - **Tracks: 4** — Creative build, authenticity discrimination, AI-assisted reasoning, generative direction
-- **Raw points: 400** — 100 per track, reported separately and as a scaled composite
+- **Raw points: 375** — T1 135, T2 80, T3 160, T4 unscored; reported separately and as a scaled composite
 - **Sitting time: 4h 20m** — Across two sessions, plus an untimed T1 build window
 - **Languages: 3** — English, Japanese, Korean — every item ships in all three
 - **Scale path: costed to 25,000 sittings** — Infrastructure and scoring priced at 1,000 and 25,000 candidates (§17); founding calibration cohort complete
@@ -110,9 +110,9 @@ NIST AI 800-2 asks benchmark authors to say which kind of claim they are making.
 
 ## 04 · Instrument overview
 
-Four tracks and 400 points, scored by different mechanisms on purpose — so that no single failure mode in judging can compromise the whole examination. **The points are not spread evenly, and that is the 2026.1 decision.** T1 and T3 carry 160 each, T2 carries 80, and T4 issues none: it is run, recorded and published as an unscored showcase. `docs/TRACK-REVIEW.md` is the analysis behind that; the allocation itself lives in `packages/core/src/allocation.ts`, as data, in one place.
+Four tracks and 375 points, scored by different mechanisms on purpose — so that no single failure mode in judging can compromise the whole examination. **The points are not spread evenly, and that is the 2026.1 decision.** T3 carries 160, T1 carries 135, T2 carries 80, and T4 issues none: it is run, recorded and published as an unscored showcase. `docs/TRACK-REVIEW.md` is the analysis behind that; the allocation itself lives in `packages/core/src/allocation.ts`, as data, in one place.
 
-- **T1 — Creative Build** (160 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
+- **T1 — Creative Build** (135 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
 - **T2 — Synthetic-Media Discrimination** (80 pts, 50 min). 120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture.
 - **T3 — Calibrated Reliance** (160 pts, 90 min). Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis.
 - **T4 — Generative Direction** (**0 pts — unscored showcase**, 60 min). Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts. It is run, recorded and published; it issues no points and enters no composite.
@@ -132,30 +132,30 @@ Four tracks and 400 points, scored by different mechanisms on purpose — so tha
 
 > **Design principle: no track is scored the same way as any other**
 >
-> T2 is scored by arithmetic on response data with no model in the loop at all — sensitivity, criterion, calibration and provenance, all of it. T3's two most heavily weighted components are a planted-error detection rate and a deliberate-adoption rate — also model-free. T1 routes its subjective portion to *human* comparative judgement, keeps a vision model on objectively checkable gates, and scores its prompt log by arithmetic. The property this buys is that a discovered flaw in one scoring *mechanism* cannot compromise the whole examination.
+> T2 is scored by arithmetic on response data with no model in the loop at all — sensitivity, criterion, calibration and provenance, all of it. T3's two most heavily weighted components are a planted-error detection rate and a deliberate-adoption rate — also model-free. T1 routes its subjective portion to *human* comparative judgement and keeps a vision model on objectively checkable gates. The property this buys is that a discovered flaw in one scoring *mechanism* cannot compromise the whole examination.
 >
 > **This principle used to carry a number here — "at most 40–45 points out of 400" — and the number was false in both directions: 101 designed, 241 implemented. It is now derived from the code, checked by a test, and stated in full below.**
 
-#### How the 400 points are actually resolved
+#### How the 375 points are actually resolved
 
 Two numbers, because two different failures are worth bounding separately. *Designed* is the mechanism each component is supposed to use. *Implemented* is what `score()` reads today. Both columns are **derived from `packages/core/src/allocation.ts`, the table the scorers themselves read**, and `packages/core/test/spec-allocation.test.ts` fails the build if this section and that table stop agreeing. The previous version of this paragraph was a number typed in prose, and it was wrong by a factor of five.
 
 | Mechanism | Designed | Implemented (2026.1) |
 |---|---|---|
-| Model-free arithmetic on stored response/transcript data | 220 | 220 |
+| Model-free arithmetic on stored response/transcript data | 195 | 195 |
 | Machine-checkable gates (a vision model finds evidence; the finding is checkable) | 40 | 0 |
 | Blinded human pairwise comparison (Bradley–Terry) | 60 | 0 |
 | LLM jury against a locked rubric | 80 | 180 |
 
-Per track: **T1** 40 gate + 60 human-CJ + 35 LLM jury + 25 model-free = 160. **T2** 80 model-free. **T3** 115 model-free + 45 LLM jury = 160. **T4** issues no points.
+Per track: **T1** 40 gate + 60 human-CJ + 35 LLM jury = 135. **T2** 80 model-free. **T3** 115 model-free + 45 LLM jury = 160. **T4** issues no points.
 
 So the safety property, stated as a number that is true:
 
-> **A discovered flaw in LLM-as-judge methodology damages at most 80 of 400 points — a fifth of the instrument — and at most 45 within any single track. A majority of the instrument, 220 of 400, is arithmetic on stored response data with no model and no rater in the loop at all.**
+> **A discovered flaw in LLM-as-judge methodology damages at most 80 of 375 points — a fifth of the instrument — and at most 45 within any single track. A majority of the instrument, 195 of 375, is arithmetic on stored response data with no model and no rater in the loop at all.**
 
-That is the restructure's real justification, and it is worth saying what moved. Before it, the designed exposure was 101 points and the *implemented* exposure was **241 of 400**, because `score()` cannot tell a stored human comparison from a stored model judgment — both arrive as a `Judgment` row — so every component with no measurement code behind it resolved through the judge path. Cutting T4 removed 96 of those. Scoring T2's criterion, T1's prompt log and T3's two reliance tails added 61 points of model-free measurement that did not exist.
+That is the restructure's real justification, and it is worth saying what moved. Before it, the designed exposure was 101 points and the *implemented* exposure was **241 of 400**, because `score()` cannot tell a stored human comparison from a stored model judgment — both arrive as a `Judgment` row — so every component with no measurement code behind it resolved through the judge path. Cutting T4 removed 96 of those. Scoring T2's criterion and T3's two reliance tails added 36 points of model-free measurement that did not exist. T1's prompt log was scored for 25 more on 2026-09-01 and unscored again the next day; the paragraph below the mechanism table says why.
 
-The implemented column is still worse than the designed one, and it will be until the work in "What is not implemented" lands. **180 of 400 points currently resolve through stored judge values.** That number is in this document on purpose.
+The implemented column is still worse than the designed one, and it will be until the work in "What is not implemented" lands. **180 of 375 points currently resolve through stored judge values.** That number is in this document on purpose.
 
 #### What is not implemented — read this before quoting a score
 
@@ -171,6 +171,18 @@ Two of those three were the whole of T4's remaining defence as well, which is pa
 
 Until each lands, the affected points are a **band with a stated error, not a measurement**. Every component carries an `implemented` flag in the allocation table; §16's export tiers carry it too. A report that omits it is a report we would have to withdraw.
 
+#### What is collected and deliberately not scored
+
+The counterpart list, and it exists because the first version of this document had one entry moved from it into the point budget and had to be moved back.
+
+| Collected | Where it is reported | Why it earns nothing |
+|---|---|---|
+| **T1's prompt-log process signal** — distinct instructions and closed prompt→revise cycles | `raw` as `process.signal`, on the report as a diagnostic | No published study validates a volume-monotone process score of AI-assisted work against an independent outcome, and the two programmes that score process (PISA 2012, USMLE Step 3 CCS) remove credit for excess actions rather than adding it. TEN-80; `.research/ten-80-process-evidence.md` |
+| **Response latencies and client timestamps** | research export | Device and network speed, not competence. Two tests refuse a timing read on the score path (`docs/SAMPLING.md` §6.1) |
+| **T4's showcase index** | the report, marked as a showcase | §T4: 70 of its 100 points needed human panels a probability panel cannot supply |
+
+The rule these share: process and volume telemetry is **evidence about how a sitting went**, and it may filter, flag and describe. It may not award a point until something independent validates it.
+
 > **On the jury evidence, stated against our own case.** The QWK 0.708–0.712 figure this document quotes for a calibrated, evidence-anchored jury has now been traced (2026-09-02) to exactly one unreviewed preprint, Hong et al., *From Rubrics to Reliable Scores*, arXiv:2601.08654. The two numbers are two models of ONE family on ONE dataset; the same pipeline scores 0.21–0.65 on its three other benchmarks. Human–human QWK on ASAP spans 0.63–0.85 (median 0.76), so 0.71 is below the median human pair rather than "essentially at the human level". A 65-study synthesis (Li et al., arXiv:2512.14561) reports LLM-judge QWK from 0.00 to 0.97, with many results below the 0.70 operational bar. The research base assembled for the 2026.1 review corroborates none of it, and adds quantified position bias and a self-preference finding (73.5%, rising above 90% after 500 fine-tuning examples). The 45 points are marked unimplemented above for a reason, and the calibration set is a precondition, not a formality.
 
 ### Composite scoring
@@ -178,7 +190,7 @@ Until each lands, the affected points are a **band with a stated error, not a me
 Track raw scores are **not** summed. Summing raw scores implicitly weights each track by its standard deviation, which is almost never the intended weighting. Instead:
 
 1.  Each **scored** track's raw score is converted to a within-cohort **z-score**. T4 is a showcase and has no z-column at all.
-2.  Z-scores are weighted **in proportion to the declared point allocation** — T1 .40, T2 .20, T3 .40 — and summed. This is a deliberate policy choice, restated annually, not an accident of item counts.
+2.  Z-scores are weighted **in proportion to the declared point allocation** — T1 135⁄375, T2 80⁄375, T3 160⁄375 — and summed. This is a deliberate policy choice, restated annually, not an accident of item counts.
 
     > **Why not equal weighting any more.** It was four equal quarters, and equal weighting was defended here as deliberate. It cannot survive the restructure unexamined, for a reason that is easy to miss: because the composite is built from z-scores rather than raw points, dropping T4 while keeping "equal weighting" would have raised T2 from a quarter of the composite to a **third** — promoting the track the point allocation had just demoted. Weighting by declared points makes the two statements agree instead of contradicting each other.
 3.  The composite is put through a **normalised area transformation** — rank → percentile → inverse-normal → rescale to mean 50, SD 15 — and reported on a 0–100 scale, truncated at the bounds.
@@ -209,19 +221,21 @@ Candidates receive the brief 48 hours before the sitting: build a personal site 
 
 ### Score allocation
 
-**160 points. T1 is the flagship track.**
+**135 points. T1 is the flagship track.**
 
 - **40 pts — Functional & accessibility gates.** *[Not implemented in 2026.1 — see §04 "What is not implemented". No contrast, viewport, landmark or keyboard check exists; the dimension is a stored judgment median.]* Renders without console error; responsive at three viewports; WCAG AA contrast on all text; semantic landmarks; keyboard-navigable; performance budget met; all required brief elements present
 - **60 pts — Comparative visual merit.** *[Not implemented in 2026.1 — Bradley–Terry exists nowhere in either repository. See §04.]* Blinded forced-choice pairwise comparison by the full cohort, fitted with Bradley–Terry, style covariates partialled out
 - **20 pts — Technical ambition.** WebGL / Three.js, canvas work, custom shaders, non-trivial interaction — detected objectively, then confirmed by judge as purposeful rather than decorative
 - **15 pts — Design rationale.** 200-word statement of intent; scored on the coherence between stated intent and delivered artefact
-- **25 pts — Prompt-log process signal.** Distinct instructions to the assistant, and whether each was followed by a change to the artefact. Model-free: arithmetic on the stored log, no judge
+- **0 pts — Prompt-log process signal.** Still computed from the submitted log, still reported in `raw` as `process.signal`, and worth nothing. It was worth 25 points for one day; the callout below says why it is not.
 
-> **Why the prompt log is now worth points**
+> **Why the prompt log is collected and not scored**
 >
-> It was collected, computed and thrown away. `score.ts` derived a process signal from the submitted log and reported it in `raw` as a diagnostic that no component consumed, which left T1 scoring an artefact and nothing else. An artefact-only score cannot separate *directing a model well* from *already knowing how to build a website*: a candidate who has shipped HTML for ten years beats one who has not, with the same model, and T1 reads the difference as literacy.
+> It was scored on 2026-09-01 and unscored on 2026-09-02, on evidence, and the reversal is worth stating rather than quietly editing out. The argument for scoring it was that an artefact-only score cannot separate *directing a model well* from *already knowing how to build a website*. That argument survives. The measure did not.
 >
-> Twenty-five of a hundred and sixty, deliberately. Process traces are corroborating evidence, not a criterion — reported convergent validity for stealth-assessment process measures against external criteria spans roughly r = .1–.6 — so the component can support a score and must never carry one. It is also the component most obviously open to gaming, so the measure is strict in two declared ways: prompts are counted **distinct** (trimmed, case-folded; a prompt with no stored text shares one key with every other such prompt), and a revision only closes a cycle when a new distinct prompt is open ahead of it in log order. Twenty presses of the same button is one prompt and one cycle.
+> The measure was monotone in volume: half the credit for distinct instructions, half for prompt-then-revise cycles, full credit at three of each. **No published study validates a volume-monotone process score of AI-assisted work against an independent outcome.** Where interaction volume has been measured against a real outcome it is null-to-negative — raw GitHub Copilot completions shown against self-reported productivity r = 0.01 (n.s.) while the *acceptance ratio* reached ρ = 0.24 (Ziegler et al., MAPS '22); dialogue turns against expert-rated artefact quality r = −0.01; help-seeking volume against learning gain r = −0.46 (Aleven et al., ITS '04). The two operational programmes that do score process score volume **non-monotonically**: PISA 2012's problem-solving items give full credit only below a click budget, and USMLE Step 3's computer-based case simulations state that an unnecessary and excessive order *decreases* the score. NAEP and PIAAC collect process data and do not score it. Our constants made it worse rather than better: full credit at three distinct trimmed, case-folded strings saturates in seconds, so the component stopped discriminating between everyone who performed the ritual — while docking the candidate who solved the brief in two precise prompts.
+>
+> So the signal stays in the record and earns nothing. Collecting is defensible; scoring is the trap. `packages/core/src/allocation.ts` no longer declares a `process` component, `packages/tracks/t1-creative-build/test/score.test.ts` asserts that two artefacts with identical judgments and 0 versus 400 prompt-log entries score identically, and the full source ledger is in `.research/ten-80-process-evidence.md` (TEN-80). The 25 points were **removed, not redistributed**: the evidence supports deleting a component and says nothing about the other four being worth more.
 
 ### Why vision models do not produce the aesthetic score
 

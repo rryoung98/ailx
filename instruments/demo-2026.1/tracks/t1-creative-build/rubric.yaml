@@ -8,7 +8,7 @@
 # if a description, a band anchor or a prompts/ directory ever comes back.
 # See ../../README.md.
 track: t1-creative-build
-total_points: 160
+total_points: 135
 criteria:
   - id: functional-gates
     name: Functional & accessibility gates
@@ -30,8 +30,3 @@ criteria:
     points: 15
     scored_by: judge
     judged: true
-  - id: process-signal
-    name: Prompt-log process signal
-    points: 25
-    scored_by: arithmetic
-    judged: false

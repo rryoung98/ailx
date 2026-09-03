@@ -64,8 +64,8 @@ Why T2 and nothing else, in order of weight:
 
 | Track | Excluded because | The cost of excluding it |
 |---|---|---|
-| **T1 Creative Build** (160 pts, .40 weight) | Scored partly by a blinded human comparative-judgement panel. A rater panel cannot be frozen, and rater turnout is already the thing that breaks T1 at scale (`docs/TRACK-REVIEW.md` §3.3). | The flagship track, and the one with an external criterion, has no trend line at all. |
-| **T3 Calibrated Reliance** (160 pts, .40 weight) | Needs a live assistant model and, for the 45-point analysis component, an LLM judge. Both drift on somebody else's release schedule. | The strongest construct in the instrument is reported as a level only. |
+| **T1 Creative Build** (135 pts, .36 weight) | Scored partly by a blinded human comparative-judgement panel. A rater panel cannot be frozen, and rater turnout is already the thing that breaks T1 at scale (`docs/TRACK-REVIEW.md` §3.3). | The flagship track, and the one with an external criterion, has no trend line at all. |
+| **T3 Calibrated Reliance** (160 pts, .427 weight) | Needs a live assistant model and, for the 45-point analysis component, an LLM judge. Both drift on somebody else's release schedule. | The strongest construct in the instrument is reported as a level only. |
 | **T4 Generative Direction** (0 pts) | Unscored showcase since 2026-09-01 (`docs/TRACK-REVIEW.md` §9.1). | Nothing. |
 
 **There is no trend line for the composite.** The anchor covers T2,

@@ -202,6 +202,14 @@ coherence dimension). So the one piece of evidence that separates *directing a m
 *already knowing how to build a website* is collected and then discarded. That is the single
 highest-value cheap fix in this document.
 
+> Read after 2026-09-02: this paragraph describes the code again, and the round trip is the
+> point. The prompt log was scored on 2026-09-01 (§9.1, 25 points) and unscored on 2026-09-02
+> (TEN-80). The diagnosis above still stands — T1 partly rewards prior web skill and the prompt
+> log is the only evidence that separates the two. What TEN-80 established is that the MEASURE
+> proposed in §3.7 does not fix it: a volume-monotone process score has no published validation
+> against an independent outcome, and the programmes that do score process penalise excess
+> actions rather than paying for them. See `.research/ten-80-process-evidence.md`.
+
 ### 3.2 Engagement
 
 T1 is the track that travels. Not because it is fun in the moment — 48 hours of building is work —
@@ -280,8 +288,15 @@ partial at best.
 
 1. **Make T1 the flagship.** It is the thing people show other people. Product-wise, it is the
    track that justifies the credential.
-2. **Score the prompt log.** Move at least 10 points onto the process signal that `score.ts` already
-   computes and throws away. Without it, T1 partly rewards prior web skill.
+2. ~~**Score the prompt log.** Move at least 10 points onto the process signal that `score.ts`
+   already computes and throws away. Without it, T1 partly rewards prior web skill.~~
+   **Done on 2026-09-01, reverted on 2026-09-02 (TEN-80), and the recommendation is withdrawn
+   rather than deleted.** The 25-point component was monotone in prompt volume; the evidence spike
+   found no published study validating such a score against an independent outcome, null-to-negative
+   correlations wherever volume was measured against a real outcome, and two operational precedents
+   (PISA 2012, USMLE Step 3 CCS) that score volume in the opposite direction. The signal is computed
+   and reported as a diagnostic and earns nothing. A REPLACEMENT that reads the relationship between
+   a prompt and the change it produced is the surviving idea, and it needs evidence we do not have.
 3. **Raise r to 30** so the reported reliability is honestly in the .90 band, and keep non-adaptive
    pairing permanently.
 4. **Accept that T1 is a Track-A instrument.** Plan the national composite on T2–T4 with T1 stated
@@ -675,6 +690,7 @@ jury's weight rather than defending it.
 | | Scored instrument | Play surface | Population short form |
 |---|---|---|---|
 | T1 Creative Build | **150 pts** — flagship, prompt log scored, r = 30 | artefact + gallery | excluded, stated |
+<!-- Superseded: T1 shipped at 160 with the prompt log scored (§9.1) and is 135 since TEN-80 unscored it. -->
 | T2 Discrimination | **100 pts** — d′ *and* criterion, calibration weighted up | the swipe deck, disjoint pool | core block |
 | T3 Reasoning | **150 pts** — 8–12 plants, reliance index, timed condition | 5-minute "the assistant lied" | RSR/RAIR block, essay dropped |
 | T4 Generative | **cut** | gallery challenge, unscored | — |
@@ -685,8 +701,8 @@ for the panel, and its one distinctive measurement — did the work communicate 
 is better collected as a T3 rubric dimension. Cutting it also restores the §04 design principle by
 removing 80 points of judge-resolved scoring.
 
-**What to change first, in cost order:** score T1's prompt log (already computed, currently
-discarded); raise T3's planted errors from 4 to 8–12; add the time-pressure condition; stop clamping
+**What to change first, in cost order:** ~~score T1's prompt log (already computed, currently
+discarded)~~ [withdrawn 2026-09-02 — see §3.7]; raise T3's planted errors from 4 to 8–12; add the time-pressure condition; stop clamping
 T2's d′ at zero and move points onto criterion and calibration; build Bradley–Terry, or stop claiming
 it.
 
@@ -702,12 +718,15 @@ analysis above. Written after the change landed, not before.
 
 | | Points | Composite weight | Change |
 |---|---|---|---|
-| T1 Creative Build | **160** | .40 | prompt log SCORED (25 pts, model-free); r = 24 → 30 |
-| T2 Synthetic-Media Discrimination | **80** | .20 | criterion scored (15 pts); pure-d′ 60 → 25; floor spike removed; renamed |
-| T3 Calibrated Reliance | **160** | .40 | two-tailed reliance index; 3 → 8 planted errors; model-free 35/100 → 115/160 |
+| T1 Creative Build | **135** | .36 | r = 24 → 30. Shipped at 160 with the prompt log scored for 25 model-free points, and back to 135 the next day when TEN-80 unscored it — see §9.6 |
+| T2 Synthetic-Media Discrimination | **80** | .213 | criterion scored (15 pts); pure-d′ 60 → 25; floor spike removed; renamed |
+| T3 Calibrated Reliance | **160** | .427 | two-tailed reliance index; 3 → 8 planted errors; model-free 35/100 → 115/160 |
 | T4 Generative Direction | **0** | 0 | unscored showcase; runner and gallery stay |
 
-Total still 400. Model-free measurement went from 159 of 400 to **220 of 400**.
+Total 375 after TEN-80 (400 for the one day the prompt log was scored). Model-free measurement
+went from 159 of 400 to 220 of 400, and is **195 of 375** now. The composite weights are
+proportional to the points by construction, so all three moved when T1's 25 points went: a share of
+a smaller instrument is a bigger share.
 
 ### 9.2 Four things the analysis above got wrong or left out
 
@@ -795,3 +814,34 @@ read. The measure is defined on the stance that follows the check and the spec s
 speaks moved over-reliance more than the clock did (Swaroop et al., arXiv:2306.07458). Our timer and
 our interface still vary together, so until the arm in `docs/TRANSFER-STUDY.md` §3.5 runs, a
 condition comparison describes this form and not the construct.
+
+### 9.6 The prompt log is unscored again (2026-09-02, TEN-80)
+
+§3.7's second recommendation shipped on 2026-09-01 and was reverted the next day on evidence. The
+component was `0.5 × min(1, distinctPrompts/3) + 0.5 × min(1, cycles/3)`, worth 25 of T1's 160
+points, and both halves are **monotone in volume**.
+
+The spike (73 sources examined, 44 read in full; report in `.research/ten-80-process-evidence.md`)
+found: no published study validating a volume-monotone process score of AI-assisted work against an
+independent outcome; null-to-negative associations wherever volume HAS been measured against a real
+outcome (Copilot completions shown r = 0.01 n.s. against acceptance ratio ρ = 0.24, Ziegler et al.
+MAPS '22; dialogue turns r = −0.01 against expert-rated artefact quality; help-seeking volume
+r = −0.46 with learning gain); and two operational precedents that score process — PISA 2012
+problem solving and USMLE Step 3 CCS — scoring volume **non-monotonically**, removing credit above
+a budget. NAEP and PIAAC collect process data and do not score it. Our own constants made it worse:
+full credit at three distinct trimmed, case-folded strings saturates in seconds, so the component
+stopped discriminating between everyone who performed the ritual while docking about 4 points from
+the candidate who solved the brief in two precise prompts.
+
+What changed in code: T1 is **135 points**, the instrument is **375**, the composite weights
+followed the points (.36 / .213 / .427), and `processSignal()` is still exported, still computed and
+still reported in `raw` as `process.signal` with zero weight. The 25 points were removed, not
+redistributed — the evidence supports deleting a component and says nothing about the other four
+being worth more. `packages/tracks/t1-creative-build/test/score.test.ts` now asserts the
+volume-invariance property TEN-80 asked for: identical judgments and 0 versus 400 prompt-log
+entries produce an identical score.
+
+**One finding reported and deliberately not fixed here.** T3's Process-quality component (35 points)
+counts verification events, which is volume-shaped even after §9.5 narrowed it to *discriminating*
+verifications. That is a T3 decision and this branch did not touch it. It is why the
+volume-invariance test is written for T1 alone.

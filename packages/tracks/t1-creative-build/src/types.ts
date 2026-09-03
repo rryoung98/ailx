@@ -49,9 +49,9 @@ export interface T1Score {
  *  - 'ambition'     technical ambition confirmed purposeful by judge
  *  - 'rationale'    coherence of stated intent vs delivered artifact
  *
- * NOT a judgment dimension: 'process'. It is derived from the stored prompt
- * log by {@link processSignal} with no judge in it at all, which is the whole
- * reason it now carries points.
+ * These four are the whole of T1's score. The prompt log is still read — see
+ * {@link processSignal} — but it is a diagnostic worth ZERO points (TEN-80),
+ * so it is neither a dimension nor a scored component.
  */
 export const T1_DIMENSIONS = [
   "functional",
@@ -61,13 +61,13 @@ export const T1_DIMENSIONS = [
 ] as const;
 
 export type T1Dimension = (typeof T1_DIMENSIONS)[number];
-export type T1Component = T1Dimension | "process";
+export type T1Component = T1Dimension;
 
 /**
  * Score allocation — spec §T1, derived from the ONE allocation table in
  * `@ailx/core` so this file cannot drift from the spec or from the report's
- * component list. 160 points: 40 gates, 60 comparative, 20 ambition,
- * 15 rationale, 25 process.
+ * component list. 135 points: 40 gates, 60 comparative, 20 ambition,
+ * 15 rationale.
  */
 export const T1_WEIGHTS: Record<T1Component, number> = weightsFor<T1Component>("t1");
 
