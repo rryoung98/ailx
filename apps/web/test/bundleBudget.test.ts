@@ -29,10 +29,27 @@
  * prints the measured bytes next to the budget. There is no separate script to
  * drift from the check.
  *
- * The budgets are TODAY'S MEASUREMENT + 5%, taken on branch `w/deps` at the
- * commit that added this file. 5% is about 10-16 kB on the big pages: enough
- * that a refactor does not cry wolf, small enough that a whole library cannot
- * arrive inside it. Raising a number here is allowed and expected — with the
+ * TWO MARGINS, and the difference is the point.
+ *
+ *   - a PAGE budget is its measurement + 5% (9-17 kB on the big pages): wide
+ *     enough that a chunk-boundary shuffle does not cry wolf.
+ *   - the TOTAL client-JS budget is its measurement + 2% (14-16 kB). It is
+ *     tighter because it is the only one that sees a chunk no page requests up
+ *     front. A page budget counts the `<script src>`s in the prerendered HTML,
+ *     so a library reached through `await import(...)` after hydration —
+ *     `app/report/page.tsx` does exactly that with `@ailx/track-t4` — is
+ *     invisible to it and lands in the total instead.
+ *
+ * WHAT THIS CANNOT DO. It measures the build output it finds. It cannot tell a
+ * fresh artefact from yesterday's, and it SKIPS a mode whose output is absent,
+ * so a local `pnpm test` with no build checks nothing. That is not the CI
+ * story: `.github/workflows/ci.yml` runs the static build and then the hosted
+ * build BEFORE `pnpm test:coverage` — for `bundleSecrecy.test.ts`, which needs
+ * the same two trees — so on every PR both halves run against output built
+ * from that commit.
+ *
+ * The baselines are TODAY'S MEASUREMENT, taken on branch `w/deps` at the commit
+ * that added this file. Raising one is allowed and expected — with the
  * measurement and the reason in the commit message, which is the entire point.
  */
 import { describe, expect, it } from "vitest";
@@ -43,9 +60,10 @@ import { fileURLToPath } from "node:url";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 
-/** Measured on `w/deps`, both builds run clean. See the header. */
-const MARGIN = 1.05;
-const budget = (measured: number): number => Math.round(measured * MARGIN);
+/** Measured on `w/deps`, both builds run clean. See the header for the two margins. */
+const PAGE_MARGIN = 1.05;
+const TOTAL_MARGIN = 1.02;
+const budget = (measured: number, margin: number): number => Math.round(measured * margin);
 
 interface Mode {
   name: string;
@@ -148,9 +166,9 @@ for (const mode of MODES) {
       const measured = jsFiles.reduce((n, f) => n + gz(f), 0);
       expect(
         measured,
-        `all JS under ${mode.staticDir}: ${measured} B gzip, budget ${budget(mode.allJsGzip)} B ` +
-          `(baseline ${mode.allJsGzip} + 5%)`,
-      ).toBeLessThanOrEqual(budget(mode.allJsGzip));
+        `all JS under ${mode.staticDir}: ${measured} B gzip, budget ` +
+          `${budget(mode.allJsGzip, TOTAL_MARGIN)} B (baseline ${mode.allJsGzip} + 2%)`,
+      ).toBeLessThanOrEqual(budget(mode.allJsGzip, TOTAL_MARGIN));
     });
 
     it("ships no more JS on EVERY page than budgeted", () => {
@@ -165,8 +183,9 @@ for (const mode of MODES) {
       expect(
         measured,
         `shared by all ${perPage.length} prerendered pages: ${measured} B gzip over ` +
-          `${shared.length} files, budget ${budget(mode.sharedGzip)} B (baseline ${mode.sharedGzip} + 5%)`,
-      ).toBeLessThanOrEqual(budget(mode.sharedGzip));
+          `${shared.length} files, budget ${budget(mode.sharedGzip, PAGE_MARGIN)} B ` +
+          `(baseline ${mode.sharedGzip} + 5%)`,
+      ).toBeLessThanOrEqual(budget(mode.sharedGzip, PAGE_MARGIN));
     });
 
     for (const [page, baseline] of Object.entries(mode.pages)) {
@@ -182,8 +201,8 @@ for (const mode of MODES) {
         expect(
           measured,
           `${page}: ${measured} B gzip over ${scripts.length} scripts, ` +
-            `budget ${budget(baseline)} B (baseline ${baseline} + 5%)`,
-        ).toBeLessThanOrEqual(budget(baseline));
+            `budget ${budget(baseline, PAGE_MARGIN)} B (baseline ${baseline} + 5%)`,
+        ).toBeLessThanOrEqual(budget(baseline, PAGE_MARGIN));
       });
     }
   });

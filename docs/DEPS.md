@@ -55,11 +55,14 @@ means something it depends on asked for it. Measured with
 | 3.0 | `@tanstack/query-core` | transitive | `apps/web` |
 | 3.0 | `undici` | transitive | `apps/web`, `services/openrouter-proxy` |
 
-Read the top of that table before reacting to it. The four biggest entries —
-`next`, `@next/swc-darwin-arm64`, `@biomejs/cli-darwin-arm64` and the sharp
-libvips binary — are a framework, two native toolchain binaries and an image
-codec. None of them is a decision this repository can revisit, and none of them
-reaches a browser.
+Read the top of that table before reacting to it. The three biggest entries —
+`next`, `@next/swc-darwin-arm64` and `@biomejs/cli-darwin-arm64`, 334 MB
+between them, over half the install — are a framework and two native toolchain
+binaries, and neither the SWC binary nor the Biome binary is code that could
+ship anywhere. (Next itself does reach the browser: `next/link`,
+`next/navigation` and `next/font` are in every page. What is 152 MB on disk is
+a few tens of kB in a chunk.) None of the three is a decision this repository
+can revisit.
 
 ## 2. Duplicates
 
@@ -75,7 +78,7 @@ Distinct versions of the same package in `pnpm-lock.yaml` before this branch:
 | `undici` | 5.29.0, 6.28.0 | `@vercel/blob@0.27.3` wanted `^5.28.4`, `@2.8.0` wants `^6.23.0` | **yes** — falls out of the `@vercel/blob` alignment |
 | `zustand` | 4.5.7, 5.0.15 | `@react-three/fiber@9` pins v5, `three-stdlib`'s tree still wants v4 | no — inside `@react-three/drei` |
 | `fflate` | 0.6.11, 0.8.3 | `three-stdlib` vs `@monogrid/gainmap-js` | no — inside `@react-three/drei` |
-| `postcss` | 8.4.31, 8.5.26 | `next` pins 8.4.31 exactly; `vite` wants `^8.5` | no — an exact pin in a framework |
+| `postcss` | 8.4.31, 8.5.26 | `next@15.5.23` depends on `postcss` at exactly `8.4.31`; `vite@5.4.21` wants `^8.4.43`, which 8.4.31 does not satisfy | no — an exact pin inside a framework |
 | `undici`-adjacent toolchain: `ansi-regex`, `ansi-styles`, `emoji-regex`, `string-width`, `strip-ansi`, `wrap-ansi`, `signal-exit`, `brace-expansion`, `balanced-match`, `minimatch` | CJS 4/5-era vs ESM 6/7-era | `@isaacs/cliui` and `glob` pull the old halves; vitest/rollup pull the new | no — dev-only, and the split is between two eras of the same author's packages |
 | `rrweb-cssom` | 0.7.1, 0.8.0 | `jsdom` depends on both, deliberately (one for parsing, one for serialising) | no |
 | `fsevents` | 2.3.2, 2.3.3 | `chokidar@2` inside an older toolchain vs `vite` | no — optional, darwin-only |
@@ -88,13 +91,19 @@ bet in exchange for a few MB of dev-only disk.
 
 **`services/openrouter-proxy`: `@vercel/blob` `^0.27.0` -> `^2.8.0`.**
 `apps/web` was already on `^2.8.0`, so the tree carried two copies of the SDK
-and two majors of `undici` behind them. The proxy uses exactly two calls,
-`put(pathname, body, {access, contentType, addRandomSuffix})` and
-`list({prefix, limit, cursor})` -> `{blobs, hasMore, cursor}`; both have the
-same signature and the same result shape in 2.8.0, checked against the shipped
-`dist/index.d.ts`. `addRandomSuffix` changed its DEFAULT between those majors
-and the proxy passes it explicitly, so the default does not apply. `@2.8.0`
-requires Node >= 20; CI and Pages both run Node 22.
+and two majors of `undici` behind them. The proxy uses exactly two calls, and every option it passes to them:
+
+| call site | passes | in 2.8.0 |
+|---|---|---|
+| `put(pathname, body, opts)` | `access: "public"`, `contentType`, `addRandomSuffix: false` | `CommonCreateBlobOptions` — unchanged |
+| `put` in `api/gallery/vote.js` | the above plus `allowOverwrite: true`, which is what makes a re-vote idempotent | `allowOverwrite?: boolean`, `@defaultvalue false` — unchanged |
+| `list({prefix, limit, cursor})` -> `{blobs, hasMore, cursor}` | — | same options, same result shape |
+
+Checked against the shipped `dist/index.d.ts` and
+`dist/create-folder-*.d.ts`. `addRandomSuffix` changed its DEFAULT between
+those majors (true -> false) and both call sites pass it explicitly, so the
+default never applies. `@2.8.0` requires Node >= 20; CI, Pages and Vercel all
+run Node 22.
 
 The proxy's own tests mock `@vercel/blob`, so they prove the handlers still
 work — they do not prove the SDK's wire behaviour. The compatibility claim
@@ -128,11 +137,23 @@ Hand checks knip cannot do, all of which came back "keep":
 - `jsdom` at the repo root — the vitest environment, named in `vitest.shared.ts`
   and never imported.
 
-**Nothing in `dependencies` anywhere in this repo is build-time or test-only.**
-Every `dependencies` entry was checked against its import sites: all of them run
-in a browser or in the proxy's request path. So no dependency moved to
-`devDependencies` on this branch, and the absence of that commit is a result,
-not an omission.
+**Nothing in `dependencies` anywhere in this repo is in the wrong list.** Every
+`dependencies` entry was checked against its import sites, and each one is
+imported by code that runs at ITS OWN package's runtime — which is not the same
+runtime everywhere:
+
+- `apps/web` and the four tracks: the browser.
+- `services/openrouter-proxy`: the request path of a serverless function.
+- `packages/content-tools`: its own CLI. `yaml` and `@ailx/core` are imported by
+  `src/loader.ts`, which the published `dist/` entry point runs. They are build
+  tooling from the point of view of the REPO — the snapshot CLI is a build step
+  — and they are still runtime dependencies of the package that declares them,
+  which is what `dependencies` means. Moving them to `devDependencies` would
+  make `dist/` unrunnable to describe the repo's habits rather than the
+  package's.
+
+So no dependency moved to `devDependencies` on this branch, and the absence of
+that commit is a result, not an omission.
 
 ## 5. What reaches a browser
 
@@ -202,9 +223,13 @@ Measured cost of that one hook:
   `three-stdlib` (28.4 MB, loaders) and `@mediapipe/tasks-vision` (19.5 MB,
   drei's face/hand tracking helpers). That is 14% of the whole install for a
   package this repo uses 40 lines of.
-- **0 bytes in either browser bundle.** drei ships ESM and webpack tree-shakes
-  it: no chunk in `out/` or `.next/static` contains `hls.js`, `three-stdlib`,
-  `@mediapipe/tasks-vision` or `@dimforge/rapier3d-compat` in either build.
+- **0 bytes of that 93.7 MB in either browser bundle.** drei ships ESM and
+  webpack tree-shakes it: no chunk in `out/` or `.next/static` contains
+  `hls.js`, `three-stdlib`, `@mediapipe/tasks-vision` or
+  `@dimforge/rapier3d-compat` in either build. What DOES ship is `useTexture`
+  itself — `grep -l initTexture out/_next/static/chunks` finds it in two chunks
+  — so the browser saving from removing drei is roughly the 40 lines below, not
+  93.7 MB. The install saving is the whole 93.7 MB. Do not conflate them.
 - drei's two duplicate ranges (`zustand` 4/5, `fflate` 0.6/0.8) go with it.
 
 `useTexture` is `useLoader(THREE.TextureLoader, url)` plus an `initTexture`
@@ -222,12 +247,24 @@ a person, not to this audit.
 
 ## 7. The gate
 
-`apps/web/test/bundleBudget.test.ts` fails when total client JS, the shared
-bytes, or any of eight named pages exceeds today's measurement + 5%, in either
-build mode. It skips the mode it cannot see, so it costs nothing in a run with
-no build output, and it re-states the method in its own header rather than
-pointing at this document.
+`apps/web/test/bundleBudget.test.ts` fails when total client JS, the bytes
+shared by every page, or any of eight named pages exceeds today's measurement
+by more than its margin, in either build mode. It re-states the method in its
+own header rather than pointing at this document.
 
-5% is roughly 9-17 kB on the big pages: wide enough that a refactor shuffling
-chunk boundaries does not cry wolf, narrow enough that no library arrives
-inside it. The oRPC spike, at +21.7 kB gzip on one page, would have failed it.
+A page budget is its measurement + 5% (9-17 kB on the big pages), wide enough
+that a refactor shuffling chunk boundaries does not cry wolf. The TOTAL
+client-JS budget is tighter, + 2% (14-16 kB), because it is the only one that
+sees a chunk no page requests up front: a page budget counts the
+`<script src>`s in the prerendered HTML, so a library reached through
+`await import(...)` after hydration is invisible to it and lands in the total
+instead. The oRPC spike, at +21.7 kB gzip on one page and +82.8 kB raw overall,
+fails both.
+
+What the gate cannot do, stated plainly: it measures the build output it finds,
+it cannot tell a fresh artefact from yesterday's, and it skips a mode whose
+output is absent — so a local `pnpm test` with no build checks nothing. On CI
+that hole is closed by ordering that already exists for another reason:
+`.github/workflows/ci.yml` runs the static build and then the hosted build
+BEFORE `pnpm test:coverage`, because `bundleSecrecy.test.ts` needs the same two
+trees. On every PR both halves run against output built from that commit.

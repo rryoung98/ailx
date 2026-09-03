@@ -136,10 +136,13 @@ handler requires a decision in front of a reviewer.
   reported and what was rejected as a false positive, and what each build mode
   actually ships to a browser. The gate is
   `apps/web/test/bundleBudget.test.ts`: total client JS, the bytes shared by
-  every page, and eight named pages each have a budget of the measured number
-  plus 5%, in BOTH build modes. It skips the mode it cannot see, so it is free
-  in a run with no build output. Re-measure by running either build and reading
-  the failure, which always prints measured bytes next to the budget.
+  every page, and eight named pages each have a budget, in BOTH build modes:
+  the measured number plus 5% for a page, plus 2% for the total, which is
+  tighter because it is the only one that sees a chunk loaded after hydration.
+  It skips the mode it cannot see, so it is free in a run with no build output;
+  CI builds both modes before the tests, so both halves run on every PR.
+  Re-measure by running either build and reading the failure, which always
+  prints measured bytes next to the budget.
 
 ## Frontend standard
 - `FRONTEND.md` — module boundaries, security, clean-code, testing and migration rules for `apps/web` and `packages/tracks`. Read it before touching frontend code.
