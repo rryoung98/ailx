@@ -98,15 +98,6 @@ describe("sampleT2DeckIds", () => {
     }
   });
 
-  it("missing text class back-fills from the remaining text pool", () => {
-    const noBenign = bank().filter((c) => !(c.kind === "text" && !c.signal));
-    for (const seed of [undefined, t2DeckSeed("att-y", BANK_SHA)]) {
-      const text = sampleT2DeckIds(noBenign, DECK, seed).filter((id) => kindOf(id) === "text");
-      expect(text).toHaveLength(2);
-      expect(text.every(isSignal)).toBe(true);
-    }
-  });
-
   it("thin pools shrink blocks without crashing", () => {
     expect(sampleT2DeckIds([], DECK)).toEqual([]);
     expect(sampleT2DeckIds([], DECK, t2DeckSeed("att-z", BANK_SHA))).toEqual([]);
@@ -154,6 +145,76 @@ describe("sampleT2DeckIds", () => {
     expect(new Set(deck).size).toBe(3);
     expect(deck.filter(isSignal).length).toBeGreaterThanOrEqual(1);
     expect(deck.filter((id) => !isSignal(id)).length).toBeGreaterThanOrEqual(1);
+  });
+
+  /**
+   * TEN-74. The backfill pool used to be rebuilt from the ORIGINAL bank
+   * order, which lists every AI item before every real item, so the extra
+   * item of an ODD text count was always the first remaining AI item. The
+   * later presentation shuffle hid it: it reorders what was sampled, it does
+   * not change what was sampled. d\u2032 is computed against a signal/noise
+   * split, so a deck that leans one way deterministically does not average
+   * out across candidates.
+   */
+  it("an odd text count draws its extra item from BOTH classes across seeds", () => {
+    const odd: T2DeckComposition = { mediaPairs: 0, text: 3, provenance: 0 };
+    const signalCounts = new Set<number>();
+    for (let k = 0; k < 40; k++) {
+      const deck = sampleT2DeckIds(bank(), odd, t2DeckSeed(`att-odd-${k}`, BANK_SHA));
+      expect(deck).toHaveLength(3);
+      expect(new Set(deck).size).toBe(3);
+      // The declared half of each class is always dealt; only the ONE extra
+      // item is free, so the mix is 2:1 one way or the other, never 3:0.
+      const signal = deck.filter(isSignal).length;
+      expect(signal).toBeGreaterThanOrEqual(1);
+      expect(signal).toBeLessThanOrEqual(2);
+      signalCounts.add(signal);
+    }
+    expect(signalCounts).toEqual(new Set([1, 2]));
+  });
+
+  it("the odd extra item is still identical for the same seed", () => {
+    const odd: T2DeckComposition = { mediaPairs: 0, text: 3, provenance: 0 };
+    const seeds = [...Array(20).keys()].map((k) => t2DeckSeed(`att-odd-${k}`, BANK_SHA));
+    for (const s of seeds) {
+      expect(sampleT2DeckIds(bank(), odd, s)).toEqual(sampleT2DeckIds(bank(), odd, s));
+    }
+    expect(new Set(seeds.map((s) => sampleT2DeckIds(bank(), odd, s).join("|"))).size)
+      .toBeGreaterThan(10);
+  });
+
+  /**
+   * TEN-74. A class too thin to fill its declared half used to be papered
+   * over with items of the OTHER class, silently. That changes the
+   * signal/noise split the report claims to have measured, so it is refused
+   * out loud instead \u2014 the same stance the declaration check takes.
+   */
+  it("refuses a text class too thin to deal balanced, rather than backfilling", () => {
+    const noBenign = bank().filter((c) => !(c.kind === "text" && !c.signal));
+    const noSignal = bank().filter((c) => !(c.kind === "text" && c.signal));
+    for (const thin of [noBenign, noSignal]) {
+      for (const seed of [undefined, t2DeckSeed("att-thin", BANK_SHA)]) {
+        expect(() => sampleT2DeckIds(thin, DECK, seed)).toThrow(/class-balanced/);
+      }
+    }
+    // Exactly thin enough to trigger ONE backfill: 4 declared text items
+    // needs 2 per class, and one class holds 1.
+    const oneShort = bank().filter((c) => !(c.kind === "text" && !c.signal && c.id !== "t-real-0"));
+    expect(() =>
+      sampleT2DeckIds(oneShort, { mediaPairs: 0, text: 4, provenance: 0 },
+        t2DeckSeed("att-one-short", BANK_SHA)),
+    ).toThrow(/class-balanced/);
+  });
+
+  it("an EXHAUSTED text pool shrinks the block instead of refusing", () => {
+    // Nothing to backfill WITH, so no class mix is corrupted: the deck is
+    // smaller and still says what it is.
+    const noText = bank().filter((c) => c.kind !== "text");
+    for (const seed of [undefined, t2DeckSeed("att-notext", BANK_SHA)]) {
+      const deck = sampleT2DeckIds(noText, DECK, seed);
+      expect(deck.filter((id) => kindOf(id) === "text")).toHaveLength(0);
+      expect(deck).toHaveLength(4);
+    }
   });
 
   it("refuses a malformed declaration rather than dealing something else", () => {

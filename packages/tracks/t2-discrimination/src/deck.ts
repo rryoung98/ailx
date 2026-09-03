@@ -72,10 +72,13 @@ function seededShuffle<T>(arr: readonly T[], seed: string, salt: string): T[] {
  * Sample a deck from `candidates` and return the presented item ids in
  * order. `deck` is the declared composition (see {@link T2DeckComposition});
  * `seed` (from {@link t2DeckSeed}) selects a per-attempt deck, and omitting it
- * returns the fixed default deck. Thin strata degrade gracefully: a missing
- * media class drops that pair (never an unmatched half-pair), a missing text
- * class back-fills from the remaining text pool, and a short provenance pool
- * shrinks that block \u2014 the deck is always well-formed, just smaller.
+ * returns the fixed default deck. Thin strata degrade gracefully AS LONG AS
+ * degrading keeps the class mix honest: a missing media class drops that pair
+ * (never an unmatched half-pair), and a short provenance or text pool shrinks
+ * that block \u2014 the deck is always well-formed, just smaller. A text class
+ * that is thin while the OTHER class could cover for it is refused, not
+ * covered for: that backfill would move the signal/noise split d\u2032 is
+ * computed against (TEN-74).
  *
  * A negative or non-integer count throws rather than dealing a deck nobody
  * declared: the composition comes from an instrument file, and a malformed
@@ -112,14 +115,32 @@ export function sampleT2DeckIds(
       }
       return realPool.splice(best, 1)[0];
     });
-  // Half the declared text items from each class, then back-fill a thin or
-  // odd class from the remaining text pool so the deck size stays
-  // content-independent.
+  // Half the declared text items from each class. An ODD declared count
+  // leaves exactly one item over, and that one is drawn from the combined
+  // remainder — SEEDED, so it is not decided by bank order (TEN-74). The
+  // remainder used to be rebuilt in bank order, which lists every AI item
+  // before every real item, so the extra was always AI and every deck leaned
+  // the same way. The presentation shuffle further down never fixed that: it
+  // reorders what was sampled, not what was sampled.
   const perTextClass = Math.floor(deck.text / 2);
-  const backfillText = (picked: T2DeckCandidate[]) => {
+  const backfillText = (picked: T2DeckCandidate[], seed?: string) => {
+    const missing = deck.text - picked.length;
+    if (missing <= 0) return picked;
     const pool = [...textAi, ...textReal].filter((c) => !picked.includes(c));
-    while (picked.length < deck.text && pool.length > 0) picked.push(pool.shift()!);
-    return picked;
+    // Anything missing BEYOND the unavoidable odd item means a class was too
+    // thin to fill its declared half. Taking those from the other class would
+    // change the signal/noise split d\u2032 is computed against, silently, so it
+    // is refused out loud instead — but only when there is something to
+    // backfill WITH: an exhausted text pool corrupts no mix, it just deals a
+    // smaller block, which is the documented thin-strata behaviour.
+    if (missing - (deck.text % 2) > 0 && pool.length > 0) {
+      throw new Error(
+        `t2 deck declares ${deck.text} class-balanced text items (${perTextClass} per class) ` +
+          `but the bank holds ${textAi.length} signal and ${textReal.length} benign text items`,
+      );
+    }
+    const draw = seed === undefined ? pool : seededShuffle(pool, seed, "text-backfill");
+    return [...picked, ...draw.slice(0, missing)];
   };
   // A media pair needs BOTH classes; otherwise present that pair not at all.
   const pairCount = Math.min(deck.mediaPairs, mediaAi.length, mediaReal.length);
@@ -144,10 +165,13 @@ export function sampleT2DeckIds(
     return seededUniform(`${seed}:pair-order`, k) < 0.5 ? pair : pair.reverse();
   });
   // Half signal (AI/hostile) and half benign text, seeded pick and seeded order.
-  const textPair = backfillText([
-    ...seededShuffle(textAi, seed, "text-ai").slice(0, perTextClass),
-    ...seededShuffle(textReal, seed, "text-real").slice(0, perTextClass),
-  ]);
+  const textPair = backfillText(
+    [
+      ...seededShuffle(textAi, seed, "text-ai").slice(0, perTextClass),
+      ...seededShuffle(textReal, seed, "text-real").slice(0, perTextClass),
+    ],
+    seed,
+  );
   const textPick =
     seededUniform(`${seed}:text-order`, 0) < 0.5 ? textPair : [...textPair].reverse();
   const provPick = seededShuffle(prov, seed, "prov").slice(0, deck.provenance);
