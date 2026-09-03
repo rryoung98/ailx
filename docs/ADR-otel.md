@@ -191,9 +191,23 @@ on the HOSTED build only, and the static export must still ship none of it.
 - **The browser contributes no span.** A trace begins at the service. Time
   spent in the page, in DNS, or in a proxy is invisible; what the trace shows
   is what the service did with the request.
-- **The sampled flag is a hint.** The browser always sends `01`. The service
-  decides what it records and exports, and the exporter is off by default, so
-  a deployment with no exporter records nothing however many headers arrive.
+- **The sampled flag is a hint, and a forgeable one.** The browser always
+  sends `01`. A plain `ParentBasedSampler` would obey that, which would let any
+  caller pin sampling to 1 and decide our Cloud Trace bill; the service's
+  sampler caps a REMOTE parent with its own ratio
+  (`AILX_TRACE_SAMPLE_RATIO`, default 1) for exactly that reason. The exporter
+  is off by default, so a deployment with no exporter records nothing however
+  many headers arrive.
+- **An anonymous read now costs a CORS preflight.** A custom header makes a
+  GET non-simple, so `/wall` and `/gallery` cross-origin gain one round trip
+  they did not pay before; identified reads already paid it, because
+  `x-ailx-dev-user` is custom too. The service allows `traceparent` and
+  `tracestate` in `Access-Control-Allow-Headers` — without that the browser
+  would strip the header and the continuation would silently never happen.
+- **"Every handler" is not literally every route.** `apiRoute` wraps most of
+  them, but `/livez`, `/readyz`, the three capability routes (share token,
+  credential code) and the served T1 site bypass it and carry no span. The
+  private repo writes the list down and a test there fails if it changes.
 - **The funnel emitter is NOT traced, on purpose.** `lib/data/funnel.ts` posts
   with `credentials: "omit"` and no identity header, and is documented as
   anonymous by construction (docs/KPI.md). Adding a header to it would buy a
@@ -216,7 +230,40 @@ on the HOSTED build only, and the static export must still ship none of it.
   number worth carrying forward, but it is not a like-for-like replay of the
   2026-09-02 measurement and does not pretend to be.
 
-## 7. The gates
+## 7. The review, and what it changed
+
+`codex exec` was run over the branch diff, asked for defects and not praise.
+Eight findings. Six changed the code; two are answered here.
+
+- **Accepted, and the sharpest one.** `docs/bundle-bytes.mjs` treated a
+  missing HTML root as an empty page table and an unresolvable `<script src>`
+  as zero bytes. Both make a measurement look BETTER exactly when it is
+  invalid. It now throws on the first and exits non-zero on the second.
+- **Accepted.** The all-zero-id test used real randomness, so it would have
+  passed with the check deleted. It stubs `getRandomValues` to return zeroes
+  and asserts no header comes out.
+- **Accepted.** The seam test grepped for the literal `await authHeaders(`,
+  which a call without `await` would have walked straight past. It strips
+  comments, matches any call, and is joined by the check from the other
+  direction: every module that spells `${apiBase()}` into a `fetch` must reach
+  the trace seam, with a floor on the number of modules found so the check
+  cannot quietly stop matching.
+- **Accepted.** The "no OTEL SDK" test read only `apps/web/package.json`. It
+  reads every workspace package manifest now. A transitively pulled SDK is
+  still beyond a source-text test, and the test says so.
+- **Accepted, as documentation.** The CORS preflight cost of a custom header
+  on a previously simple GET, and the forgeable sampled flag, are both real.
+  The first is written down at the seam and in §6; the second was fixed in the
+  service, whose sampler now caps a remote parent.
+- **Answered, not changed.** "The per-page sum misses a chunk fetched by a
+  dynamic `import()` after hydration" is true, and it is why the artifact
+  total is reported beside it. The script header now says so.
+
+An earlier run of the same review wandered onto a sibling branch and reviewed
+code this branch does not touch. Its findings are not recorded here, because
+they are not about this diff.
+
+## 8. The gates
 
 - `AILX_TEST_FORKS=2 pnpm test`: **207 files, 2819 passed, 10 skipped, 0 failed.**
 - `pnpm -r build`: green, including `packages/core/test/frontendOnly.test.ts`

@@ -14,8 +14,11 @@
  *   00-<32 hex trace-id>-<16 hex span-id>-<2 hex flags>
  *
  * Both ids are random and MUST NOT be all zeroes. `01` in the flags says
- * "sampled" — a hint only. The SERVICE decides what it records and exports;
- * nothing here can turn tracing on for a deployment that has no exporter.
+ * "sampled" — a HINT, and a hint a stranger can forge, so the service must
+ * not obey it: a plain `ParentBasedSampler` would let any caller pin sampling
+ * to 1 and decide our trace bill. The private repo's sampler caps a REMOTE
+ * parent with its own ratio for exactly that reason. Nothing here can turn
+ * tracing on for a deployment that has no exporter.
  *
  * Dependency-free on purpose (`crypto.getRandomValues`, no `uuid`, no
  * `@opentelemetry/*`), and it carries NOTHING about the person: no identity,

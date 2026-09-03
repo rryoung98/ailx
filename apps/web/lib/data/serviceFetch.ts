@@ -65,7 +65,7 @@ function browserStorage(): StorageLike | null {
 }
 
 export interface ServiceOptions<T = unknown> {
-  /** Send `authHeaders()`. Required for any page that shows one person's rows. */
+  /** Send the identity too. Required for any page that shows one person's rows. */
   readonly identified?: boolean;
   readonly signal?: AbortSignal;
   /**
@@ -88,6 +88,13 @@ export async function serviceFetch<T>(
     // are anonymous and still worth being able to follow into the service;
     // the header is 55 characters of random hex and says nothing about who
     // asked (lib/data/traceparent.ts).
+    //
+    // KNOWN COST, cross-origin: a custom header makes a GET non-simple, so an
+    // anonymous read that used to go straight out now costs a CORS preflight
+    // first. Identified reads always paid it (`x-ailx-dev-user` is custom
+    // too). The service allows `traceparent` in `Access-Control-Allow-Headers`
+    // — without that the browser would drop the header and the continuation
+    // would silently never happen. docs/ADR-otel.md §6.
     const headers = storage === null ? traceHeaders() : await serviceHeaders(storage);
     const res = await fetch(`${apiBase()}${path}`, {
       headers,

@@ -9,7 +9,7 @@
  * property under test is narrow and checkable: a well-formed W3C
  * `traceparent`, on every service call, carrying nothing about the person.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { DEV_USER_HEADER } from "@ailx/contract";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -50,7 +50,15 @@ describe("the value on the wire", () => {
     expect(ids.size).toBe(64);
   });
 
-  it("never mints the all-zero trace-id or span-id a collector would drop", () => {
+  it("REFUSES the all-zero id a collector drops, and does not rely on luck", () => {
+    // Real randomness would pass this test with the check deleted, so the
+    // randomness is the thing under control: a source that returns zeroes
+    // must produce no header at all.
+    vi.stubGlobal("crypto", { getRandomValues: (b: Uint8Array) => b.fill(0) });
+    expect(newTraceparent()).toBeNull();
+    expect(traceHeaders()).toEqual({});
+    vi.unstubAllGlobals();
+    // And the real source keeps producing usable ones.
     for (let i = 0; i < 64; i += 1) {
       const [, traceId, spanId] = newTraceparent()!.split("-");
       expect(traceId).not.toMatch(/^0+$/);
@@ -119,12 +127,35 @@ function sourceFiles(dir: string): string[] {
 
 const APP_ROOT = join(__dirname, "..");
 
+/**
+ * The CODE of a file, with comments removed. Without this the seam checks
+ * below match prose — several modules explain `authHeaders()` in a comment
+ * without calling it, and a doc comment is not a call site.
+ */
+function codeOf(file: string): string {
+  return readFileSync(file, "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
 describe("no call site opts out", () => {
-  it("every service call builds its headers with serviceHeaders(), not authHeaders()", () => {
+  /** Files allowed to name `authHeaders` at all: the definition, the
+   * composition that wraps it, and the two modules that only register or
+   * query the token SOURCE (`setAuthTokenSource`, `hasAuthTokenSource`). */
+  const IDENTITY_OWNERS = [
+    "lib/data/authHeaders.ts",
+    "lib/data/traceparent.ts",
+    "lib/auth/ClerkTokenBridge.tsx",
+    "features/progress/ProgressView.tsx",
+  ];
+
+  it("no module outside the identity seam CALLS authHeaders()", () => {
+    // Not `await authHeaders(` — a call without `await`, behind a promise
+    // chain, or with different whitespace would slip through that.
     const offenders = sourceFiles(APP_ROOT)
-      .filter((f) => !f.includes("/test/") && !f.endsWith("lib/data/authHeaders.ts"))
-      .filter((f) => !f.endsWith("lib/data/traceparent.ts"))
-      .filter((f) => readFileSync(f, "utf8").includes("await authHeaders("))
+      .filter((f) => !f.includes("/test/"))
+      .filter((f) => !IDENTITY_OWNERS.some((owner) => f.endsWith(owner)))
+      .filter((f) => /(?<![A-Za-z0-9_.])authHeaders\s*\(/.test(codeOf(f)))
       .map((f) => f.slice(APP_ROOT.length + 1));
     // `authHeaders()` answers "who"; a request also needs "which trace", and
     // the composition is `serviceHeaders()`. A call site that reaches past it
@@ -132,18 +163,64 @@ describe("no call site opts out", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("every module that builds a service URL sends a trace with it", () => {
+    // The stronger half of the same claim, from the other direction: find the
+    // modules that spell `apiBase()` into a request, and require each one to
+    // reach the trace seam. `funnel.ts` is the ONE deliberate exception —
+    // it posts with `credentials: "omit"` and no identity header, and a
+    // one-span trace with nothing else in it buys nothing (docs/KPI.md).
+    const TRACE_EXEMPT = ["lib/data/funnel.ts", "lib/mode.ts", "lib/server/page.ts"];
+    const callers = sourceFiles(APP_ROOT)
+      .filter((f) => !f.includes("/test/"))
+      .filter((f) => !TRACE_EXEMPT.some((exempt) => f.endsWith(exempt)))
+      .filter((f) => {
+        const src = codeOf(f);
+        // Built in pieces so this file does not itself contain the literal
+        // a linter reads as an unintended template placeholder.
+        const seam = ["$", "{apiBase()}"].join("");
+        return src.includes(seam) && /\bfetch(Fn)?\s*\(/.test(src);
+      });
+    // A check that found nothing to check would pass forever. Five modules
+    // spell `${apiBase()}` straight into a fetch today; the rest take a base
+    // as a parameter and are covered by the `authHeaders` check above. If
+    // this number collapses, the pattern stopped matching and the test is
+    // lying, not the code.
+    expect(callers.length).toBeGreaterThanOrEqual(5);
+    const offenders = callers
+      .filter((f) => !/serviceHeaders\s*\(|traceHeaders\s*\(/.test(codeOf(f)))
+      .map((f) => f.slice(APP_ROOT.length + 1));
+    expect(offenders).toEqual([]);
+  });
+
   it("ships no OpenTelemetry SDK — propagation is a header, not a library", () => {
-    const pkg = JSON.parse(readFileSync(join(APP_ROOT, "package.json"), "utf8")) as {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
-    const named = [
-      ...Object.keys(pkg.dependencies ?? {}),
-      ...Object.keys(pkg.devDependencies ?? {}),
-    ].filter((d) => d.startsWith("@opentelemetry/"));
+    // Every workspace package the app can reach, not just its own manifest:
+    // a dependency added to `@ailx/session` would ship in the bundle exactly
+    // like one added here. This is a check on what WE declare — a package
+    // that pulls an SDK in transitively is beyond a source-text test, and
+    // `apps/web/test/bundleSecrecy.test.ts` greps the built output.
+    const manifests = [join(APP_ROOT, "package.json")];
+    const packagesRoot = join(APP_ROOT, "..", "..", "packages");
+    for (const entry of readdirSync(packagesRoot)) {
+      const manifest = join(packagesRoot, entry, "package.json");
+      if (statSync(join(packagesRoot, entry)).isDirectory() && existsSync(manifest)) {
+        manifests.push(manifest);
+      }
+    }
+    const named = manifests.flatMap((file) => {
+      const pkg = JSON.parse(readFileSync(file, "utf8")) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      return [
+        ...Object.keys(pkg.dependencies ?? {}),
+        ...Object.keys(pkg.devDependencies ?? {}),
+      ]
+        .filter((d) => d.startsWith("@opentelemetry/"))
+        .map((d) => `${file}: ${d}`);
+    });
     expect(named).toEqual([]);
     const imports = sourceFiles(APP_ROOT)
-      .filter((f) => /from "@opentelemetry\/|require\("@opentelemetry\//.test(readFileSync(f, "utf8")))
+      .filter((f) => /from "@opentelemetry\/|require\("@opentelemetry\//.test(codeOf(f)))
       .map((f) => f.slice(APP_ROOT.length + 1));
     expect(imports).toEqual([]);
   });
