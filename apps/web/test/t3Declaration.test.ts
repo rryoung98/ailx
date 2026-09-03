@@ -1,19 +1,24 @@
 /**
- * The released T3 form and the instrument's declaration of it must agree
+ * The released T3 form and the instrument's DECLARATION of it must agree
  * (TEN-73). `config.seeded_errors.count_per_form` in t3's `track.yaml` said 4
- * while `T3_SCENARIO` planted 8, so every sitting raised
+ * while `T3_SCENARIO` plants 8, so every released sitting raised
  * `errorCatchRate.underpowered` and nothing failed. The exam service refuses
  * such a package at load; a number that only fails in the other repo is a
- * number this repo can break freely, so the guard is asserted here too.
+ * number this repo can break freely, so the link is asserted here too.
  *
  * The number is 8 because the plant count IS the item count of a component
  * carrying 50 of T3's 160 points: `ERROR_CATCH_MIN_SURFACED` is the scorer's
- * declared floor and the form may not sit under its own floor.
+ * declared floor and a form may not sit under its own floor.
+ *
+ * The FORM's own shape — its ids, two instances per family, every plant
+ * anchored in the source — is asserted in `wiring.test.ts` and not repeated
+ * here. This file asserts only what the yaml and the form say about each
+ * other, and what the prose says about both.
  */
+import { TRACK_META } from "@ailx/report";
 import { ERROR_CATCH_MIN_SURFACED } from "@ailx/track-t3";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  SNAPSHOT,
   T3_SCENARIO,
   snapshotTrack,
   t3DeclaredPlantCount,
@@ -30,14 +35,6 @@ afterEach(() => {
   seeded().count_per_form = DECLARED;
 });
 
-/** Plant id prefix per declared error kind, so "two of each" is checkable. */
-const KIND_PREFIX: Record<string, string> = {
-  "misattributed-figure": "pe-figure",
-  "false-causal-claim": "pe-causal",
-  "fabricated-citation": "pe-citation",
-  "wrong-calculation": "pe-arithmetic",
-};
-
 describe("T3 planted-error declaration", () => {
   it("declares 8, which is the scorer's floor and what the form plants", () => {
     expect(t3DeclaredPlantCount()).toBe(8);
@@ -46,25 +43,29 @@ describe("T3 planted-error declaration", () => {
     expect(t3DeclaredPlantCount()).toBeGreaterThanOrEqual(ERROR_CATCH_MIN_SURFACED);
   });
 
-  it("plants two instances of each declared kind, and no unplanted kind", () => {
+  it("declares one kind per pair of plants, and every kind the form uses", () => {
+    // The yaml names four stable error FAMILIES and the form plants two
+    // instances of each (wiring.test.ts pins the instances). The families are
+    // what re-versions cheaply, so the two statements must not drift apart.
+    // An id names its family by prefix and nothing machine-readable ties a
+    // plant to a kind, so a MISLABELLED id is not caught here or anywhere.
     const kinds = seeded().kinds ?? [];
-    expect(kinds).toHaveLength(4);
-    const ids = T3_SCENARIO.plantedErrors.map((e) => e.id);
-    for (const kind of kinds) {
-      const prefix = KIND_PREFIX[kind];
-      expect(prefix, `no plants for declared kind ${kind}`).toBeDefined();
-      expect(ids.filter((id) => id === prefix || id.startsWith(`${prefix}-`))).toHaveLength(2);
+    expect(kinds).toEqual([
+      "misattributed-figure", "false-causal-claim", "fabricated-citation", "wrong-calculation",
+    ]);
+    expect(t3DeclaredPlantCount()).toBe(2 * kinds.length);
+    for (const [kind, prefix] of [
+      ["misattributed-figure", "pe-figure"],
+      ["false-causal-claim", "pe-causal"],
+      ["fabricated-citation", "pe-citation"],
+      ["wrong-calculation", "pe-arithmetic"],
+    ] as const) {
+      expect(kinds).toContain(kind);
+      expect(
+        T3_SCENARIO.plantedErrors.filter((e) => e.id.startsWith(prefix)),
+        kind,
+      ).toHaveLength(2);
     }
-    // Every plant belongs to a declared kind — no family the yaml never named.
-    const prefixes = kinds.map((k) => KIND_PREFIX[k]);
-    for (const id of ids) {
-      expect(prefixes.some((p) => id === p || id.startsWith(`${p}-`)), id).toBe(true);
-    }
-  });
-
-  it("ids are unique — a duplicated plant is not a plant", () => {
-    const ids = T3_SCENARIO.plantedErrors.map((e) => e.id);
-    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("refuses a form that disagrees with the declaration, rather than flagging it", () => {
@@ -89,11 +90,18 @@ describe("T3 planted-error declaration", () => {
     } finally {
       track.config.seeded_errors = all;
     }
-    expect(SNAPSHOT.instrument.tracks).not.toHaveLength(0);
   });
 
   it("returns the scenario itself when the two agree", () => {
     expect(t3Scenario()).toBe(T3_SCENARIO);
     expect(trackConfig("t3")).toBe(T3_SCENARIO);
+  });
+
+  it("the candidate-facing prose names the number the instrument declares", () => {
+    // @ailx/report's track metadata says "eight" in words, and prose cannot
+    // read a yaml field. This is the link: change the declaration and this
+    // fails until the sentence a candidate reads is changed with it.
+    expect(t3DeclaredPlantCount()).toBe(8);
+    expect(TRACK_META.t3.hype).toContain("eight errors");
   });
 });
