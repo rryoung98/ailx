@@ -153,12 +153,15 @@ const DEMO_BANK = fileURLToPath(
     import.meta.url,
   ),
 );
-const released: Item[] = readFileSync(DEMO_BANK, "utf8")
+// The released tier publishes its keys on purpose, so a released item carries
+// `key` as well as everything `Item` names. Annotating the array `Item[]`
+// threw that away and made the arithmetic below reach back through a cast.
+const released: Array<Item & { key: string }> = readFileSync(DEMO_BANK, "utf8")
   .split("\n")
   .filter((line) => line.trim().length > 0)
   .map((line) => JSON.parse(line) as Item & { key: string });
 const RELEASED_IDS = new Set(released.map((i) => i.id));
-const RELEASED_AI_KEYS = released.filter((i) => (i as { key: string }).key === "ai").length;
+const RELEASED_AI_KEYS = released.filter((i) => i.key === "ai").length;
 const KEY_BUDGET = RELEASED_AI_KEYS * 2;
 
 /**

@@ -64,13 +64,16 @@ function fakeServer(queue: [number, unknown, Record<string, string>?][]) {
     const next = queue.shift();
     if (next === undefined) throw new Error(`unqueued request: ${String(url)}`);
     const [status, body, headers] = next;
-    const isZip = body instanceof Uint8Array;
+    // Copied into a fresh Uint8Array: a `BlobPart` must be backed by an
+    // ArrayBuffer, and `body instanceof Uint8Array` only narrows as far as
+    // ArrayBufferLike (a SharedArrayBuffer-backed view is not a BlobPart).
+    const bytes = body instanceof Uint8Array ? new Uint8Array(body) : new Uint8Array();
     return {
       ok: status >= 200 && status < 300,
       status,
       headers: { get: (k: string) => headers?.[k.toLowerCase()] ?? null },
       json: async () => body,
-      blob: async () => new Blob([isZip ? body : new Uint8Array()]),
+      blob: async () => new Blob([bytes]),
     } as unknown as Response;
   }) as typeof fetch;
   return { fetchFn, calls };

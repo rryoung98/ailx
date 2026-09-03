@@ -118,8 +118,14 @@ describe("share view metadata", () => {
     const image = (meta.openGraph!.images as { url: string; width: number }[])[0]!;
     expect(image.url).toBe(`https://ailx.example/s/${TOKEN}/card.png`);
     expect(image.width).toBe(1200);
-    expect(meta.twitter?.card).toBe("summary_large_image");
-    expect((meta.twitter as { images: string[] }).images[0]).toContain("card.png");
+    // Asserted as one object: `Metadata["twitter"]` is a union whose
+    // card-less member has no `card` property, so reading `.card` off it
+    // needed a cast, and the line below carried a second one that
+    // contradicted the type it was casting from.
+    expect(meta.twitter).toMatchObject({
+      card: "summary_large_image",
+      images: [expect.stringContaining("card.png")],
+    });
   });
 
   it("reads the share from the service, absolutely — a server fetch has no origin", async () => {

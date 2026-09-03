@@ -79,7 +79,7 @@ interface SnapshotTrack {
  * so it survives a bundler bump that changes nothing about how a score is
  * computed.
  */
-interface SnapshotScorer {
+export interface SnapshotScorer {
   trackId: "t1" | "t2" | "t3" | "t4";
   packageName: string;
   packageVersion: string;

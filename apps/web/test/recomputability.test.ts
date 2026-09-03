@@ -19,7 +19,8 @@ import type { Judgment } from "@ailx/core";
 import { canonicalJson, canonicalJudgments, judgmentId } from "@ailx/core";
 import {
   append, attestJudgments, JUDGE_RESOLVED_TRACKS, loadAttemptValidated,
-  project, saveAttempt, TRACK_IDS, type SequencedEntry, type TrackId,
+  project, saveAttempt, TRACK_IDS,
+  type SequencedEntry, type StorageLike, type TrackId, type ValidatedLog,
 } from "@ailx/session";
 import {
   replayTrackScore, scoreTrack, trackScoredEntry, type TrackScoringRecord,
@@ -35,6 +36,20 @@ function judgeEmission(t: "t1" | "t4", artifact: unknown): Judgment[] {
 }
 
 const rowKey = (j: Judgment) => `${j.dimension}#${j.sample}`;
+
+/**
+ * `loadAttemptValidated` returns null when nothing valid is stored. In the
+ * round-trip tests below that is a failure in its own right — they saved an
+ * attempt one line earlier — so say so in a sentence instead of reaching
+ * through the null.
+ */
+function reloadSaved(storage: StorageLike): ValidatedLog {
+  const loaded = loadAttemptValidated(storage);
+  if (loaded === null) {
+    throw new Error("saveAttempt wrote nothing that loadAttemptValidated would reload");
+  }
+  return loaded;
+}
 
 function memStorage() {
   const m = new Map<string, string>();
@@ -206,7 +221,7 @@ describe("the whole issue → persist → reload → replay path", () => {
   it("survives a localStorage round trip byte for byte", () => {
     const storage = memStorage();
     saveAttempt(storage, attempt().log);
-    const loaded = loadAttemptValidated(storage);
+    const loaded = reloadSaved(storage);
     expect(loaded.dropped).toBe(0);
     expect(canonicalJson(loaded.log)).toBe(canonicalJson(attempt().log));
     const reloaded = project(loaded.log);
@@ -225,7 +240,7 @@ describe("the whole issue → persist → reload → replay path", () => {
     scored.judgments[0].value = 0.999;
     storage.setItem("ailx:attempt:v1", JSON.stringify(shape));
 
-    const loaded = loadAttemptValidated(storage);
+    const loaded = reloadSaved(storage);
     expect(loaded.reason).toMatch(/score of record is void/);
     expect(project(loaded.log).tracks.t3.score).toBeUndefined();
   });

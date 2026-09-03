@@ -98,7 +98,9 @@ function mirroredStorage() {
 const upload = (
   storage: ReturnType<typeof fakeStorage>,
   server: ReturnType<typeof fakeUploadServer>,
-  zip: Uint8Array = buildSiteZip([{ path: "index.html", data: utf8("<h1>hi</h1>") }]),
+  // `Uint8Array<ArrayBuffer>`, as `uploadSiteZip` takes and `buildSiteZip`
+  // returns: bare `Uint8Array` widens the buffer to ArrayBufferLike.
+  zip: Uint8Array<ArrayBuffer> = buildSiteZip([{ path: "index.html", data: utf8("<h1>hi</h1>") }]),
 ): Promise<SiteUploadResult> =>
   uploadSiteZip(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn: server.fetchFn }, ATTEMPT, zip);
 

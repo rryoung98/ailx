@@ -13,7 +13,7 @@
  * that silence on the same surfaces.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, createElement } from "react";
+import { act, createElement, type FunctionComponent } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { flushAsync, withQueryClient } from "./helpers/clientPage";
 import { FUNNEL_EVENTS_PATH, parseFunnelBatch, type FunnelEvent } from "@ailx/contract";
@@ -70,7 +70,11 @@ const steps = async (): Promise<string[]> => (await events()).map((e) => e.step)
 let root: Root | null = null;
 let host: HTMLElement | null = null;
 
-async function render(node: Parameters<typeof createElement>[0], props?: Record<string, unknown>): Promise<HTMLElement> {
+// Generic in the component's props: `Record<string, unknown>` said nothing
+// about what a given surface needs, so `render(ShareLink, { attemptId })` was
+// checked against a component that takes no props at all. Now a missing or
+// misspelt prop is a type error at the call site.
+async function render<P extends object>(node: FunctionComponent<P>, props?: P): Promise<HTMLElement> {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
