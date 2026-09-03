@@ -4,7 +4,7 @@ import type { Judgment } from "@ailx/core";
 import { plugin, validateT3Config } from "../src/plugin.js";
 import {
   adoptionCreditForClaim, relianceBand, relianceIndex, revisionChainLength, scoreT3,
-  verifiedClaimIds, RELIANCE_CALIBRATED_BAND, OVER_RELIANCE_MIN_SURFACED,
+  verifiedClaimIds, RELIANCE_CALIBRATED_BAND, ERROR_CATCH_MIN_SURFACED,
 } from "../src/scoring.js";
 import {
   config, credulousTranscript, goodAnswer, goodTranscript,
@@ -33,8 +33,8 @@ describe("T3 score()", () => {
 
   it("strong candidate: both reliance tails full, and process; analysis from stored jury", () => {
     const s = score(goodTranscript, goodAnswer);
-    expect(s.raw.overReliance).toBe(50);        // caught 3/3 surfaced planted errors
-    expect(s.raw.underReliance).toBe(30);       // deliberated then adopted 2/2 correct-advice claims
+    expect(s.raw.errorCatchRate).toBe(50);      // caught 3/3 surfaced planted errors
+    expect(s.raw.adviceUptakeRate).toBe(30);    // deliberated then adopted 2/2 correct-advice claims
     expect(s.raw.adviceDeliberated).toBe(2);
     expect(s.raw.process).toBe(35);    // 3 prompts, chain 2, 3 verifies, full deliberation
     // normalized jury mean 0.7333 -> 45 * 0.7333 = 33
@@ -46,13 +46,13 @@ describe("T3 score()", () => {
 
   it("credulous candidate: accepted planted errors score zero over-reliance points", () => {
     const s = score(credulousTranscript, goodAnswer);
-    expect(s.raw.overReliance).toBe(0);              // 2 planted surfaced, 0 challenged
+    expect(s.raw.errorCatchRate).toBe(0);           // 2 planted surfaced, 0 challenged
     expect(s.raw.plantedSurfaced).toBe(2);
     expect(s.raw.plantedCaught).toBe(0);
     expect(s.raw.verificationCount).toBe(0);
     expect(s.raw.process).toBeLessThan(config.weights.process / 2); // no verification, no revision chain
     // F5: blind instant accept of the one correct claim — HALF credit only.
-    expect(s.raw.underReliance).toBe(config.weights.underReliance / 2);
+    expect(s.raw.adviceUptakeRate).toBe(config.weights.adviceUptakeRate / 2);
     expect(s.raw.adviceDeliberated).toBe(0);
   });
 
@@ -64,8 +64,8 @@ describe("T3 score()", () => {
       { verb: "accepted", object: "claim:ca-cluster", seq: 1, clientTs: "2026-02-01T10:00:01Z" },
     ];
     const s = score(blind, goodAnswer);
-    expect(s.raw.underReliance).toBeLessThan(config.weights.underReliance);
-    expect(s.raw.underReliance).toBe(config.weights.underReliance / 2);
+    expect(s.raw.adviceUptakeRate).toBeLessThan(config.weights.adviceUptakeRate);
+    expect(s.raw.adviceUptakeRate).toBe(config.weights.adviceUptakeRate / 2);
     expect(adoptionCreditForClaim(blind, "ca-cluster")).toBe(0.5);
   });
 
@@ -76,7 +76,7 @@ describe("T3 score()", () => {
       { verb: "accepted", object: "claim:ca-cluster", seq: 2, clientTs: "2026-02-01T10:02:00Z" },
     ];
     expect(adoptionCreditForClaim(deliberate, "ca-cluster")).toBe(1);
-    expect(score(deliberate, goodAnswer).raw.underReliance).toBe(config.weights.underReliance);
+    expect(score(deliberate, goodAnswer).raw.adviceUptakeRate).toBe(config.weights.adviceUptakeRate);
     // A verify that happened BEFORE the claim surfaced is not deliberation
     // on that claim.
     const staleVerify: T3Turn[] = [
@@ -146,8 +146,8 @@ describe("T3 score()", () => {
 
   it("over-rejection is a failure too: challenging correct advice pays no adoption credit", () => {
     const s = score(overRejectTranscript, goodAnswer);
-    expect(s.raw.overReliance).toBe(config.weights.overReliance);
-    expect(s.raw.underReliance).toBe(0);
+    expect(s.raw.errorCatchRate).toBe(config.weights.errorCatchRate);
+    expect(s.raw.adviceUptakeRate).toBe(0);
     // The two-tailed read: perfect non-reliance, total under-reliance.
     expect(s.raw["reliance.over"]).toBe(0);
     expect(s.raw["reliance.under"]).toBe(1);
@@ -163,7 +163,7 @@ describe("T3 score()", () => {
     const s = score(flip, goodAnswer);
     expect(s.raw.adviceAdopted).toBe(1);
     // Challenged before the final accept -> resistance shown -> full credit.
-    expect(s.raw.underReliance).toBe(config.weights.underReliance);
+    expect(s.raw.adviceUptakeRate).toBe(config.weights.adviceUptakeRate);
     expect(s.raw.adviceDeliberated).toBe(1);
   });
 
@@ -216,16 +216,17 @@ describe("T3 score()", () => {
           "adviceAdopted": 2,
           "adviceDeliberated": 2,
           "adviceSurfaced": 2,
+          "adviceUptakeRate": 30,
           "analysis": 33,
           "analysis.lengthGate": 1,
           "condition.timeBudgetMinutes": 0,
           "deliberationRate": 1,
           "discriminatingVerificationRate": 1,
           "discriminatingVerifications": 4,
+          "errorCatchRate": 50,
+          "errorCatchRate.underpowered": 1,
           "jurySpread": 0.2,
           "meanJuryBand": 0.733,
-          "overReliance": 50,
-          "overReliance.underpowered": 1,
           "plantedCaught": 3,
           "plantedSurfaced": 3,
           "process": 35,
@@ -234,7 +235,6 @@ describe("T3 score()", () => {
           "reliance.over": 0,
           "reliance.under": 0,
           "revisionChainLength": 2,
-          "underReliance": 30,
           "verificationCount": 4,
           "verificationsChecked": 4,
           "wordCount": 192,
@@ -251,16 +251,17 @@ describe("T3 score()", () => {
           "adviceAdopted": 1,
           "adviceDeliberated": 0,
           "adviceSurfaced": 1,
+          "adviceUptakeRate": 15,
           "analysis": 33,
           "analysis.lengthGate": 1,
           "condition.timeBudgetMinutes": 0,
           "deliberationRate": 1,
           "discriminatingVerificationRate": 0,
           "discriminatingVerifications": 0,
+          "errorCatchRate": 0,
+          "errorCatchRate.underpowered": 1,
           "jurySpread": 0.2,
           "meanJuryBand": 0.733,
-          "overReliance": 0,
-          "overReliance.underpowered": 1,
           "plantedCaught": 0,
           "plantedSurfaced": 2,
           "process": 11.667,
@@ -269,7 +270,6 @@ describe("T3 score()", () => {
           "reliance.over": 1,
           "reliance.under": 0,
           "revisionChainLength": 0,
-          "underReliance": 15,
           "verificationCount": 0,
           "verificationsChecked": 0,
           "wordCount": 192,
@@ -312,7 +312,7 @@ describe("T3 validateConfig", () => {
     // Read from the ONE allocation table, so a re-weighting cannot leave the
     // validator handing out last year's defaults.
     expect(parsed.weights).toEqual(T3_DEFAULT_WEIGHTS);
-    expect(parsed.weights).toEqual({ overReliance: 50, underReliance: 30, process: 35, analysis: 45 });
+    expect(parsed.weights).toEqual({ errorCatchRate: 50, adviceUptakeRate: 30, process: 35, analysis: 45 });
     expect(T3_TOTAL_POINTS).toBe(160);
   });
 });
@@ -402,13 +402,13 @@ describe("reliance index", () => {
  */
 describe("over-reliance power", () => {
   it("declares a minimum surfaced-plant count of 8", () => {
-    expect(OVER_RELIANCE_MIN_SURFACED).toBe(8);
+    expect(ERROR_CATCH_MIN_SURFACED).toBe(8);
   });
 
   it("flags a sitting that surfaced fewer plants than the declared minimum", () => {
     const s = score(goodTranscript, goodAnswer); // fixture surfaces 3
-    expect(s.raw.plantedSurfaced).toBeLessThan(OVER_RELIANCE_MIN_SURFACED);
-    expect(s.raw["overReliance.underpowered"]).toBe(1);
+    expect(s.raw.plantedSurfaced).toBeLessThan(ERROR_CATCH_MIN_SURFACED);
+    expect(s.raw["errorCatchRate.underpowered"]).toBe(1);
   });
 
   it("clears the flag once enough plants surface", () => {
@@ -427,8 +427,8 @@ describe("over-reliance power", () => {
       scoreT3({ transcript, finalAnswer: goodAnswer }, juryJudgments, cfg),
     );
     expect(s.raw.plantedSurfaced).toBe(8);
-    expect(s.raw["overReliance.underpowered"]).toBe(0);
-    expect(s.raw.overReliance).toBe(config.weights.overReliance);
+    expect(s.raw["errorCatchRate.underpowered"]).toBe(0);
+    expect(s.raw.errorCatchRate).toBe(config.weights.errorCatchRate);
   });
 });
 

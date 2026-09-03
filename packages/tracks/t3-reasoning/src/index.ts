@@ -7,7 +7,7 @@ export {
   scoreT3, revisionChainLength, adoptionCreditForClaim, verifiedClaimIds,
   relianceIndex, relianceBand, verificationTally,
   wilsonInterval, proportionDifferenceInterval,
-  RUBRIC_BAND_MAX, OVER_RELIANCE_MIN_SURFACED, RELIANCE_CALIBRATED_BAND,
+  RUBRIC_BAND_MAX, ERROR_CATCH_MIN_SURFACED, RELIANCE_CALIBRATED_BAND,
   DISCRIMINATING_MIN_CHECKS,
   type T3Raw, type Reliance, type RelianceBand, type VerificationTally,
   type Interval,

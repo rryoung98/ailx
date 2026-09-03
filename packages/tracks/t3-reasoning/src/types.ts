@@ -108,10 +108,10 @@ export interface T3PresentationConfig {
 }
 
 export interface T3Weights {
-  /** Planted-error detection — the over-reliance tail. */
-  overReliance: number;
-  /** Deliberate adoption of correct advice — the under-reliance tail. */
-  underReliance: number;
+  /** Planted errors caught — credit for avoiding the over-reliance tail. */
+  errorCatchRate: number;
+  /** Correct advice taken up after deliberation — the under-reliance tail. */
+  adviceUptakeRate: number;
   /** Transcript process quality. */
   process: number;
   /** Judged analysis quality — the track's only LLM-jury points. */

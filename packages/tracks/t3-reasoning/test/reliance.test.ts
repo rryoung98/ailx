@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 import { runPure } from "@ailx/core";
 import {
-  OVER_RELIANCE_MIN_SURFACED, proportionDifferenceInterval, wilsonInterval,
+  ERROR_CATCH_MIN_SURFACED, proportionDifferenceInterval, wilsonInterval,
 } from "../src/scoring.js";
 import { formatInterval, formatRate, relianceReportFromRaw } from "../src/relianceReport.js";
 
@@ -129,7 +129,7 @@ const raw = (over: [number, number], under: [number, number]) => ({
   plantedCaught: over[1] - over[0],
   adviceSurfaced: under[1],
   adviceAdopted: under[1] - under[0],
-  "overReliance.underpowered": over[1] < OVER_RELIANCE_MIN_SURFACED ? 1 : 0,
+  "errorCatchRate.underpowered": over[1] < ERROR_CATCH_MIN_SURFACED ? 1 : 0,
 });
 
 describe("relianceReportFromRaw", () => {
@@ -164,7 +164,7 @@ describe("relianceReportFromRaw", () => {
     const r = relianceReportFromRaw(raw([1, 4], [1, 4]))!;
     expect(r.underpowered).toBe(true);
     expect(r.underpoweredNote).toContain("surfaced 4 planted errors");
-    expect(r.underpoweredNote).toContain(`floor for reporting a rate is ${OVER_RELIANCE_MIN_SURFACED}`);
+    expect(r.underpoweredNote).toContain(`floor for reporting a rate is ${ERROR_CATCH_MIN_SURFACED}`);
   });
 
   it("carries no underpowered note at the floor", () => {
@@ -219,18 +219,24 @@ describe("relianceReportFromRaw", () => {
     const stale = { plantedSurfaced: 4, plantedCaught: 2, adviceSurfaced: 4, adviceAdopted: 3 };
     expect(relianceReportFromRaw(stale)!.underpowered).toBe(true);
     expect(
-      relianceReportFromRaw({ ...stale, "overReliance.underpowered": 0 })!.underpowered,
+      relianceReportFromRaw({ ...stale, "errorCatchRate.underpowered": 0 })!.underpowered,
     ).toBe(true);
   });
 
-  // TEN-38 renamed the flag. A record stored before that rename still has to
-  // warn, so the old spelling is read as well as the new one.
-  it("reads the pre-TEN-38 rsr.underpowered flag on a stored record", () => {
-    const stored = {
-      plantedSurfaced: 8, plantedCaught: 5, adviceSurfaced: 4, adviceAdopted: 3,
+  // The flag has been renamed twice (TEN-38, TEN-72) and no sitting has been
+  // scored in production, so no reader for an old spelling exists. A record
+  // carrying only a dead spelling is treated as carrying no flag at all, and
+  // the derived floor check still warns.
+  it("ignores a dead spelling of the flag and warns from the counts", () => {
+    const dead = {
+      plantedSurfaced: 4, plantedCaught: 2, adviceSurfaced: 4, adviceAdopted: 3,
       "rsr.underpowered": 1,
     };
-    expect(relianceReportFromRaw(stored)!.underpowered).toBe(true);
+    expect(relianceReportFromRaw(dead)!.underpowered).toBe(true);
+    // At the floor the dead flag buys nothing: the sitting is not underpowered.
+    expect(
+      relianceReportFromRaw({ ...dead, plantedSurfaced: 8, plantedCaught: 5 })!.underpowered,
+    ).toBe(false);
   });
 
   it("refuses to fabricate a rate from a corrupt record", () => {

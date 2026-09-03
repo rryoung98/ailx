@@ -317,9 +317,10 @@ score is whether the candidate caught them. That is a direct measurement with no
 
 > Read after 2026-09-02: this review predates two changes and its numbers are the numbers at the
 > time of review. T3 was re-weighted to 160 points, and the two components were renamed from `rsr`
-> and `rair` to `overReliance` (50 pts) and `underReliance` (30 pts) in TEN-38, because RSR and RAIR
-> are Schemmer et al.'s published statistics and T3 does not compute them. Every "RSR"/"RAIR" below
-> that names an AILX component means those two. The allocation table in
+> and `rair` to `errorCatchRate` (50 pts) and `adviceUptakeRate` (30 pts), in TEN-38 and then in
+> TEN-72. RSR and RAIR are Schemmer et al.'s published statistics and T3 does not compute them; the
+> names TEN-38 chose then read as the failure while the value held the credit for avoiding it. Every
+> "RSR"/"RAIR" below that names an AILX component means those two. The allocation table in
 > `packages/core/src/allocation.ts` is the live source.
 
 The implementation is more careful than the spec. RAIR requires *deliberation before acceptance*: a

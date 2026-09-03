@@ -53,7 +53,7 @@ export const TRACK_META: Record<TrackId, TrackMeta> = {
     id: "t3", code: "T3", pluginId: "instrumented-assistant@2", name: "Calibrated Reliance",
     packageName: "@ailx/track-t3", points: trackPoints("t3"), scored: SCORE_ALLOCATION.t3.scored,
     // Eight, and the count is pinned by apps/web/test/wiring.test.ts. The
-    // over-reliance component carries 50 of T3's 160 points, and a four-item
+    // planted-error component carries 50 of T3's 160 points, and a four-item
     // subtest cannot support that weight.
     hype: "T3 — the assistant plants eight errors. Catch them.",
     specBudgetSeconds: SPEC_BUDGETS_SECONDS.t3, demoBudgetSeconds: 10 * 60,
@@ -84,9 +84,12 @@ export const TRACK_LIST = [TRACK_META.t1, TRACK_META.t2, TRACK_META.t3, TRACK_ME
  * A `raw` record is a STORED wire surface. A key renamed in the scorer does
  * not rename itself in an attempt scored last month, so the report reads
  * every spelling a component has ever had and takes the first one present.
- * `rsr`/`rair` became `overReliance`/`underReliance` on 2026-09-02 (TEN-38):
- * the old names are Schemmer et al.'s published statistics (IUI '23), which
- * T3 does not compute.
+ *
+ * T3's two reliance components are NOT listed here, and that is deliberate.
+ * They have been renamed twice in three days (TEN-38, TEN-72) and no sitting
+ * has ever been scored in production, so there is no stored record to read.
+ * An alias for them would only keep a name alive that the report must never
+ * print again.
  */
 const COMPONENT_KEY_ALIASES: Readonly<Record<string, ReadonlyArray<string>>> = {
   // Inherited unchanged from the inline table this replaced. These four are
@@ -98,8 +101,6 @@ const COMPONENT_KEY_ALIASES: Readonly<Record<string, ReadonlyArray<string>>> = {
   dprime: ["sensitivity"],
   brief: ["brief-fit"],
   direction: ["craft"],
-  overReliance: ["rsr"],
-  underReliance: ["rair"],
 };
 
 /** Every spelling of a component key, current first. */

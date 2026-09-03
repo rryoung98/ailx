@@ -866,7 +866,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
+          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -898,9 +898,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.4.0"
+        "@ailx/core@0.5.0"
       ],
-      "digest": "5e5abfdb8a1dc9220aec1d13d80ce9bfc026bbf5e10425dea5281f15a521d906"
+      "digest": "6b23edfc5e7d62f191afb9a2058c2febb337a385208c6fb0fb3577866647ed2e"
     },
     {
       "trackId": "t2",
@@ -909,7 +909,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
+          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -937,9 +937,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.4.0"
+        "@ailx/core@0.5.0"
       ],
-      "digest": "4ac4a4584c622fb9c2ac37781dbdb56bfbce9b1089556fcf573c33175a14f511"
+      "digest": "4bbb6c371c3c4b21ce0129eb334d61bd28350e499b05450f1bdc9e9aca026ad6"
     },
     {
       "trackId": "t3",
@@ -948,7 +948,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
+          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -968,21 +968,21 @@
         },
         {
           "path": "src/plugin.ts",
-          "sha256": "95e088f0be6b5b49a9c3bd9dd59703e62f76d1e4c3f3a621366b885b0c06409c"
+          "sha256": "63c3a63bad750a1efcd0a55654b5455fcf4d8702c3047752fc341d1d7c3185b3"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "3d686bf19e5111f7684ca416ee3ea6122188265d9dadbabe1e95e51644de33e8"
+          "sha256": "c39eed96e4e275ec37387558e582130176729fea8bf3f23cbf7eb5ce9ff0dc6e"
         },
         {
           "path": "src/types.ts",
-          "sha256": "b689942581c83b729d30916dd3d0298e69d2322023803ab49871ecef84de1800"
+          "sha256": "749ed809df0d95b29f69c81798f388ea46ae32388c0d071fcda454a1eab17d53"
         }
       ],
       "externals": [
-        "@ailx/core@0.4.0"
+        "@ailx/core@0.5.0"
       ],
-      "digest": "049db8670e4190a0b6b0356df5fdee328714e6f21f585bd9198896851409eed8"
+      "digest": "ef807655d92183630731f3c2d6179f2f9b50d30459ed0ca82b91e56b1f78de37"
     },
     {
       "trackId": "t4",
@@ -1019,9 +1019,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.4.0"
+        "@ailx/core@0.5.0"
       ],
-      "digest": "e42beeeb13006c950338b2dc6d80569da42048b74548f78f574f7234903f6561"
+      "digest": "bed1508594b2049dea9267e9def449d1d802c2ce31ff534d43d3b7853230fcb9"
     }
   ]
 }

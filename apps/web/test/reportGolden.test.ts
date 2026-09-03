@@ -121,10 +121,10 @@ describe("report golden", () => {
    * re-ordering the evidence must not, and did not, change the number.
    *
    * It MOVED a sixth time for two T3 changes merged together on
-   * w/t3-integration. TEN-38 renamed T3's `rsr`/`rair` components to
-   * `overReliance`/`underReliance`: 6 renamed T3 raw keys, each carrying the
-   * same value as before (50, 30, 1), and T3's `rubricVersion` in two places,
-   * because the criterion names moved with them. TEN-30 added four T3 raw
+   * w/t3-integration. TEN-38 renamed T3's `rsr`/`rair` components: 6 renamed
+   * T3 raw keys, each carrying the same value as before (50, 30, 1), and
+   * T3's `rubricVersion` in two places, because the criterion names moved
+   * with them. TEN-30 added four T3 raw
    * keys (`verificationsChecked`, `discriminatingVerifications`,
    * `discriminatingVerificationRate`, `condition.timeBudgetMinutes`) under
    * `participant.tracks[2].rawSubscores` and under `research.scores[2].raw`.
@@ -155,9 +155,27 @@ describe("report golden", () => {
    * every T2/T3/T4 raw, every insight, every narrative and every calibration
    * bin. The diff was taken leaf by leaf against a stash of this branch's
    * parent before this digest was touched.
+   *
+   * It MOVED an eighth time when TEN-72 renamed the same two T3 components
+   * again, from the failure they avoid to what the candidate did:
+   * `errorCatchRate` (50 pts) and `adviceUptakeRate` (30 pts). The names
+   * TEN-38 gave them held the CREDIT for avoiding each failure, so a
+   * candidate who caught every plant scored 50 out of 50 on a field called
+   * `overReliance`, which reads as the opposite of what happened.
+   *
+   * EXACTLY 6 leaves of this object changed, all of them a rename: 3 under
+   * `participant.tracks[2].rawSubscores` and the same 3 under
+   * `research.scores[2].raw`. Both objects have 1130 leaves before and after,
+   * every renamed key carries the value it carried before (50, 30, 1), and
+   * NO leaf that kept its key changed its value — not one composite, track
+   * raw, insight, narrative, player type, calibration bin, export field or
+   * `rubricVersion`. The rubric criterion ids did not move this time, which
+   * is why `rubricVersion` sat still where TEN-38 moved it. The whole
+   * derivation was diffed leaf by leaf against a stash of this branch's
+   * parent before this digest was touched.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("9e88ddb5fb27fde6bc1a9be6d89b187e53e1b0487b9df77edb48096aad1b7dce");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("808818e18f869d1da053464d747a14ad6f9adf74014848cecf568c8ea579d11d");
   });
 
   it("is stable across repeated derivation", () => {

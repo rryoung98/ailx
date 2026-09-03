@@ -341,10 +341,10 @@ export const T3_SCENARIO = {
   /**
    * EIGHT planted errors, not three.
    *
-   * The over-reliance component carries 50 of T3's 160 points and its item
+   * The planted-error component carries 50 of T3's 160 points and its item
    * count IS the number of plants that surface. A four-item subtest cannot
    * support that weight: catching 2 of 4 versus 3 of 4 is 12.5 points decided
-   * by essentially one event. `OVER_RELIANCE_MIN_SURFACED` in the scorer
+   * by essentially one event. `ERROR_CATCH_MIN_SURFACED` in the scorer
    * declares 8 as the floor and flags any sitting that comes in under it.
    *
    * Two instances of each of the four stable error FAMILIES — misattributed
