@@ -64,6 +64,7 @@ import { SiteExportPanel } from "../../features/report/SiteExportPanel";
 import { WithheldItems } from "../../features/report/WithheldItems";
 import { downloadBlob } from "../../features/report/siteExport";
 import { ShareLink } from "../../features/report/ShareLink";
+import { ScoresOfRecord } from "../../features/report/ScoresOfRecordPanel";
 import { TrackRadar } from "../../components/TrackRadar";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
@@ -308,6 +309,12 @@ export default function ReportPage() {
               </button>
             ) : null}
           </p>
+          {/* A hosted run whose T3 is still with the jury lands HERE, not on
+              the full report: the composite needs four local scores and the
+              judged one is the service's. So the panel that says what the
+              service holds must be on this screen too, or the candidate is
+              told to "finish the run" they already finished (TEN-69). */}
+          {state?.attemptId ? <ScoresOfRecord attemptId={state.attemptId} /> : null}
         </div>
       </main>
     );
@@ -472,6 +479,12 @@ export default function ReportPage() {
         {!sample && state.attemptId ? <CredentialPanel attemptId={state.attemptId} /> : null}
 
         {!sample && state.attemptId ? <ShareLink attemptId={state.attemptId} /> : null}
+
+        {/* The exam service's OWN numbers, including a T3 score the judging
+            pass issues after finalize has answered (TEN-69). Separate from
+            the breakdown below, which is this browser's log: a hosted score
+            of record is not something this page recomputed. */}
+        {!sample && state.attemptId ? <ScoresOfRecord attemptId={state.attemptId} /> : null}
 
         <h2 style={{ marginTop: 0 }}>Track breakdown</h2>
         {/* Said once, in words, above the numbers it qualifies: the judging
