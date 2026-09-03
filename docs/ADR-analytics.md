@@ -138,7 +138,7 @@ not whether the instrument works.
 
 ## 4. Consent and law
 
-Primary sources are listed in §12; the load-bearing findings are these.
+Primary sources are listed in §13; the load-bearing findings are these.
 
 **4.1 GA4 needs prior opt-in consent in the EU/UK, and there is no configuration
 that avoids it.** The trigger is ePrivacy Art 5(3), not the GDPR, and it bites
@@ -230,7 +230,7 @@ work this ADR asks for; they are cheap, and GA4 must not be mounted before them.
 
 | Must never reach GA4 | Why it is sharp here | Mechanism |
 |---|---|---|
-| **A share token** | `/s/<token>` — 43 chars, 256 bits, and `docs/CREDENTIAL.md` §4 says the token IS the authorization. GA4 collects `page_location` (the full URL) **by default**. Mounting GA4 unmodified on the hosted build hands Google, and every GA4 report viewer, a working capability URL to a real report. | **TO BUILD**: a `page_location`/`page_path` redactor in the mount, replacing any `SHARE_TOKEN_RE` match with `/s/[token]` before the first `page_view`; plus a test asserting no GA4 call site can pass a raw path. `SHARE_TOKEN_RE` already exists in `@ailx/contract`. |
+| **A share token** | `/s/<token>` — 43 chars, 256 bits, and `docs/CREDENTIAL.md` §4 says the token IS the authorization. GA4 collects `page_location` (the full URL) **by default**, and `page_referrer` too, so a candidate who clicks from their share view to any other page leaks the token a second time on the NEXT hit. Mounting GA4 unmodified on the hosted build hands Google, and every GA4 report viewer, a working capability URL to a real report. | **TO BUILD**: one redactor applied to `page_location`, `page_path` AND `page_referrer` in the mount, replacing any `SHARE_TOKEN_RE` match with `/s/[token]` before the first `page_view`; plus a test asserting no GA4 call site can pass a raw URL from any of the three. `SHARE_TOKEN_RE` already exists in `@ailx/contract`. Outbound leakage is already handled elsewhere and stays that way: the share buttons carry `rel="noreferrer noopener"` (`features/share/ShareTargets.tsx`) and `FRONTEND.md` §4.1 sets `Referrer-Policy: no-referrer` on hosted candidate content. |
 | **A verify code** | `/verify/<code>` is a public claim, but it names an individual's sitting. Not a secret; still an identifier we should not export. | Same redactor, same test. |
 | **`auth_ref`** (`clerk:<sub>`) | a proven identity; `docs/PROGRESSION.md` calls it exactly that. | Exists: payload denylist tests already ban `authRef` from every outbound shape (`packages/report/test/{aggregates,credential,share,diagnosis}.test.ts`, `apps/web/test/shareView.test.tsx`). Extend the same list to the GA4 event allowlist. |
 | **Item content, item ids, candidate answers** | the reason this ADR has a §1. | Exists for the bundle (`bundleSecrecy.test.ts`, `public-tree.test.ts`). **TO BUILD** for the wire: GA4 events come from a closed enum of step names, no free-form `event_label`, no page-content parameters. An enum is checkable; a convention is not. |
@@ -422,7 +422,17 @@ wire) but conspicuous prior consent mitigates more.
   claimed unique value in §3 (referrer, geography, device) is GA4's documented
   behaviour, not something observed on our traffic.
 
-## 12. Sources
+## 12. Review
+
+**codex review skipped: usage limit** — `codex exec` hit its ChatGPT usage
+quota mid-run and produced no findings ("You've hit your usage limit … try
+again at Sep 3rd, 2026 4:01 AM"). One defect was found by self-review before
+that and is fixed above: the §5 redactor covered `page_location`/`page_path`
+but not **`page_referrer`**, which leaks a share token on the hit AFTER the
+share view. The privacy and consent reasoning in §4 and §5 has therefore had
+no adversarial read. Treat it as unreviewed until it gets one.
+
+## 13. Sources
 
 Fetched in-session, 2026-09-03. Every legal claim above traces to one of these.
 
