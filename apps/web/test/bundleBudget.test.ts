@@ -48,9 +48,17 @@
  * the same two trees — so on every PR both halves run against output built
  * from that commit.
  *
- * The baselines are TODAY'S MEASUREMENT, taken on branch `w/deps` at the commit
- * that added this file. Raising one is allowed and expected — with the
- * measurement and the reason in the commit message, which is the entire point.
+ * WHERE THE BASELINES COME FROM, and this matters more than it looks. They must
+ * be measured IN CI, from the workflow's own two builds. The first set was taken
+ * on a laptop and CI built the same commit about 34 kB bigger, so every branch
+ * failed the total by a few hundred bytes while changing nothing that ships —
+ * one of them changed a YAML number and some prose (TEN-90). A budget
+ * calibrated somewhere the gate never runs is not a budget.
+ *
+ * So every measurement is printed on SUCCESS as well as failure, prefixed
+ * `[bundle]`. To re-baseline: read the numbers out of a green CI run on `main`,
+ * put them here, and say in the commit message which run they came from.
+ * Raising one is allowed and expected — with the measurement and the reason.
  */
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -164,6 +172,15 @@ for (const mode of MODES) {
 
     it("ships no more client JS in total than budgeted", () => {
       const measured = jsFiles.reduce((n, f) => n + gz(f), 0);
+      // Printed on SUCCESS too, and this is not noise. The baselines below were
+      // first taken on a laptop, and CI builds the same commit ~34 kB bigger
+      // (TEN-90), so every branch failed by a few hundred bytes and the gate
+      // said nothing about WHY. A number you can only read when it breaks is a
+      // number nobody can re-baseline honestly.
+      console.log(
+        `[bundle] ${mode.name}: total ${measured} B gzip over ${jsFiles.length} files ` +
+          `(baseline ${mode.allJsGzip}, budget ${budget(mode.allJsGzip, TOTAL_MARGIN)})`,
+      );
       expect(
         measured,
         `all JS under ${mode.staticDir}: ${measured} B gzip, budget ` +
@@ -179,6 +196,10 @@ for (const mode of MODES) {
         perPage.every((set) => set.has(f)),
       );
       const measured = shared.reduce((n, f) => n + gz(f), 0);
+      console.log(
+        `[bundle] ${mode.name}: shared ${measured} B gzip over ${shared.length} files ` +
+          `(baseline ${mode.sharedGzip}, budget ${budget(mode.sharedGzip, PAGE_MARGIN)})`,
+      );
       expect(shared.length, "no script is common to every page — the scan is broken").toBeGreaterThan(0);
       expect(
         measured,
@@ -198,6 +219,7 @@ for (const mode of MODES) {
         const missing = scripts.filter((f) => !existsSync(f));
         expect(missing, `${page} requests scripts that are not on disk`).toEqual([]);
         const measured = scripts.reduce((n, f) => n + gz(f), 0);
+        console.log(`[bundle] ${mode.name}: ${page} ${measured} B gzip (baseline ${baseline})`);
         expect(
           measured,
           `${page}: ${measured} B gzip over ${scripts.length} scripts, ` +
