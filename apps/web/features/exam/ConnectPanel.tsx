@@ -23,7 +23,7 @@
  *    static tier issues no score of record, so it does not need a credential.
  */
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   clearLlmConnection,
   hasModelEndpoint,
@@ -81,6 +81,32 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const [error, setError] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
 
+  /**
+   * Record what the service just said, and mirror it into the ONE endpoint
+   * slot the track runners read.
+   *
+   * The slot holds a URL and never a credential — the gateway's own address,
+   * which is public. Mirroring it is what keeps a single seam: the runners
+   * and the start gate ask "is there an endpoint", and they get the same
+   * answer in both builds without either of them knowing about identities or
+   * fingerprints. A stale slot cannot outlive a sign-out, because this runs
+   * on mount and clears it when the service says it holds nothing.
+   *
+   * Defined ABOVE the effects that call it, and stable, so it can be a real
+   * dependency rather than a captured closure behind a lint disable — the
+   * shape of TEN-64 defect 4, which this panel is not going to repeat.
+   */
+  const applyStatus = useCallback((s: KeyStatus) => {
+    setStatus(s);
+    try {
+      if (s.connected) window.localStorage.setItem(LLM_BASE_URL_STORAGE, modelGatewayBase());
+      else clearLlmConnection(window.localStorage);
+    } catch {
+      /* non-fatal — the panel still shows the truth it was told */
+    }
+    announceChange();
+  }, []);
+
   // Static export: hydrate the stored endpoint. Nothing else is stored.
   useEffect(() => {
     if (hosted) return;
@@ -102,29 +128,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [hosted]);
-
-  /**
-   * Record what the service just said, and mirror it into the ONE endpoint
-   * slot the track runners read.
-   *
-   * The slot holds a URL and never a credential — the gateway's own address,
-   * which is public. Mirroring it is what keeps a single seam: the runners
-   * and the start gate ask "is there an endpoint", and they get the same
-   * answer in both builds without either of them knowing about identities or
-   * fingerprints. A stale slot cannot outlive a sign-out, because this runs
-   * on mount and clears it when the service says it holds nothing.
-   */
-  const applyStatus = (s: KeyStatus) => {
-    setStatus(s);
-    try {
-      if (s.connected) window.localStorage.setItem(LLM_BASE_URL_STORAGE, modelGatewayBase());
-      else clearLlmConnection(window.localStorage);
-    } catch {
-      /* non-fatal — the panel still shows the truth it was told */
-    }
-    announceChange();
-  };
+  }, [hosted, applyStatus]);
 
   const updateBaseUrl = (value: string) => {
     setBaseUrl(value);
