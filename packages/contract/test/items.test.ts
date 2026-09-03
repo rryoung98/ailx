@@ -29,6 +29,18 @@ describe("isWithheldItem", () => {
     expect(isWithheldItem({ phase: "withheld", id: "itm-1" })).toBe(false);
   });
 
+  it("refuses a `yourChoice` that is not an option index", () => {
+    for (const yourChoice of ["1", 1.5, Number.NaN, null, {}]) {
+      expect(isWithheldItem({ phase: "withheld", id: "itm-1", withheld: "withdrawn", yourChoice })).toBe(
+        false,
+      );
+    }
+    // -1 is the recorded value for a lapsed exposure, and it IS a choice.
+    expect(
+      isWithheldItem({ phase: "withheld", id: "itm-1", withheld: "withdrawn", yourChoice: -1 }),
+    ).toBe(true);
+  });
+
   it("refuses a non-object", () => {
     for (const raw of [null, undefined, "withheld", 3, []]) {
       expect(isWithheldItem(raw)).toBe(false);

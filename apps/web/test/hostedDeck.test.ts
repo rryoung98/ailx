@@ -249,6 +249,30 @@ describe("fetchServerReview", () => {
     ]);
   });
 
+  /**
+   * A withheld entry this build cannot validate — a reason it does not know,
+   * a missing id — is still an item the candidate sat. Dropping it would
+   * leave it counted in `dealt` and named nowhere, so it is reported as
+   * `unavailable`: gone, and we cannot say why.
+   */
+  it("keeps a withheld entry it cannot validate, as unavailable", async () => {
+    serve(
+      deckOf(
+        [
+          { phase: "withheld", id: "itm-1", withheld: "retired-in-a-later-version" },
+          { phase: "withheld", withheld: "withdrawn" },
+        ],
+        { phase: "review" },
+      ),
+    );
+    const review = await fetchServerReview(id);
+    expect(review!.dealt).toBe(2);
+    expect(review!.withheld).toEqual([
+      { phase: "withheld", id: "itm-1", withheld: "unavailable" },
+      { phase: "withheld", id: "(unidentified item)", withheld: "unavailable" },
+    ]);
+  });
+
   it("reports a review whose every item was withdrawn, rather than nothing", async () => {
     serve(
       deckOf([{ phase: "withheld", id: "itm-1", withheld: "unavailable" }], { phase: "review" }),

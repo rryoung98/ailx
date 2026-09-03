@@ -46,10 +46,20 @@ export type WithheldItem = {
 export function isWithheldItem(raw: unknown): raw is WithheldItem {
   if (typeof raw !== "object" || raw === null) return false;
   const it = raw as Record<string, unknown>;
+  if (
+    it.phase !== "withheld" ||
+    typeof it.id !== "string" ||
+    it.id.length === 0 ||
+    !WITHHELD_REASONS.includes(it.withheld as WithheldReason)
+  ) {
+    return false;
+  }
+  // `yourChoice` is an option INDEX, so a fraction, a NaN or a string is not
+  // one. It is checked because the report says "your answer is recorded" on
+  // the strength of it, and that sentence must not rest on a value the
+  // service never meant as a choice.
   return (
-    it.phase === "withheld" &&
-    typeof it.id === "string" &&
-    it.id.length > 0 &&
-    WITHHELD_REASONS.includes(it.withheld as WithheldReason)
+    it.yourChoice === undefined ||
+    (typeof it.yourChoice === "number" && Number.isInteger(it.yourChoice))
   );
 }

@@ -74,7 +74,7 @@ export function t2ConfigFromDeck(deck: PresentedDeck): T2PresentationConfig {
   // stop, so this refuses and says how much of the deck is missing. The
   // REVIEW path does not come through here — it reports the withheld items
   // to the candidate instead (see {@link fetchServerReview}).
-  const withheld = deck.items.filter(isWithheldItem);
+  const withheld = withheldFrom(deck.items);
   if (withheld.length > 0) {
     throw new Error(
       `the server withheld ${withheld.length} of ${deck.items.length} dealt T2 items ` +
@@ -137,7 +137,31 @@ export async function fetchServerReview(attemptId: string): Promise<ServerReview
   for (const item of deck.items) {
     if (typeof item.id === "string" && typeof item.key === "number") keys[item.id] = item.key;
   }
-  return { dealt: deck.items.length, keys, withheld: deck.items.filter(isWithheldItem) };
+  return { dealt: deck.items.length, keys, withheld: withheldFrom(deck.items) };
+}
+
+/**
+ * The withheld entries of a served deck, in dealt order.
+ *
+ * An entry that CLAIMS the withheld arm but fails validation — a reason this
+ * build cannot name, a missing id, a `yourChoice` that is not an option index
+ * — is kept as `unavailable` rather than dropped. Dropping it would leave the
+ * item counted in `dealt` and named nowhere, which is the silent omission
+ * this whole change exists to stop; `unavailable` says the honest thing, that
+ * the item is gone and we cannot say why.
+ */
+function withheldFrom(items: ReadonlyArray<Record<string, unknown>>): WithheldItem[] {
+  return items.flatMap((raw) => {
+    if (isWithheldItem(raw)) return [raw];
+    if (raw.phase !== "withheld") return [];
+    return [
+      {
+        phase: "withheld" as const,
+        id: typeof raw.id === "string" && raw.id.length > 0 ? raw.id : "(unidentified item)",
+        withheld: "unavailable" as const,
+      },
+    ];
+  });
 }
 
 // ---------------------------------------------------------------------------

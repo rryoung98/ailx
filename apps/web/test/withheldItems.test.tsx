@@ -52,7 +52,8 @@ describe("WithheldItems", () => {
     expect(line).toContain("withdrawn from the bank");
     expect(line).toContain("your answer is recorded");
     expect(el.textContent).toContain("1 of the 6 items you were dealt is no longer in the item bank");
-    expect(el.textContent).toContain("still counts toward this score");
+    expect(el.textContent).toContain("Your answer to it is recorded and still counts toward this score.");
+    expect(el.querySelector("#withheld-heading")!.textContent).toBe("Withdrawn after your sitting");
   });
 
   it("keeps the DEALT count, not the count that survived", () => {
@@ -68,12 +69,23 @@ describe("WithheldItems", () => {
       [withdrawn, { phase: "withheld", id: "itm-gone", withheld: "unavailable" }],
     );
     expect(el.textContent).toContain("2 of the 6 items you were dealt are no longer");
-    expect(el.textContent).toContain("still count toward this score");
+    // One answered, one not: the summary counts, rather than claiming an
+    // answer the list below then denies.
+    expect(el.textContent).toContain("You answered 1 of them; those answers are recorded");
+    // And a deck that lost one item to an unexplained gap is not headed as a
+    // withdrawal.
+    expect(el.querySelector("#withheld-heading")!.textContent).toBe("No longer in the bank");
     const gap = el.querySelector("[data-withheld-item='itm-gone']")!.textContent!;
     expect(gap).toContain("missing from the bank; the ledger does not record why");
     expect(gap).not.toContain("withdrawn");
     // No choice was recorded for this one, and it says so rather than implying one.
     expect(gap).toContain("no answer was recorded");
+  });
+
+  it("does not claim an answer for an item the candidate never answered", () => {
+    const el = render(6, [{ phase: "withheld", id: "itm-2", withheld: "withdrawn" }]);
+    expect(el.textContent).toContain("You did not answer it, and this score already reflects that.");
+    expect(el.textContent).not.toContain("is recorded and still counts");
   });
 
   it("leaks NO material: no stem, no options, no key, no rationale", () => {
