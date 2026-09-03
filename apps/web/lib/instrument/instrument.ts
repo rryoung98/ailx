@@ -456,6 +456,48 @@ export const T3_SCENARIO_SHA256 =
   "eade8c2db44a7665bcf3b0ce8cc900de6911518213c4f21eef6f4b5fa063ad56";
 
 /**
+ * HOW MANY PLANTS THE INSTRUMENT DECLARES: `config.seeded_errors.count_per_form`
+ * in the released tier's t3 `track.yaml`, carried into the snapshot. Fails
+ * CLOSED — an absent or malformed declaration throws instead of falling back to
+ * the length of whatever form happens to be in this file.
+ */
+export function t3DeclaredPlantCount(): number {
+  const seeded = snapshotTrack("t3").config.seeded_errors as
+    | { count_per_form?: unknown }
+    | undefined;
+  const n = seeded?.count_per_form;
+  if (typeof n !== "number" || !Number.isInteger(n) || n <= 0) {
+    throw new Error(
+      "instrument declares no usable config.seeded_errors.count_per_form for t3 — it must " +
+        "be a positive integer in instruments/demo-2026.1/tracks/t3-reasoning/track.yaml",
+    );
+  }
+  return n;
+}
+
+/**
+ * THE FORM MUST BE THE FORM THE INSTRUMENT DECLARES (TEN-73). The plant count
+ * is the item count of a component carrying 50 of T3's 160 points, so a
+ * declaration the form does not satisfy is a measurement error, not a typo:
+ * the released `track.yaml` said 4 while this scenario planted 8, and every
+ * sitting quietly raised `errorCatchRate.underpowered` instead of anyone
+ * noticing. The exam service refuses such a package at load; this repo can
+ * break the number freely unless it refuses too, so it refuses here.
+ */
+export function t3Scenario(): typeof T3_SCENARIO {
+  const declared = t3DeclaredPlantCount();
+  const planted = T3_SCENARIO.plantedErrors.length;
+  if (planted !== declared) {
+    throw new Error(
+      `t3 form plants ${planted} errors but the instrument declares ${declared} — ` +
+        "fix instruments/demo-2026.1/tracks/t3-reasoning/track.yaml " +
+        "(config.seeded_errors.count_per_form) or the scenario, and regenerate the snapshot",
+    );
+  }
+  return T3_SCENARIO;
+}
+
+/**
 
  * Per-track config passed to the real Runner + score(). The SESSION's
  * locale (SessionConfig.locale, chosen via the header switcher) selects
@@ -501,7 +543,7 @@ export function trackConfig(
       const ceiling = Math.min(D_PRIME_CEILING, maxAttainableDPrime(nSignal, nNoise));
       return { items, ...(ceiling > 0 ? { dPrimeCeiling: ceiling } : {}) };
     }
-    case "t3": return T3_SCENARIO;
+    case "t3": return t3Scenario();
     case "t4": return undefined;             // plugin defaults carry the demo brief
   }
 }
