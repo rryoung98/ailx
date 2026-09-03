@@ -28,7 +28,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ApiPath, ResponseSchema } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
-import { authHeaders } from "./authHeaders";
+import { serviceHeaders, traceHeaders } from "./traceparent";
 import { apiBase } from "../mode";
 
 /** The four things a page can be, and nothing else. */
@@ -65,7 +65,7 @@ function browserStorage(): StorageLike | null {
 }
 
 export interface ServiceOptions<T = unknown> {
-  /** Send `authHeaders()`. Required for any page that shows one person's rows. */
+  /** Send the identity too. Required for any page that shows one person's rows. */
   readonly identified?: boolean;
   readonly signal?: AbortSignal;
   /**
@@ -84,7 +84,18 @@ export async function serviceFetch<T>(
 ): Promise<ServiceState<T>> {
   try {
     const storage = opts.identified === true ? browserStorage() : null;
-    const headers = storage === null ? {} : await authHeaders(storage);
+    // A trace goes on EVERY read, identified or not. `/wall` and `/gallery`
+    // are anonymous and still worth being able to follow into the service;
+    // the header is 55 characters of random hex and says nothing about who
+    // asked (lib/data/traceparent.ts).
+    //
+    // KNOWN COST, cross-origin: a custom header makes a GET non-simple, so an
+    // anonymous read that used to go straight out now costs a CORS preflight
+    // first. Identified reads always paid it (`x-ailx-dev-user` is custom
+    // too). The service allows `traceparent` in `Access-Control-Allow-Headers`
+    // — without that the browser would drop the header and the continuation
+    // would silently never happen. docs/ADR-otel.md §6.
+    const headers = storage === null ? traceHeaders() : await serviceHeaders(storage);
     const res = await fetch(`${apiBase()}${path}`, {
       headers,
       cache: "no-store",

@@ -27,7 +27,7 @@ import {
   type ModerationComment,
 } from "@ailx/contract";
 import { apiBase, isServerMode } from "../lib/mode";
-import { authHeaders } from "../lib/data/authHeaders";
+import { serviceHeaders } from "../lib/data/traceparent";
 import { browserApiOptions, getServerAttemptId } from "../lib/data/persistence";
 
 const AUTHOR_LABEL: Record<string, string> = {
@@ -156,7 +156,7 @@ export function ModeratorThread({ shareId, trail }: { shareId: string; trail: Mo
       // SameSite=Lax cookie never travels (docs/DEPLOY.md §4.1).
       const res = await fetch(`${apiBase()}${apiPath("moderationComment", { id: shareId })}`, {
         method: API_ROUTES.moderationComment.method,
-        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
+        headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({ body, visibility: shared ? "shared" : "internal" }),
       });
       if (!res.ok) setError(failure(res.status));
@@ -233,7 +233,7 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
 
   const load = useCallback(async () => {
     const { url, method, fetchFn } = endpoint("candidateThread");
-    const res = await fetchFn(url, { method, headers: await authHeaders(window.localStorage) });
+    const res = await fetchFn(url, { method, headers: await serviceHeaders(window.localStorage) });
     if (!res.ok) {
       setThread(null);
       return;
@@ -262,7 +262,7 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
       const { url, method, fetchFn } = endpoint("candidateReply");
       const res = await fetchFn(url, {
         method,
-        headers: { "content-type": "application/json", ...(await authHeaders(window.localStorage)) },
+        headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({ body }),
       });
       if (!res.ok) setError("That did not send. Nothing was written.");

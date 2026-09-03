@@ -22,7 +22,7 @@ import {
   type StorageLike,
   type ValidatedLog,
 } from "@ailx/session";
-import { authHeaders } from "./authHeaders";
+import { serviceHeaders } from "./traceparent";
 import { apiBase, isServerMode, siteApiRoot } from "../mode";
 
 /**
@@ -140,7 +140,7 @@ async function getJson(
   path: ApiPath,
 ): Promise<Record<string, unknown>> {
   const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
-    headers: await authHeaders(storage),
+    headers: await serviceHeaders(storage),
   });
   if (!res.ok) {
     throw new Error(`GET ${path} failed: ${res.status}`);
@@ -159,7 +159,7 @@ async function postJson(
     method: "POST",
     headers: {
       "content-type": "application/json",
-      ...(await authHeaders(storage)),
+      ...(await serviceHeaders(storage)),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
