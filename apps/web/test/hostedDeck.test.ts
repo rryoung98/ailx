@@ -9,7 +9,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { validateT2Config } from "@ailx/track-t2";
-import { fetchHostedT2Config, fetchServerAnswerKeys, t2ConfigFromDeck } from "../lib/instrument/hostedDeck";
+import { fetchHostedT2Config, fetchServerReview, t2ConfigFromDeck } from "../lib/instrument/hostedDeck";
 import { syncKey, type PresentedDeck } from "../lib/data/persistence";
 
 const sittingItem = (id: string, over: Record<string, unknown> = {}) => ({
@@ -82,6 +82,24 @@ describe("t2ConfigFromDeck", () => {
 
   it("refuses an empty deck rather than presenting nothing", () => {
     expect(() => t2ConfigFromDeck(deckOf([]))).toThrow(/no T2 items/);
+  });
+
+  /**
+   * TEN-68. A withheld item cannot be sat — it arrives with no stem, no
+   * options and no material. Presenting the other two would sit a shorter
+   * deck than the exposure log records, which is exactly the silent
+   * shortening TEN-61 exists to stop, so this refuses and names the gap.
+   */
+  it("refuses a deck the server withheld an item from", () => {
+    expect(() =>
+      t2ConfigFromDeck(
+        deckOf([
+          sittingItem("itm-1"),
+          { phase: "withheld", id: "itm-2", withheld: "withdrawn" },
+          sittingItem("itm-3"),
+        ]),
+      ),
+    ).toThrow(/withheld 1 of 3 dealt T2 items \(itm-2: withdrawn\)/);
   });
 
   it("refuses a malformed item instead of mounting a broken sitting", () => {
@@ -157,7 +175,7 @@ describe("fetchHostedT2Config", () => {
   });
 });
 
-describe("fetchServerAnswerKeys", () => {
+describe("fetchServerReview", () => {
   const id = "00000000-0000-4000-8000-0000000000dd";
 
   beforeEach(() => {
@@ -190,16 +208,55 @@ describe("fetchServerAnswerKeys", () => {
         phase: "review",
       }),
     );
-    await expect(fetchServerAnswerKeys(id)).resolves.toEqual({ "itm-1": 1 });
+    await expect(fetchServerReview(id)).resolves.toEqual({
+      dealt: 1,
+      keys: { "itm-1": 1 },
+      withheld: [],
+    });
   });
 
   it("returns null while the attempt is still a SITTING (no keys exist yet)", async () => {
     serve(deckOf([sittingItem("itm-1")]));
-    await expect(fetchServerAnswerKeys(id)).resolves.toBeNull();
+    await expect(fetchServerReview(id)).resolves.toBeNull();
   });
 
   it("returns null in the static demo, whose keys are bundled on purpose", async () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
-    await expect(fetchServerAnswerKeys(id)).resolves.toBeNull();
+    await expect(fetchServerReview(id)).resolves.toBeNull();
+  });
+
+  /**
+   * TEN-68. A dealt item the ledger later withdrew comes back with no
+   * material at all. It must survive as a REPORTED fact, and the dealt count
+   * must stay the count that was sat — the review is not allowed to shrink.
+   */
+  it("keeps a withheld item, and counts it as dealt", async () => {
+    serve(
+      deckOf(
+        [
+          sittingItem("itm-1", { phase: "review", key: 1, rationale: "why" }),
+          { phase: "withheld", id: "itm-2", withheld: "withdrawn", yourChoice: 0 },
+        ],
+        { phase: "review" },
+      ),
+    );
+    const review = await fetchServerReview(id);
+    expect(review).not.toBeNull();
+    expect(review!.dealt).toBe(2);
+    expect(review!.keys).toEqual({ "itm-1": 1 });
+    expect(review!.withheld).toEqual([
+      { phase: "withheld", id: "itm-2", withheld: "withdrawn", yourChoice: 0 },
+    ]);
+  });
+
+  it("reports a review whose every item was withdrawn, rather than nothing", async () => {
+    serve(
+      deckOf([{ phase: "withheld", id: "itm-1", withheld: "unavailable" }], { phase: "review" }),
+    );
+    await expect(fetchServerReview(id)).resolves.toEqual({
+      dealt: 1,
+      keys: {},
+      withheld: [{ phase: "withheld", id: "itm-1", withheld: "unavailable" }],
+    });
   });
 });

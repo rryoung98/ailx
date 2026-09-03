@@ -22,6 +22,7 @@ import {
   type T3RevealedPlant,
   type T3Turn,
 } from "@ailx/track-t3";
+import { isWithheldItem, type WithheldItem } from "@ailx/contract";
 import type { TrackId } from "@ailx/session";
 import {
   browserApiOptions,
@@ -67,6 +68,20 @@ function presentedItem(raw: WireItem): Record<string, unknown> {
  * demanding one would refuse the only deck a candidate may be shown.
  */
 export function t2ConfigFromDeck(deck: PresentedDeck): T2PresentationConfig {
+  // A withheld item cannot be sat: it has no stem, no options and no
+  // material. Presenting the rest would sit a SHORTER deck than the one the
+  // exposure log records, which is the silent shortening TEN-61 exists to
+  // stop, so this refuses and says how much of the deck is missing. The
+  // REVIEW path does not come through here — it reports the withheld items
+  // to the candidate instead (see {@link fetchServerReview}).
+  const withheld = deck.items.filter(isWithheldItem);
+  if (withheld.length > 0) {
+    throw new Error(
+      `the server withheld ${withheld.length} of ${deck.items.length} dealt T2 items ` +
+        `(${withheld.map((w) => `${w.id}: ${w.withheld}`).join(", ")}) — ` +
+        "a deck missing an item it dealt is not this sitting's deck",
+    );
+  }
   if (deck.items.length === 0) {
     throw new Error("the server dealt this attempt no T2 items");
   }
@@ -87,25 +102,42 @@ export async function fetchHostedT2Config(
   return deck === null ? null : t2ConfigFromDeck(deck);
 }
 
+/** The REVIEW view of a finalized hosted deck, as the report may hold it. */
+export interface ServerReview {
+  /**
+   * Every item the sitting was DEALT, withheld ones included. This is the
+   * number the candidate sat, and it is the only honest denominator: an item
+   * the bank later lost must not make the deck look shorter than it was
+   * (TEN-61).
+   */
+  dealt: number;
+  /** Answer keys, by item id. A withheld item contributes none. */
+  keys: Record<string, number>;
+  /** The dealt items the service can no longer serve, in dealt order. */
+  withheld: readonly WithheldItem[];
+}
+
 /**
- * The answer keys for a FINALIZED hosted attempt, or null when the server has
+ * The REVIEW view of a FINALIZED hosted attempt, or null when the server has
  * none to give (static demo, a run it never created, or an attempt still open
  * — during a sitting it serves no key at all, by design).
  *
  * This is the review phase, where the candidate is entitled to the marking
  * scheme for their OWN deck: the server decides that from
  * `attempts.finalized_at`, never from anything the browser asks for.
+ *
+ * The keys and the withheld list come off ONE response on purpose. They are
+ * two readings of the same deck, and fetching them twice would let the report
+ * count a deck the keys never came from.
  */
-export async function fetchServerAnswerKeys(
-  attemptId: string,
-): Promise<Record<string, number> | null> {
+export async function fetchServerReview(attemptId: string): Promise<ServerReview | null> {
   const deck = await fetchServerDeck(attemptId);
   if (deck === null || deck.phase !== "review") return null;
   const keys: Record<string, number> = {};
   for (const item of deck.items) {
     if (typeof item.id === "string" && typeof item.key === "number") keys[item.id] = item.key;
   }
-  return Object.keys(keys).length > 0 ? keys : null;
+  return { dealt: deck.items.length, keys, withheld: deck.items.filter(isWithheldItem) };
 }
 
 // ---------------------------------------------------------------------------

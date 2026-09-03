@@ -55,12 +55,13 @@ import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPor
 import { CredentialPanel } from "../../features/report/CredentialPanel";
 import { Diagnosis } from "../../features/report/Diagnosis";
 import { t2AnswerKeys } from "../../lib/instrument/instrument";
-import { fetchServerAnswerKeys } from "../../lib/instrument/hostedDeck";
+import { fetchServerReview, type ServerReview } from "../../lib/instrument/hostedDeck";
 import { loadSiteSubmission, type SiteSubmission } from "../../lib/data/siteUpload";
 import { RelianceCard } from "../../features/report/RelianceCard";
 import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
 import { SiteExportPanel } from "../../features/report/SiteExportPanel";
+import { WithheldItems } from "../../features/report/WithheldItems";
 import { downloadBlob } from "../../features/report/siteExport";
 import { ShareLink } from "../../features/report/ShareLink";
 import { TrackRadar } from "../../components/TrackRadar";
@@ -248,20 +249,24 @@ export default function ReportPage() {
   /** The shareable process subset — the SAME narrowing a share link uses. */
   const sharedProcess = useMemo(() => shareProcessFrom(insights), [insights]);
   /**
-   * REVIEW-PHASE KEYS. A hosted sitting was dealt from the operational bank,
-   * which this bundle does not have — so the answer key for those items comes
-   * back from the server, and only once the attempt is finalized (the review
-   * phase; docs/ARCHITECTURE.md §4). Null in the static demo, whose bundled
-   * released-practice keys are published on purpose.
+   * THE REVIEW VIEW OF THE DEALT DECK. A hosted sitting was dealt from the
+   * operational bank, which this bundle does not have — so the answer key for
+   * those items comes back from the server, and only once the attempt is
+   * finalized (the review phase; docs/ARCHITECTURE.md §4). Null in the static
+   * demo, whose bundled released-practice keys are published on purpose.
+   *
+   * It also carries the items the bank no longer serves, and how many were
+   * dealt in the first place, so a deck that lost an item still reports the
+   * length it was sat at (TEN-68).
    */
-  const [serverKeys, setServerKeys] = useState<Record<string, number> | null>(null);
+  const [review, setReview] = useState<ServerReview | null>(null);
   const reportAttemptId = state?.attemptId;
   useEffect(() => {
     if (!reportAttemptId) return;
     let cancelled = false;
-    fetchServerAnswerKeys(reportAttemptId)
-      .then((keys) => {
-        if (!cancelled && keys) setServerKeys(keys);
+    fetchServerReview(reportAttemptId)
+      .then((r) => {
+        if (!cancelled && r) setReview(r);
       })
       // A report that cannot reach the server still renders everything that
       // does not need a key; it must not blank the page.
@@ -279,9 +284,9 @@ export default function ReportPage() {
     // deck actually sat.
     return calibrationBins(
       t2ResponsesFromArtifact(state.tracks.t2.artifact),
-      { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(serverKeys ?? {}) },
+      { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(review?.keys ?? {}) },
     );
-  }, [state, serverKeys]);
+  }, [state, review]);
   const counted = useCountUp(summary?.composite ?? 0);
 
   if (!hydrated) {
@@ -510,6 +515,11 @@ export default function ReportPage() {
                   <CalibrationCurve bins={calBins} />
                 </>
               )}
+              {/* An item the bank lost after the sitting is still an item the
+                  candidate sat, and the count says so (TEN-68). */}
+              {t === "t2" && review ? (
+                <WithheldItems dealt={review.dealt} withheld={review.withheld} />
+              ) : null}
               <p className="faint small mono" style={{ marginBottom: 0 }}>
                 rubric {ts.rubricVersion?.slice(0, 12)}… · scoring {ts.scoringDigest?.slice(0, 12)}… ·{" "}
                 {ts.modelManifest?.screening ? `judge ${ts.modelManifest.screening}` : ts.modelManifest?.pipeline ?? ts.modelManifest?.note}
