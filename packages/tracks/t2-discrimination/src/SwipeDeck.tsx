@@ -153,14 +153,34 @@ const T2_DECK_CSS = `
 /**
  * Robust stimulus <img>: async decode, ONE automatic retry on load error,
  * then a labeled fallback block instead of a broken-image glyph.
+ *
+ * `onReady` fires when there is something to LOOK AT: the picture painted,
+ * or the fallback block replaced it. It is what anchors the T2 exposure, so
+ * it must not fire at DOM commit — a phone that takes 900 ms to paint the
+ * stimulus would otherwise spend 900 ms of a 6-second exposure on a blank
+ * card, and paint time tracks handset price (docs/SAMPLING.md §6.1).
  */
-function StimulusImg({ src, hide, slotRef }: { src: string; hide: boolean; slotRef?: Ref<HTMLImageElement> }) {
+function StimulusImg(
+  { src, hide, slotRef, onReady }:
+  { src: string; hide: boolean; slotRef?: Ref<HTMLImageElement>; onReady?: () => void },
+) {
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     setAttempt(0);
     setFailed(false);
   }, [src]);
+  // A cached image can be complete before React attaches onLoad, and that
+  // load event is then never delivered. Report on the ref instead.
+  const setImgRef = useCallback((el: HTMLImageElement | null) => {
+    if (typeof slotRef === "function") slotRef(el);
+    else if (slotRef) (slotRef as { current: HTMLImageElement | null }).current = el;
+    if (el?.complete && el.naturalWidth > 0) onReady?.();
+  }, [onReady, slotRef]);
+  // The fallback block IS the stimulus once the image has given up.
+  useEffect(() => {
+    if (failed) onReady?.();
+  }, [failed, onReady]);
   if (failed) {
     return (
       <div
@@ -180,11 +200,12 @@ function StimulusImg({ src, hide, slotRef }: { src: string; hide: boolean; slotR
   return (
     <img
       key={attempt}
-      ref={slotRef}
+      ref={setImgRef}
       src={src}
       alt="exam material"
       decoding="async"
       draggable={false}
+      onLoad={() => onReady?.()}
       onError={() => (attempt === 0 ? setAttempt(1) : setFailed(true))}
       style={{
         flex: 1,
@@ -243,13 +264,13 @@ export function stimulusTextStyle(item: T2PresentedItem, overrides: CSSPropertie
   };
 }
 
-function CardBody({ item, hideImage, slotRef, lang }: { item: T2PresentedItem; hideImage: boolean; slotRef?: Ref<HTMLImageElement>; lang?: string }) {
+function CardBody({ item, hideImage, slotRef, lang, onImageReady }: { item: T2PresentedItem; hideImage: boolean; slotRef?: Ref<HTMLImageElement>; lang?: string; onImageReady?: () => void }) {
   const image = isImageMaterial(item.material);
   return (
     <>
       <p lang={lang} style={{ margin: 0, fontWeight: 600, fontSize: "0.95rem" }}>{item.stem}</p>
       {image ? (
-        <StimulusImg src={item.material} hide={hideImage} slotRef={slotRef} />
+        <StimulusImg src={item.material} hide={hideImage} slotRef={slotRef} onReady={onImageReady} />
       ) : (
         <div lang={lang} style={stimulusTextStyle(item)}>
           {item.material}
@@ -490,11 +511,15 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
     // The DOM image is the visible stimulus now — anchor timing on it.
     onStimulusReady?.();
   }, [onStimulusReady]);
-  // Non-GL stimuli (text cards, or GL disabled): visible on DOM commit.
+  // TEXT stimuli are visible on DOM commit. An IMAGE stimulus is not: it is
+  // reported by StimulusImg when the picture paints (or the fallback block
+  // replaces it), whether or not WebGL is in play — the DOM <img> is what the
+  // candidate sees until a texture is decoded over it. The Runner will not
+  // start the exposure until one of those signals arrives.
   useEffect(() => {
-    if (!glImageUrl) onStimulusReady?.();
+    if (!isImageMaterial(item.material)) onStimulusReady?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [item.id, glImageUrl === null]);
+  }, [item.id]);
 
   const topTransform = `translate3d(${m.x}px, ${m.y}px, 0) rotate(${m.rot}deg)`;
   const promoteTransition = "transform 340ms cubic-bezier(0.2, 1.4, 0.4, 1), opacity 340ms ease";
@@ -563,7 +588,13 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
             pointerEvents: enabled ? "auto" : "none",
           }}
         >
-          <CardBody item={item} hideImage={Boolean(glImageUrl) && glReadyUrl === glImageUrl} slotRef={imgSlotRef} lang={lang} />
+          <CardBody
+            item={item}
+            hideImage={Boolean(glImageUrl) && glReadyUrl === glImageUrl}
+            slotRef={imgSlotRef}
+            lang={lang}
+            onImageReady={onStimulusReady}
+          />
         </div>
 
         {/* Verdict badges: own overlay ABOVE the WebGL layer, glued to the

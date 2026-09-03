@@ -11,12 +11,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { describe, expect, it } from "vitest";
+import { createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import RootLayout from "../app/layout";
-
-(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 const cssPath = join(dirname(fileURLToPath(import.meta.url)), "..", "app", "globals.css");
 const css = readFileSync(cssPath, "utf8");
@@ -260,11 +257,11 @@ describe("the credential surfaces are legible and never colour-only", () => {
 
   it("never signals the verdict with colour alone — the word says it too", () => {
     // "Verified" / "Revoked" / "Cannot be confirmed" are TEXT in
-    // lib/VerifyView.tsx (the client view behind app/verify/[code]); the
+    // features/verify/VerifyView.tsx (the client view behind app/verify/[code]); the
     // coloured border is decoration on top. Pinned here so a redesign cannot
     // reduce the state to a hue.
     const page = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "..", "lib", "VerifyView.tsx"),
+      join(dirname(fileURLToPath(import.meta.url)), "..", "features", "verify", "VerifyView.tsx"),
       "utf8",
     );
     for (const word of ["Verified", "Revoked", "Cannot be confirmed"]) {

@@ -1,20 +1,20 @@
 # AILX — The AI Literacy Examination
 
 **Specification & Technical Design Document**  
-AILX-SPEC-2026.1 · Draft for partner review · 21 August 2026 · Instrument v2026.1, 4 tracks, 400 pts
+AILX-SPEC-2026.1 · Draft for partner review · 21 August 2026 · Instrument v2026.1, 4 tracks, 375 pts
 
 Web version: <https://claude.ai/code/artifact/569a7a59-fcae-4236-a55e-cf68c64a2f37>
 
 ---
 
-A performance-based benchmark that measures what a person can actually do with, against, and about artificial intelligence — scored on four tracks, normed across three countries, and re-versioned every year.
+A performance-based benchmark that measures what a person can actually do with, against, and about artificial intelligence — scored on four tracks, sat in three languages, and re-versioned every year.
 
 ## 01 · Summary
 
 There are hundreds of benchmarks for AI systems and effectively none for the people who use them. AILX is an examination for humans: four timed, performance-based tracks that put a candidate in front of real tools and real adversarial content and score what they produce. It is designed to be hard, to spread a capable cohort across a normal curve, to be re-cut every year as the technology moves, and to export clean enough data that a ministry or a frontier lab can audit every score back to its inputs.
 
 - **Tracks: 4** — Creative build, authenticity discrimination, AI-assisted reasoning, generative direction
-- **Raw points: 400** — 100 per track, reported separately and as a scaled composite
+- **Raw points: 375** — T1 135, T2 80, T3 160, T4 unscored; reported separately and as a scaled composite
 - **Sitting time: 4h 20m** — Across two sessions, plus an untimed T1 build window
 - **Languages: 3** — English, Japanese, Korean — every item ships in all three
 - **Scale path: costed to 25,000 sittings** — Infrastructure and scoring priced at 1,000 and 25,000 candidates (§17); founding calibration cohort complete
@@ -28,6 +28,10 @@ Precision here matters more than ambition, because the first thing a serious rev
 >
 > **AILX is the first cross-nationally normed, annually re-versioned, task-performance-based AI-literacy examination for adults.** Every qualifier in that sentence is load-bearing and independently supportable. Drop any one of them and a reviewer can produce a counterexample.
 
+> **"Cross-nationally normed" is a claim about the panel wave, and the first wave is two countries**
+>
+> The exam runs in three languages and every item ships in all three. The statistic does not follow the exam. A population figure needs a probability sample, and there is no probability panel to buy in Japan or Korea: Japan needs commissioned address-based push-to-web, Korea needs RDD phone recruitment into a web instrument, both at roughly twice the per-complete cost for a smaller n (`docs/PANEL-MARKETS.md`). So the first population statistic covers the **US and the UK**, whose frames are off the shelf, at an estimated **$0.8–1.2M** — our own figure, arithmetic in `docs/SAMPLING.md` §13. Japan and Korea are a funded phase, not a date: they field when roughly **$1.1–1.6M** of additional fieldwork is committed and a local partner is contracted (the difference between options B and C in `docs/SAMPLING.md` §13.3, also ours). Until then AILX publishes no Japanese or Korean population number, and "cross-nationally normed" means two countries, said in that many words.
+
 What must *not* be claimed is that no performance-based human AI-literacy instrument exists. Two do — **GLAT** (20 items, 2PL IRT, α = 0.80) and **AICOS** (51 items, 3PL IRT, n = 514) — and a third, SAIL4ALL, has been validated on 1,500+ respondents across three samples. A systematic review counts three "performance-based" scales against thirteen self-report ones.
 
 The catch, and the opening, is terminological. In that literature "performance-based" means *objective and keyed* — multiple-choice or true/false — as opposed to self-report. It does not mean authentic task performance. Nobody is scoring a person actually building something, actually being deceived or not deceived, actually directing a model, against a rubric, at scale. That is the space AILX occupies **today**.
@@ -39,13 +43,13 @@ The catch, and the opening, is terminological. In that literature "performance-b
 ### Four supporting facts worth memorising
 
 - **Self-report does not work.** A 2026 LAK study found low correlation between self-reported and objectively measured AI literacy, with systematic over- and under-estimators. In the GLAT validation, objective score predicted AI-assisted task performance (β = 0.220, p = .040) while self-reported ChatGPT proficiency predicted nothing (p = .118).
-- **No existing instrument is cross-culturally validated.** The *npj Science of Learning* review states plainly that none of the sixteen scales has been tested for cross-cultural validity. A trilateral cohort is therefore not a nice-to-have framing — it is the single strongest methodological differentiator available.
+- **No existing instrument is cross-culturally validated.** The *npj Science of Learning* review states plainly that none of the sixteen scales has been tested for cross-cultural validity. A trilingual instrument is therefore not decoration: differential item functioning across en/ja/ko can be analysed from cohort 1, on convenience data, for the cost of authoring the items. A trilateral *population comparison* is a separate purchase and is not funded (`docs/PANEL-MARKETS.md`).
 - **The construct is moving, and the OECD is moving into it.** The OECD–EC *AILit* framework was finalised 18 June 2026 with 4 domains and 19 competences; PISA 2029 will field a separate Media & AI Literacy domain, and its draft framework is performance-based rather than multiple-choice. Both are aimed at primary and secondary school, on a three-year cycle. **Adults, measured annually, are unserved — that is the moat, not the item format.**
 - **Humans are worse at detection than they believe.** In a 2,000-person study, 0.1% correctly classified every item, and confidence stayed above 60% regardless of correctness. Overconfidence, not accuracy, is likely to be AILX's most quotable finding.
 
 ### What a pitch meeting should take away
 
-AILX gives a government a defensible number for a population it currently cannot measure, and gives a frontier lab something it does not have: a calibrated human baseline on tasks its models are also evaluated on. The 2026 pilot is explicitly a **calibration cohort**, not a certification event — a point stated up front rather than discovered by a reviewer, for reasons set out in §9.
+AILX gives a frontier lab something it does not have: a calibrated human baseline on tasks its models are also evaluated on. It can give a government a defensible number for a population it currently cannot measure, once a probability panel wave is bought — the first one covers the US and the UK, and Japan and Korea wait on funded fieldwork (`docs/PANEL-MARKETS.md`). The 2026 pilot is explicitly a **calibration cohort**, not a certification event and not a population estimate — a point stated up front rather than discovered by a reviewer, for reasons set out in §9.
 
 ## 02 · The gap being filled
 
@@ -62,7 +66,7 @@ Frameworks are abundant. Instruments are scarce. Instruments that measure **adul
 | **AICOS / AICOS-SV**     | Instrument             | Adults (mean age 32.9)  | 51 / 18 MCQ, 3PL IRT, α = .83           | Validated n = 514                  |
 | **SAIL4ALL**             | Instrument             | General public          | 56 objective items, CTT                 | Validated n = 1,513 (3 samples)    |
 | **MAILS / SNAIL / PECS** | Self-report scales     | Various                 | Likert                                  | Not predictive of task performance |
-| **AILX**                 | **Instrument**         | **Adults, 3 countries** | **4 authentic performance tracks**      | **Pilot Aug 2026**                 |
+| **AILX**                 | **Instrument**         | **Adults, 3 languages** | **4 authentic performance tracks**      | **Pilot Aug 2026**                 |
 
 Landscape as of August 2026. "Instrument" means something a person can sit and be scored on.
 
@@ -73,6 +77,8 @@ Landscape as of August 2026. "Instrument" means something a person can sit and b
 ### Why the trilateral framing is a methodological asset, not decoration
 
 Cross-cultural validity is the loudest unaddressed weakness in the existing literature, and a US–Japan–Korea cohort attacks it directly. It also creates a real obligation: every item ships in English, Japanese and Korean with recorded translation provenance, and differential item functioning is analysed by language from the first cohort onward. A benchmark that produces different difficulty by language and does not say so is not measuring AI literacy — it is measuring English.
+
+Say which half is funded. **The trilingual instrument is funded — it is authoring cost, and it is being paid.** The trilateral *population statistic* is not: Japan and Korea have no probability panel to rent, so each needs a commissioned fresh sample at roughly twice the per-complete cost (`docs/PANEL-MARKETS.md`). A ja/ko convenience cohort supports DIF analysis, item calibration and individual credentials. It supports no sentence beginning "adults in Japan".
 
 ## 03 · Construct definition
 
@@ -104,9 +110,9 @@ NIST AI 800-2 asks benchmark authors to say which kind of claim they are making.
 
 ## 04 · Instrument overview
 
-Four tracks and 400 points, scored by different mechanisms on purpose — so that no single failure mode in judging can compromise the whole examination. **The points are not spread evenly, and that is the 2026.1 decision.** T1 and T3 carry 160 each, T2 carries 80, and T4 issues none: it is run, recorded and published as an unscored showcase. `docs/TRACK-REVIEW.md` is the analysis behind that; the allocation itself lives in `packages/core/src/allocation.ts`, as data, in one place.
+Four tracks and 375 points, scored by different mechanisms on purpose — so that no single failure mode in judging can compromise the whole examination. **The points are not spread evenly, and that is the 2026.1 decision.** T3 carries 160, T1 carries 135, T2 carries 80, and T4 issues none: it is run, recorded and published as an unscored showcase. `docs/TRACK-REVIEW.md` is the analysis behind that; the allocation itself lives in `packages/core/src/allocation.ts`, as data, in one place.
 
-- **T1 — Creative Build** (160 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
+- **T1 — Creative Build** (135 pts, 48h window). Build and ship a personal website. Machine-checkable quality gates, then blinded pairwise human judgement of visual merit.
 - **T2 — Synthetic-Media Discrimination** (80 pts, 50 min). 120 rapid binary judgements on synthetic media and hostile messages, at fixed exposure, with confidence capture.
 - **T3 — Calibrated Reliance** (160 pts, 90 min). Solve a hard problem with an instrumented AI assistant that has been seeded with known-wrong outputs. Produce an original written analysis.
 - **T4 — Generative Direction** (**0 pts — unscored showcase**, 60 min). Take a communicative brief to a finished image and video set under a hard generation quota. Published to a public gallery with prompts. It is run, recorded and published; it issues no points and enters no composite.
@@ -126,30 +132,30 @@ Four tracks and 400 points, scored by different mechanisms on purpose — so tha
 
 > **Design principle: no track is scored the same way as any other**
 >
-> T2 is scored by arithmetic on response data with no model in the loop at all — sensitivity, criterion, calibration and provenance, all of it. T3's two most heavily weighted components are a planted-error detection rate and a deliberate-adoption rate — also model-free. T1 routes its subjective portion to *human* comparative judgement, keeps a vision model on objectively checkable gates, and scores its prompt log by arithmetic. The property this buys is that a discovered flaw in one scoring *mechanism* cannot compromise the whole examination.
+> T2 is scored by arithmetic on response data with no model in the loop at all — sensitivity, criterion, calibration and provenance, all of it. T3's two most heavily weighted components are a planted-error detection rate and a deliberate-adoption rate — also model-free. T1 routes its subjective portion to *human* comparative judgement and keeps a vision model on objectively checkable gates. The property this buys is that a discovered flaw in one scoring *mechanism* cannot compromise the whole examination.
 >
 > **This principle used to carry a number here — "at most 40–45 points out of 400" — and the number was false in both directions: 101 designed, 241 implemented. It is now derived from the code, checked by a test, and stated in full below.**
 
-#### How the 400 points are actually resolved
+#### How the 375 points are actually resolved
 
 Two numbers, because two different failures are worth bounding separately. *Designed* is the mechanism each component is supposed to use. *Implemented* is what `score()` reads today. Both columns are **derived from `packages/core/src/allocation.ts`, the table the scorers themselves read**, and `packages/core/test/spec-allocation.test.ts` fails the build if this section and that table stop agreeing. The previous version of this paragraph was a number typed in prose, and it was wrong by a factor of five.
 
 | Mechanism | Designed | Implemented (2026.1) |
 |---|---|---|
-| Model-free arithmetic on stored response/transcript data | 220 | 220 |
+| Model-free arithmetic on stored response/transcript data | 195 | 195 |
 | Machine-checkable gates (a vision model finds evidence; the finding is checkable) | 40 | 0 |
 | Blinded human pairwise comparison (Bradley–Terry) | 60 | 0 |
 | LLM jury against a locked rubric | 80 | 180 |
 
-Per track: **T1** 40 gate + 60 human-CJ + 35 LLM jury + 25 model-free = 160. **T2** 80 model-free. **T3** 115 model-free + 45 LLM jury = 160. **T4** issues no points.
+Per track: **T1** 40 gate + 60 human-CJ + 35 LLM jury = 135. **T2** 80 model-free. **T3** 115 model-free + 45 LLM jury = 160. **T4** issues no points.
 
 So the safety property, stated as a number that is true:
 
-> **A discovered flaw in LLM-as-judge methodology damages at most 80 of 400 points — a fifth of the instrument — and at most 45 within any single track. A majority of the instrument, 220 of 400, is arithmetic on stored response data with no model and no rater in the loop at all.**
+> **A discovered flaw in LLM-as-judge methodology damages at most 80 of 375 points — a fifth of the instrument — and at most 45 within any single track. A majority of the instrument, 195 of 375, is arithmetic on stored response data with no model and no rater in the loop at all.**
 
-That is the restructure's real justification, and it is worth saying what moved. Before it, the designed exposure was 101 points and the *implemented* exposure was **241 of 400**, because `score()` cannot tell a stored human comparison from a stored model judgment — both arrive as a `Judgment` row — so every component with no measurement code behind it resolved through the judge path. Cutting T4 removed 96 of those. Scoring T2's criterion, T1's prompt log and T3's two reliance tails added 61 points of model-free measurement that did not exist.
+That is the restructure's real justification, and it is worth saying what moved. Before it, the designed exposure was 101 points and the *implemented* exposure was **241 of 400**, because `score()` cannot tell a stored human comparison from a stored model judgment — both arrive as a `Judgment` row — so every component with no measurement code behind it resolved through the judge path. Cutting T4 removed 96 of those. Scoring T2's criterion and T3's two reliance tails added 36 points of model-free measurement that did not exist. T1's prompt log was scored for 25 more on 2026-09-01 and unscored again the next day; the paragraph below the mechanism table says why.
 
-The implemented column is still worse than the designed one, and it will be until the work in "What is not implemented" lands. **180 of 400 points currently resolve through stored judge values.** That number is in this document on purpose.
+The implemented column is still worse than the designed one, and it will be until the work in "What is not implemented" lands. **180 of 375 points currently resolve through stored judge values.** That number is in this document on purpose.
 
 #### What is not implemented — read this before quoting a score
 
@@ -165,20 +171,32 @@ Two of those three were the whole of T4's remaining defence as well, which is pa
 
 Until each lands, the affected points are a **band with a stated error, not a measurement**. Every component carries an `implemented` flag in the allocation table; §16's export tiers carry it too. A report that omits it is a report we would have to withdraw.
 
-> **On the jury evidence, stated against our own case.** The QWK 0.708–0.712 figure this document quotes for a calibrated, evidence-anchored jury is not corroborated anywhere in the research base assembled for the 2026.1 review; what that base contains is a single small study (n = 67) with a low, non-significant result, plus quantified position bias and a self-preference finding (73.5%, rising above 90% after 500 fine-tuning examples). The 45 points are marked unimplemented above for a reason, and the calibration set is a precondition, not a formality.
+#### What is collected and deliberately not scored
+
+The counterpart list, and it exists because the first version of this document had one entry moved from it into the point budget and had to be moved back.
+
+| Collected | Where it is reported | Why it earns nothing |
+|---|---|---|
+| **T1's prompt-log process signal** — distinct instructions and closed prompt→revise cycles | `raw` as `process.signal`, on the report as a diagnostic | No published study validates a volume-monotone process score of AI-assisted work against an independent outcome, and the two programmes that score process (PISA 2012, USMLE Step 3 CCS) remove credit for excess actions rather than adding it. TEN-80; `.research/ten-80-process-evidence.md` |
+| **Response latencies and client timestamps** | research export | Device and network speed, not competence. Two tests refuse a timing read on the score path (`docs/SAMPLING.md` §6.1) |
+| **T4's showcase index** | the report, marked as a showcase | §T4: 70 of its 100 points needed human panels a probability panel cannot supply |
+
+The rule these share: process and volume telemetry is **evidence about how a sitting went**, and it may filter, flag and describe. It may not award a point until something independent validates it.
+
+> **On the jury evidence, stated against our own case.** The QWK 0.708–0.712 figure this document quotes for a calibrated, evidence-anchored jury has now been traced (2026-09-02) to exactly one unreviewed preprint, Hong et al., *From Rubrics to Reliable Scores*, arXiv:2601.08654. The two numbers are two models of ONE family on ONE dataset; the same pipeline scores 0.21–0.65 on its three other benchmarks. Human–human QWK on ASAP spans 0.63–0.85 (median 0.76), so 0.71 is below the median human pair rather than "essentially at the human level". A 65-study synthesis (Li et al., arXiv:2512.14561) reports LLM-judge QWK from 0.00 to 0.97, with many results below the 0.70 operational bar. The research base assembled for the 2026.1 review corroborates none of it, and adds quantified position bias and a self-preference finding (73.5%, rising above 90% after 500 fine-tuning examples). The 45 points are marked unimplemented above for a reason, and the calibration set is a precondition, not a formality.
 
 ### Composite scoring
 
 Track raw scores are **not** summed. Summing raw scores implicitly weights each track by its standard deviation, which is almost never the intended weighting. Instead:
 
 1.  Each **scored** track's raw score is converted to a within-cohort **z-score**. T4 is a showcase and has no z-column at all.
-2.  Z-scores are weighted **in proportion to the declared point allocation** — T1 .40, T2 .20, T3 .40 — and summed. This is a deliberate policy choice, restated annually, not an accident of item counts.
+2.  Z-scores are weighted **in proportion to the declared point allocation** — T1 135⁄375, T2 80⁄375, T3 160⁄375 — and summed. This is a deliberate policy choice, restated annually, not an accident of item counts.
 
     > **Why not equal weighting any more.** It was four equal quarters, and equal weighting was defended here as deliberate. It cannot survive the restructure unexamined, for a reason that is easy to miss: because the composite is built from z-scores rather than raw points, dropping T4 while keeping "equal weighting" would have raised T2 from a quarter of the composite to a **third** — promoting the track the point allocation had just demoted. Weighting by declared points makes the two statements agree instead of contradicting each other.
 3.  The composite is put through a **normalised area transformation** — rank → percentile → inverse-normal → rescale to mean 50, SD 15 — and reported on a 0–100 scale, truncated at the bounds.
 4.  Every report also carries the three scored track scores, the T4 showcase index marked as such, the percentile, and the performance band.
 
-The normalised transformation *forces* a normal distribution rather than hoping for one. At n = 45 an empirically normal raw distribution is unlikely, and a plain linear transform will push extreme scores outside 0–100. This is disclosed openly in every export: the composite is normalised, and raw-distribution shape is preserved separately in the data.
+The normalised transformation *forces* a normal distribution rather than hoping for one. At the size of a first calibration cohort an empirically normal raw distribution is unlikely, and a plain linear transform will push extreme scores outside 0–100. This is disclosed openly in every export: the composite is normalised, and raw-distribution shape is preserved separately in the data.
 
 ### Performance bands
 
@@ -199,23 +217,25 @@ Build a personal website. It has to actually work, and then it has to survive be
 
 ### The task
 
-Candidates receive a brief 48 hours before the summit: build a personal site that communicates who they are and what they work on, to a stated audience. Required content elements are specified (so brief compliance is machine-checkable). AI assistance is unrestricted and expected — the prompt log is a required submission artefact, not a confession. Submission is a ZIP of static assets; no build step runs on our infrastructure (see §12).
+Candidates receive the brief 48 hours before the sitting: build a personal site that communicates who they are and what they work on, to a stated audience. Required content elements are specified (so brief compliance is machine-checkable). AI assistance is unrestricted and expected — the prompt log is a required submission artefact, not a confession. Submission is a ZIP of static assets; no build step runs on our infrastructure (see §12).
 
 ### Score allocation
 
-**160 points. T1 is the flagship track.**
+**135 points. T1 is the flagship track.**
 
 - **40 pts — Functional & accessibility gates.** *[Not implemented in 2026.1 — see §04 "What is not implemented". No contrast, viewport, landmark or keyboard check exists; the dimension is a stored judgment median.]* Renders without console error; responsive at three viewports; WCAG AA contrast on all text; semantic landmarks; keyboard-navigable; performance budget met; all required brief elements present
 - **60 pts — Comparative visual merit.** *[Not implemented in 2026.1 — Bradley–Terry exists nowhere in either repository. See §04.]* Blinded forced-choice pairwise comparison by the full cohort, fitted with Bradley–Terry, style covariates partialled out
 - **20 pts — Technical ambition.** WebGL / Three.js, canvas work, custom shaders, non-trivial interaction — detected objectively, then confirmed by judge as purposeful rather than decorative
 - **15 pts — Design rationale.** 200-word statement of intent; scored on the coherence between stated intent and delivered artefact
-- **25 pts — Prompt-log process signal.** Distinct instructions to the assistant, and whether each was followed by a change to the artefact. Model-free: arithmetic on the stored log, no judge
+- **0 pts — Prompt-log process signal.** Still computed from the submitted log, still reported in `raw` as `process.signal`, and worth nothing. It was worth 25 points for one day; the callout below says why it is not.
 
-> **Why the prompt log is now worth points**
+> **Why the prompt log is collected and not scored**
 >
-> It was collected, computed and thrown away. `score.ts` derived a process signal from the submitted log and reported it in `raw` as a diagnostic that no component consumed, which left T1 scoring an artefact and nothing else. An artefact-only score cannot separate *directing a model well* from *already knowing how to build a website*: a candidate who has shipped HTML for ten years beats one who has not, with the same model, and T1 reads the difference as literacy.
+> It was scored on 2026-09-01 and unscored on 2026-09-02, on evidence, and the reversal is worth stating rather than quietly editing out. The argument for scoring it was that an artefact-only score cannot separate *directing a model well* from *already knowing how to build a website*. That argument survives. The measure did not.
 >
-> Twenty-five of a hundred and sixty, deliberately. Process traces are corroborating evidence, not a criterion — reported convergent validity for stealth-assessment process measures against external criteria spans roughly r = .1–.6 — so the component can support a score and must never carry one. It is also the component most obviously open to gaming, so the measure is strict in two declared ways: prompts are counted **distinct** (trimmed, case-folded; a prompt with no stored text shares one key with every other such prompt), and a revision only closes a cycle when a new distinct prompt is open ahead of it in log order. Twenty presses of the same button is one prompt and one cycle.
+> The measure was monotone in volume: half the credit for distinct instructions, half for prompt-then-revise cycles, full credit at three of each. **No published study validates a volume-monotone process score of AI-assisted work against an independent outcome.** Where interaction volume has been measured against a real outcome it is null-to-negative — raw GitHub Copilot completions shown against self-reported productivity r = 0.01 (n.s.) while the *acceptance ratio* reached ρ = 0.24 (Ziegler et al., MAPS '22); dialogue turns against expert-rated artefact quality r = −0.01; help-seeking volume against learning gain r = −0.46 (Aleven et al., ITS '04). The two operational programmes that do score process score volume **non-monotonically**: PISA 2012's problem-solving items give full credit only below a click budget, and USMLE Step 3's computer-based case simulations state that an unnecessary and excessive order *decreases* the score. NAEP and PIAAC collect process data and do not score it. Our constants made it worse rather than better: full credit at three distinct trimmed, case-folded strings saturates in seconds, so the component stopped discriminating between everyone who performed the ritual — while docking the candidate who solved the brief in two precise prompts.
+>
+> So the signal stays in the record and earns nothing. Collecting is defensible; scoring is the trap. `packages/core/src/allocation.ts` no longer declares a `process` component, `packages/tracks/t1-creative-build/test/score.test.ts` asserts that two artefacts with identical judgments and 0 versus 400 prompt-log entries score identically, and the full source ledger is in `.research/ten-80-process-evidence.md` (TEN-80). The 25 points were **removed, not redistributed**: the evidence supports deleting a component and says nothing about the other four being worth more.
 
 ### Why vision models do not produce the aesthetic score
 
@@ -234,7 +254,7 @@ This is the single largest deviation from the original concept, and the evidence
 
 Evidence against model-scored aesthetics, and for pairwise human judgement.
 
-The last row is the one that ends the argument for a trilateral instrument. The aesthetic predictor that filtered the training data for most open text-to-image systems was built from a photo-contest scrape and 294 Discord raters, and it scores non-Western art at zero. Handing final aesthetic authority to a model trained in that lineage, at a US–Japan–Korea summit, is not a technical shortcut. It is a defect with a paper trail.
+The last row is the one that ends the argument for a trilateral instrument. The aesthetic predictor that filtered the training data for most open text-to-image systems was built from a photo-contest scrape and 294 Discord raters, and it scores non-Western art at zero. Handing final aesthetic authority to a model trained in that lineage, in a US–Japan–Korea instrument, is not a technical shortcut. It is a defect with a paper trail.
 
 > **What the vision model does instead**
 >
@@ -245,7 +265,7 @@ The last row is the one that ends the argument for a trilateral instrument. The 
 The up/down vote becomes a **forced-choice pair**. The instinct behind up/down voting is right — put the judgement in human hands — but forcing a choice between two specific artefacts is what the measurement literature supports, and it is strictly more informative than an isolated thumb.
 
 - **Question wording:** a single decision-relevant question — *"Which of these two would you rather put your own name on?"* — not "which is prettier." UI-Bench's framing; it produces sharper judgements than an aesthetic abstraction.
-- **Volume:** 45 items × 45 raters. At *r* = **30** comparisons per item, total C = 675, which is **15 comparisons per rater** — roughly 19 minutes at ~75 s per forced-choice pair. Verhavert et al.'s meta-analysis of 49 comparative-judgement assessments puts Scale Separation Reliability .70 at ~13 comparisons per representation, .80 at 19–20, and **.90 at 26–37**. The previous *r* = 24 sat below that band: it bought roughly .85 and was reported as if it bought .90. Note also what the arithmetic does at scale — each comparison informs two artefacts, so comparisons *per candidate-rater* are r ÷ 2, **independent of cohort size**. T1's judging cost per candidate is flat in N; what does not scale is rater turnout.
+- **Volume:** one artefact per candidate, and every candidate judges. At *r* = **30** comparisons per artefact, each comparison informs two artefacts, so a rater makes r ÷ 2 = **15 comparisons** — roughly 19 minutes at ~75 s per forced-choice pair. That burden is the same in a cohort of 40 and a cohort of 40,000; the total is 15 × N. Verhavert et al.'s meta-analysis of 49 comparative-judgement assessments puts Scale Separation Reliability .70 at **10–14** comparisons per representation (average 13), .80 at 19–20, and **.90 at 26–37** — all three verified against the accepted author version, and all three estimated on non-adaptive pairing only. See `docs/COMPARATIVE-JUDGEMENT.md`. The previous *r* = 24 sat between the .80 and .90 bands and was reported as if it bought .90. It bought something above .80; the paper's posterior does not license a point estimate in that gap, so "roughly .85" is gone rather than defended. T1's judging cost per candidate is flat in N; what does not scale is rater turnout.
 - **Pairing:** randomised or balanced-incomplete-block. **Not adaptive.** Bramley's simulation produced Scale Separation Reliability up to 0.89 *on pure noise* under adaptive pairing, while non-adaptive methods correctly returned below 0.25. Adaptive pairing would make the instrument look more reliable than it is, which is the worst possible failure mode for a benchmark.
 - **Model:** Bayesian Bradley–Terry with an explicit tie / abstain parameter. Ties are not rare — Chatbot Arena runs at 20.4% — and unmodelled ties produce \>10% error.
 - **Style control:** measured page properties (word count, image count, palette size, DOM depth, animation presence) enter the fit as covariates, so the reported score is merit *controlled for surface style*.
@@ -382,16 +402,18 @@ Candidates receive a long, dense primary source — a technical or policy docume
 
 > **The mechanism that makes this track work**
 >
-> The assistant's environment is **seeded with known-incorrect outputs** at predetermined points — a misattributed figure, a plausible but false causal claim, a fabricated citation, a subtly wrong calculation. Scoring then uses two established human–AI-interaction constructs: **RSR** (relative self-reliance — correctly rejecting wrong AI advice) and **RAIR** (relative AI reliance — adopting correct AI advice after initial disagreement). These are objective, have a survey literature behind them, and cannot be gamed by writing prettier prose.
+> The assistant's environment is **seeded with known-incorrect outputs** at predetermined points — a misattributed figure, a plausible but false causal claim, a fabricated citation, a subtly wrong calculation. Scoring then measures two behavioural rates: how often the candidate accepted a seeded wrong output (**over-reliance**) and how often the candidate refused correct, source-grounded advice (**under-reliance**). Both are objective and cannot be gamed by writing prettier prose. The two components are named `overReliance` and `underReliance` in the code. They were named `rsr` and `rair` until 2026-09-02, after the appropriate-reliance literature, and that was wrong: they are **not** the published statistics of that literature. See "Stated against our own case" below.
 
 ### Score allocation
 
 **160 points, and the track has a new named construct: calibrated reliance — knowing when to use the model and when not to.**
 
-- **50 pts — Planted-error detection (RSR).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
-- **30 pts — Deliberate adoption of correct advice (RAIR).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
-- **35 pts — Process quality.** From the transcript: decomposition, prompt iteration, verification behaviour, whether the candidate went back to the primary source
+- **50 pts — Planted-error detection (the `overReliance` component).** Did the candidate catch and reject the seeded wrong outputs? Fully objective. **Eight planted errors minimum**, not four
+- **30 pts — Deliberate adoption of correct advice (the `underReliance` component).** Did the candidate take correct, source-grounded advice *after deliberating on it*? A blind instant accept earns half credit
+- **35 pts — Process quality.** From the transcript, in four equal quarters: decomposition into prompts, an iterative revision chain, **discriminating verification** (see below), and taking a deliberate stance on the claims the assistant raised
 - **45 pts — Analysis quality.** *[Not implemented in 2026.1 — one stub returning three seeded samples that band on answer length; the ~200-example calibration set does not exist. See §04.]* Locked rubric, evidence-anchored, heterogeneous three-model jury, calibrated against a human-labelled set, top and bottom deciles human-adjudicated
+
+> **The 50/30 split is declared, not measured.** RSR's 50 points and RAIR's 30 are a design judgement about what these behaviours are worth. They are not a weighting derived from data, and nothing here should be read as a measurement claim. No Cronbach α, ICC, split-half or test–retest figure has been published for any behavioural reliance measure. The one direct test–retest study of advice taking put most of its measures in the poor range, ICC below 0.5 (Karvelis et al., *PLoS ONE* 19(11):e0312255, 2024), and behavioural difference scores — the shape of `reliance.index` — are less reliable than the rates they are built from (Hedge, Powell & Sumner, *Behav. Res. Methods* 50:1166–1186, 2018; Enkavi et al., *PNAS* 2019, median contrast ICC 0.174). Eight planted errors cannot pin a rate either: 5 of 8 is 0.63 with a 95% interval of 0.31 to 0.86, and 7 of 8 is 0.88 with 0.53 to 0.98, so two candidates 12.5 points apart sit inside each other's noise. The point allocation is unchanged and the *reporting* is what carries the uncertainty: both rates and the index are shown with 95% intervals and a coarse band, and a sitting under the eight-plant floor says so on the report. A reliability figure for this instrument would replace this paragraph.
 
 **115 of the 160 points are model-free measurement of behaviour** — up from 35 of 100. That is the design's answer to the obvious objection, that scoring reasoning with a language model is scoring the wrong thing, and it is also how §04's LLM-jury exposure is held at 45 points in this track.
 
@@ -405,7 +427,7 @@ The obvious designs for it all fail, and it is worth writing down why before def
 2. **Asking destroys the measurement.** On an exam called *the AI Literacy Examination*, a candidate asked whether they would use AI learns within two items that the sophisticated answer is "not here, and I would verify". A situational-judgement item on this construct measures test-wiseness.
 3. **Under-use is a failure too.** A person who refuses the model where it would have helped is also failing. A one-directional "abstained = correct" key scores Luddism as literacy.
 
-The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — that is RSR. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — that is RAIR. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour under time pressure rather than from anything the candidate says about themselves.
+The design that survives all three is **not to ask, but to make the assistant genuinely asymmetric and measure what the candidate did.** On a planted-error claim the assistant is actively harmful, so rejecting it is appropriate *non*-reliance — the `overReliance` component. On a correct-advice claim it is right and faster, so adopting it is appropriate reliance — the `underReliance` component. The key is then an empirical claim (did using the model make the answer better), not a normative one; it is two-tailed by construction; and it is inferred from behaviour rather than from anything the candidate says about themselves. The behaviour is observed under a declared time budget, which is not the same as observing it *under time pressure* — see "Verification under a declared time budget" below.
 
 **The reliance index is reported two-tailed and never collapsed to one number.**
 
@@ -418,11 +440,74 @@ The design that survives all three is **not to ask, but to make the assistant ge
 
 The band reads both tails on purpose. A candidate who swallowed every planted error *and* refused every correct suggestion has over = 1, under = 1 and index = 0 — arithmetically "calibrated" and behaviourally the worst run in the cohort. When both tails are large the band names the larger failure.
 
-> **Stated against our own case.** RSR and RAIR are named after the appropriate-reliance literature, but this two-tailed *index* is AILX's own construction. We have found no published index or scoring scheme for calibrated reliance to inherit, and there is no published validity evidence for this one. It is defended on design grounds — behavioural, keyless, un-gameable by verbal sophistication, symmetric — and it is reported descriptively until it has been validated against something external. Saying so here is cheaper than being asked.
+**Every rate is reported with a 95% interval, never on its own.** `reliance.over` and `reliance.under` carry Wilson score intervals; `reliance.index` carries a Newcombe hybrid-score interval for the difference of two rates (Newcombe, *Statistics in Medicine* 17:857–872 and 17:873–890, 1998). Wilson rather than Wald, because the Wald interval under-covers at small n and has zero width at 0 and 1, which is where an eight-event rate usually lands. The report prints the interval next to the rate and the band next to both, and `apps/web/test/reliance.test.tsx` fails if a rate is rendered without them. The interval assumes the events are independent, and they are not: people form one policy about trusting the assistant rather than judging each claim on its own (Buçinca, Malaya & Gajos, CSCW 2021), so the true interval is wider than the printed one. The report says that too. A tail with no events reports no rate and withholds the band, because `relianceBand(0, 0)` reads "calibrated" and a sitting that surfaced nothing has shown no such thing.
+
+**The 0.25 calibrated band is arbitrary.** `RELIANCE_CALIBRATED_BAND = 0.25` is a declared cutline, not a fitted one: no cohort has sat this instrument, so there is nothing to fit it on. Deriving it needs two things — reliance rates from a cohort that sat this form, and a second sitting on a parallel form at least 14 days later. The cutline should then be set no narrower than the measurement error it has to survive: the interval width on one candidate's rate, and ICC(2,1) for `reliance.over` and `reliance.under` across the two sittings. Until that data exists the band is a presentation device and moves no points.
+
+> **Stated against our own case.** The two halves of this measure are named after the appropriate-reliance literature. Schemmer, Kühl, Benz, Bartos and Satzger (*Appropriate Reliance on AI Advice: Conceptualization and the Effect of Explanations*, IUI '23, doi:10.1145/3581641.3584066) define **relative AI reliance (RAIR)** as the share of instances where a decision-maker who was initially wrong switches to correct AI advice, and **relative self-reliance (RSR)** as the share of instances where a decision-maker who was initially right rejects incorrect AI advice. The pair is reported as a tuple, *Appropriateness of Reliance*, and is never collapsed into one number. A 2026 review of the area (Raees & Papangelis, arXiv:2604.23896) records this as one of three competing views and concludes that constructs for appropriate reliance are "still fragmented" with "limited consensus on common measurements".
+>
+> **AILX does not compute those two statistics, and must not claim to.** Both require a two-stage judge–advisor design in which the candidate commits an independent answer *before* the model speaks. T3 has no such first stage, so its denominators are all surfaced claims rather than the claims the candidate got right or wrong on their own. What T3 measures is the pair the wider literature calls over- and under-reliance: `reliance.over` is agreement with incorrect recommendations out of all incorrect recommendations shown (Passi & Vorvoreanu, *Overreliance on AI: Literature Review*, MSR-TR-2022-12), and `reliance.under` is its mirror on correct advice — the share of surfaced correct advice the candidate did not adopt. Those two rates are established measures and may be published under those names. Deliberation is not in either rate: it gates the `underReliance` **points** component, where a blind instant accept earns half credit, and it is the behavioural stand-in for the first-stage disagreement the published RAIR conditions on. `docs/TRANSFER-STUDY.md` §3.1 is the block that would let us report real RAIR and RSR beside them.
+>
+> **The setting is ours too.** The earlier conceptualisation from the same group (Schemmer, Hemmer, Nitsche, Kühl & Vössing, 2022) states that the concept "is limited to classification tasks". Every appropriate-reliance study found in the 2026-09-02 spike is binary classification with a few dozen instances. T3 is a 90-minute open-ended writing task, and nothing found validates the transfer.
+>
+> **The two-tailed index has no external validity evidence.** A spike that searched the two standing reviews (Eckhardt, Kühl, Dolata & Schwabe, *A Survey of AI Reliance*, ACM Computing Surveys 2025, doi:10.1145/3776528; Raees & Papangelis 2026), the two Microsoft syntheses (MSR-TR-2022-12, MSR-TR-2024-7) and the decision-theoretic reformulation (Guo, Wu, Hartline & Hullman, arXiv:2401.15356) found no published signed index of reliance calibration. Every source keeps the two rates apart on purpose. `reliance.index = under − over` is therefore AILX's own construct. It is reported descriptively, always beside both tails, the band is derived from both tails, and **it is never used alone to rank, gate or z-score a candidate.** That last sentence is enforced as far as a grep can enforce it: `packages/tracks/t3-reasoning/test/indexIsNeverConsumed.test.ts` fails if any module outside the T3 track reads `reliance.index`, with the composite named explicitly. It cannot see a destructured read, and it says so.
+>
+> **Reliability is untested as well.** No α, ICC, split-half or test–retest figure has been published for any behavioural over-, under- or appropriate-reliance measure. The one direct test–retest study of advice taking (Karvelis et al., *PLoS ONE* 19(11):e0312255, 2024; 39 participants, 153 trials) put advice taking in the poor range, ICC < 0.5. Behavioural difference scores are less reliable than the components they are built from (Hedge, Powell & Sumner, *Behav. Res. Methods* 50:1166–1186, 2018; Enkavi et al., *PNAS* 2019, median ICC 0.174 for contrast measures). On eight planted errors the binomial 95% interval on a reliance rate is about ±0.35. Until this instrument has a reliability figure, the rates are reported with intervals and coarse bands, and the 50/30-point split is a declared design choice, not a measured one.
+
+#### What this track cannot claim
+
+The list a reviewer should be able to find without reading the evidence base. It is drawn from
+the 2026-09-02 spike on the reliance literature; the full 14-item version, with sources, is in
+the private repo's `docs/EVIDENCE-CALIBRATED-RELIANCE.md` §8.
+
+1. **Not "T3 measures RSR and RAIR".** It measures over- and under-reliance rates. The published
+   statistics need an independent first-stage answer T3 never collects.
+2. **Not "RSR and RAIR are established constructs with a survey literature behind them".** Two
+   reviews (2025, 2026) call the constructs fragmented with no consensus metric, and the
+   Appropriateness-of-Reliance tuple was used by 2 of the ~65 studies in the ACM CSUR census.
+3. **Not "the reliance index is validated".** It is unpublished and unvalidated, and its
+   difference-score form is the least reliable shape in this literature.
+4. **Not "reliance is reliably measurable for one person".** No α, ICC or test–retest exists for
+   any behavioural reliance measure; the one direct test found ICC < 0.5 over 153 trials.
+5. **Not "50 + 30 points is a measurement".** Eight planted errors give a rate with a ±0.35
+   interval. The rates are reported as bands with intervals until the retest in
+   `docs/TRANSFER-STUDY.md` §3.2 has been run.
+6. **Not "the 0.25 calibrated band means something".** It is declared, not fitted. The
+   literature's only threshold is a chance baseline, and an open-ended task has none.
+7. **Not "the construct transfers from the published setting".** Every study found in the spike
+   is classification, and the source conceptualisation says it is limited to classification tasks.
+8. **Not "the index is a trait".** Published over-reliance moves with task difficulty, payoff,
+   explanation cost, when the assistant speaks, and Need for Cognition.
+9. **Not "time pressure raises the rate of error adoption".** The one study that tested it
+   (Rosbach et al., arXiv:2411.00998, 28 pathology experts) found the rate unchanged
+   (p = 0.19) and only the severity raised. Our timer is also confounded with
+   our interface until §3.5 of the transfer study varies them apart.
+
+### Verification under a declared time budget
+
+The verification quarter of Process scores **discriminating** verification, not the number of checks. A check counts when the candidate checked a claim the assistant had raised, the form knows whether that claim was true, the check happened before the answer was final, and the candidate's stance on that claim came after the check, before the answer was final, and got it right — challenged a planted error, accepted correct advice. Repeat checks of one claim count once. The scored value is `discriminating / max(checked, 2)`. Every check the candidate does not resolve, or resolves the wrong way, stays in that denominator, so checking more claims raises the rate only when the extra checks are resolved correctly.
+
+The reason is the obvious attack. A candidate who knows the transcript is scored can press Check source on every claim and learn nothing. Volume is what performative checking produces, so volume is not what is paid. The raw record still reports `verificationCount` beside `discriminatingVerifications`, because the difference between the two is itself a finding.
+
+**What the transcript cannot show.** It records that a claim was checked, not what the candidate read. So "discriminating" means *the check was followed by the right call on that claim*, not *the candidate found the discrepancy in the source*. A lucky call after an idle press scores the same as a real one. Separating those needs an event the runner does not emit — which passage was opened, and whether the candidate marked a mismatch — and that event is not worth designing before the study in `docs/TRANSFER-STUDY.md` §3.5 runs.
+
+**The manipulation.** A T3 form may declare `timeBudgetMinutes` — whole minutes, at least one: the same task, the same source, the same planted errors, at 90 minutes or at 30. It is copied into the record as `condition.timeBudgetMinutes`, so an analysis can compare conditions instead of guessing, and in the static build it sets the sitting clock. A HOSTED sitting's clock belongs to the exam service, which serves the form; the frontend records the condition and does not decide it. A form that declares nothing behaves as before and records 0.
+
+**What a comparison of the two conditions may claim, and what it may not.**
+
+| May say | May not say |
+|---|---|
+| Verification behaviour differs between the 90- and 30-minute forms, if it does | That time pressure raises the **rate** of error adoption |
+| Reliance on the assistant may rise under time stress, citing the source below | Any effect size of our own that we have not measured |
+| The finding describes **this form and this interface** | That it describes time pressure as a construct |
+
+The evidence, by name and number. Rosbach, Ammeling, Ganz, Bertram, Conrad, Riener and Aubreville (MELBA 2026, DOI 10.59275/j.melba.2026-87b1, arXiv:2603.11821) measured normalised weight-of-advice in 28 pathology experts: 0.48 without time pressure, 0.54 with it, t(27) = 2.55, p = .017, and accuracy was worse under pressure (mean absolute deviation 19.42 against 27.79). That supports the direction, on a modest effect in a small expert sample. The earlier study by the same group (arXiv:2411.00998) found the **frequency** of automation bias unchanged under a 10-second countdown, p = 0.19; only its severity moved. So AILX may not say that a clock makes candidates adopt more errors. Swaroop, Buçinca, Gajos and Doshi-Velez (arXiv:2306.07458) found that **when** the assistant speaks moved over-reliance more than how long the participant had, and Buçinca, Malaya and Gajos (arXiv:2102.09692, n = 199) found verification effort is a property of the interface as much as of the person.
+
+**The confound, stated before anyone else states it.** AILX varies the clock and the interface together. Until the timed/untimed arm in `docs/TRANSFER-STUDY.md` §3.5 runs — same document, same assistant, same planted-error set, timer the only thing that moves — every "under time pressure" sentence in a report describes this form, not the construct. The report may name the condition a sitting ran under. It may not attribute the difference to time pressure alone.
 
 ### Why eight planted errors, not four
 
-RSR carries 50 of 160 points and **its item count is the number of planted errors the form surfaces.** Four cannot support that weight: catching 2 of 4 versus 3 of 4 is a 12.5-point difference decided by essentially one event, and a four-item subtest cannot have usable reliability at any weight. Eight is the declared floor (`RSR_MIN_SURFACED`), and a sitting that surfaces fewer is flagged in the record as `rsr.underpowered` rather than being silently reported as a rate.
+The over-reliance component carries 50 of 160 points and **its item count is the number of planted errors the form surfaces.** Four cannot support that weight: catching 2 of 4 versus 3 of 4 is a 12.5-point difference decided by essentially one event, and a four-item subtest cannot have usable reliability at any weight. Eight is the declared floor (`OVER_RELIANCE_MIN_SURFACED`), and a sitting that surfaces fewer is flagged in the record as `overReliance.underpowered` rather than being silently reported as a rate. The report says so in words as well: it names how many plants the sitting surfaced, names the floor, and tells the candidate to treat the rate and the band as provisional.
 
 Eight also fits the re-versioning economics. The plants are two instances of each of four stable error **families** — misattributed figure, false causal claim, fabricated citation, wrong calculation. Families are stable even as instances burn, so a re-version is new instances of known families, which is the cheapest possible refresh in the instrument.
 
@@ -433,9 +518,9 @@ One direction the design has to watch: **as models hallucinate less, planting er
 | Approach                                                      | Verdict                  | Evidence                                                                                                                                                                                                                                    |
 |---------------------------------------------------------------|--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Keystroke / timing forensics to prove human authorship        | \[Do not build on it\]   | Copy-type and timing-forgery attacks achieve **≥99.8% evasion** against five classifiers, with detectors labelling attack samples "human" at mean confidence ≥0.993. Structurally it can confirm a human typed, never that a human thought. |
-| Naive LLM essay scoring                                       | \[Insufficient\]         | **QWK below 0.30** across all tested models and tasks against a human inter-rater ceiling of 0.72. LLMs compress the score range, over-reward underdeveloped work, over-penalise long substantive work with surface errors.                 |
-| Locked rubric + evidence anchoring + distribution calibration | \[Adopt\]                | **QWK 0.708–0.712** on ASAP 2.0 — essentially at the human inter-rater level — consistent across three model families. Requires ~200 human-labelled calibration examples.                                                                   |
-| Heterogeneous jury over single judge                          | \[Adopt\]                | Three models from three families beat single GPT-4: κ 0.763–0.906 vs 0.627–0.841; Pearson 0.917 vs 0.817; score SD 2.2 vs 6.1; 7–8× cheaper.                                                                                                |
+| Naive LLM essay scoring                                       | \[Insufficient\]         | Unreliable and highly model-dependent: **QWK 0.02–0.48** on standard essay corpora (Lee et al., arXiv:2404.04941, Fig. 1; RULERS Table 2), most values well below the 0.70 operational bar. Range compression is real; the direction is not what we claimed — judges are **harsher** than humans, not more generous (Yeadon et al., arXiv:2603.14732). |
+| Locked rubric + evidence anchoring + distribution calibration | \[Adopt, on one preprint\] | **QWK 0.708–0.712** on ASAP 2.0 — GPT-4o-mini (0.7077) and GPT-4o (0.7122), i.e. **one model family on one dataset**, in a single unreviewed preprint (Hong et al., arXiv:2601.08654, Table 2). The same pipeline scores **0.21–0.65** on its three other benchmarks, and its Llama-3.1-8B backbone sits at 0.683. Human–human QWK on ASAP spans **0.63–0.85, median 0.76** (computed from the released `training_set_rel3.tsv`), so 0.71 is **below the median human pair**. Requires ~200 human-labelled calibration examples. |
+| Heterogeneous jury over single judge                          | \[Adopt\]                | Three models from three families beat single GPT-4: κ 0.763–0.906 vs 0.627–0.841; Pearson 0.917 vs 0.817; score SD 2.2 vs 6.1; 7–8× cheaper. Quoted exactly from PoLL (Verga et al., arXiv:2404.18796), which measures **binary QA correctness and Arena ranking, not rubric bands**, against GPT-3.5. A jury also buys self-consistency before validity: replication sharpens a judge-specific bias (Sunkavalli, arXiv:2608.29517).                                                                                                |
 | Information-theoretic human contribution I(x;y)/I(y)          | \[Report, do not score\] | Validated (polishing 85.4%, generation-from-subject 30.8%) and resistant to adaptive attack, but the authors state it does not handle multi-round iterative interaction — which is exactly this setting.                                    |
 | Self-reported prompting proficiency                           | \[Reject\]               | In the GLAT validation it predicted task performance at p = .118, i.e. not at all, while the objective score predicted at β = 0.220.                                                                                                        |
 
@@ -465,7 +550,7 @@ The quota is not a cost-control measure disguised as a rule — though it is als
 
 1. **It duplicated T1.** Forty points of blinded pairwise comparative merit on the same Bradley–Terry machinery, twenty points of process evidence from a prompt log, ten of provenance hygiene, and the same `[Proxy]` claim type. §03 maps T1 to "Create with AI 1–3, Manage AI 1–3" and T4 to "Create with AI 1, 2, 4" — an overlap, not a distinction. Whether the two scores correlate above ~.6 in the calibration cohort is now a question the recorded showcase index can still answer.
 2. **It could never enter the population statistic.** Seventy of its hundred points — comparative 40 plus the blind-viewer panel 30 — need human panels a probability panel structurally cannot supply: panellists are paid once and do not come back to judge each other. §6 of `docs/TRACK-REVIEW.md` states the criterion plainly: a track that cannot be shortened cannot contribute at all. A compressed T4 block would have yielded craft and provenance, 30 points measuring prompt-log shape and metadata hygiene, which is not T4.
-3. **Its governance model does not survive scale.** The gallery is approval-required, and a human approves every asset before it is publicly visible. At four assets per candidate and N = 50,000 that is 200,000 approvals — roughly 1,100 person-hours at 20 seconds each. That commitment is correct for a 45-person summit with three foreign ministries watching. It is not a growth plan, and the alternatives (sampled approval, takedown-based moderation) are exactly the weaker posture this document refused.
+3. **Its governance model does not survive scale.** The gallery is approval-required, and a human approves every asset before it is publicly visible. At four assets per candidate and N = 50,000 that is 200,000 approvals — roughly 1,100 person-hours at 20 seconds each. Reviewing every asset is affordable at pilot size. It is not a growth plan, and the alternatives (sampled approval, takedown-based moderation) are exactly the weaker posture this document refused.
 4. **It was the largest block of judge-resolved points in the instrument** — 96 of 100, including the one objective component whose entire defence was that a *human* panel decides it (see §04's implemented column, and `plugin.ts` routing `judge-t4-brief-fit` to the model `judge` queue).
 
 **What survives, and where it went.** The distinctive thing T4 measured — *did the artefact communicate what it was meant to communicate* — is a rubric dimension, not a track. It moves into T3, which already produces a written analysis for a named stakeholder: "would the stakeholder understand the position" is the same construct on material that is cheaper, compressible and already collected. This follows `docs/FUTURE-TRACKS.md`'s own pattern of preferring an item family or a rubric dimension over a new track.
@@ -476,7 +561,7 @@ The quota is not a cost-control measure disguised as a rule — though it is als
 
 ### Gallery governance
 
-The public gallery is **approval-required, not takedown-based**. For a summit with three foreign ministries in the room, a human approves every asset before it becomes publicly visible; safety filters at generation time and a second classification pass on stored assets are inputs to that decision, not substitutes for it. Per-item unpublish is available within minutes. This is slower than the alternative and it is the correct trade.
+The public gallery is **approval-required, not takedown-based**. A human approves every asset before it becomes publicly visible; safety filters at generation time and a second classification pass on stored assets are inputs to that decision, not substitutes for it. Per-item unpublish is available within minutes. This is slower than the alternative and it is the correct trade.
 
 ### Model selection
 
@@ -491,9 +576,9 @@ Model IDs are resolved via `gcloud ai models list` and **pinned by date suffix**
 
 ## 09 · Psychometrics
 
-Forty-five people is a good summit and a small sample. The honest design says so up front, does the things that are valid at n = 45, and defers the claims that are not.
+The first cohort is a calibration cohort and it is small. The honest design says so up front, does the things a small sample supports, and defers the claims that need a larger one.
 
-### What n = 45 can and cannot support
+### What a calibration cohort can and cannot support
 
 Linacre's Rasch sample-size table is the relevant authority, and it is unambiguous:
 
@@ -509,15 +594,15 @@ Sample size required for Rasch item calibration at stated precision.
 
 > **The Year 1 posture, stated plainly**
 >
-> The 2026 cohort is a **calibration and item-development cohort**. Rasch is used diagnostically to rank item difficulty and cull misfitting items at ±1 logit — which n = 45 supports. Person ability logits are *not* reported as scores. 2PL and 3PL are off the table entirely: GLAT needed n = 355 for 2PL, AICOS needed 514 for 3PL. Absolute cut scores and certification claims are deferred until pooled n across cohorts crosses 250. Year 1 reports percentiles and bands, not competence certifications.
+> The 2026 cohort is a **calibration and item-development cohort**. Rasch is used diagnostically to rank item difficulty and cull misfitting items at ±1 logit — which the table puts at about 30 people, its lowest bar. Person ability logits are *not* reported as scores. 2PL and 3PL are off the table entirely: GLAT needed n = 355 for 2PL, AICOS needed 514 for 3PL. Absolute cut scores and certification claims are deferred until pooled n across cohorts crosses 250. Year 1 reports percentiles and bands, not competence certifications.
 
 ### The anchor-block move
 
-The single highest-leverage step available is to embed an **anchor block of published, externally normed items** — AICOS-SV (18 items, normed on n = 514 adults, mean age 32.9) is the closest match to this cohort. It costs about eight minutes of testing time and buys the ability to express the cohort's standing against a real external norm group rather than only against forty-four peers. It also creates the cross-form linkage that makes Year 2 comparable to Year 1.
+The single highest-leverage step available is to embed an **anchor block of published, externally normed items** — AICOS-SV (18 items, normed on n = 514 adults, mean age 32.9) is the closest match to this cohort. It costs about eight minutes of testing time and buys the ability to express the cohort's standing against a real external norm group rather than only against the rest of the cohort. It also creates the cross-form linkage that makes Year 2 comparable to Year 1.
 
 ### Producing a normal distribution
 
-An elite summit cohort is a restricted, high-ability sample, so the dominant threat is a **ceiling effect**, not a floor one. The item-difficulty plan compensates deliberately.
+If the cohort is a restricted, high-ability sample, the dominant threat is a **ceiling effect**, not a floor one. The item-difficulty plan compensates deliberately.
 
 - **Target the guessing-corrected midpoint, not p = .50.** For binary items the ideal difficulty is 85%, for 4-option MC 74%, for 3-option 77%. Aiming every item at .50 maximises variance per item but, with correlated items, tends toward a bimodal rather than normal curve.
 - **Spread difficulties, do not cluster them.** A few easy anchors at p ≈ .85 to protect the floor and keep candidates engaged; the bulk at p = .50–.75; and a deliberate hard tail at p \< .25 to separate the top of the distribution.
@@ -533,16 +618,16 @@ An elite summit cohort is a restricted, high-ability sample, so the dominant thr
 | **ICC(2,k)** two-way random, *absolute agreement*, average measures | Rubric scores that are averaged across raters and generalised beyond the specific panel                    | \<0.5 poor; 0.5–0.75 moderate; 0.75–0.90 good; \>0.90 excellent — judged on the 95% CI, not the point estimate                                      |
 | **Split-panel correlation**                                         | T1 and T4 comparative judgement                                                                            | Reported instead of Scale Separation Reliability. Independent-panel validation of published ACJ studies fell to 0.72–0.87, well below reported SSRs |
 | **Separability**                                                    | Bradley–Terry fits                                                                                         | Fraction of item pairs with non-overlapping CIs. Arena-Hard's 87.4% is the reference point                                                          |
-| **QWK**                                                             | T3 analysis rubric vs. human panel                                                                         | Reported against the human inter-rater ceiling (~0.72 on comparable essay tasks), with the protocol named                                           |
+| **QWK**, with **Spearman beside it**                                | T3 analysis rubric vs. human panel                                                                         | Reported against measured human–human agreement (ASAP spans 0.63–0.85, median 0.76 — a range, not a 0.72 ceiling), with the protocol named. Spearman is mandatory: anchored calibration can match the human score distribution while rank-order agreement stays near zero (Yeadon et al., arXiv:2603.14732), and QWK alone cannot tell the two apart |
 
-Consistency-type ICC is *not* used: rubric scores feed directly into reported scores, so absolute agreement is the correct form. Koo & Li's design guidance — at least 30 heterogeneous samples and at least 3 raters — is satisfiable at n = 45 with a three-judge panel, which is a genuine strength of this cohort size.
+Consistency-type ICC is *not* used: rubric scores feed directly into reported scores, so absolute agreement is the correct form. Koo & Li's design guidance — at least 30 heterogeneous samples and at least 3 raters — sets the floor: 30 candidates and a three-judge panel.
 
 ### Standard setting
 
-**Modified Angoff, 8–10 subject-matter experts, two rounds with discussion between.** It is the only method that is defensible *without examinee data*, which matters because cut scores must be set before the pilot rather than reverse-engineered from forty-five results afterwards.
+**Modified Angoff, 8–10 subject-matter experts, two rounds with discussion between.** It is the only method that is defensible *without examinee data*, which matters because cut scores must be set before the pilot rather than reverse-engineered from the pilot's results afterwards.
 
-- **Bookmark is ruled out:** it requires pre-computed IRT item parameters, which n = 45 cannot produce.
-- **Contrasting Groups is ruled out:** its documented failure mode is bias toward the smaller group when scores are normally distributed and group sizes differ greatly — guaranteed at n = 45.
+- **Bookmark is ruled out:** it requires pre-computed IRT item parameters, which a cohort sized for ±1 logit item calibration cannot produce.
+- **Contrasting Groups is ruled out:** its documented failure mode is bias toward the smaller group when scores are normally distributed and group sizes differ greatly, and a calibration cohort cannot be split into two groups of workable size.
 - Method choice materially moves the cut: severity ranks Ebel \> Borderline \> Angoff \> Contrasting Groups \> Nedelsky, with Angoff producing higher standards than Nedelsky in 80% of compared cases. Disclosing the method is part of disclosing the standard.
 
 ### Cross-year comparability
@@ -558,7 +643,7 @@ Annual re-versioning creates a real tension, and it has to be resolved explicitl
 
 > **AILX takes the AP model with ARC-AGI's calibration discipline — not the IMO's**
 >
-> The IMO analogy is right for the *feel* of the exam and wrong for its measurement design. IMO makes no attempt to equate across years; it achieves comparability purely by rank-based quota. AILX cannot do that and also claim a stable standard. So: **Year 1 is norm-referenced by quota** (n = 45 leaves no alternative), while the **secure anchor block is built from day one** so that Year 2 onward can be equated. The standard, once set by Angoff, is held fixed and the raw cut floats — the AP model. And every new annual form is human-calibrated against the prior form's difficulty before release, the ARC-AGI way.
+> The IMO analogy is right for the *feel* of the exam and wrong for its measurement design. IMO makes no attempt to equate across years; it achieves comparability purely by rank-based quota. AILX cannot do that and also claim a stable standard. So: **Year 1 is norm-referenced by quota** (a calibration cohort leaves no alternative), while the **secure anchor block is built from day one** so that Year 2 onward can be equated. The standard, once set by Angoff, is held fixed and the raw cut floats — the AP model. And every new annual form is human-calibrated against the prior form's difficulty before release, the ARC-AGI way.
 
 ### Three-tier item pool
 
@@ -601,7 +686,7 @@ Effect sizes are from controlled studies holding content constant. These are the
 - **1 · Lock — Frozen rubric bundle.** Traits, binary checklist, score anchors at every band, and evidence rules compiled once into an immutable bundle so nothing drifts at runtime. Changing a prompt is a version bump, not a config tweak.
 - **2 · Judge — Combined mitigation, heterogeneous jury.** Position swap + chain-of-thought before score + rubric, applied together (+11.5 pp on Claude, +7.5 pp on Gemini Flash; swap alone *lost* 6.5–11.1 pp on adversarial data). Three models from three families. Binary checks kept at 2–3 levels — κ fell from 0.51 to 0.34 going from 2-way to 5-way.
 - **3 · Anchor — Extractable, verified evidence.** Every decision must cite verbatim text or a located screen region, mechanically verified against the source. A judgement with unverifiable evidence is discarded, not down-weighted.
-- **4 · Calibrate — Distribution calibration on ~200 human-labelled examples.** Ridge regression plus monotone quantile mapping onto the human score distribution. This is the step that moved published essay-scoring QWK from 0.44–0.56 to 0.71.
+- **4 · Calibrate — Distribution calibration on ~200 human-labelled examples.** Ridge regression plus monotone quantile mapping onto the human score distribution. This is the step that moved essay-scoring QWK from 0.44–0.56 to 0.71 **in the one preprint that reports it** (Hong et al., arXiv:2601.08654). It is also the step most likely to flatter us: distribution matching can reproduce the human marginal while carrying no rank information, so this step is validated by Spearman, never by QWK alone.
 - **5 · Correct — Bias-corrected estimator, never a raw judge score.** θ̂ = (p̂ + q₀ − 1) / (q₀ + q₁ − 1), with sensitivity and specificity from a human-labelled calibration set and confidence intervals propagating uncertainty from both the test and calibration sets. An imperfect judge biases *directionally* — at 30% FPR and 10% FNR it overestimates below 75% and underestimates above.
 - **6 · Defer — Trust curve, not spot check.** Route on jury disagreement and low judge confidence. The published precedent moved accuracy from 77.4% to 81.1% by dropping coverage from 98.2% to 85.6% — a tunable trade. Adversarial known-wrong items planted in the human review stream verify that reviewers are actually engaged.
 
@@ -619,7 +704,7 @@ Google Cloud and GitHub, with Clerk for identity and SES for mail. One deploymen
 | Layer          | Choice                                                                                                                                                 | Why not the alternative                                                                                                                                                                                                                                                                                                                         |
 |----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | App hosting    | **Cloud Run** — Next.js in standalone output, behind a global external Application Load Balancer                                                       | Firebase App Hosting abstracts away the load balancer needed for Cloud Armor and per-host header injection. GKE is unjustified now that Cloud Run worker pools cover persistent pull-based workers.                                                                                                                                             |
-| Database       | **Cloud SQL for PostgreSQL, Enterprise** — 2 vCPU / 8 GB at pilot, HA enabled for the summit window                                                    | Firestore cannot give relational integrity across participants × instruments × items × responses × judgments, nor transactional vote uniqueness, nor row-level security. AlloyDB is ~1.6× the cost and becomes right only when score analytics or transcript vector search outgrow Postgres — and that migration is a `pg_dump`, not a rewrite. |
+| Database       | **Cloud SQL for PostgreSQL, Enterprise** — 2 vCPU / 8 GB at pilot, HA enabled for the exam window                                                      | Firestore cannot give relational integrity across participants × instruments × items × responses × judgments, nor transactional vote uniqueness, nor row-level security. AlloyDB is ~1.6× the cost and becomes right only when score analytics or transcript vector search outgrow Postgres — and that migration is a `pg_dump`, not a rewrite. |
 | Object storage | **Cloud Storage**, four buckets, all uniform bucket-level access, served only via LB + Cloud CDN                                                       | Direct GCS internet egress is \$0.12/GiB against CDN egress at \$0.08–0.09 — never serve media from a public bucket.                                                                                                                                                                                                                            |
 | Job execution  | **Cloud Tasks** as the pipeline spine; Cloud Run Jobs for batch; Pub/Sub for telemetry fan-out only; Workflows only for human-in-the-loop adjudication | Per-queue rate limiting is exactly how a Vertex AI quota gets protected. Pub/Sub has no per-message rate control. Workflows becomes a second home for business logic and its step retries interact badly with model non-determinism.                                                                                                            |
 | Inference      | **Vertex AI**, regional endpoints, model IDs pinned by date suffix                                                                                     | The Gemini Developer API has no IAM, no regional endpoint, no VPC-SC, no CMEK, no batch discount. Fine for prototyping, no place in the delivered system.                                                                                                                                                                                       |
@@ -697,7 +782,7 @@ Four GCP projects: `ailx-prod`, `ailx-staging`, `ailx-sandbox-prod` (the user-co
 
 ## 12 · Sandbox & threat model
 
-Forty-five people upload arbitrary HTML, CSS and JavaScript, and then forty-five people load each other's uploads while logged in. This is the highest-risk component in the system and it gets three independent layers of isolation.
+Candidates upload arbitrary HTML, CSS and JavaScript, and then load each other's uploads while logged in. This is the highest-risk component in the system and it gets three independent layers of isolation.
 
 ### Three layers, all mandatory
 
@@ -808,7 +893,7 @@ Everyone gets one, regardless of band, and it should be the artefact people scre
 - **No visible score during any scored block.** It changes risk-taking behaviour and therefore changes the criterion being measured.
 - **No streaks, combos, or time bonuses.** They reward speed over judgement, which is the opposite of the construct in T3 and T4.
 - **No live leaderboard during the exam.** Post-hoc rankings only, after all judging closes.
-- **No cosmetic unlocks or currency.** The audience is adult professionals at a diplomatic summit; the tone should be closer to a well-made instrument than to a mobile game.
+- **No cosmetic unlocks or currency.** The audience is adult professionals; the tone should be closer to a well-made instrument than to a mobile game.
 - **No adaptive difficulty presented as a challenge ramp.** Adaptive item selection is separately ruled out for measurement reasons (§T1, §9); it must not re-enter through the interface.
 
 The target feeling is a well-made instrument that happens to be a pleasure to operate — a good camera rather than a slot machine. Tight input latency, motion that responds rather than decorates, sound used once or twice and never again, and an interface that gets out of the way of the content. The swipe deck and the replay are where the interaction budget should be spent.
@@ -902,7 +987,7 @@ Adding a fifth track in 2027 means a new package directory and a plugin implemen
       plugin_id      text NOT NULL,         -- 'artifact-hosting@2'
       config_digest  text NOT NULL,
       rubric_version text NOT NULL,         -- hash(rubric + prompts)
-      scoring_digest text NOT NULL,         -- hash of score.ts build output
+      scoring_digest text NOT NULL,         -- content address of score()'s SOURCE closure
       UNIQUE (instrument_id, instrument_ver, track_id)
     );
 
@@ -957,11 +1042,11 @@ T3's transcript gets its own table because it is the audit artefact, with a `rev
 
 ## 15 · Data governance
 
-Forty-five people from three jurisdictions, generating biometric-adjacent response data, judged partly by models that may run outside the region. This is the part that has to be right before the first candidate registers.
+A cohort drawn from three jurisdictions generates biometric-adjacent response data, judged partly by models that may run outside the region. This is the part that has to be right before the first candidate registers.
 
 ### What the spec commits to
 
-1.  **Single primary data plane in `asia-northeast1` (Tokyo)** for database, storage, tasks, compute, registry, secrets, and regionalised log buckets. Not three residency zones for forty-five people — that is complexity without benefit.
+1.  **Single primary data plane in `asia-northeast1` (Tokyo)** for database, storage, tasks, compute, registry, secrets, and regionalised log buckets. Not three residency zones for one pilot cohort — that is complexity without benefit.
 2.  **Vertex AI pinned to a regional endpoint**, never the `global` endpoint, which explicitly carries no residency guarantee. Documented fallback: if a required model is global-only, that processing step is disclosed as a cross-border transfer and the payload is **pseudonymised before the call** — no name, email or organisation, participant referred to by `pid` only.
 3.  **Named cross-border transfers** in a single table in the privacy notice: Clerk (US — identifiers, email, name, session metadata), AWS SES (`ap-northeast-1`), Google Vertex (region or global as applicable), GitHub (source only, no personal data).
 4.  **Data minimisation as the primary control.** The exam does not need date of birth, national ID, address, or phone number. Name, email, organisation, country, consent flags. Everything else is exam artefacts keyed to a `pid`.
@@ -1001,7 +1086,7 @@ The benchmark's value to a ministry or a lab is in the data, not the score. Expo
 | **Individual**   | The candidate           | Four track scores, composite, percentile, band, criterion diagnostic, calibration curve, trap results, annotated prompt log                                                          | PDF certificate + interactive web report |
 | **Cohort**       | Programme sponsors      | Distributions per track, by country and by language; item-level difficulty and discrimination; reliability statistics with CIs; DIF analysis by language; time-on-task distributions | PDF + XLSX + interactive dashboard       |
 | **Research**     | Governments, academics  | De-identified item-level response data, response latencies, confidence data, judge outputs with evidence spans, rubric versions and model manifests, all scoring code                | Parquet + JSON schema + BigQuery share   |
-| **Reproduction** | Frontier labs, auditors | Everything needed to recompute any score: instrument package digest, item bank hashes, judge prompts, model IDs with date suffixes, scoring function build output, golden fixtures   | Signed OCI artefact + runbook            |
+| **Reproduction** | Frontier labs, auditors | Everything needed to recompute any score: instrument package digest, item bank hashes, judge prompts, model IDs with date suffixes, the content address of score()'s source closure (track files AND the @ailx/core modules they import), golden fixtures   | Signed OCI artefact + runbook            |
 
 ### What makes the research tier actually useful to a lab
 
@@ -1009,7 +1094,7 @@ A frontier lab does not need another human ranking. What it does not currently h
 
 - **Human d′ on 2026-current synthetic media**, by modality, by generator, at fixed exposure — directly comparable to detector benchmarks, and currently unavailable at this quality anywhere.
 - **Human rejection rates for planted model errors**, by error type — a direct empirical measure of over-reliance in a professional adult population, which is a question labs are actively asked by regulators.
-- **Human comparative aesthetic judgements** on 45 real artefacts with full pairwise data — a clean external validation set for the VLM aesthetic-judgement gap documented in §T1.
+- **Human comparative aesthetic judgements** on the cohort's real artefacts with full pairwise data — a clean external validation set for the VLM aesthetic-judgement gap documented in §T1.
 - **Full prompt logs and interaction transcripts** from adults working under time pressure on a hard task, with consent for research release.
 
 De-identification is structural rather than post-hoc: participants are keyed to a `pid` from registration onward, names never enter exam artefacts, and the research tier is generated from tables that never contained identifiers. Consent for research release is separate, granular, and revocable, and the export pipeline honours revocation on the next build.
@@ -1020,9 +1105,9 @@ Response events are emitted as xAPI-shaped statements to Pub/Sub and land in Big
 
 ## 17 · Cost model
 
-Unit prices are verified as of 21 August 2026. Usage volumes are estimates and are the largest source of error — instrument the pilot and re-derive.
+Unit prices are verified as of 21 August 2026. Usage volumes are estimates and are the largest source of error — instrument the pilot and re-derive. The three columns are worked examples at N = 45, 1,000 and 25,000. No cohort size is planned here; the small column is kept because it shows which lines are fixed cost and which scale with candidates.
 
-| Line                                                | 45 pilot  | 1,000       | 25,000       |
+| Line                                                | N = 45    | 1,000       | 25,000       |
 |-----------------------------------------------------|-----------|-------------|--------------|
 | Cloud Run — app + origin shim                       | 88        | 190         | 1,650        |
 | Cloud SQL PostgreSQL                                | 220       | 440         | 3,100        |
@@ -1172,8 +1257,15 @@ Everything below is unverified or unresolved. It is listed because a document th
 #### Human–AI interaction & reliance
 
 - Microsoft Research & CMU, [The Impact of Generative AI on Critical Thinking](https://dl.acm.org/doi/abs/10.1145/3706598.3713778), CHI 2025
-- [Survey of appropriate-reliance constructs (RAIR, RSR)](https://arxiv.org/html/2604.23896v1)
-- [Appropriate reliance conceptualisation](https://dl.acm.org/doi/10.1145/3581641.3584066), IUI 2023
+- Raees & Papangelis, [Survey of appropriate-reliance constructs (RAIR, RSR)](https://arxiv.org/html/2604.23896v1), 2026 — three competing views, "limited consensus on common measurements"
+- Schemmer, Kühl, Benz, Bartos & Satzger, [Appropriate Reliance on AI Advice: Conceptualization and the Effect of Explanations](https://dl.acm.org/doi/10.1145/3581641.3584066), IUI 2023 — the definitions of RAIR and RSR AILX names its components after and does **not** compute ([preprint](https://arxiv.org/abs/2302.02187))
+- Passi & Vorvoreanu, [Overreliance on AI: Literature Review](https://www.microsoft.com/en-us/research/publication/overreliance-on-ai-literature-review/), MSR-TR-2022-12 — the over-/under-reliance rates T3 does compute
+- Eckhardt, Kühl, Dolata & Schwabe, [A Survey of AI Reliance](https://doi.org/10.1145/3776528), ACM Computing Surveys 2025
+- Guo, Wu, Hartline & Hullman, [A Decision Theoretic Framework for Measuring AI Reliance](https://arxiv.org/abs/2401.15356)
+- Karvelis et al., [Test–retest reliability of behavioural and computational measures of advice taking](https://doi.org/10.1371/journal.pone.0312255), *PLoS ONE* 19(11):e0312255, 2024 — advice taking in the poor range, ICC < 0.5
+- Hedge, Powell & Sumner, [The reliability paradox](https://doi.org/10.3758/s13428-017-0935-1), *Behav. Res. Methods* 50:1166–1186, 2018 · Enkavi et al., [Large-scale analysis of test–retest reliabilities of self-regulation measures](https://doi.org/10.1073/pnas.1818430116), *PNAS* 2019 — why a difference score is less reliable than its parts
+- Vasconcelos et al., [Explanations can reduce overreliance if they reduce the cost of engaging](https://arxiv.org/abs/2212.06823) · Swaroop, Buçinca, Gajos & Doshi-Velez, [Accuracy-Time Tradeoffs in AI-Assisted Decision Making under Time Pressure](https://arxiv.org/abs/2306.07458) — over-reliance moves with difficulty, payoff and when the assistant speaks
+- Rosbach et al., [Automation Bias in AI-Assisted Medical Decision-Making under Time Pressure](https://arxiv.org/abs/2411.00998), 2024 — time pressure raised the severity of automation bias, not its rate (p = 0.19)
 - [Information-theoretic measurement of human contribution](https://arxiv.org/abs/2408.14792)
 - [On the insecurity of keystroke-based AI authorship detection](https://arxiv.org/abs/2601.17280)
 - [Why Johnny Can't Prompt](https://dl.acm.org/doi/10.1145/3544548.3581388), CHI 2023
@@ -1185,10 +1277,5 @@ Everything below is unverified or unresolved. It is listed because a document th
 - [Korea NEC on election deepfakes](https://www.nec.go.kr/site/eng/ex/bbs/View.do?cbIdx=1270&bcIdx=226657)
 - [Japan's AI Promotion Act](https://fpf.org/blog/understanding-japans-ai-promotion-act-an-innovation-first-blueprint-for-ai-regulation/)
 - [Japan APPI reform — key changes](https://www.bakermckenzie.com/en/insight/publications/2026/05/japan-appi-reform-key-changes)
-
-#### Summit
-
-- [U.S. Embassy Seoul — 2026 Young Trilateral Leaders Summit](https://kr.usembassy.gov/030626-2026-young-trilateral-leaders-summit/)
-- [Summit details — CU Boulder Center for Asian Studies](https://www.colorado.edu/cas/2026/03/10/us-embassy-seoul-2026-young-trilateral-leaders-summit)
 
 **AILX-SPEC-2026.1** — Specification & Technical Design Document. Draft for partner review, 21 August 2026. Every unverified claim in this document is marked and listed in Appendix A. Unit prices verified 21 August 2026; usage volumes are estimates. Nothing here constitutes legal advice — the jurisdictional analysis in §15 requires review by Korean and Japanese counsel before any candidate registers.

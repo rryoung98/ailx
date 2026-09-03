@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ATTEMPT_KEY, append, type SequencedEntry, type SessionConfig } from "@ailx/session";
-import { PersistWarning } from "../lib/PersistWarning";
+import { PersistWarning } from "../features/exam/PersistWarning";
 import ExamPage from "../app/exam/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;

@@ -15,13 +15,20 @@
 import type { ReactNode } from "react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { isClerkEnabled } from "../mode";
+import { ClaimProgress } from "./ClaimProgress";
 import { ClerkTokenBridge } from "./ClerkTokenBridge";
+import { FunnelIdentity } from "./FunnelIdentity";
 
 export function AuthShell({ children }: { children: ReactNode }) {
   if (!isClerkEnabled()) return <>{children}</>;
   return (
     <ClerkProvider>
       <ClerkTokenBridge />
+      {/* After the bridge, never before it: the claim needs the identity the
+          bridge publishes, and the token that goes with it. */}
+      <ClaimProgress />
+      {/* Counts that an account arrived, and nothing about whose it is. */}
+      <FunnelIdentity />
       {children}
     </ClerkProvider>
   );

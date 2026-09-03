@@ -1,0 +1,80 @@
+name: deploy-status
+
+# The gap this closes. Vercel deployed `main` twelve times and failed twelve
+# times, over more than a day, while `ci` was green every time: the deploy
+# happens AFTER the build we gate on, in Vercel's own file tracer, and nothing
+# in this repo was watching it. A green CI badge over a Production deployment
+# that has NEVER succeeded is the failure mode, not the deploy itself.
+#
+# So: one check, no monitoring system. Vercel already posts a GitHub
+# deployment status for every deploy, which the workflow token can read — no
+# Vercel token, no new secret, nothing to rotate. This job turns the red state
+# that was sitting unread in the API into a red run in Actions.
+#
+# What it deliberately does NOT do: gate a PR. `deployment_status` runs have
+# no pull request, so this cannot block a merge, and pretending otherwise
+# would mean polling Vercel from the `ci` job for a deploy that has not
+# started. Failing loudly, immediately, on the event Vercel already sends is
+# the honest version.
+on:
+  deployment_status:
+  workflow_dispatch: # re-check the latest Production deploy on demand
+
+permissions:
+  contents: read
+  deployments: read
+
+jobs:
+  production-deploy:
+    name: production deploy is not failing
+    # Preview deploys of a work branch are allowed to break; Production is
+    # the thing nobody was watching. `deployment_status` also fires for
+    # `pending`/`in_progress`, which decide nothing.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment.environment == 'Production' &&
+       contains(fromJSON('["success", "failure", "error", "inactive"]'),
+                github.event.deployment_status.state))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read the Production deployment state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_STATE: ${{ github.event.deployment_status.state }}
+          EVENT_URL: ${{ github.event.deployment_status.target_url }}
+          EVENT_DESCRIPTION: ${{ github.event.deployment_status.description }}
+        run: |
+          set -euo pipefail
+          state="$EVENT_STATE"
+          url="$EVENT_URL"
+          description="$EVENT_DESCRIPTION"
+          if [ -z "$state" ]; then
+            # workflow_dispatch: ask for the latest Production deployment.
+            id=$(gh api "repos/$REPO/deployments?environment=Production&per_page=1" --jq '.[0].id')
+            if [ -z "$id" ] || [ "$id" = "null" ]; then
+              echo "No Production deployment exists yet — nothing to judge."
+              exit 0
+            fi
+            gh api "repos/$REPO/deployments/$id/statuses?per_page=1" > status.json
+            state=$(jq -r '.[0].state // ""' status.json)
+            url=$(jq -r '.[0].target_url // ""' status.json)
+            description=$(jq -r '.[0].description // ""' status.json)
+          fi
+          echo "Latest Production deployment: $state"
+          echo "  $url"
+          echo "  $description"
+          echo "### Production deployment: \`$state\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "$url" >> "$GITHUB_STEP_SUMMARY"
+          case "$state" in
+            failure|error)
+              echo "::error::Production deployment $state. A green build is not a green"\
+                   "deploy: Vercel traces server files AFTER 'next build' prints Done."\
+                   "Reproduce locally with: cd apps/web && AILX_BACKEND=1 npx vercel build --prod"
+              exit 1
+              ;;
+            *)
+              exit 0
+              ;;
+          esac

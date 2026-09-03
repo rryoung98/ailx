@@ -64,7 +64,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
-const { ReviewView } = await import("../lib/ReviewView");
+const { ReviewView } = await import("../features/review/ReviewView");
 const { metadata } = await import("../app/review/page.api");
 
 function listingOf(cases: ModerationCase[], raw: Record<string, string> = {}): CaseListing {

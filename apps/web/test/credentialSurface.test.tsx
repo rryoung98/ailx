@@ -14,8 +14,8 @@ import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { CREDENTIAL_LIMITS, diagnose, linkedInAddUrl } from "@ailx/report";
 import { cohortMedians } from "@ailx/report";
-import { Diagnosis } from "../lib/Diagnosis";
-import { CredentialPanel } from "../lib/CredentialPanel";
+import { Diagnosis } from "../features/report/Diagnosis";
+import { CredentialPanel } from "../features/report/CredentialPanel";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 

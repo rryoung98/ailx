@@ -13,6 +13,7 @@
  *  - mobile pill guard: teaser + connect panel are [data-pill-clear] zones
  *    and the CSS hides .pill-cta-cleared under 640px.
  */
+import { TOTAL_POINTS } from "@ailx/core";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -80,9 +81,10 @@ describe("landing proof showcase", () => {
     // the three mini motifs all appear somewhere in the section
     // The score mini shows the SCALE, never a result: the invented "206.6 /
     // 400 · Merit" was a judged-looking number on the page that sells the
-    // instrument, and no judged number exists yet.
+    // instrument, and no judged number exists yet. The scale is READ from the
+    // allocation table, because it moved (400 -> 375, TEN-80).
     const scoreMini = h.querySelector(".mini-card-score")!;
-    expect(scoreMini.querySelector(".mini-card-num")!.textContent).toBe("?/400");
+    expect(scoreMini.querySelector(".mini-card-num")!.textContent).toBe(`?/${TOTAL_POINTS}`);
     expect(scoreMini.querySelector(".mini-card-band")!.textContent).toBe("your score");
     for (const band of ["Merit", "Distinction", "Pass"]) {
       expect(scoreMini.textContent).not.toContain(band);
@@ -196,9 +198,10 @@ describe("header play pill", () => {
     // Static export: the share gallery and the personal progress page both
     // need a database, so the nav links the T4 community wall instead of
     // routes that cannot exist here. The pill is the free drill (/practice);
-    // the graded run keeps a plain, obvious slot of its own.
+    // the graded run keeps a plain, obvious slot of its own, and /daily sits
+    // next to it because it plays in this build too.
     expect(links.map((l) => l.href)).toEqual([
-      "/exam", "/report", "/wall", "/methodology", "/validate", "/practice",
+      "/exam", "/daily", "/report", "/wall", "/methodology", "/validate", "/practice",
     ]);
     expect(links[links.length - 1].className).toBe("nav-pill");
     for (const l of links.slice(0, -1)) expect(l.className).toBeUndefined();
@@ -228,7 +231,7 @@ describe("header play pill", () => {
       // loop is never URL-only; /progress reads the store, so it is here and
       // not in the export.
       expect(hrefs).toEqual([
-        "/exam", "/progress", "/report", "/gallery", "/world", "/methodology", "/validate", "/practice",
+        "/exam", "/daily", "/progress", "/report", "/gallery", "/world", "/methodology", "/validate", "/practice",
       ]);
       expect(hrefs).not.toContain("/wall");
     } finally {
@@ -250,15 +253,15 @@ describe("header play pill", () => {
 
 describe("pill guard + scrub shortening", () => {
   it("teaser, connect panel and the landing CTAs are marked [data-pill-clear]", () => {
-    const teaser = readFileSync(join(appDir, "..", "lib", "Teaser.tsx"), "utf8");
-    const connect = readFileSync(join(appDir, "..", "lib", "ConnectPanel.tsx"), "utf8");
+    const teaser = readFileSync(join(appDir, "..", "features", "landing", "Teaser.tsx"), "utf8");
+    const connect = readFileSync(join(appDir, "..", "features", "exam", "ConnectPanel.tsx"), "utf8");
     expect(teaser).toContain("data-pill-clear");
     expect(connect).toContain("data-pill-clear");
     // The landing page is where the fixed pill actually sat on top of copy.
     const landing = readFileSync(join(appDir, "page.tsx"), "utf8");
     expect(landing).toContain('className="hero-cta hero-fade" data-pill-clear=""');
     expect(landing).toContain('className="wyg-steps" data-pill-clear=""');
-    const pill = readFileSync(join(appDir, "..", "lib", "PillCTA.tsx"), "utf8");
+    const pill = readFileSync(join(appDir, "..", "components", "ui", "PillCTA.tsx"), "utf8");
     expect(pill).toContain("[data-pill-clear]");
     expect(pill).toContain("pill-cta-cleared");
     // The guard is deliberately NOT width-gated any more: a fixed pill covers
@@ -320,8 +323,8 @@ describe("parent dogfood follow-ups", () => {
     // 3 always-on links + Play, plus the two mode-gated hosted links
     // (/gallery, /world), the static-export /wall that replaces them, and the
     // one slot that is /progress in the hosted build and /practice in the export.
-    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(9);
-    const navSrc = readFileSync(join(appDir, "..", "lib", "NavLink.tsx"), "utf8");
+    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(10);
+    const navSrc = readFileSync(join(appDir, "..", "components", "ui", "NavLink.tsx"), "utf8");
     expect(navSrc).toContain("usePathname");
     expect(navSrc).toContain('aria-current={current ? "page" : undefined}');
     expect(css).toMatch(/\.site-nav a\[aria-current="page"\] \{[^}]*var\(--accent\)/s);

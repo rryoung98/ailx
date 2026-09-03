@@ -2,6 +2,82 @@
 
 export type Locale = "en" | "ja" | "ko";
 
+/**
+ * A FROZEN TREND FORM (docs/TREND-FORM.md). The operational form re-versions
+ * every year against a moving frontier, so a year-over-year change on it
+ * cannot be told apart from a change in the generators. The anchor form is
+ * held constant instead, and the headline trend is reported on it.
+ *
+ * A frozen form is only worth carrying while it is unburned, so the budget
+ * that bounds its exposure is declared HERE, next to the form, rather than in
+ * a policy note nobody loads.
+ */
+export interface AnchorForm {
+  /**
+   * Stable id of the frozen form, e.g. `ltt-2026a`. It outlives the
+   * instrument version: the whole point is that 2027.1 carries the same
+   * anchor id as 2026.1.
+   */
+  id: string;
+  /**
+   * The most administrations of this form allowed in one cycle, counting
+   * every sitting that sees any anchor item. Exceeding it is a decision, not
+   * an accident, and it ends with a replacement anchor (docs/TREND-FORM.md §3).
+   */
+  exposure_budget: number;
+}
+
+/**
+ * A PANEL SHORT FORM (docs/SHORT-FORM.md). A probability panel will not sit
+ * the 4h 20m examination, so the population statistic is measured on a
+ * 45–60 minute matrix-sampled form: every respondent takes the blocks marked
+ * `every_respondent` plus exactly ONE rotated block, and no respondent takes
+ * the whole pool.
+ *
+ * The block structure is declared HERE because the time budget is the design.
+ * A form that quietly grows past the minutes a panel will sit does not fail
+ * loudly at fielding; it fails as break-off, which biases the mean upward
+ * (docs/SAMPLING.md §8.3).
+ */
+export interface ShortForm {
+  /** Stable id of the short form, e.g. `psf-2026a`. */
+  id: string;
+  /**
+   * The TESTING minutes one respondent's form may cost: the longest
+   * respondent path, meaning every common block plus the longest rotated
+   * block. Consent, instructions and debrief are not blocks and are not
+   * counted here (docs/SHORT-FORM.md §8).
+   */
+  target_minutes: number;
+  blocks: ShortFormBlock[];
+}
+
+/**
+ * One block of a short form. Either common to every form, or a member of a
+ * rotated FAMILY, from which each respondent takes exactly one block.
+ */
+export interface ShortFormBlock {
+  /** Block id, unique within the form, e.g. `anchor-core`. */
+  id: string;
+  /** Testing minutes this block asks of one respondent. */
+  minutes: number;
+  /**
+   * This block is in EVERY respondent's form. At least one such block is
+   * required: it is the common set that links the rotated forms to each
+   * other, and a matrix design without one cannot be scaled at all
+   * (docs/SHORT-FORM.md §5).
+   */
+  every_respondent?: boolean;
+  /**
+   * The rotated family this block belongs to, e.g. `t3-scenario`. Required
+   * on a rotated block, forbidden on a common one. A respondent takes ONE
+   * block from each family, so the families multiply: four T2 link blocks
+   * and four T3 scenarios are sixteen forms, not eight
+   * (docs/SHORT-FORM.md §3.1).
+   */
+  family?: string;
+}
+
 export interface InstrumentManifest {
   id: string;
   version: string;
@@ -23,6 +99,18 @@ export interface InstrumentManifest {
   effective_from: string;
   locales: Locale[];
   tracks: string[];
+  /**
+   * This package carries a frozen trend form. Absent on an ordinary
+   * operational package. NEVER present with `redacted: true`: a redacted
+   * package publishes its keys, and a published anchor is a burned anchor
+   * that still looks comparable (docs/TREND-FORM.md §2).
+   */
+  anchor?: AnchorForm;
+  /**
+   * This package carries a panel short form. Absent on a package that is only
+   * ever sat in full (docs/SHORT-FORM.md).
+   */
+  short_form?: ShortForm;
 }
 
 export interface RubricCriterion {

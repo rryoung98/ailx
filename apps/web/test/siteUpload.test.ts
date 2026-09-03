@@ -11,7 +11,7 @@
  * package vendored into that repo and compared byte for byte in CI, so the
  * test asserts the same two implementations it always did — just from the side
  * that can see the reader. `buildSiteZip` is a re-export of that writer
- * (lib/siteUpload.ts), so nothing about the browser's bytes is untested.
+ * (lib/data/siteUpload.ts), so nothing about the browser's bytes is untested.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { T1_LIMITS } from "@ailx/contract";
@@ -25,7 +25,7 @@ import {
   submitT1Site,
   uploadSiteZip,
   type SiteUploadResult,
-} from "../lib/siteUpload";
+} from "../lib/data/siteUpload";
 
 /** The Blob SDK is a network client: mocked, never reached. */
 const blobPut = vi.fn(async () => ({ pathname: "staged" }));

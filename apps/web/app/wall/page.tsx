@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Annotation } from "../../lib/Annotation";
+import { Annotation } from "../../components/ui/Annotation";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 

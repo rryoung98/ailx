@@ -8,9 +8,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Teaser, AUTO_DEMO_DELAY_MS } from "../lib/Teaser";
-import { TEASER_ITEMS } from "../lib/demoItems";
-import { DEMO_HOLD_MS, DEMO_OUT_MS, DEMO_RETURN_MS, FLING_MS } from "../lib/useSwipeCard";
+import { Teaser, AUTO_DEMO_DELAY_MS } from "../features/landing/Teaser";
+import { TEASER_ITEMS } from "../lib/instrument/demoItems";
+import { DEMO_HOLD_MS, DEMO_OUT_MS, DEMO_RETURN_MS, FLING_MS } from "../features/landing/useSwipeCard";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 

@@ -6,16 +6,18 @@ import { Fraunces, Caveat } from "next/font/google";
 const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable", variable: "--font-serif", display: "swap" });
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
-import { Loader } from "../lib/Loader";
-import { NavLink } from "../lib/NavLink";
+import { TOTAL_POINTS } from "@ailx/core";
+import { Loader } from "../components/Loader";
+import { NavLink } from "../components/ui/NavLink";
 import { assetUrl, footerModeCopy, isClerkEnabled, isServerMode } from "../lib/mode";
 import { AuthShell } from "../lib/auth/AuthShell";
+import { QueryProvider } from "../lib/QueryProvider";
 import { AuthNav } from "../lib/auth/AuthNav";
 
 export const metadata: Metadata = {
   title: "AILX — the AI-literacy game that scores like an instrument",
   description:
-    "Four playable tracks — build, detect, reason, direct. 400 raw points, and every score recomputable from what you did. Built to the AILX 2026.1 specification. Live demo build.",
+    `Four playable tracks — build, detect, reason, direct. ${TOTAL_POINTS} raw points, and every score recomputable from what you did. Built to the AILX 2026.1 specification. Live demo build.`,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -24,6 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* Clerk, or nothing at all — the static export has no auth and must
             keep rendering without one (docs/ARCHITECTURE.md §10.2). */}
+        {/* One query cache for the whole app, outside the auth shell so a
+            sign-in does not throw away a page's data (lib/QueryProvider.tsx). */}
+        <QueryProvider>
         <AuthShell>
           <Loader />
           <a href="#main" className="skip-link">Skip to main content</a>
@@ -43,6 +48,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       the pill: the pill is the fast, free thing, and a four-hour
                       sitting is a terrible first click. */}
                   <NavLink href="/exam">Full run</NavLink>
+                  {/* The daily plays in BOTH builds and needs no account: it
+                      is bundled public content, a device clock and
+                      localStorage. It is the shortest first click there is. */}
+                  <NavLink href="/daily">Daily</NavLink>
                   {/* /progress reads the store, so it is hosted-only. Practice
                       plays in BOTH builds (its corpus is bundled) and is the
                       pill, so it is not repeated here. */}
@@ -84,11 +93,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p>AILX plays like a game and is built like an instrument.</p>
               <p>
                 Instrument spec: <span className="mono">AILX-Spec-2026.1</span> · four tracks,
-                400 raw points, re-versioned annually · scoring and item banks are public.
+                {" "}{TOTAL_POINTS} raw points, re-versioned annually · scoring and item banks are public.
               </p>
             </div>
           </footer>
         </AuthShell>
+        </QueryProvider>
       </body>
     </html>
   );

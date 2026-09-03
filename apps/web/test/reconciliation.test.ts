@@ -23,9 +23,9 @@ import { t4Plugin } from "@ailx/track-t4";
 import {
   candidateComposite, researchExport,
 } from "@ailx/report";
-import { trackConfig } from "../lib/instrument";
-import { scoreTrack, type TrackScoringRecord } from "../lib/registry";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+import { trackConfig } from "../lib/instrument/instrument";
+import { scoreTrack, trackScoredEntry, type TrackScoringRecord } from "../lib/instrument/registry";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 
 function memStorage(): StorageLike {
   const map = new Map<string, string>();
@@ -47,12 +47,7 @@ function runLiveAttempt(): { log: SequencedEntry[]; live: Record<string, TrackSc
     ts += 1000;
     const rec = scoreTrack(t, state.tracks[t].artifact);
     live[t] = rec;
-    log = append(log, {
-      type: "track_scored", trackId: t,
-      score: rec.score, judgments: rec.judgments,
-      rubricVersion: rec.rubricVersion, scoringDigest: rec.scoringDigest,
-      modelManifest: rec.modelManifest, ts,
-    });
+    log = append(log, trackScoredEntry(t, rec, ts));
   }
   log = append(log, { type: "attempt_completed", ts: ts + 1000 });
   return { log, live };

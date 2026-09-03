@@ -5,8 +5,8 @@
  * scoring walk would drift from this one.
  */
 import { append, project, type SequencedEntry, type TrackId } from "@ailx/session";
-import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
-import { scoreTrack } from "../../lib/registry";
+import { buildSampleAttemptLog } from "../../lib/instrument/sampleAttempt";
+import { scoreTrack, trackScoredEntry } from "../../lib/instrument/registry";
 
 /**
  * The sample fixture stops at between_tracks (validate scores it itself);
@@ -23,11 +23,7 @@ export function completedLog(): SequencedEntry[] {
   for (const c of completions) {
     t += 1_000;
     const rec = scoreTrack(c.trackId as TrackId, c.artifact);
-    log = append(log, {
-      type: "track_scored", trackId: c.trackId, score: rec.score,
-      judgments: rec.judgments, rubricVersion: rec.rubricVersion,
-      scoringDigest: rec.scoringDigest, modelManifest: rec.modelManifest, ts: t,
-    });
+    log = append(log, trackScoredEntry(c.trackId as TrackId, rec, t));
   }
   log = append(log, { type: "attempt_completed", ts: t + 1_000 });
   return log;

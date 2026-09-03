@@ -1501,7 +1501,7 @@ main .card {
 .ptype-axes { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.5rem; }
 .ptype-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }
 
-/* The player-type CHARACTER (apps/web/lib/CharacterPortrait.tsx). The assets
+/* The player-type CHARACTER (apps/web/components/CharacterPortrait.tsx). The assets
    are drawn on the paper background, so the tile is a rounded chip in the
    same colour: the picture reads as pinned paper rather than as a pasted
    square, on the white card and on the paper page alike. */
@@ -1548,7 +1548,7 @@ main .card {
 .review-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 .review-reason { flex: 1 1 100%; min-width: 0; }
 
-/* Share composer: one row per opt-in section (apps/web/lib/ShareLink.tsx). */
+/* Share composer: one row per opt-in section (apps/web/features/report/ShareLink.tsx). */
 .share-sections { border: 1px solid var(--border); border-radius: 10px; margin: 0 0 0.9rem; padding: 0.6rem 0.9rem 0.8rem; }
 .share-sections legend { padding: 0 0.35rem; }
 .share-section { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.35rem 0; }
@@ -1573,7 +1573,7 @@ main .card {
 .verify-list { margin: 0.6rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; color: var(--muted); }
 .verify-limits { color: var(--fg); }
 
-/* Diagnosis (apps/web/lib/Diagnosis.tsx) — warmer surface, same tokens. */
+/* Diagnosis (apps/web/features/report/Diagnosis.tsx) — warmer surface, same tokens. */
 .diagnosis-summary { font-family: var(--serif); font-size: 1.3rem; line-height: 1.45; margin: 0.2rem 0 0.9rem; }
 .diagnosis-findings { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
 .diagnosis-findings li { display: grid; grid-template-columns: 2.4rem 1fr auto; gap: 0.7rem; align-items: baseline; }

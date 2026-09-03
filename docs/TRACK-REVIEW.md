@@ -202,6 +202,14 @@ coherence dimension). So the one piece of evidence that separates *directing a m
 *already knowing how to build a website* is collected and then discarded. That is the single
 highest-value cheap fix in this document.
 
+> Read after 2026-09-02: this paragraph describes the code again, and the round trip is the
+> point. The prompt log was scored on 2026-09-01 (§9.1, 25 points) and unscored on 2026-09-02
+> (TEN-80). The diagnosis above still stands — T1 partly rewards prior web skill and the prompt
+> log is the only evidence that separates the two. What TEN-80 established is that the MEASURE
+> proposed in §3.7 does not fix it: a volume-monotone process score has no published validation
+> against an independent outcome, and the programmes that do score process penalise excess
+> actions rather than paying for them. See `.research/ten-80-process-evidence.md`.
+
 ### 3.2 Engagement
 
 T1 is the track that travels. Not because it is fun in the moment — 48 hours of building is work —
@@ -225,7 +233,7 @@ the raters are the candidates themselves, comparisons **per rater** = r ÷ 2 —
 
 | Cohort | r per artefact | Total comparisons | Comparisons per candidate-rater | Rater time |
 |---|---|---|---|---|
-| N = 45 (spec) | 24 | 540 | 12 | ~15 min |
+| N = 45 (worked example) | 24 | 540 | 12 | ~15 min |
 | N = 500 | 30 | 7,500 | 15 | ~19 min |
 | N = 50,000 | 30 | 750,000 | 15 | ~19 min |
 
@@ -240,8 +248,8 @@ mandates non-adaptive pairing; that decision must never be traded for efficiency
 .90 supports **bands**, not ranks. At N = 50,000, telling someone they are 12,043rd is not supported
 by the measurement, and the report must not imply it.
 
-The cost that does *not* scale is **rater turnout**. At N = 45 in one room on D+1, everyone judges.
-Asynchronously at N = 50,000, judging is a second visit, and non-response among raters — not
+The cost that does *not* scale is **rater turnout**. In one room on D+1 with a few dozen
+candidates, everyone judges. Asynchronously at N = 50,000, judging is a second visit, and non-response among raters — not
 comparison volume — is what breaks the design.
 
 ### 3.4 Burn rate
@@ -280,8 +288,15 @@ partial at best.
 
 1. **Make T1 the flagship.** It is the thing people show other people. Product-wise, it is the
    track that justifies the credential.
-2. **Score the prompt log.** Move at least 10 points onto the process signal that `score.ts` already
-   computes and throws away. Without it, T1 partly rewards prior web skill.
+2. ~~**Score the prompt log.** Move at least 10 points onto the process signal that `score.ts`
+   already computes and throws away. Without it, T1 partly rewards prior web skill.~~
+   **Done on 2026-09-01, reverted on 2026-09-02 (TEN-80), and the recommendation is withdrawn
+   rather than deleted.** The 25-point component was monotone in prompt volume; the evidence spike
+   found no published study validating such a score against an independent outcome, null-to-negative
+   correlations wherever volume was measured against a real outcome, and two operational precedents
+   (PISA 2012, USMLE Step 3 CCS) that score volume in the opposite direction. The signal is computed
+   and reported as a diagnostic and earns nothing. A REPLACEMENT that reads the relationship between
+   a prompt and the change it produced is the surviving idea, and it needs evidence we do not have.
 3. **Raise r to 30** so the reported reliability is honestly in the .90 band, and keep non-adaptive
    pairing permanently.
 4. **Accept that T1 is a Track-A instrument.** Plan the national composite on T2–T4 with T1 stated
@@ -300,22 +315,45 @@ score is whether the candidate caught them. That is a direct measurement with no
 `packages/tracks/t3-reasoning/src/scoring.ts` implements it as such — 25 points RSR, 10 points RAIR,
 20 points process quality from the transcript, all model-free; 45 points routed to a stored jury.
 
+> Read after 2026-09-02: this review predates two changes and its numbers are the numbers at the
+> time of review. T3 was re-weighted to 160 points, and the two components were renamed from `rsr`
+> and `rair` to `overReliance` (50 pts) and `underReliance` (30 pts) in TEN-38, because RSR and RAIR
+> are Schemmer et al.'s published statistics and T3 does not compute them. Every "RSR"/"RAIR" below
+> that names an AILX component means those two. The allocation table in
+> `packages/core/src/allocation.ts` is the live source.
+
 The implementation is more careful than the spec. RAIR requires *deliberation before acceptance*: a
 claim must have been challenged, or checked against the source after it surfaced, before its
 acceptance earns full credit; a blind instant accept of correct advice earns half, because "the
 candidate happened to be right, but exhibited the same behaviour that swallows planted errors."
 That is a genuine measurement insight and it is in the code, not the spec.
 
-T3's construct also has the best external warrant. The Microsoft/CMU study of 319 knowledge workers
+T3's construct has a partial external warrant. The Microsoft/CMU study of 319 knowledge workers
 found generative AI shifts critical thinking toward **verification, integration and stewardship** —
 which is exactly what the process component scores — and that higher confidence in the AI goes with
-less critical thinking. RSR/RAIR come with a survey literature. Nothing in T2's evidence base is
-this aligned.
+less critical thinking. Nothing in T2's evidence base is this aligned.
 
-The weakness: **45 of 100 points are an LLM jury**, and the evidence for that is conditional. Naive
-LLM essay scoring runs at QWK < 0.30 against a human ceiling of 0.72. The locked-rubric,
-evidence-anchored, distribution-calibrated version reaches QWK 0.708–0.712 — **but requires ~200
-human-labelled calibration examples**, per rubric, per language. Until those exist, the 45 points
+The reliance half is weaker than this section said before (corrected 2026-09-02, TEN-32). RSR and
+RAIR are real names with a real source — Schemmer et al., IUI '23, doi:10.1145/3581641.3584066 —
+but **AILX does not compute either statistic.** Both are defined on a two-stage judge–advisor
+design where the human answers first and the model advises second, and T3 collects no first-stage
+answer. What T3 measures is over- and under-reliance as Passi & Vorvoreanu define them
+(MSR-TR-2022-12): agreement with incorrect advice, and refusal of correct advice. Those rates are
+established; the RSR/RAIR conditioning is not ours to claim. Two reviews (Eckhardt et al., ACM
+CSUR 2025; Raees & Papangelis, arXiv:2604.23896) describe the appropriate-reliance construct as
+fragmented with no consensus metric, and the published concept is defined for classification tasks
+only, so its use on a 90-minute writing task is ours as well. No reliability figure exists for any
+behavioural reliance measure. The full trace is in the private repo's
+`docs/EVIDENCE-CALIBRATED-RELIANCE.md`; the limits a reviewer should see are listed in spec §T3,
+"What this track cannot claim"; the study that would fix it is `docs/TRANSFER-STUDY.md` §3.
+
+The weakness: **45 of 100 points are an LLM jury**, and the evidence for that is conditional — and
+weaker than this paragraph originally said (corrected 2026-09-02, TEN-34). Naive LLM essay scoring
+runs at QWK 0.02–0.48, not "< 0.30", and human–human agreement on ASAP is a *range*, 0.63–0.85 with
+median 0.76, not a 0.72 ceiling. The locked-rubric, evidence-anchored, distribution-calibrated
+version reaches QWK 0.708–0.712 in **one unreviewed preprint** (arXiv:2601.08654), on one dataset
+with one model family — below that median human pair — **and it requires ~200 human-labelled
+calibration examples**, per rubric, per language. Until those exist, the 45 points
 are not the measurement the spec describes. Also: three models from three families is the adopted
 design, but the demo path (`packages/report/src/judging.ts::judgeT3`) returns three *seeded samples
 of one stub*, and the stub's score is essentially a length band. Heterogeneity is a plan, not a fact.
@@ -410,7 +448,7 @@ ten points of provenance hygiene. Two tracks, one scoring apparatus, one claim t
 "artefact quality proxies creative capability"). §03 maps T1 to "Create with AI 1–3, Manage AI 1–3"
 and T4 to "Create with AI 1, 2, 4" — an overlap, not a distinction. If T1 and T4 scores correlate
 above ~.6 in the calibration cohort, T4 is buying a hundred points of nothing, and that correlation
-should be the first thing computed from the summit data.
+should be the first thing computed from the first cohort's data.
 
 There is a second construct problem specific to image generation: **the model does most of the
 variance.** A 2026 image model produces a competent image from a mediocre prompt. What separates
@@ -442,9 +480,8 @@ ambient. Compare T1, where the output is *the candidate's own site*.
 
 Estimates from spec §T4 model pricing. The generation cost is survivable. The **approval gate is
 not**: the spec commits to "a human approves every asset before it becomes publicly visible", which
-at 20 seconds per asset is ~1,100 person-hours at N = 50,000. That commitment was made for a
-45-person summit with three foreign ministries watching, and it is correct at that size. It does not
-survive scale, and the alternatives (sampled approval, takedown-based moderation) are exactly the
+at 20 seconds per asset is ~1,100 person-hours at N = 50,000. Reviewing every asset is affordable
+for a pilot cohort. It does not survive scale, and the alternatives (sampled approval, takedown-based moderation) are exactly the
 weaker posture the spec refused. **T4 is the track whose governance model contradicts AILX's growth
 plan.** That is a structural fact, not a cost line.
 
@@ -520,8 +557,18 @@ what makes this review worth acting on.
 
 Second, the §04 design principle — "no track is scored the same way as any other", so a flaw in
 LLM-judge methodology damages at most 40–45 points out of 400 — **is currently false in the code.**
-As implemented, T1 (100), T4 (80) and T3 (45) all resolve through stored judge values: 225 of 400
-points, not 45. The principle is sound and worth restoring; it is not currently true.
+As implemented, T1 (100), T4 (80) and T3 (45) all resolve through stored judge values: ~~225 of 400
+points~~, not 45. The principle is sound and worth restoring; it is not currently true.
+
+> **Corrected — do not quote 225.** The count above is wrong twice over, and both corrections are
+> kept rather than edited away because this section is the record of what the review believed on
+> 2026-09-01. (i) The number was **241 of 400**, not 225: T4's `craft` is a blend and was judge-resolved
+> for 96 of its 100 points, not 80 — see §9.2(a). (ii) That figure is now historical. After the
+> restructure recorded in §9 the implemented judge exposure is **180 of 400** and the *designed*
+> LLM-judge exposure is **80 of 400**, against 220 model-free, 40 machine-gate and 60 human-cj.
+> `pointsByResolution()` in `packages/core/src/allocation.ts` is the only place those numbers live;
+> `packages/core/test/spec-allocation.test.ts` checks the spec against it and
+> `apps/web/test/allocationResolution.test.ts` checks it against the real `score()` paths.
 
 ---
 
@@ -643,6 +690,7 @@ jury's weight rather than defending it.
 | | Scored instrument | Play surface | Population short form |
 |---|---|---|---|
 | T1 Creative Build | **150 pts** — flagship, prompt log scored, r = 30 | artefact + gallery | excluded, stated |
+<!-- Superseded: T1 shipped at 160 with the prompt log scored (§9.1) and is 135 since TEN-80 unscored it. -->
 | T2 Discrimination | **100 pts** — d′ *and* criterion, calibration weighted up | the swipe deck, disjoint pool | core block |
 | T3 Reasoning | **150 pts** — 8–12 plants, reliance index, timed condition | 5-minute "the assistant lied" | RSR/RAIR block, essay dropped |
 | T4 Generative | **cut** | gallery challenge, unscored | — |
@@ -653,8 +701,8 @@ for the panel, and its one distinctive measurement — did the work communicate 
 is better collected as a T3 rubric dimension. Cutting it also restores the §04 design principle by
 removing 80 points of judge-resolved scoring.
 
-**What to change first, in cost order:** score T1's prompt log (already computed, currently
-discarded); raise T3's planted errors from 4 to 8–12; add the time-pressure condition; stop clamping
+**What to change first, in cost order:** ~~score T1's prompt log (already computed, currently
+discarded)~~ [withdrawn 2026-09-02 — see §3.7]; raise T3's planted errors from 4 to 8–12; add the time-pressure condition; stop clamping
 T2's d′ at zero and move points onto criterion and calibration; build Bradley–Terry, or stop claiming
 it.
 
@@ -670,12 +718,15 @@ analysis above. Written after the change landed, not before.
 
 | | Points | Composite weight | Change |
 |---|---|---|---|
-| T1 Creative Build | **160** | .40 | prompt log SCORED (25 pts, model-free); r = 24 → 30 |
-| T2 Synthetic-Media Discrimination | **80** | .20 | criterion scored (15 pts); pure-d′ 60 → 25; floor spike removed; renamed |
-| T3 Calibrated Reliance | **160** | .40 | two-tailed reliance index; 3 → 8 planted errors; model-free 35/100 → 115/160 |
+| T1 Creative Build | **135** | .36 | r = 24 → 30. Shipped at 160 with the prompt log scored for 25 model-free points, and back to 135 the next day when TEN-80 unscored it — see §9.6 |
+| T2 Synthetic-Media Discrimination | **80** | .213 | criterion scored (15 pts); pure-d′ 60 → 25; floor spike removed; renamed |
+| T3 Calibrated Reliance | **160** | .427 | two-tailed reliance index; 3 → 8 planted errors; model-free 35/100 → 115/160 |
 | T4 Generative Direction | **0** | 0 | unscored showcase; runner and gallery stay |
 
-Total still 400. Model-free measurement went from 159 of 400 to **220 of 400**.
+Total 375 after TEN-80 (400 for the one day the prompt log was scored). Model-free measurement
+went from 159 of 400 to 220 of 400, and is **195 of 375** now. The composite weights are
+proportional to the points by construction, so all three moved when T1's 25 points went: a share of
+a smaller instrument is a bigger share.
 
 ### 9.2 Four things the analysis above got wrong or left out
 
@@ -703,7 +754,11 @@ behavioural, keyless, symmetric and immune to demand characteristics — but it 
 AILX's own construction with no external validity evidence**, in the scorer's module comment and
 in spec §T3. The same check found no corroboration for the QWK 0.708–0.712 figure the spec quotes
 for a calibrated jury; what the base contains is one small study (n = 67) with a low,
-non-significant result. Those 45 points are marked unimplemented for more reasons than one.
+non-significant result. A follow-up spike (2026-09-02, TEN-32) then traced the figure itself to one
+unreviewed preprint, arXiv:2601.08654 — one model family, one dataset — and measured human–human
+QWK on ASAP at 0.63–0.85, median 0.76, which puts 0.71 below the median human pair. The same spike
+reached the wider literature this base had missed: RSR and RAIR **are** defined, by Schemmer et al.
+(IUI '23), and AILX computes neither of them. See §4.1. Those 45 points are marked unimplemented for more reasons than one.
 
 Two other citation corrections: Verhavert's bands are SSR .70 at ~13 comparisons, .80 at 19–20,
 .90 at **26–37** — so r = 30 is inside the .90 band, as §3.3 says. Diel et al. is k = 137 across
@@ -739,3 +794,54 @@ three are now marked `implemented: false` in `packages/core/src/allocation.ts`, 
 and flagged inline at each score allocation. `packages/core/test/spec-allocation.test.ts` fails the
 build if the spec and the allocation table stop agreeing, which is the guard whose absence let the
 original §04 claim go wrong by a factor of five.
+
+### 9.5 §7.2 shipped, minus the claim it was written with (2026-09-02, TEN-30)
+
+The verification measure §7.2 asked for is built. The verification quarter of T3's Process component
+now scores **discriminating** verification — a claim checked before the answer was final, resolved
+afterwards the right way — and pays nothing for volume, so the performative-checking attack §7.2
+names is priced out. T3's points did not move.
+
+The manipulation is a form parameter, `timeBudgetMinutes`, recorded on every sitting as
+`condition.timeBudgetMinutes`. Forms that declare nothing behave exactly as before.
+
+Two corrections to §7.2's framing. First, the transcript cannot tell a check that found the
+discrepancy from a lucky call after an idle press; it records that a claim was checked, not what was
+read. The measure is defined on the stance that follows the check and the spec says so. Second,
+§7.2 assumes the slope is the finding. The evidence base is thinner than that: reliance rose 0.48 →
+0.54 under time pressure in 28 experts (Rosbach et al., MELBA 2026, t(27) = 2.55, p = .017), but the
+**rate** of error adoption did not move (arXiv:2411.00998, p = 0.19), and *when* the assistant
+speaks moved over-reliance more than the clock did (Swaroop et al., arXiv:2306.07458). Our timer and
+our interface still vary together, so until the arm in `docs/TRANSFER-STUDY.md` §3.5 runs, a
+condition comparison describes this form and not the construct.
+
+### 9.6 The prompt log is unscored again (2026-09-02, TEN-80)
+
+§3.7's second recommendation shipped on 2026-09-01 and was reverted the next day on evidence. The
+component was `0.5 × min(1, distinctPrompts/3) + 0.5 × min(1, cycles/3)`, worth 25 of T1's 160
+points, and both halves are **monotone in volume**.
+
+The spike (73 sources examined, 44 read in full; report in `.research/ten-80-process-evidence.md`)
+found: no published study validating a volume-monotone process score of AI-assisted work against an
+independent outcome; null-to-negative associations wherever volume HAS been measured against a real
+outcome (Copilot completions shown r = 0.01 n.s. against acceptance ratio ρ = 0.24, Ziegler et al.
+MAPS '22; dialogue turns r = −0.01 against expert-rated artefact quality; help-seeking volume
+r = −0.46 with learning gain); and two operational precedents that score process — PISA 2012
+problem solving and USMLE Step 3 CCS — scoring volume **non-monotonically**, removing credit above
+a budget. NAEP and PIAAC collect process data and do not score it. Our own constants made it worse:
+full credit at three distinct trimmed, case-folded strings saturates in seconds, so the component
+stopped discriminating between everyone who performed the ritual while docking about 4 points from
+the candidate who solved the brief in two precise prompts.
+
+What changed in code: T1 is **135 points**, the instrument is **375**, the composite weights
+followed the points (.36 / .213 / .427), and `processSignal()` is still exported, still computed and
+still reported in `raw` as `process.signal` with zero weight. The 25 points were removed, not
+redistributed — the evidence supports deleting a component and says nothing about the other four
+being worth more. `packages/tracks/t1-creative-build/test/score.test.ts` now asserts the
+volume-invariance property TEN-80 asked for: identical judgments and 0 versus 400 prompt-log
+entries produce an identical score.
+
+**One finding reported and deliberately not fixed here.** T3's Process-quality component (35 points)
+counts verification events, which is volume-shaped even after §9.5 narrowed it to *discriminating*
+verifications. That is a T3 decision and this branch did not touch it. It is why the
+volume-invariance test is written for T1 alone.

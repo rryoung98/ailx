@@ -21,8 +21,9 @@
  *    projection.
  */
 
+import { canonicalJudgments, compareJudgments, judgmentId } from "@ailx/core";
 import type { TrackId } from "./scoring.js";
-import { TRACK_IDS } from "./scoring.js";
+import { JUDGE_RESOLVED_TRACKS, TRACK_IDS } from "./scoring.js";
 
 /** xAPI-shaped track event (mirrors @ailx/core TrackEvent — structural). */
 export interface TrackEventPayload {
@@ -49,6 +50,21 @@ export interface JudgmentRecord {
 }
 
 /**
+ * WHO issued the score, which decides what THIS log can prove about it.
+ *
+ *  - `local`  — computed here, by the track plugin's pure score(), from
+ *    inputs that are all in this log. The log is sufficient to replay it, so
+ *    the recomputability invariant is enforceable and IS enforced below.
+ *  - `server` — issued by the exam service, which holds the answer key this
+ *    browser deliberately does not have (docs/ARCHITECTURE.md §4). The
+ *    service's own store is the replay surface. This log can only replay it
+ *    if the service also handed back the judgment rows score() consumed; when
+ *    it did not, the entry says so rather than implying an evidence base it
+ *    does not carry.
+ */
+export type ScoredBy = "local" | "server";
+
+/**
  * Why the track clock is stopped. Recorded ON the `paused` entry so the log
  * is self-describing: a reload knows, without guessing from the UI, that the
  * clock is held for a post-submit presentation screen rather than by the
@@ -67,8 +83,27 @@ export type SessionLogEntry =
   | {
       type: "track_scored"; trackId: TrackId; score: TrackScoreValue;
       rubricVersion: string; scoringDigest: string; modelManifest: Record<string, string>;
-      /** Judgment rows score() consumed — persisted for reproducibility (F12). */
-      judgments?: ReadonlyArray<JudgmentRecord>;
+      /**
+       * Judgment rows score() consumed — persisted for reproducibility (F12).
+       * REQUIRED, and required to be in @ailx/core's canonical row order: a
+       * score whose value depends on which order the store handed the rows
+       * back is not byte-identically recomputable, and `[]` on a
+       * judge-resolved track used to be the silent way to say "no evidence".
+       * Empty is legal only for a model-free track, or for a `server` score
+       * whose evidence lives in the service's store.
+       */
+      judgments: ReadonlyArray<JudgmentRecord>;
+      /**
+       * The CLAIMED content address of each row in `judgments`, same order:
+       * `judgmentId(judgments[i])`. This is the auditor's handle. Recompute
+       * the ids over the stored rows; a mismatch means the rows were mutated
+       * after the score was issued and the score of record is VOID — a much
+       * louder failure than a judge that drifted. Without it the log records
+       * evidence but no claim about that evidence, and nothing can be void.
+       */
+      judgmentIds: ReadonlyArray<string>;
+      /** Who issued the score, i.e. whether THIS log can replay it. */
+      scoredBy: ScoredBy;
       ts: number;
     }
   | { type: "attempt_completed"; ts: number };
@@ -114,8 +149,12 @@ export interface TrackState {
   rubricVersion?: string;
   scoringDigest?: string;
   modelManifest?: Record<string, string>;
-  /** Judgment rows persisted with the score (F12). */
+  /** Judgment rows persisted with the score (F12), in canonical row order. */
   judgments?: ReadonlyArray<JudgmentRecord>;
+  /** Content address claimed for each stored judgment row, same order. */
+  judgmentIds?: ReadonlyArray<string>;
+  /** Who issued the score. See {@link ScoredBy}. */
+  scoredBy?: ScoredBy;
 }
 
 export interface SessionState {
@@ -172,6 +211,112 @@ export function append(
   return [...log, { ...entry, seq: state.lastSeq + 1 }];
 }
 
+/**
+ * THE RECOMPUTABILITY INVARIANT, ENFORCED AT APPEND TIME.
+ *
+ * "Any score ever issued is byte-identically recomputable from stored inputs"
+ * was, until this function existed, a sentence in AGENTS.md with no code
+ * behind it: `judgmentId()` had no production caller, the log recorded
+ * judgment rows but no CLAIM about them, and a judge-resolved track could be
+ * scored with `judgments: []` and nobody would notice.
+ *
+ * Four checks, each of which a real defect walked through:
+ *
+ *  1. EVIDENCE IS PRESENT. A locally-issued score on a judge-resolved track
+ *     must carry the rows score() consumed. A model-free track must carry
+ *     none, so `judgments: []` keeps exactly one meaning.
+ *  2. THE CLAIM MATCHES THE EVIDENCE. Every row's recorded `judgmentId` must
+ *     content-address that row. This is what makes a mutated row VOID the
+ *     score instead of silently changing it.
+ *  3. THE ROWS ARE IN CANONICAL ORDER. Stored judgments come back from a
+ *     store, and a read without ORDER BY has no guaranteed order.
+ *     Aggregation is order-invariant by construction now (@ailx/core
+ *     judgments.ts), but the LOG must still be a canonical artifact, or two
+ *     byte-different logs describe the same score and `canonicalJson` over
+ *     the log stops being a stable audit surface.
+ *  4. NO DUPLICATE ROWS. Two identical stored judgments have the same
+ *     content address; one row counted twice moves a mean, and content
+ *     addressing cannot tell the pair apart.
+ *
+ * `server` scores are exempt from (1) ONLY: the exam service holds the answer
+ * key this browser must not have, so its store is the replay surface and this
+ * log is honest about carrying no evidence. (2), (3) and (4) still apply to
+ * whatever it DID hand back.
+ */
+function assertJudgmentsAttested(
+  e: Extract<SessionLogEntry, { type: "track_scored" }>,
+  fail: (msg: string) => never,
+): void {
+  const rows = e.judgments;
+  const ids = e.judgmentIds;
+  if (!Array.isArray(rows)) fail("judgments must be an array (a score with no recorded evidence is not recomputable)");
+  if (!Array.isArray(ids)) fail("judgmentIds must be an array — the log must record the CLAIMED content address of every judgment row");
+  if (ids.length !== rows.length) {
+    fail(`judgmentIds has ${ids.length} entries for ${rows.length} judgment rows`);
+  }
+  for (let i = 0; i < rows.length; i++) {
+    const actual = judgmentId(rows[i]);
+    if (ids[i] !== actual) {
+      fail(
+        `judgmentIds[${i}] claims ${String(ids[i])} but the stored row content-addresses to ${actual} — ` +
+        "the stored judgment was mutated after the score was issued; this score of record is void",
+      );
+    }
+  }
+  for (let i = 1; i < rows.length; i++) {
+    const cmp = compareJudgments(rows[i - 1], rows[i]);
+    if (cmp > 0) {
+      fail(
+        `judgments[${i}] precedes judgments[${i - 1}] in canonical row order — ` +
+        "store them in @ailx/core canonical order so the log does not depend on how the rows were read",
+      );
+    }
+    if (cmp === 0) {
+      fail(
+        `judgments[${i}] duplicates judgments[${i - 1}] — two rows with one content address ` +
+        "double-count in every aggregate and cannot be told apart on audit",
+      );
+    }
+  }
+  const judgeResolved = JUDGE_RESOLVED_TRACKS.includes(e.trackId);
+  if (e.scoredBy === "local") {
+    // A judge-resolved track may store no rows in exactly one case: it issued
+    // no points, because score() never ran on a usable artifact (the
+    // fail-closed sentinel). Anything ABOVE zero had to come from stored
+    // judge output, so the rows that produced it must be in the log.
+    if (judgeResolved && rows.length === 0 && e.score.scaled !== 0) {
+      fail(
+        `${e.trackId} resolves points from stored judge output, so a locally issued score of ` +
+        `${e.score.scaled} must carry the judgment rows score() consumed — an empty list is ` +
+        "points with no evidence",
+      );
+    }
+    if (!judgeResolved && rows.length > 0) {
+      fail(
+        `${e.trackId} is model-free — its score() reads no judgments, so storing ${rows.length} ` +
+        "against it would record evidence nothing consumed",
+      );
+    }
+  }
+}
+
+/**
+ * Put stored judgment rows into the shape `track_scored` requires: canonical
+ * row order, plus the content address claimed for each.
+ *
+ * Every producer of a `track_scored` entry calls this — there is no second
+ * place that decides what a judgment id is, and no producer that can forget
+ * to record one. Sorting here is what makes the log independent of the order
+ * the rows were read in; `assertJudgmentsAttested` then re-checks both
+ * properties at append time, because a producer is not a proof.
+ */
+export function attestJudgments(
+  judgments: ReadonlyArray<JudgmentRecord>,
+): { judgments: JudgmentRecord[]; judgmentIds: string[] } {
+  const ordered = canonicalJudgments(judgments);
+  return { judgments: ordered, judgmentIds: ordered.map((j) => judgmentId(j)) };
+}
+
 function assertLegal(s: SessionState, e: SessionLogEntry): void {
   const fail = (msg: string): never => {
     throw new TransitionError(`${e.type} rejected: ${msg} (phase=${s.phase})`);
@@ -226,12 +371,17 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
       }
       return;
     }
-    case "track_scored":
+    case "track_scored": {
       if (s.tracks[e.trackId].status !== "completed") fail("track not completed");
       if (s.tracks[e.trackId].score !== undefined) {
         fail("track already scored — a re-score must be an explicit new attempt, never a silent replacement");
       }
+      if (e.scoredBy !== "local" && e.scoredBy !== "server") {
+        fail(`unknown scoredBy ${String((e as { scoredBy?: unknown }).scoredBy)}`);
+      }
+      assertJudgmentsAttested(e, fail);
       return;
+    }
     case "attempt_completed":
       if (s.phase !== "between_tracks") fail("tracks still pending or running");
       if (s.order.some((t) => s.tracks[t].status !== "completed"))
@@ -306,6 +456,8 @@ export function project(log: readonly SequencedEntry[]): SessionState {
         t.scoringDigest = e.scoringDigest;
         t.modelManifest = e.modelManifest;
         t.judgments = e.judgments;
+        t.judgmentIds = e.judgmentIds;
+        t.scoredBy = e.scoredBy;
         break;
       }
       case "attempt_completed":

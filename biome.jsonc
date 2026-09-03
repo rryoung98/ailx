@@ -48,22 +48,26 @@
 
 			"a11y": {
 				// "Accessibility is measurement fairness" (FRONTEND.md 1) — so these
-				// are debt to clear, not rules to delete. Counts are at adoption.
-				"useButtonType": "warn", // 36: adding type="button" changes submit behaviour; needs per-site review
-				"useSemanticElements": "warn", // 4
-				"useAriaPropsSupportedByRole": "warn", // 3
-				"noSvgWithoutTitle": "warn", // 2, both decorative marks in the landing hero
-				"noRedundantAlt": "warn", // 2
+				// are debt to clear, not rules to delete. Counts are current; see
+				// docs/DEBT.md for the per-rule reading.
+				"useButtonType": "warn", // 41: adding type="button" changes submit behaviour; needs per-site review
+				"useAriaPropsSupportedByRole": "warn", // 0 left; promote to error once a second pass confirms it stays there
+				"noSvgWithoutTitle": "warn", // 0 left
+				"noRedundantAlt": "warn", // 2, alt wording in the T4 runner
 				"noAriaHiddenOnFocusable": "warn", // 1, the HeroCanvas decorative layer
-				"noNoninteractiveTabindex": "warn" // 1
+				"noNoninteractiveTabindex": "warn", // 1
+				// The rule's fix is <fieldset>, which carries form-control semantics
+				// and default styling. The 5 sites are labelled content groups, not
+				// form groups (wall, GalleryView x2, ShareTargets, Teaser).
+				"useSemanticElements": "off"
 			},
 
 			"correctness": {
-				"useExhaustiveDependencies": "warn", // 33: several are deliberate one-shot effects; each needs reading, and React Compiler (FRONTEND.md 7.3) changes the answer
-				"noUnusedImports": "warn", // 15, safe autofix — blocked only by files in flight
-				"noUnusedVariables": "warn", // 4
-				"noUnusedFunctionParameters": "warn", // 2
-				"noUnusedPrivateClassMembers": "warn" // 1
+				"useExhaustiveDependencies": "warn", // 32: read every one; all are deliberate one-shot or trigger effects, and React Compiler (FRONTEND.md 7.3) changes the answer
+				"noUnusedImports": "warn", // 0 left
+				"noUnusedVariables": "warn", // 0 left
+				"noUnusedFunctionParameters": "warn", // 1, a test fetch stub
+				"noUnusedPrivateClassMembers": "warn" // 1, a test fake
 			},
 
 			"suspicious": {
@@ -76,11 +80,16 @@
 			},
 
 			"complexity": {
-				"noImportantStyles": "warn" // 13: `!important` is how the served candidate site is contained inside our chrome
+				// All 13 sites are in globals.css and each overrides a declaration it
+				// does not own: the reduced-motion resets, the three.js canvas size
+				// (three writes width/height inline), and the 16px iOS zoom guard.
+				"noImportantStyles": "off"
 			},
 
 			"performance": {
-				"noImgElement": "warn" // 11: next/image is unavailable in the static export path
+				// `next.config.mjs` sets `images: { unoptimized: true }` for the static
+				// export, so next/image optimizes nothing and would bypass assetUrl().
+				"noImgElement": "off"
 			},
 
 			"style": {
@@ -103,7 +112,7 @@
 			// `noFocusedTests` flags any call to `fit(`, which is Jasmine's focused
 			// test — and also SwipeDeck's local layout function. Keep the rule where
 			// a stray `.only` actually costs coverage: in the test files.
-			"includes": ["**/src/**", "**/lib/**", "**/app/**"],
+			"includes": ["**/src/**", "**/lib/**", "**/app/**", "**/components/**", "**/features/**"],
 			"linter": { "rules": { "suspicious": { "noFocusedTests": "off" } } }
 		}
 	]

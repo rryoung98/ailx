@@ -72,6 +72,184 @@ describe("parseManifest", () => {
   });
 });
 
+/**
+ * The frozen trend form (docs/TREND-FORM.md). The manifest is where an
+ * anchor declares itself, because a policy note is not loadable and a form
+ * that nobody can tell is an anchor gets rotated by the annual re-version
+ * runbook like everything else.
+ */
+describe("parseManifest anchor", () => {
+  const BASE = "id: ailx\nversion: '2026.1'\neffective_from: 2026-01-01\nlocales: [en]\ntracks: [t2-discrimination]\n";
+
+  it("is absent on an ordinary operational package", () => {
+    expect(parseManifest(BASE).anchor).toBeUndefined();
+  });
+  it("accepts an id and a positive exposure budget", () => {
+    const m = parseManifest(`${BASE}anchor:\n  id: ltt-2026a\n  exposure_budget: 4000\n`);
+    expect(m.anchor).toEqual({ id: "ltt-2026a", exposure_budget: 4000 });
+  });
+  it("rejects an anchor in a redacted package, whose keys are published", () => {
+    expect(() => parseManifest(`${BASE}redacted: true\nanchor:\n  id: ltt-2026a\n  exposure_budget: 4000\n`))
+      .toThrow(/redacted package must not declare an 'anchor'/);
+  });
+  it("rejects an anchor that is not a mapping, including an empty one", () => {
+    expect(() => parseManifest(`${BASE}anchor: ltt-2026a\n`)).toThrow(/'anchor' must be a mapping/);
+    expect(() => parseManifest(`${BASE}anchor: [ltt-2026a]\n`)).toThrow(/'anchor' must be a mapping/);
+    // `anchor:` alone is null, which is a half-written block, not an absent one.
+    expect(() => parseManifest(`${BASE}anchor:\n`)).toThrow(/'anchor' must be a mapping/);
+  });
+  it("rejects an unknown anchor field, so a misspelled budget cannot disable it", () => {
+    expect(() =>
+      parseManifest(`${BASE}anchor:\n  id: ltt-2026a\n  exposure_budget: 10\n  exposure_budegt: 99\n`),
+    ).toThrow(/unknown anchor field 'exposure_budegt'/);
+  });
+  it("rejects an anchor without an id", () => {
+    expect(() => parseManifest(`${BASE}anchor:\n  exposure_budget: 10\n`)).toThrow(/missing required field 'id'/);
+  });
+  it("rejects an id that is not a lowercase slug", () => {
+    for (const id of ["LTT-2026a", "ltt 2026a", "-ltt", "ltt-", "ltt--2026a", "''"]) {
+      expect(() => parseManifest(`${BASE}anchor:\n  id: ${id}\n  exposure_budget: 10\n`))
+        .toThrow(/anchor id/);
+    }
+  });
+  it("rejects a missing, zero, negative or fractional exposure budget", () => {
+    expect(() => parseManifest(`${BASE}anchor:\n  id: ltt-2026a\n`))
+      .toThrow(/missing required field 'exposure_budget'/);
+    for (const budget of ["0", "-1", "1.5", "'4000'", "1e400"]) {
+      expect(() => parseManifest(`${BASE}anchor:\n  id: ltt-2026a\n  exposure_budget: ${budget}\n`))
+        .toThrow(/exposure_budget/);
+    }
+  });
+});
+
+/**
+ * The panel short form (docs/SHORT-FORM.md). The manifest declares the block
+ * structure because the time budget IS the design: a form that grows past the
+ * minutes a panel will sit does not fail at fielding, it fails as break-off.
+ */
+describe("parseManifest short_form", () => {
+  const BASE = "id: ailx\nversion: '2026.1'\neffective_from: 2026-01-01\nlocales: [en]\ntracks: [t2-discrimination]\n";
+  const FORM = [
+    "short_form:",
+    "  id: psf-2026a",
+    "  target_minutes: 45",
+    "  blocks:",
+    "    - id: anchor-core",
+    "      minutes: 13.5",
+    "      every_respondent: true",
+    "    - id: t2-link-a",
+    "      minutes: 8.5",
+    "      family: t2-link",
+    "    - id: t2-link-b",
+    "      minutes: 8.5",
+    "      family: t2-link",
+    "    - id: t3-scenario-a",
+    "      minutes: 20",
+    "      family: t3-scenario",
+    "    - id: t3-scenario-b",
+    "      minutes: 20",
+    "      family: t3-scenario",
+    "",
+  ].join("\n");
+
+  it("is absent on a package that is only ever sat in full", () => {
+    expect(parseManifest(BASE).short_form).toBeUndefined();
+  });
+  it("accepts a common block and two rotated families inside the target", () => {
+    const f = parseManifest(BASE + FORM).short_form;
+    expect(f?.id).toBe("psf-2026a");
+    expect(f?.target_minutes).toBe(45);
+    expect(f?.blocks).toEqual([
+      { id: "anchor-core", minutes: 13.5, every_respondent: true },
+      { id: "t2-link-a", minutes: 8.5, family: "t2-link" },
+      { id: "t2-link-b", minutes: 8.5, family: "t2-link" },
+      { id: "t3-scenario-a", minutes: 20, family: "t3-scenario" },
+      { id: "t3-scenario-b", minutes: 20, family: "t3-scenario" },
+    ]);
+  });
+  it("rejects a short_form that is not a mapping, including a half-written one", () => {
+    for (const bad of ["short_form: psf-2026a\n", "short_form: [psf-2026a]\n", "short_form:\n"]) {
+      expect(() => parseManifest(BASE + bad)).toThrow(/'short_form' must be a mapping/);
+    }
+  });
+  it("rejects an unknown field on the form or on a block", () => {
+    expect(() => parseManifest(BASE + FORM + "  rotations: 4\n"))
+      .toThrow(/unknown short_form field 'rotations'/);
+    expect(() => parseManifest(BASE + FORM.replace("      family: t2-link\n    - id: t2-link-b", "      family: t2-link\n      items: 20\n    - id: t2-link-b")))
+      .toThrow(/unknown short_form block field 'items'/);
+  });
+  it("rejects an id that is not a lowercase slug, on the form, a block or a family", () => {
+    expect(() => parseManifest(BASE + FORM.replace("psf-2026a", "PSF-2026a")))
+      .toThrow(/short_form id/);
+    expect(() => parseManifest(BASE + FORM.replace("id: anchor-core", "id: anchor core")))
+      .toThrow(/short_form block id/);
+    expect(() => parseManifest(BASE + FORM.replace("family: t2-link\n    - id: t2-link-b", "family: T2 link\n    - id: t2-link-b")))
+      .toThrow(/needs a lowercase slug 'family'/);
+  });
+  it("rejects a missing or non-positive target", () => {
+    expect(() => parseManifest(BASE + FORM.replace("  target_minutes: 45\n", "")))
+      .toThrow(/missing required field 'target_minutes'/);
+    for (const t of ["0", "-5", "'45'"]) {
+      expect(() => parseManifest(BASE + FORM.replace("target_minutes: 45", `target_minutes: ${t}`)))
+        .toThrow(/target_minutes/);
+    }
+  });
+  it("rejects a block list that is empty, or a block that is not a mapping", () => {
+    expect(() => parseManifest(BASE + "short_form:\n  id: psf-2026a\n  target_minutes: 45\n  blocks: []\n"))
+      .toThrow(/'blocks' must be a non-empty list/);
+    expect(() => parseManifest(BASE + "short_form:\n  id: psf-2026a\n  target_minutes: 45\n  blocks: [anchor-core]\n"))
+      .toThrow(/each short_form block must be a mapping/);
+  });
+  it("rejects a block without positive minutes", () => {
+    expect(() => parseManifest(BASE + FORM.replace("      minutes: 13.5\n", "")))
+      .toThrow(/missing required field 'minutes'/);
+    expect(() => parseManifest(BASE + FORM.replace("minutes: 13.5", "minutes: 0")))
+      .toThrow(/short_form block 'anchor-core' needs a positive number of 'minutes'/);
+  });
+  it("rejects a non-boolean every_respondent", () => {
+    expect(() => parseManifest(BASE + FORM.replace("every_respondent: true", "every_respondent: yes please")))
+      .toThrow(/'every_respondent' must be a boolean/);
+  });
+  it("rejects duplicate block ids, which would make a rotation ambiguous", () => {
+    expect(() => parseManifest(BASE + FORM.replace("id: t2-link-b", "id: t2-link-a")))
+      .toThrow(/duplicate short_form block id 't2-link-a'/);
+  });
+  it("rejects a family on a common block, which is in no rotation", () => {
+    expect(() => parseManifest(BASE + FORM.replace("      every_respondent: true\n", "      every_respondent: true\n      family: anchor\n")))
+      .toThrow(/block 'anchor-core' is in every form, so it cannot have a 'family'/);
+  });
+  it("rejects a rotated block with no family, because nothing says what it rotates against", () => {
+    expect(() => parseManifest(BASE + FORM.replace("      family: t2-link\n    - id: t2-link-b", "    - id: t2-link-b")))
+      .toThrow(/block 't2-link-a' rotates, so it needs a lowercase slug 'family'/);
+  });
+  it("rejects a form with no common block, because nothing would link the rotations", () => {
+    expect(() => parseManifest(BASE + FORM.replace("      every_respondent: true\n", "      family: anchor\n")))
+      .toThrow(/at least one 'every_respondent' block/);
+  });
+  it("rejects a form with no rotated family at all", () => {
+    const fixed = [
+      "short_form:", "  id: psf-2026a", "  target_minutes: 45", "  blocks:",
+      "    - id: anchor-core", "      minutes: 13.5", "      every_respondent: true", "",
+    ].join("\n");
+    expect(() => parseManifest(BASE + fixed)).toThrow(/at least one rotated family/);
+  });
+  it("rejects a family of one, which rotates nothing", () => {
+    expect(() => parseManifest(BASE + FORM.replace("    - id: t3-scenario-b\n      minutes: 20\n      family: t3-scenario\n", "")))
+      .toThrow(/family 't3-scenario' has one block, so nothing rotates in it/);
+  });
+  it("counts one block per family in the longest path, not all of them and not just the longest family", () => {
+    // 13.5 common + 8.5 (t2-link) + 20 (t3-scenario) = 42, not 20 and not 70.5.
+    expect(() => parseManifest(BASE + FORM.replace("target_minutes: 45", "target_minutes: 41")))
+      .toThrow(/longest path is 42 min, over its target_minutes of 41/);
+    expect(parseManifest(BASE + FORM.replace("target_minutes: 45", "target_minutes: 42")).short_form)
+      .toBeDefined();
+  });
+  it("takes the longest member of a family, not its first", () => {
+    expect(() => parseManifest(BASE.concat(FORM.replace("    - id: t3-scenario-b\n      minutes: 20\n", "    - id: t3-scenario-b\n      minutes: 24\n"))))
+      .toThrow(/longest path is 46 min, over its target_minutes of 45/);
+  });
+});
+
 describe("parseTrackConfig", () => {
   it("rejects plugin ids without an apiVersion suffix", () => {
     expect(() => parseTrackConfig("plugin: item-bank\nconfig: {}\n", "t.yaml"))

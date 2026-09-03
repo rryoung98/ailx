@@ -1,13 +1,13 @@
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { ATTEMPT_KEY, TRACK_IDS, append, type SequencedEntry, type SessionConfig, type TrackId } from "@ailx/session";
-import { DEV_USER_HEADER } from "@ailx/contract";
-import { fixtureArtifact } from "../lib/sampleAttempt";
+import { apiPath, DEV_USER_HEADER } from "@ailx/contract";
+import { fixtureArtifact } from "../lib/instrument/sampleAttempt";
 import { completedLog } from "../test/helpers/completedAttempt";
-import { DEV_USER_KEY, syncKey } from "../lib/persistence";
-import { checkpointKey } from "../lib/checkpoints";
-import { buildSiteZip, T1_SITE_SEQ, type SiteFile } from "../lib/siteUpload";
-import { OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
+import { DEV_USER_KEY, syncKey } from "../lib/data/persistence";
+import { checkpointKey } from "../lib/data/checkpoints";
+import { buildSiteZip, T1_SITE_SEQ, type SiteFile } from "../lib/data/siteUpload";
+import { LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
 import { apiRoot } from "./service";
 
 export { expect };
@@ -60,8 +60,13 @@ export interface RunSeed {
   log: SequencedEntry[];
   /** Per-track runner checkpoint, written exactly as the app stores it. */
   checkpoints?: ReadonlyArray<{ trackId: TrackId; state: unknown }>;
-  /** Seed a model connection (the T1 runner's BYOK slot). */
-  modelKey?: string;
+  /**
+   * Seed a model connection: the OpenAI-compatible ENDPOINT the runners talk
+   * to. There is no key to seed — the browser holds none in either build
+   * (TEN-62), so a spec that wants a failing model call points this at a host
+   * it then routes to a failure.
+   */
+  modelEndpoint?: string;
 }
 
 /**
@@ -79,7 +84,7 @@ export async function seedRun(page: Page, devUser: string, seed: RunSeed): Promi
   // hydrating. Specs that need to jump forward pause it explicitly.
   await page.clock.resume();
   await page.addInitScript(
-    ({ devUserKey, devUserId, attemptKey, attemptId, log, syncStateKey, checkpoints, modelKeyStorage, modelKey }) => {
+    ({ devUserKey, devUserId, attemptKey, attemptId, log, syncStateKey, checkpoints, modelBaseStorage, modelEndpoint }) => {
       window.localStorage.setItem(devUserKey, devUserId);
       window.localStorage.setItem(attemptKey, JSON.stringify({ formatVersion: 1, rev: 1, log }));
       window.localStorage.setItem(
@@ -87,7 +92,7 @@ export async function seedRun(page: Page, devUser: string, seed: RunSeed): Promi
         JSON.stringify({ serverAttemptId: attemptId, syncedThrough: 0, finalized: false }),
       );
       for (const cp of checkpoints) window.localStorage.setItem(cp.key, cp.value);
-      if (modelKey !== null) window.localStorage.setItem(modelKeyStorage, modelKey);
+      if (modelEndpoint !== null) window.localStorage.setItem(modelBaseStorage, modelEndpoint);
     },
     {
       devUserKey: DEV_USER_KEY,
@@ -105,8 +110,8 @@ export async function seedRun(page: Page, devUser: string, seed: RunSeed): Promi
           state: cp.state,
         }),
       })),
-      modelKeyStorage: OPENROUTER_KEY_STORAGE,
-      modelKey: seed.modelKey ?? null,
+      modelBaseStorage: LLM_BASE_URL_STORAGE,
+      modelEndpoint: seed.modelEndpoint ?? null,
     },
   );
 }
@@ -287,7 +292,7 @@ export const test = base.extend<AilxFixtures>({
   },
 
   attemptId: async ({ request, devUser }, use) => {
-    const res = await request.post(`${apiRoot()}/attempts`, {
+    const res = await request.post(`${apiRoot()}${apiPath("createAttempt")}`, {
       headers: { [DEV_USER_HEADER]: devUser, "content-type": "application/json" },
       data: { locale: "en", decks: true },
     });
@@ -300,13 +305,16 @@ export const test = base.extend<AilxFixtures>({
     await use(async () => {
       const headers = { [DEV_USER_HEADER]: devUser, "content-type": "application/json" };
       for (const entry of completedLog()) {
-        const res = await request.post(`${apiRoot()}/attempts/${attemptId}/responses`, {
+        const res = await request.post(`${apiRoot()}${apiPath("appendResponse", { id: attemptId })}`, {
           headers,
           data: { seq: entry.seq, payload: entry, clientTs: new Date(entry.ts).toISOString() },
         });
         expect(res.status(), await res.text()).toBe(201);
       }
-      const res = await request.post(`${apiRoot()}/attempts/${attemptId}/share`, { headers, data: {} });
+      const res = await request.post(`${apiRoot()}${apiPath("createShare", { id: attemptId })}`, {
+        headers,
+        data: {},
+      });
       expect(res.status(), await res.text()).toBe(201);
       const body = (await res.json()) as { share: { token: string } };
       return body.share.token;
@@ -315,7 +323,8 @@ export const test = base.extend<AilxFixtures>({
 
   publishSite: async ({ request, devUser, attemptId }, use) => {
     await use(async (files) => {
-      const res = await request.post(`${apiRoot()}/attempts/${attemptId}/site?seq=${T1_SITE_SEQ}`, {
+      const url = apiPath("uploadSite", { id: attemptId }, `?seq=${T1_SITE_SEQ}`);
+      const res = await request.post(`${apiRoot()}${url}`, {
         headers: {
           [DEV_USER_HEADER]: devUser,
           "content-type": "application/zip",

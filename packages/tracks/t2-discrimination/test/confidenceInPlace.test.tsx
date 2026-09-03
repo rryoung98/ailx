@@ -460,6 +460,10 @@ describe("the in-place step does not touch scored timing", () => {
     vi.spyOn(performance, "now").mockImplementation(() => clock);
     mount();
     startDeck();
+    // The picture paints, and only then does the card start being looked at.
+    // jsdom loads no images, so the load event is raised by hand.
+    const img = container.querySelector<HTMLImageElement>('[data-testid="top-card"] img');
+    act(() => img?.dispatchEvent(new Event("load")));
     clock = 1420; // 420ms of looking at the card
     answer();
     clock = 9999; // ...then a long, unhurried think on the slider

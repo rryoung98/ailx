@@ -21,9 +21,10 @@
  * because it has nothing else to read (docs/SHARING.md §1).
  *
  * Pure: no clock, no network, no `window`. The React that renders the buttons
- * lives in `apps/web/lib/ShareTargets.tsx`.
+ * lives in `apps/web/components/ShareTargets.tsx`.
  */
 import { playerCharacter } from "./character.js";
+import { dailyGrid, dailyTally, type DailyCard, type DailyResult } from "./daily.js";
 import type { SharePayload } from "./share.js";
 
 /** The networks we build an intent URL for. `native` is the OS share sheet. */
@@ -233,4 +234,149 @@ export const SHARE_TEXT_FORBIDDEN: readonly RegExp[] = [
 /** The forbidden phrases a text contains, empty when it is clean. */
 export function shareTextViolations(text: string): string[] {
   return SHARE_TEXT_FORBIDDEN.filter((re) => re.test(text)).map((re) => re.source);
+}
+
+// ---------------------------------------------------------------------------
+// THE DAILY CHALLENGE
+// ---------------------------------------------------------------------------
+
+/**
+ * The daily's share text: the grid, the tally, the streak, and an invitation.
+ *
+ * It lives in this module and not next to the grid because ONE module owns
+ * share copy — the honesty rules below (`SHARE_TEXT_FORBIDDEN`) are asserted
+ * over every string this file can emit, and a second copy site is how a
+ * sentence that says more than it may gets shipped.
+ *
+ * WHAT IT MAY SAY. The puzzle number (public), the grid (a vector of
+ * hit/miss/skip and nothing else — see ./daily.ts rule 1), how many calls
+ * were right, and how many days in a row the player has come back. Nothing
+ * else exists in the input types, so nothing else can be written.
+ *
+ * WHAT IT MAY NOT SAY, and cannot: which card was which, what any answer was,
+ * a percentile, a rank, a cohort position, or any suggestion that a streak is
+ * evidence of a better eye. `packages/report/test/daily.test.ts` asserts the
+ * first three against the real pool (no id, stem, tell or body of any card may
+ * appear in any generated string) and `efficacyClaims.test.ts` the last.
+ */
+export interface DailyShare {
+  /** Puzzle number, as frozen on the round. */
+  number: number;
+  results: readonly DailyResult[];
+  /** Consecutive days, from `dailyStreak().current`. 0 or 1 says nothing. */
+  streak: number;
+}
+
+/**
+ * The one sentence that says what a streak is, wherever a streak is shown.
+ * A constant, not page copy, for the same reason `PRACTICE_EFFICACY_NOTE` is
+ * one: two surfaces both invite the question, and a wording that drifts
+ * between them is how an unevidenced claim gets back in.
+ */
+export const DAILY_STREAK_MEANING =
+  "A streak counts the days you came back. It is not evidence that your eye got better — "
+  + "we have no result that says this kind of practice does that.";
+
+/** The daily's own one-line pitch. Same words on every surface (DRY). */
+export const DAILY_PITCH = "Five calls, one minute. The same five for everyone today.";
+
+/** "4 of 5", plus the skipped cards named rather than quietly dropped. */
+export function dailyTallyLine(results: readonly DailyResult[]): string {
+  const { hits, called, dealt } = dailyTally(results);
+  const skipped = dealt - called;
+  const base = `${hits} of ${called}`;
+  if (skipped === 0) return base;
+  return `${base} · ${skipped === 1 ? "1 card" : `${skipped} cards`} never loaded`;
+}
+
+/** "· 6-day streak", or nothing at all below two days. */
+function streakClause(streak: number): string | null {
+  return streak >= 2 ? `${streak}-day streak` : null;
+}
+
+/** The title the OS share sheet and the page metadata both use. */
+export function dailyShareTitle(share: DailyShare): string {
+  return `AILX Daily #${share.number}`;
+}
+
+export function dailyShareText(share: DailyShare, channel: ShareChannel): string {
+  const head = dailyShareTitle(share);
+  const grid = dailyGrid(share.results);
+  const tally = [dailyTallyLine(share.results), streakClause(share.streak)]
+    .filter((s) => s !== null)
+    .join(" · ");
+
+  switch (channel) {
+    case "x":
+      // Three short lines: the hook, the picture, the fact. The URL is added
+      // by `shareIntentUrl`'s own parameter, never inside the text.
+      return clampShareText([head, grid, tally, DAILY_PITCH].join("\n"), X_TEXT_MAX);
+    case "linkedin":
+      return [
+        `${head} — ${tally}`,
+        grid,
+        "The AILX daily is five calls: is this a photograph or a generated image, did a person or "
+          + "a model write this, is this message what it claims to be. Everyone gets the same five, "
+          + "and it takes about a minute.",
+        DAILY_STREAK_MEANING,
+        "It is a game on published practice material. It is not an AILX sitting and reaches no result.",
+      ].join("\n\n");
+    case "whatsapp":
+      return `${head} — ${tally}\n${grid}\n${DAILY_PITCH} Have a go:`;
+    case "native":
+      return `${head}\n${grid}\n${tally}`;
+  }
+}
+
+/** The composer link for one network, same three rules as {@link shareIntentUrl}. */
+export function dailyShareIntentUrl(network: ShareNetwork, share: DailyShare, url: string): string {
+  const text = dailyShareText(share, network);
+  switch (network) {
+    case "x":
+      return `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    case "linkedin":
+      return `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(`${text}\n\n${url}`)}`;
+    case "whatsapp":
+      return `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`;
+  }
+}
+
+/**
+ * Every fragment of a card that would spoil the day if it travelled: the
+ * item's id, the words on it, and the tell that gives the answer away.
+ *
+ * Shipped rather than kept in the test file because the app asserts it too
+ * (`apps/web/test/dailyChallenge.test.tsx`): the leak rule is about a
+ * RENDERED string leaving the page, and the page is where a future "share
+ * what you saw" button would be added by somebody who never read this module.
+ */
+export function dailyCardSpoilers(card: DailyCard): string[] {
+  const words = [card.id, card.tell, ...card.options];
+  if (card.material.kind === "image") words.push(card.material.alt);
+  else words.push(card.material.text, ...(card.material.title === undefined ? [] : [card.material.title]));
+  return words.filter((w) => w.trim() !== "");
+}
+
+/**
+ * The spoilers a text contains, empty when it is clean. Substring match, and
+ * deliberately not word-boundary-clever: a partial quotation of a card is a
+ * leak too.
+ */
+const MIN_SPOILER_LENGTH = 24;
+
+export function dailyShareLeaks(text: string, pool: readonly DailyCard[]): string[] {
+  const hay = text.toLowerCase();
+  const hits = new Set<string>();
+  for (const card of pool) {
+    // An id is a leak at any length; the rest matter once they are long
+    // enough to identify a card, so an option label ("AI-generated") cannot
+    // false-positive on ordinary copy.
+    if (hay.includes(card.id.toLowerCase())) hits.add(card.id);
+    for (const spoiler of dailyCardSpoilers(card)) {
+      if (spoiler.length >= MIN_SPOILER_LENGTH && hay.includes(spoiler.toLowerCase())) {
+        hits.add(spoiler);
+      }
+    }
+  }
+  return [...hits];
 }

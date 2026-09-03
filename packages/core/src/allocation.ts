@@ -10,9 +10,11 @@
  *
  * So the allocation lives here, as data, next to the plugin interface every
  * track already imports — and `AILX-Spec-2026.1.md` §04 is checked against it
- * by `packages/core/test/allocation.test.ts`. Track weights, the report's
- * component tables and the composite's track weights all derive from it.
- * There is no second copy to drift.
+ * by `packages/core/test/spec-allocation.test.ts`, which parses §04's
+ * mechanism table and asserts it against this data. The allocation NUMBERS
+ * themselves are pinned separately by `packages/core/test/allocation.test.ts`.
+ * Track weights, the report's component tables and the composite's track
+ * weights all derive from it. There is no second copy to drift.
  *
  * The four resolution mechanisms are deliberately distinct, and the
  * distinction is the whole point of the design principle:
@@ -80,18 +82,34 @@ export interface TrackAllocation {
 }
 
 /**
- * T1 · Creative Build — 160 pts, the flagship.
+ * T1 · Creative Build — 135 pts, the flagship.
  *
- * `process` is new and it is the point of the promotion: the prompt-log
- * signal `score.ts` already computed was reported and then discarded, so the
- * only evidence separating "directed a model well" from "already knew how to
- * build a website" earned nothing.
+ * It was 160 for one day. The extra 25 were a `process` component scoring the
+ * prompt log, and TEN-80's evidence spike killed it: no published study
+ * validates a volume-monotone process score of AI-assisted work against an
+ * independent outcome, and where volume HAS been measured against a real
+ * outcome it is null-to-negative (Copilot raw completions r = 0.01 n.s.
+ * against a ratio measure rho = 0.24; dialogue turns r = -0.01 against
+ * expert-rated artefact quality; help-seeking volume r = -0.46 with learning
+ * gain). The two operational programmes that score process — PISA 2012
+ * problem solving and USMLE Step 3 CCS — score volume NON-monotonically,
+ * removing credit for excess actions, which is the inverse of what we did.
+ *
+ * The points were REMOVED, not redistributed. The evidence supports deleting
+ * a scored component; it says nothing about the other four being worth more,
+ * and re-weighting them would have smuggled an unevidenced change in behind
+ * an evidenced one. So T1 is 135 and the instrument is 375.
+ *
+ * `processSignal()` is still computed and still reported in `raw` as
+ * `process.signal`. Collecting process data is defensible — NAEP and PIAAC
+ * both collect it and neither scores it. Scoring it is the trap.
  */
 const T1: TrackAllocation = {
   code: "T1",
   construct: "Directed creative build — take a brief to a shipped artefact with a model",
   scored: true,
-  compositeWeight: 0.4,
+  // 135/375. Proportional to points, like every other track.
+  compositeWeight: 135 / 375,
   components: [
     {
       key: "functional",
@@ -132,14 +150,6 @@ const T1: TrackAllocation = {
       resolvedBy: "llm-judge",
       implemented: true,
     },
-    {
-      key: "process",
-      rubricId: "process-signal",
-      label: "Prompt-log process signal",
-      points: 25,
-      resolvedBy: "model-free",
-      implemented: true,
-    },
   ],
 };
 
@@ -157,7 +167,8 @@ const T2: TrackAllocation = {
   construct:
     "Synthetic-media discrimination — sensitivity AND criterion, not AI literacy",
   scored: true,
-  compositeWeight: 0.2,
+  // 80/375.
+  compositeWeight: 80 / 375,
   components: [
     {
       key: "sensitivity",
@@ -198,30 +209,40 @@ const T2: TrackAllocation = {
  * T3 · Calibrated Reliance — 160 pts, the centre of the instrument.
  *
  * The named construct is knowing when NOT to use the model, measured
- * two-tailed: RSR is the non-reliance half (did you reject seeded wrong
- * output), RAIR is the positive half (did you adopt correct advice after
- * deliberating). Over-reliance and under-reliance are both failures, so the
- * reported index is signed and the two halves carry points separately.
+ * two-tailed: `overReliance` is the non-reliance half (did you reject seeded
+ * wrong output), `underReliance` is the positive half (did you adopt correct
+ * advice after deliberating). Over-reliance and under-reliance are both
+ * failures, so the reported index is signed and the two halves carry points
+ * separately.
+ *
+ * These two keys were called `rsr` and `rair` until 2026-09-02. Those are
+ * Schemmer et al.'s published statistics (IUI '23,
+ * doi:10.1145/3581641.3584066), which condition on an independent first-stage
+ * answer T3 never collects, so the names claimed a design this instrument
+ * does not have. The rates T3 does measure are over- and under-reliance
+ * (Passi & Vorvoreanu, MSR-TR-2022-12). See spec §T3, "Stated against our
+ * own case".
  */
 const T3: TrackAllocation = {
   code: "T3",
   construct:
     "Calibrated reliance — when to use the model and when not to, measured two-tailed",
   scored: true,
-  compositeWeight: 0.4,
+  // 160/375.
+  compositeWeight: 160 / 375,
   components: [
     {
-      key: "rsr",
+      key: "overReliance",
       rubricId: "planted-error-detection",
-      label: "Planted-error detection (RSR)",
+      label: "Planted-error detection (over-reliance tail)",
       points: 50,
       resolvedBy: "model-free",
       implemented: true,
     },
     {
-      key: "rair",
+      key: "underReliance",
       rubricId: "appropriate-reliance",
-      label: "Deliberate adoption of correct advice (RAIR)",
+      label: "Deliberate adoption of correct advice (under-reliance tail)",
       points: 30,
       resolvedBy: "model-free",
       implemented: true,
@@ -244,7 +265,10 @@ const T3: TrackAllocation = {
       note:
         "The heterogeneous three-family jury is one stub returning three " +
         "seeded samples, and the ~200-example human-labelled calibration set " +
-        "the QWK 0.708-0.712 result depends on does not exist.",
+        "the QWK 0.708-0.712 result depends on does not exist. That result " +
+        "itself is one unreviewed preprint (arXiv:2601.08654), one model " +
+        "family on one dataset, and 0.71 is BELOW the median human-human " +
+        "pair on ASAP (0.63-0.85, median 0.76).",
     },
   ],
 };

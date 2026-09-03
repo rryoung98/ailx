@@ -1,22 +1,32 @@
 # DEPLOY.md — hosted AILX (Vercel serverless)
 
-The default build is unchanged: `pnpm -r build` with no `AILX_BACKEND` produces
-the GitHub Pages **static export** (`output: "export"`, no API surface, no
-database). Everything here is the *other* mode — `AILX_BACKEND=1`, real route
-handlers, Postgres, and stored T1 sites — deployed to Vercel as a staging site
-instead of `next start` behind ngrok.
+The default build has not changed. Run `pnpm -r build` without `AILX_BACKEND`
+to produce the GitHub Pages **static export** (`output: "export"`, no API
+surface, no database). This document covers the *other* mode. It sets
+`AILX_BACKEND=1` and uses real route handlers, Postgres, and stored T1 sites.
+It deploys that mode to Vercel as a staging site instead of running `next start`
+behind ngrok.
 
-- Project root directory: `apps/web` (its `vercel.json` installs and builds
-  from the repo root, so workspace packages are built first).
-- Runtime: Node (the handlers use `pg`, `node:zlib` and `node:crypto`; nothing
-  may be moved to the Edge runtime).
-- The `services/openrouter-proxy` Vercel project is separate and unaffected.
+- Project root directory: `apps/web`. Its `vercel.json` installs and builds
+  from the repo root, so it builds workspace packages first.
+- Runtime: Node. The handlers use `pg`, `node:zlib` and `node:crypto`. Do not
+  move them to the Edge runtime.
+- The `services/openrouter-proxy` Vercel project is separate. This deployment
+  does not affect it. It is still deployed from THIS repo, and it stays: the
+  exam service's `/v1/model/*` gateway refuses an unauthenticated caller by
+  design, so the GitHub Pages export has no way to reach it (TEN-62, AGENTS.md
+  "The shared demo has no anonymous path").
+- `OPENROUTER_KEY`, `AILX_PROVIDER_KEY_SECRET` and `AILX_MODEL_CALLBACK_URL`
+  belong to the EXAM SERVICE, not to this project. `AILX_MODEL_CALLBACK_URL`
+  must name a page of THIS frontend (`https://<origin>/exam`): the provider
+  returns the browser there with `?code=&state=`, and the page hands both to
+  the service, which does the exchange. The browser never receives a key.
 
 ## 1. Environment variables
 
-Set these on the Vercel project (Production and Preview alike). There are no
-silent defaults for the ones marked **required**: the app refuses to start
-rather than guess.
+Set these variables on the Vercel project for both Production and Preview. The
+app has no silent defaults for variables marked **required**. It refuses to
+start instead of guessing.
 
 | Variable | Required | What it does |
 | --- | --- | --- |
@@ -38,33 +48,37 @@ rather than guess.
 
 ### 1.1 Pointing the frontend at the exam service
 
-`NEXT_PUBLIC_AILX_API_BASE` is a build-time public variable — Next inlines it into the
-client bundle, so a change needs a REDEPLOY, not just an env edit. When it is set:
+`NEXT_PUBLIC_AILX_API_BASE` is a public build-time variable. Next inlines it
+into the client bundle. Changing it requires a REDEPLOY, not just an env edit.
+When it is set:
 
-- API calls go to `<origin>/v1/...` (the service versions its routes; this app never did).
-- A published T1 site is linked at `<origin>/api/site/<digest>/index.html` — the site path
-  is the same on both hosts because it is frozen inside issued share payloads and
-  credential claims.
-- The `ailx_dev_user` cookie stops mattering: `SameSite=Lax` means a browser does not send
-  it to another origin. Identity travels as the `x-ailx-dev-user` header (or, once Clerk is
-  mounted, `Authorization: Bearer`), which is what `apps/web/lib/authHeaders.ts` sends on
-  every call. Server-rendered pages on THIS app still read the cookie, and still read this
-  app's own database.
-- The service must allow the frontend's origin: `AILX_ALLOWED_ORIGINS` on Cloud Run is an
-  explicit allowlist that drops `*` and `null` and never reflects an arbitrary `Origin`. A
-  Vercel PREVIEW deployment gets a different hostname and is refused by design — verify on
-  the production alias, or add the preview host deliberately.
+- API calls go to `<origin>/v1/...`. The service versions its routes, but this
+  app never did.
+- A published T1 site uses the link
+  `<origin>/api/site/<digest>/index.html`. Both hosts use the same site path
+  because issued share payloads and credential claims freeze it.
+- The `ailx_dev_user` cookie no longer matters. `SameSite=Lax` prevents a
+  browser from sending it to another origin. Identity travels in the
+  `x-ailx-dev-user` header or, once Clerk is mounted, `Authorization: Bearer`.
+  `apps/web/lib/data/authHeaders.ts` sends that identity on every call.
+  Server-rendered pages on THIS app still read the cookie. They also still
+  read this app's own database.
+- The service must allow the frontend's origin. `AILX_ALLOWED_ORIGINS` on
+  Cloud Run is an explicit allowlist. It drops `*` and `null` and never
+  reflects an arbitrary `Origin`. A Vercel PREVIEW deployment gets a different
+  hostname, so the service refuses it by design. Verify on the production
+  alias or add the preview host deliberately.
 
-`AILX_BACKEND=1` still compiles this app's own API routes. They are a duplicate host during
-the cutover, not a fallback: nothing fails over to them, and they are deleted once the
-Playwright suite is repointed (ARCHITECTURE.md §10.1).
+`AILX_BACKEND=1` still compiles this app's own API routes. During the cutover,
+they are a duplicate host, not a fallback. Nothing fails over to them. They
+are deleted after the Playwright suite is repointed (ARCHITECTURE.md §10.1).
 
 ## 2. T1 site snapshots must not use the filesystem
 
-A Vercel function has a writable `/tmp` that is **per invocation**: a candidate
-site uploaded by one request is invisible to the request that serves it, and
-gone when the instance is recycled. `AILX_SNAPSHOT_STORE=blob` selects
-`BlobSnapshotStore` (`packages/backend/src/t1/storage.ts`), which keeps the
+A Vercel function has a writable `/tmp` for each invocation. A candidate site
+uploaded by one request is invisible to the request that serves it. The site
+disappears when the instance is recycled. `AILX_SNAPSHOT_STORE=blob` selects
+`BlobSnapshotStore` (`packages/backend/src/t1/storage.ts`). It keeps the
 filesystem layout in a bucket:
 
 ```
@@ -72,29 +86,31 @@ filesystem layout in a bucket:
 <prefix>/manifests/<digest-hex>.json  canonical manifest — written LAST
 ```
 
-Semantics are identical to the filesystem store, and the same test suite runs
-against both:
+The filesystem and Blob stores have identical semantics. The same test suite
+runs against both:
 
-- **Dedup** — keys are content hashes, so identical bytes are stored once.
-- **Manifest last** — an object store has no rename, and needs none: each
-  object upload publishes completely or not at all, and the manifest is the
+- **Dedup** — Content hashes serve as keys, so the store saves identical bytes
+  once.
+- **Manifest last** — An object store has no rename and does not need one.
+  Each object upload publishes completely or not at all. The manifest is the
   commit marker. An interrupted upload leaves unreferenced blobs and NO
-  servable snapshot; the next identical upload dedups onto them and commits.
-- **Reachability is unchanged** — bytes are served only while a `responses`
-  row records the digest. That gate is in `handleServeSite` and blob storage
-  does not weaken it, which is why objects are written with
-  `access: "private"`: a public object URL would be a way around the gate for
-  anyone who learns a digest.
+  servable snapshot. The next identical upload dedups onto those blobs and
+  commits.
+- **Reachability is unchanged** — The app serves bytes only while a
+  `responses` row records the digest. `handleServeSite` enforces that gate.
+  Blob storage does not weaken it. Objects therefore use `access: "private"`.
+  A public object URL would let anyone who learns a digest bypass the gate.
 
-Selection lives only in `apps/web/lib/server/site.ts`. Do not read a storage
-env var anywhere else. A `BLOB_READ_WRITE_TOKEN` alone does not switch stores —
-you must ask for `AILX_SNAPSHOT_STORE=blob` — so a token in a local shell can
-never redirect a dev server's uploads into the shared bucket.
+Only `apps/web/lib/server/site.ts` selects the store. Do not read a storage env
+var anywhere else. A `BLOB_READ_WRITE_TOKEN` alone does not switch stores. You
+must set `AILX_SNAPSHOT_STORE=blob`. A token in a local shell therefore cannot
+redirect a dev server's uploads into the shared bucket.
 
 ## 3. Postgres: use the pooled Neon endpoint
 
-Each warm instance keeps its own `pg` Pool, so connections scale with
-instances. Neon gives two hostnames; the deployment must use the **pooler**:
+Each warm instance has its own `pg` Pool. The number of connections therefore
+grows with the number of instances. Neon provides two hostnames. The
+deployment must use the **pooler**:
 
 ```
 # right — pooled (note "-pooler")
@@ -104,83 +120,86 @@ postgresql://user:pw@ep-xxx.<region>.aws.neon.tech/ailx?sslmode=require
 ```
 
 `poolConfig` in `apps/web/lib/server/api.ts` sets `max: 3`, a 10 s idle
-timeout and `allowExitOnIdle`, so a frozen instance stops holding a session it
-cannot use. Transactions still check out ONE client per request
-(`withTransaction` on a pool proxy would be meaningless), which the pooler
-supports in transaction mode.
+timeout and `allowExitOnIdle`. A frozen instance stops holding a session it
+cannot use. Transactions still check out ONE client per request. Using
+`withTransaction` on a pool proxy would be meaningless. The pooler supports
+this behavior in transaction mode.
 
 Apply `db/schema.sql` to the staging database once, before the first deploy.
 
 ## 4. Auth on a hosted staging site — read this
 
-`AILX_AUTH=dev` accepts an **asserted** identity: `x-ailx-dev-user: alice` is
-enough to *be* alice. On localhost that is convenient. On a URL anyone can
-reach it means anyone can impersonate any participant, read their attempts,
-and submit as them. That is why `AILX_AUTH=dev` refuses to start under
-`NODE_ENV=production` unless `AILX_ALLOW_INSECURE_DEV_AUTH=1` is also set —
-and a Vercel deployment is always `NODE_ENV=production`.
+`AILX_AUTH=dev` accepts an **asserted** identity. The header
+`x-ailx-dev-user: alice` is enough to *be* alice. That is convenient on
+localhost. On a public URL, anyone can impersonate any participant, read their
+attempts, and submit as them. For that reason, `AILX_AUTH=dev` refuses to start
+under `NODE_ENV=production` unless `AILX_ALLOW_INSECURE_DEV_AUTH=1` is also
+set. A Vercel deployment always uses `NODE_ENV=production`.
 
 **Recommendation: staging uses `AILX_AUTH=clerk` with `CLERK_SECRET_KEY`.**
 
-Only override this for a throw-away deployment that holds no real participant
-data, that you will delete, and whose URL you accept as public. Then set both
-`AILX_AUTH=dev` and `AILX_ALLOW_INSECURE_DEV_AUTH=1`, knowing the site has no
-authentication at all. Never set that flag on a deployment holding real data.
+Override this only for a throw-away deployment that contains no real
+participant data, will be deleted, and has a URL you accept as public. Set
+both `AILX_AUTH=dev` and `AILX_ALLOW_INSECURE_DEV_AUTH=1`. The site then has no
+authentication at all. Never set that flag on a deployment that contains real
+data.
 
 ### 4.1 The `ailx_dev_user` cookie
 
-`DevAuthProvider` also accepts the identity as a cookie, `ailx_dev_user`,
-which the browser writes itself alongside `localStorage["ailx:dev-user"]`
-(one writer: `devUser()` in `apps/web/lib/authHeaders.ts`). Order of
-precedence: `x-ailx-dev-user` header, then `Authorization: Bearer dev:<id>`,
-then the cookie — so every scripted caller and the Playwright suite are
-unaffected.
+`DevAuthProvider` also accepts identity from the `ailx_dev_user` cookie. The
+browser writes it alongside `localStorage["ailx:dev-user"]`. `devUser()` in
+`apps/web/lib/data/authHeaders.ts` is the only writer. The order of precedence is
+the `x-ailx-dev-user` header, then `Authorization: Bearer dev:<id>`, then the
+cookie. Scripted callers and the Playwright suite are therefore unaffected.
 
-It exists because a header can only ride on a `fetch()` the app makes. A
-server-rendered page (`page.api.tsx` — `/progress`, `/review`) is reached by
-an ordinary document navigation, which carries cookies and nothing else, so
-without it `/progress` told every browser "we do not know who you are" while
-the same URL fetched with the header rendered the real streak.
+The cookie exists because a header can travel only on a `fetch()` made by the
+app. An ordinary document navigation reaches a server-rendered page
+(`page.api.tsx` — `/progress`, `/review`). That navigation carries cookies but
+nothing else. Without the cookie, `/progress` told every browser "we do not
+know who you are". Fetching the same URL with the header rendered the real
+streak.
 
-What it is **not**: a session. The value is still asserted, never proven; it
-is `SameSite=Lax`, `Path=/`, six months, `Secure` over https, and NOT
-`HttpOnly` — it cannot be, because the browser mints it. Nothing is protected
-by hiding it from script anyway, since anyone may already assert any id under
-dev auth. It changes no threat model: `AILX_AUTH=clerk` is still the only
-answer for a deployment real participants can reach. localStorage stays the
-source of truth — the cookie is only ever written from it, never read back
-into it, so a cleared browser cannot be silently re-identified as its
-previous occupant. "Forget this browser" on `/progress` clears both.
+The cookie is **not** a session. Its value is asserted, not proven. It uses
+`SameSite=Lax`, `Path=/`, six months, `Secure` over https, and NOT `HttpOnly`.
+It cannot use `HttpOnly` because the browser mints it. Hiding it from scripts
+would protect nothing because dev auth already lets anyone assert any id. The
+cookie does not change the threat model. `AILX_AUTH=clerk` remains the only
+answer for a deployment that real participants can reach. localStorage
+remains the source of truth. The app writes the cookie only from localStorage
+and never reads it back into localStorage. A cleared browser therefore cannot
+be silently re-identified as its previous occupant. "Forget this browser" on
+`/progress` clears both.
 
 ## 5. Vercel platform limits that bite AILX
 
-- **Request/response body cap (4.5 MB).** `T1_LIMITS.maxTotalBytes` is 25 MB,
-  so a large T1 ZIP cannot go through a request body at all, and an asset
-  over ~4.5 MB cannot be served back through the site route. Uploads
-  above 4 MB take the client-direct path in §5.1 instead; the POST path
-  below is what small ones still use, unchanged.
+- **Request/response body cap (4.5 MB).** `T1_LIMITS.maxTotalBytes` is 25 MB.
+  A large T1 ZIP cannot pass through a request body. An asset over ~4.5 MB
+  cannot return through the site route. Uploads above 4 MB use the
+  client-direct path in §5.1. Smaller uploads still use the unchanged POST
+  path below.
 
-  Measured on staging (6 MB ZIP) before that path existed: the platform
-  answers `413` with the plain-text body `Request Entity Too Large /
-  FUNCTION_PAYLOAD_TOO_LARGE` — our handler never runs, so there is no
-  JSON error envelope and no `responses` row. `uploadSiteZip` still maps
-  that case to a `rejected` result carrying `PLATFORM_TOO_LARGE_MESSAGE`,
-  which is now the last-resort message for a host with no Blob store
-  (`AILX_SNAPSHOT_STORE=fs`), not the normal outcome. Our own 413s — the
-  validator's `file_too_large` / `total_too_large` — still arrive as JSON
-  and still win, because a parsed server message always replaces the
+  Before that path existed, staging measured this behavior with a 6 MB ZIP.
+  The platform returns `413` with the plain-text body
+  `Request Entity Too Large / FUNCTION_PAYLOAD_TOO_LARGE`. Our handler never
+  runs, so the response has no JSON error envelope and no `responses` row.
+  `uploadSiteZip` still maps that case to a `rejected` result carrying
+  `PLATFORM_TOO_LARGE_MESSAGE`. This is now a last-resort message for a host
+  with no Blob store (`AILX_SNAPSHOT_STORE=fs`), not the normal result. Our own
+  413s, the validator's `file_too_large` / `total_too_large`, still arrive as
+  JSON and still take priority. A parsed server message always replaces the
   platform default.
-- **Function duration.** Default 10 s (Hobby) / 15 s (Pro) unless raised.
-  Finalizing a direct upload reads the staged ZIP back and re-uploads the
-  validated files, so a 25 MB site is the slowest request the app makes.
-- **No warm process between requests.** Nothing may rely on in-memory state
-  surviving a request: no in-memory counters, caches with correctness meaning,
-  or work started after the response is returned.
+- **Function duration.** The default is 10 s (Hobby) / 15 s (Pro) unless
+  raised. Finalizing a direct upload reads the staged ZIP and uploads the
+  validated files again. A 25 MB site therefore makes the slowest request in
+  the app.
+- **No warm process between requests.** Do not rely on in-memory state that
+  survives a request. This includes in-memory counters, caches with correctness
+  meaning, and work started after returning the response.
 
 ### 5.1 Client-direct upload to Blob (large T1 sites)
 
-The browser PUTs the ZIP straight into the Blob store and then asks us
-to accept it, so the bytes never traverse a function request body:
+The browser PUTs the ZIP directly into the Blob store. It then asks the app to
+accept the upload. The bytes never pass through a function request body:
 
 ```
 POST /api/attempts/:id/site/upload-ticket   → { uploadId, pathname, token, ... }
@@ -188,87 +207,121 @@ PUT  <blob store>/uploads/<attemptId>/<uploadId>.zip   (browser → Blob, scoped
 POST /api/attempts/:id/site/finalize        { uploadId, seq }
 ```
 
-Selection is by size and is automatic: `DIRECT_UPLOAD_MIN_BYTES` (4 MB,
-`apps/web/lib/siteUpload.ts`). Under it, the single POST is one round
-trip and stays exactly as it was. Over it, the client asks for a ticket;
-if the deployment has no Blob store the ticket endpoint answers `501`
-and the client falls back to the POST, so `AILX_SNAPSHOT_STORE=fs`,
-`next dev` and the static export are all unaffected.
+The app selects the path automatically by size using `DIRECT_UPLOAD_MIN_BYTES`
+(4 MB, `apps/web/lib/data/siteUpload.ts`). Below that threshold, the single POST
+uses one round trip and remains unchanged. Above it, the client requests a
+ticket. If the deployment has no Blob store, the ticket endpoint returns
+`501`, and the client falls back to the POST. This leaves
+`AILX_SNAPSHOT_STORE=fs`, `next dev` and the static export unchanged.
 
-**Who authorises.** `/site/upload-ticket` authenticates the caller
-through the same `AuthProvider` as every other route and 404s an attempt
-that is not theirs (no existence leak). Only then is a ticket minted.
-A ticket records nothing and reserves nothing — an unused one expires.
+**Who authorises.** `/site/upload-ticket` authenticates callers through the
+same `AuthProvider` as every other route. It returns a 404 for an attempt that
+does not belong to the caller, which avoids an existence leak. Only then does
+it mint a ticket. A ticket records and reserves nothing. An unused ticket
+expires.
 
-**What the token is scoped to.** The server chooses everything a client
-would otherwise choose. The key is
-`<prefix>/uploads/<attemptId>/<uploadId>.zip`, where `uploadId` is 128
-server-generated random bits, and the client token is issued for exactly
-that pathname, `application/zip` only, at most `T1_LIMITS.maxTotalBytes`,
-for 15 minutes, with `addRandomSuffix: false` and `allowOverwrite:
-false`. So a stolen, replayed or hand-edited grant reaches ONE scratch
-key inside the uploader's own attempt — never a content-addressed
-`blobs/` object, never a `manifests/` commit marker, never another
-attempt. Staged objects are `access: "private"` like every other object
-we write.
+**What the token is scoped to.** The server chooses every value that a client
+could otherwise choose. The key is
+`<prefix>/uploads/<attemptId>/<uploadId>.zip`. The `uploadId` contains 128
+server-generated random bits. The server issues the client token for exactly
+that pathname, for `application/zip` only, at most `T1_LIMITS.maxTotalBytes`,
+for 15 minutes, with `addRandomSuffix: false` and `allowOverwrite: false`. A
+stolen, replayed or hand-edited grant can reach ONE scratch key within the
+uploader's own attempt. It can never reach a content-addressed `blobs/` object,
+a `manifests/` commit marker, or another attempt. Staged objects use
+`access: "private"`, like every other object the app writes.
 
-**How the server validates AFTER the bytes land.** `/site/finalize`
-re-checks ownership, reads the staged object back, refuses it from its
-metadata if it is over the cap (without buffering it), and then runs the
-SAME `snapshotFromZip` a POSTed ZIP runs — zip bombs, zip slip,
-symlinks, disallowed types and §12 caps are refused by identical code.
-The client never names a digest: the digest is computed from the bytes
-we read, so nobody can register a snapshot they did not upload. Once
-validated, `recordSiteSubmission` runs the unchanged pipeline — the
-`responses` row FIRST, the content-addressed bytes second — so the
-one-submission-per-attempt index, the append-only store and the
-record-before-store ordering are exactly as before.
+**How the server validates AFTER the bytes land.** `/site/finalize` checks
+ownership again. It reads the staged object and rejects it from its metadata
+if the object exceeds the cap, without buffering it. It then runs the SAME
+`snapshotFromZip` used for a POSTed ZIP. The same code rejects zip bombs, zip
+slip, symlinks, disallowed types and §12 caps. The client never supplies a
+digest. The server computes the digest from the bytes it reads, so nobody can
+register a snapshot they did not upload. After validation,
+`recordSiteSubmission` runs the unchanged pipeline. It writes the `responses`
+row FIRST, then the content-addressed bytes. The one-submission-per-attempt
+index, append-only store, and record-before-store ordering remain unchanged.
 
-**What happens to bytes that fail validation.** Nothing is recorded and
-nothing is stored under a content address, so the serve path 404s them
-(it serves only a digest a `responses` row still points at, and only
-from `manifests/` + `blobs/`). The staged object is deleted whether the
-submission was accepted or refused; a staged key is never servable even
-before that, since `uploads/` is not a namespace `handleServeSite`
-reads. A crash between PUT and finalize leaves one private, unreferenced
-scratch object that no URL resolves to.
+**What happens to bytes that fail validation.** The app records nothing and
+stores nothing under a content address. The serve path therefore returns a
+404. It serves only a digest that a `responses` row still references, and only
+from `manifests/` + `blobs/`. The app deletes the staged object whether it
+accepts or rejects the submission. A staged key is never servable, even before
+deletion, because `handleServeSite` does not read the `uploads/` namespace. A
+crash between PUT and finalize leaves one private, unreferenced scratch object
+that no URL resolves to.
 
 ## 6. The build fix this deployment needs (`outputFileTracingExcludes`)
 
-Without it, `vercel build` succeeds and then dies collecting output:
+Without this fix, `vercel build` succeeds but fails while collecting output:
 
 ```
 Error: ENOENT: no such file or directory, lstat
   '/vercel/path0/apps/web/.next/server/app/api/attempts/[id]/credential/route_client-reference-manifest.js'
 ```
 
-Nothing is wrong with that route — it is simply the first API entry in
-`app-path-routes-manifest.json`. The cause is our `route.api.ts` convention
-meeting a gap in Next:
+That route is not broken. It is simply the first API entry in
+`app-path-routes-manifest.json`. The problem comes from the `route.api.ts`
+convention and a gap in Next:
 
 1. `next-trace-entrypoints-plugin` writes `<entry>_client-reference-manifest.js`
    into the trace of EVERY app entry (`.next/server/<entry>.js.nft.json`).
 2. `flight-manifest-plugin` only EMITS that manifest when the client entry name
    ends in `/page`, `/page.<suffix>`, or exactly `/route`.
-3. The client entry's bundle path strips only the last extension, so
-   `route.api.ts` becomes `.../route.api`. Pages are safe — the page rule
-   allows the extra `.api`, which is why `page.api.tsx` builds — but the route
-   rule does not, so no manifest is written for any API route.
+3. The client entry's bundle path removes only the final extension.
+   `route.api.ts` therefore becomes `.../route.api`. Pages are safe because the
+   page rule allows the extra `.api`, so `page.api.tsx` builds. The route rule
+   does not allow it, so no API route gets a manifest.
 
-The trace therefore promises 17 files that do not exist. `next build` and
-`next start` do not care (the loader reads that manifest with "missing is ok"),
-but Vercel lstats every traced file, so the deploy fails.
+The trace promises 17 files that do not exist. `next build` and `next start`
+do not care because the loader treats a missing manifest as acceptable.
+Vercel calls lstat on every traced file, so the deployment fails.
 
-`next.config.mjs` prunes the dangling entry in server mode only:
+`next.config.mjs` removes the dangling entry in server mode only:
 
 ```js
-outputFileTracingExcludes: { "/api/**": ["**/*_client-reference-manifest.js"] }
+outputFileTracingExcludes: { "/s/[token]/card.png": ["**/*_client-reference-manifest.js"] }
 ```
 
-A route handler needs that manifest only for `use cache`, which no AILX route
-uses. Do not "fix" this by renaming the handlers to `route.ts`: that name is
-what would put the whole API into the GitHub Pages export. Delete the exclude
-when Next matches `/route(\.[^/]+)?$/` the way it already matches `/page`.
+A route handler needs that manifest only for `use cache`. No AILX route uses
+it. Do not "fix" this by renaming the handlers to `route.ts`. That name would
+include the whole API in the GitHub Pages export. Delete the exclude when Next
+matches `/route(\.[^/]+)?$/` as it already matches `/page`.
+
+### 6.1 The key rotted, and it cost every deployment (2026-09-03)
+
+That key read `/api/**` until 2026-09-03, which was correct when the handlers
+lived under `app/api/`. The repository split then deleted all of them but one,
+and the survivor moved to `app/s/[token]/card.png`. The exclude did not move
+with it, so it matched nothing and the very failure this section describes came
+straight back — on the Open Graph card instead of a credential route. Every
+Production deployment this project has ever recorded failed on it, twelve of
+them, from 2026-09-02T02:23Z onward, with `pnpm test`, `pnpm -r build` and the
+whole `ci` workflow green throughout.
+
+Two things stop it happening a third time.
+
+- `apps/web/test/nextConfig.test.ts` no longer repeats the key. It walks
+  `apps/web/app/` for `route.api.ts` files and asserts the exclude keys are
+  exactly those page paths. Move the handler and the test fails in the same
+  commit. It also refuses a `/**` key: widening the glob would strip the
+  manifest a real PAGE needs and ship a build that deploys green and 500s.
+- `.github/workflows/deploy-status.yml` fails a run when Vercel reports a
+  failed Production deployment. Nothing gated on the deploy before, which is
+  why a dead staging site stayed invisible for a day.
+
+**The only local command that proves a deploy will work** is Vercel's own
+builder, because the failure is in its tracing step and not in Next:
+
+```sh
+cd apps/web
+rm -rf .next .vercel/output
+AILX_BACKEND=1 npx vercel build --prod   # needs `vercel link` once
+```
+
+`next build` cannot see this class of fault. Bumping Next does not fix it
+either: 15.5.23 and 15.5.25 (the newest 15.x) both fail identically, and the
+mismatched regexes are still in `flight-manifest-plugin.js` in both.
 
 ## 7. Deploy
 
@@ -282,6 +335,6 @@ psql "$DATABASE_URL" -f db/schema.sql  # first deploy only
 vercel deploy --prod
 ```
 
-Smoke test after deploy: load `/`, sign in, start an attempt, upload a small T1
-site, and open the served site URL — the last step is the one that proves blob
-storage, the reachability gate and `AILX_PUBLIC_ORIGIN` are all right.
+After deployment, smoke-test the site. Load `/`, sign in, start an attempt,
+upload a small T1 site, and open the served site URL. The last step verifies
+Blob storage, the reachability gate, and `AILX_PUBLIC_ORIGIN`.

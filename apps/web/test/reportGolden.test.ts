@@ -6,7 +6,7 @@
  * calibration, both export tiers) and the result is content-addressed. Any
  * change to any of those functions moves the digest, so a silent shift in a
  * reported number cannot land. Build-dependent fields (`scoringDigest`) are
- * blanked: they identify the bundle, not the scoring values (lib/registry.ts).
+ * blanked: they identify the bundle, not the scoring values (lib/instrument/registry.ts).
  */
 import { describe, expect, it } from "vitest";
 import { append, canonicalJson, project, sha256Hex, TRACK_IDS, type SequencedEntry } from "@ailx/session";
@@ -14,9 +14,9 @@ import {
   calibrationBins, candidateComposite, identitySignals, narratives, participantExport,
   playerType, playerTypeFor, researchExport, t2ResponsesFromArtifact, trackInsights,
 } from "@ailx/report";
-import { t2AnswerKeys } from "../lib/instrument";
-import { scoreTrack } from "../lib/registry";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+import { t2AnswerKeys } from "../lib/instrument/instrument";
+import { scoreTrack, trackScoredEntry } from "../lib/instrument/registry";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 
 /** Recursively blank every `scoringDigest` — it addresses the build, not a value. */
 function withoutBuildDigests<T>(v: T): T {
@@ -32,11 +32,7 @@ function derivedReport() {
   for (const t of TRACK_IDS) {
     ts += 1000;
     const rec = scoreTrack(t, scored.tracks[t].artifact);
-    log = append(log, {
-      type: "track_scored", trackId: t, score: rec.score, judgments: rec.judgments,
-      rubricVersion: rec.rubricVersion, scoringDigest: rec.scoringDigest,
-      modelManifest: rec.modelManifest, ts,
-    } as SequencedEntry);
+    log = append(log, trackScoredEntry(t, rec, ts));
   }
   log = append(log, { type: "attempt_completed", ts: ts + 1000 } as SequencedEntry);
   const state = project(log);
@@ -105,9 +101,63 @@ describe("report golden", () => {
    * scores of record are cut against the OPERATIONAL instrument, whose
    * rubric.yaml and prompts did not change (its four versions are still
    * 572c74c9…, 4bb83e18…, c223b246…, 0b6fe323…), and this tier issues none.
+   *
+   * It MOVED a fifth time when stored judgment rows gained a canonical order.
+   * A score of record now records the CONTENT ADDRESS of every judgment it
+   * consumed, and rows go into the log sorted rather than in the order the
+   * judge happened to emit them (packages/core judgments.ts,
+   * packages/session/test/recomputability.test.ts). EXACTLY 72 leaves of this
+   * object changed and every one of them is inside a `judgments[]` array —
+   * 36 under `participant.tracks[]`, 36 under `research.scores[]`, all of
+   * them T1 and T4, whose demo juries emit dimension-by-dimension in a
+   * different order from the canonical one. T3's rows were already canonical.
+   * The multiset of rows per track is byte-identical before and after; only
+   * the position of each row moved, which was established by diffing the
+   * whole derivation leaf by leaf against a worktree at the previous commit
+   * before this digest was touched. No composite, no track raw, no insight,
+   * no narrative, no player type, no calibration bin and no export field
+   * moved — and no SCORE moved, which is the load-bearing half: the
+   * aggregation these rows feed is order-invariant by construction now, so
+   * re-ordering the evidence must not, and did not, change the number.
+   *
+   * It MOVED a sixth time for two T3 changes merged together on
+   * w/t3-integration. TEN-38 renamed T3's `rsr`/`rair` components to
+   * `overReliance`/`underReliance`: 6 renamed T3 raw keys, each carrying the
+   * same value as before (50, 30, 1), and T3's `rubricVersion` in two places,
+   * because the criterion names moved with them. TEN-30 added four T3 raw
+   * keys (`verificationsChecked`, `discriminatingVerifications`,
+   * `discriminatingVerificationRate`, `condition.timeBudgetMinutes`) under
+   * `participant.tracks[2].rawSubscores` and under `research.scores[2].raw`.
+   * The sample attempt's T3 process points did not move: its one check was
+   * already a check it resolved. No composite, no other track raw, no
+   * insight, no narrative, no player type, no calibration bin and no export
+   * field moved.
+   *
+   * It MOVED a seventh time when T1 stopped scoring the prompt log (TEN-80).
+   * The 25-point `process` component was REMOVED, not redistributed — no
+   * published study validates a volume-monotone process score of AI-assisted
+   * work against an independent outcome — so T1 is 135 points and the
+   * instrument is 375, and the composite weights, which are proportional to
+   * points by construction, moved with it. EXACTLY 57 leaves changed and they
+   * are, in full: 2 REMOVED (`participant.tracks[0].rawSubscores.process` and
+   * `research.scores[0].raw.process`, the 25-point component); T1's `outOf`
+   * 160 -> 135, its `scaled` and `composite.trackRaw.t1` 105.555 -> 88.888 in
+   * both exports, and its `rubricVersion` in two places because the published
+   * rubric lost a criterion; the demo cohort's 22 moved `cohortComposites`
+   * entries in each export, which are OTHER candidates re-weighted; the
+   * candidate's own `zComposite` 1.248976 -> 1.257005; and the two
+   * score-only player-type leaves that quote T1's number.
+   *
+   * What did NOT move is the load-bearing half. `process.signal` is still in
+   * `rawSubscores`, still 0.667, unchanged in key and value: the diagnostic is
+   * still collected and still means what it meant. The candidate's composite
+   * (84.298), percentile, band and every band cutline are identical, as are
+   * every T2/T3/T4 raw, every insight, every narrative and every calibration
+   * bin. The diff was taken leaf by leaf against a stash of this branch's
+   * parent before this digest was touched.
    */
   it("derives the same report values it did before @ailx/report existed", () => {
-    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("0e4e241d8bbe6c38b4450dc7e181877083202ded1f097cf4624447a1ca990e28");
+    expect(sha256Hex(canonicalJson(derivedReport()))).toBe("9e88ddb5fb27fde6bc1a9be6d89b187e53e1b0487b9df77edb48096aad1b7dce");
   });
 
   it("is stable across repeated derivation", () => {

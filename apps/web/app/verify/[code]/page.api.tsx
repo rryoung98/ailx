@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { credentialViewFrom } from "../../../lib/credentialView";
+import { apiPath } from "@ailx/contract";
+import { credentialViewFrom } from "../../../features/verify/credentialView";
 import { serverApiBase } from "../../../lib/server/page";
-import { VerifyView } from "../../../lib/VerifyView";
+import { VerifyView } from "../../../features/verify/VerifyView";
 
 /**
  * /verify/<code> — credential verification.
@@ -10,7 +11,7 @@ import { VerifyView } from "../../../lib/VerifyView";
  * static GitHub Pages export (next.config.mjs `pageExtensions`), because a
  * credential that cannot be verified live is worse than no credential. It
  * does not oblige the file to be server-only, so the page itself is
- * `lib/VerifyView.tsx`, which reads the public JSON twin through `apiBase()`.
+ * `features/verify/VerifyView.tsx`, which reads the public JSON twin through `apiBase()`.
  *
  * `generateMetadata` stays on the SERVER and does its own read, because the
  * tab title and description have to be honest about a revocation before any
@@ -30,10 +31,9 @@ export async function generateMetadata({ params }: VerifyParams): Promise<Metada
   const robots = { index: false, follow: false };
   let credential = null;
   try {
-    const res = await fetch(
-      `${await serverApiBase()}/credentials/${encodeURIComponent(code)}`,
-      { cache: "no-store" },
-    );
+    const res = await fetch(`${await serverApiBase()}${apiPath("credentialView", { code })}`, {
+      cache: "no-store",
+    });
     credential = res.status === 200 ? credentialViewFrom(await res.json()) : null;
   } catch {
     // Unreachable service: the PAGE says so out loud. A tab title cannot,

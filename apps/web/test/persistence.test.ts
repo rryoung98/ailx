@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { append, SaveConflictError, ATTEMPT_KEY, type SequencedEntry, type SessionConfig } from "@ailx/session";
+import { append, attestJudgments, SaveConflictError, ATTEMPT_KEY, type SequencedEntry, type SessionConfig } from "@ailx/session";
 import {
   DEV_USER_KEY,
   DeckMismatchError,
@@ -9,7 +9,7 @@ import {
   fetchPresentedDeck,
   startServerAttempt,
   type AttemptPersistence,
-} from "../lib/persistence";
+} from "../lib/data/persistence";
 
 // ---------------------------------------------------------------------------
 // Doubles
@@ -184,7 +184,14 @@ describe("createApiPersistence", () => {
       log = append(log, { type: "track_completed", trackId: t, artifact: {}, timedOut: false, ts: 2000 });
       log = append(log, {
         type: "track_scored", trackId: t, score: { raw: {}, scaled: 50 },
-        rubricVersion: "r", scoringDigest: "d", modelManifest: {}, ts: 2000,
+        rubricVersion: "r", scoringDigest: "d", modelManifest: {}, scoredBy: "local",
+        // Model-free t2 stores none; the judged tracks must store what they
+        // consumed, and 50 points with no rows is exactly what append() now
+        // refuses (see packages/session/test/recomputability.test.ts).
+        ...attestJudgments(
+          t === "t2" ? [] : [{ dimension: "analysis", sample: 0, value: 0.5, modelId: "m@1" }],
+        ),
+        ts: 2000,
       });
     }
     log = append(log, { type: "attempt_completed", ts: 3000 });
@@ -196,6 +203,10 @@ describe("createApiPersistence", () => {
     expect(finalizes).toHaveLength(1);
     const responsePosts = server.calls.filter((c) => c.path.endsWith("/responses"));
     expect(responsePosts).toHaveLength(log.length);
+    // One request per log entry, plus the create and the finalize. The load-test
+    // cost model bills a sitting at that ratio (docs/LOAD-TEST.md 2.1 and 4.1), so
+    // a batching change here moves a dollar figure and should fail this line first.
+    expect(server.calls).toHaveLength(log.length + 2);
   });
 
   it("clear drops local state + sync bookkeeping but never touches the server", async () => {

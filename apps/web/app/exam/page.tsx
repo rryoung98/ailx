@@ -4,34 +4,37 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
 import {
-  append, nextTrack, project,
+  append, attestJudgments, nextTrack, project,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
 import {
   DeckMismatchError, getAttemptPersistence, scoreTrackOnServer, startServerAttempt,
-} from "../../lib/persistence";
-import { fetchHostedTrackConfig } from "../../lib/hostedDeck";
-import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/siteUpload";
+} from "../../lib/data/persistence";
+import { fetchHostedTrackConfig } from "../../lib/instrument/hostedDeck";
+import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/data/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
-} from "../../lib/checkpoints";
+} from "../../lib/data/checkpoints";
 import {
-  checkpointToArtifact, loadTrackModule, scoreTrack, trackModelManifest, type TrackModule,
-} from "../../lib/registry";
-import { trackConfig } from "../../lib/instrument";
+  checkpointToArtifact, loadTrackModule, scoreTrack, trackModelManifest,
+  trackScoredEntry, type TrackModule,
+} from "../../lib/instrument/registry";
+import { t3FormBudgetSeconds, trackConfig } from "../../lib/instrument/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
 // stays in the frozen data contract (always "en" at attempt start).
 import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META } from "@ailx/report";
-import { Annotation } from "../../lib/Annotation";
-import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../lib/ConnectPanel";
-import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "@ailx/track-t1";
-import { PersistWarning } from "../../lib/PersistWarning";
-import { RunnerErrorBoundary } from "../../lib/RunnerErrorBoundary";
-import { PillCTA } from "../../lib/PillCTA";
-import { Reveal } from "../../lib/Reveal";
-import { SiteLink } from "../../lib/SiteLink";
+import { Annotation } from "../../components/ui/Annotation";
+import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/ConnectPanel";
+import { modelGatewayFetch } from "../../lib/data/modelGateway";
+import { hasModelEndpoint, LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
+import { PersistWarning } from "../../features/exam/PersistWarning";
+import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
+import { PillCTA } from "../../components/ui/PillCTA";
+import { Reveal } from "../../components/ui/Reveal";
+import { SiteLink } from "../../components/ui/SiteLink";
 import { eventLogCopy } from "../../lib/mode";
+import { funnel } from "../../lib/data/funnel";
 
 function demoConfig(locale: "en"): SessionConfig {
   return {
@@ -41,7 +44,10 @@ function demoConfig(locale: "en"): SessionConfig {
     budgets: {
       t1: TRACK_META.t1.demoBudgetSeconds,
       t2: TRACK_META.t2.demoBudgetSeconds,
-      t3: TRACK_META.t3.demoBudgetSeconds,
+      // TEN-30: the T3 form may declare its own time condition (90 or 30
+      // minutes). It declares none in the static demo, so this is the demo
+      // budget as before.
+      t3: t3FormBudgetSeconds() ?? TRACK_META.t3.demoBudgetSeconds,
       t4: TRACK_META.t4.demoBudgetSeconds,
     },
     demo: true,
@@ -134,15 +140,15 @@ export default function ExamPage() {
     setHydrated(true);
   }, []);
 
-  // Track the model connection (key OR custom base URL) — the Start pill
-  // is gated on it. Re-read on ConnectPanel changes and cross-tab storage.
+  // Track the model connection — the Start pill is gated on it. There is
+  // exactly one thing to read now: the ENDPOINT this browser talks to. The
+  // key slot it used to read as well is gone, because the browser no longer
+  // holds a key in either build (TEN-62). Re-read on ConnectPanel changes and
+  // cross-tab storage.
   useEffect(() => {
     const read = () => {
       try {
-        setConnected(
-          Boolean(window.localStorage.getItem(OPENROUTER_KEY_STORAGE)?.trim()) ||
-          Boolean(window.localStorage.getItem(LLM_BASE_URL_STORAGE)?.trim()),
-        );
+        setConnected(hasModelEndpoint(window.localStorage.getItem(LLM_BASE_URL_STORAGE)));
       } catch {
         setConnected(false);
       }
@@ -232,7 +238,7 @@ export default function ExamPage() {
    * (attempt, track, retry): the deck and the form are recorded facts about
    * this attempt, not something to re-ask for on every render. A failure is
    * SHOWN, never papered over with local content — see DeckMismatchError in
-   * lib/persistence.ts.
+   * lib/data/persistence.ts.
    */
   // biome-ignore lint/correctness/useExhaustiveDependencies: deckEpoch is the RETRY trigger, not a value this effect reads
   useEffect(() => {
@@ -314,7 +320,18 @@ export default function ExamPage() {
         if (cur?.tracks[trackId].score !== undefined) return;
         commit([
           {
-            type: "track_scored", trackId, score: remote.score, judgments: [],
+            type: "track_scored", trackId, score: remote.score,
+            /**
+             * The exam service holds the answer key this browser must not
+             * have, so it — not this log — is the replay surface for a score
+             * it issued. `scoredBy: "server"` says exactly that. When the
+             * service hands the judgment rows back it carries them, attested
+             * like any other; when it does not, the log records no evidence
+             * AND makes no claim to any, which is the narrow truth rather
+             * than the broad falsehood `judgments: []` used to imply.
+             */
+            ...attestJudgments(remote.judgments ?? []),
+            scoredBy: "server",
             rubricVersion: remote.rubricVersion,
             scoringDigest: remote.scoringDigest,
             modelManifest: trackModelManifest(trackId),
@@ -366,14 +383,7 @@ export default function ExamPage() {
     const rec = scoreTrack(t, artifact, cur.config?.locale ?? "en", cur.attemptId ?? undefined);
     commit([
       { type: "track_completed", trackId: t, artifact, timedOut, ts },
-      {
-        type: "track_scored", trackId: t, score: rec.score,
-        judgments: rec.judgments,
-        rubricVersion: rec.rubricVersion,
-        scoringDigest: rec.scoringDigest,
-        modelManifest: rec.modelManifest,
-        ts,
-      },
+      trackScoredEntry(t, rec, ts),
     ]);
     if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
     // T1's artifact is a servable site: publish it (server mode; no-op otherwise).
@@ -577,6 +587,11 @@ export default function ExamPage() {
                 const attemptId =
                   serverId ?? `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;
                 commit([{ type: "attempt_started", attemptId, config: cfg, ts }]);
+                // The ONLY funnel event a scored sitting emits. Everything
+                // after this — responses, timings, judgments — is exam
+                // evidence and belongs in the append-only store, not in a
+                // metrics table (docs/KPI.md, AGENTS.md core invariants).
+                funnel().step("sitting_started");
               } finally {
                 startingRef.current = false;
               }
@@ -758,6 +773,21 @@ export default function ExamPage() {
     checkpoint: initialCheckpoint,
     onCheckpoint: (cp: unknown) => {
       if (state.attemptId) saveCheckpoint(window.localStorage, state.attemptId, t, cp);
+    },
+    // The host attaches WHO is asking. It has no provider key to attach, in
+    // either build: hosted, the gateway spends a key it holds sealed against
+    // this identity; static, the endpoint is a capped proxy or a local server
+    // and the identity headers are ignored by both.
+    modelFetch: modelGatewayFetch,
+    // A runner that gives up on a dead endpoint mid-run clears the shared
+    // slot; the gate above must hear it or the Start pill lies on the next
+    // screen.
+    onModelDisconnect: () => {
+      try {
+        window.dispatchEvent(new Event(CONNECTION_CHANGED_EVENT));
+      } catch {
+        /* non-fatal */
+      }
     },
   };
 

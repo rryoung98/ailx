@@ -1,0 +1,24 @@
+# Coverage is MEASURED, never gated.
+#
+# Both CI files say this in prose and it has to be true in the tool as well:
+# a threshold that blocks a merge invites tests written to move the number
+# rather than tests that catch bugs. Codecov holds the trend so a drop is
+# visible; it does not hold the merge button.
+#
+# `informational: true` reports the status and always passes. It is also the
+# only sane setting for a repository that moves files: a `git mv` shows up as
+# new uncovered lines in the patch, so a patch gate fails a diff that changed
+# no behaviour at all.
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: true

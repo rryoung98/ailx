@@ -1,14 +1,16 @@
 import Link from "next/link";
-import { Annotation } from "../lib/Annotation";
-import { HeroCanvas } from "../lib/HeroCanvas";
-import { PillCTA } from "../lib/PillCTA";
-import { PracticeDrill } from "../lib/PracticeDrill";
-import { Reveal } from "../lib/Reveal";
-import { CharacterPortrait } from "../lib/CharacterPortrait";
-import { CampusJourney } from "../lib/track3d/CampusJourney";
-import { TrackBands } from "../lib/track3d/TrackBands";
+import { Annotation } from "../components/ui/Annotation";
+import { FunnelStep } from "../components/FunnelStep";
+import { HeroCanvas } from "../features/landing/HeroCanvas";
+import { PillCTA } from "../components/ui/PillCTA";
+import { PracticeDrill } from "../features/practice/PracticeDrill";
+import { Reveal } from "../components/ui/Reveal";
+import { CharacterPortrait } from "../components/CharacterPortrait";
+import { CampusJourney } from "../features/landing/track3d/CampusJourney";
+import { TrackBands } from "../features/landing/track3d/TrackBands";
 import { assetUrl, isServerMode } from "../lib/mode";
 import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
+import { TOTAL_POINTS } from "@ailx/core";
 
 /**
  * Decorative paper artifacts drifting at different scroll rates behind the
@@ -18,14 +20,14 @@ import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
 function HeroArtifacts() {
   return (
     <div className="hero-artifacts" aria-hidden="true">
-      <svg className="hero-artifact artifact-scrap" viewBox="0 0 120 90" focusable="false">
+      <svg className="hero-artifact artifact-scrap" viewBox="0 0 120 90" focusable="false" aria-hidden="true">
         <path
           d="M8 14 L34 6 L61 12 L88 4 L112 16 L108 42 L114 68 L86 82 L52 76 L24 86 L10 60 Z"
           fill="var(--card)" stroke="var(--border-strong)" strokeWidth="1.5" strokeLinejoin="round"
         />
         <path d="M26 34 H92 M26 48 H80 M26 62 H88" stroke="var(--border)" strokeWidth="2" strokeLinecap="round" fill="none" />
       </svg>
-      <svg className="hero-artifact artifact-pencil" viewBox="0 0 220 40" focusable="false">
+      <svg className="hero-artifact artifact-pencil" viewBox="0 0 220 40" focusable="false" aria-hidden="true">
         <path
           d="M4 30 C 40 6, 90 38, 128 18 S 200 10, 216 24"
           fill="none" stroke="var(--accent-dim)" strokeWidth="2.5" strokeLinecap="round"
@@ -92,13 +94,17 @@ function StepVizReport() {
  * band "Merit" — an invented result on the page that sells the instrument,
  * next to pages that say plainly no judged number exists yet. The denominator
  * is a published fact of the spec; the numerator is deliberately blank.
+ *
+ * It reads `TOTAL_POINTS` rather than printing a number, because the total
+ * moved (400 -> 375, TEN-80) and a hardcoded denominator in front of a
+ * visitor is a number that survives a re-weighting and lies.
  */
 function MiniScoreCard() {
   return (
     <span className="mini-card mini-card-score showcase-float-1">
       <span className="mini-card-eyebrow mono">AILX 2026.1</span>
       <span className="mini-card-band">your score</span>
-      <span className="mini-card-num mono">?<span className="mini-card-denom">/400</span></span>
+      <span className="mini-card-num mono">?<span className="mini-card-denom">/{TOTAL_POINTS}</span></span>
     </span>
   );
 }
@@ -169,7 +175,7 @@ function ShowcaseRow({
  *
  * Every face prints its four-letter code as TEXT beside it, so the row still
  * says something with images off and in a screen reader; the portrait's own
- * alt describes the drawing (lib/CharacterPortrait.tsx).
+ * alt describes the drawing (components/CharacterPortrait.tsx).
  */
 function CastStrip() {
   return (
@@ -199,6 +205,9 @@ function CastStrip() {
 export default function Home() {
   return (
     <main className="page">
+      {/* Step 2 of docs/KPI.md. Silent in the static export, which has no
+          backend to post to. */}
+      <FunnelStep step="landing_viewed" />
       <div className="hero-cinema">
         <div className="hero-stage">
           <section className="hero hero-phase-a">
@@ -312,28 +321,23 @@ export default function Home() {
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizStreak />
-            {isServerMode() ? (
-              <>
-                <h2 className="wyg-title">Come back tomorrow.</h2>
-                <p className="wyg-line">
-                  Finish a round and the day counts. The streak is worked out on the server, so
-                  the progress page shows the days you did, not a number you told it.
-                </p>
-                <p className="wyg-more"><Link href="/progress">See your progress →</Link></p>
-              </>
-            ) : (
-              <>
-                {/* "Meet", not "Learn": whether the round teaches anybody
-                    anything is the open question (PRACTICE_EFFICACY_NOTE),
-                    and a funnel step is a bad place to prejudge it. */}
-                <h2 className="wyg-title">Meet the families.</h2>
-                <p className="wyg-line">
-                  Physics, anatomy, culture: the same three families come round again and again.
-                  This is the static demo build, so rounds play and nothing is recorded.
-                </p>
-                <p className="wyg-more"><Link href="/practice">Practise the tells →</Link></p>
-              </>
-            )}
+            {/* One step in both builds, because the streak now works in both:
+                a finished round is a day, kept in the visitor's own browser
+                when no account is recording it. The link is the only thing
+                that differs — the static export has no /progress. */}
+            <h2 className="wyg-title">Come back tomorrow.</h2>
+            <p className="wyg-line">
+              Finish a round and the day counts. No account: the days are kept in this browser,
+              and the streak is counted from what you actually finished, never a number you told
+              it.
+            </p>
+            <p className="wyg-more">
+              {isServerMode() ? (
+                <Link href="/progress">See your progress →</Link>
+              ) : (
+                <Link href="/practice">Practise the tells →</Link>
+              )}
+            </p>
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizTracks />

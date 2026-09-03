@@ -16,13 +16,13 @@ import {
   ATTEMPT_KEY, append, project, saveAttempt,
   type SequencedEntry, type SessionConfig,
 } from "@ailx/session";
-import { saveCheckpoint } from "../lib/checkpoints";
-import { trackConfig } from "../lib/instrument";
+import { saveCheckpoint } from "../lib/data/checkpoints";
+import { trackConfig } from "../lib/instrument/instrument";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock("../lib/registry", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../lib/registry")>();
+vi.mock("../lib/instrument/registry", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/instrument/registry")>();
   return { ...actual, loadTrackModule: async () => ({ placeholder: false, Runner: T2Runner }) };
 });
 

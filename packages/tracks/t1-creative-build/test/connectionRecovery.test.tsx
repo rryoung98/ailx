@@ -3,12 +3,17 @@
  * Connection recovery (staging dogfood F3): a real-mode failure used to be a
  * dead end — the error was bare, and "Disconnect" cleared only the key while
  * the custom base URL kept realMode true, so every retry failed forever.
+ *
+ * Since TEN-62 there is no key to clear in either build: the connection IS the
+ * endpoint, so the two-slot bug it was written for cannot recur by
+ * construction. The affordances it pins — Retry, the offline fallback, no
+ * duplicate echo — are what a candidate still needs mid-run.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Runner } from "../src/Runner.js";
-import { LLM_BASE_URL_STORAGE, OPENROUTER_KEY_STORAGE } from "../src/openrouter.js";
+import { LLM_BASE_URL_STORAGE } from "../src/openrouter.js";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -79,7 +84,7 @@ const okReply = {
 
 beforeEach(() => {
   store.clear();
-  store.set(OPENROUTER_KEY_STORAGE, "shared-demo");
+  // An endpoint and nothing else: since TEN-62 that IS the whole connection.
   store.set(LLM_BASE_URL_STORAGE, "https://ailx-shared-demo.vercel.app/api/v1");
   // GET /models is fired on mount in real mode; default to a rejection so
   // only the explicitly mocked call matters.
@@ -94,18 +99,17 @@ afterEach(() => {
 });
 
 describe("T1 disconnect", () => {
-  it("clears BOTH the key and the base URL and drops back to the demo assist", () => {
+  it("clears the endpoint and drops back to the demo assist", () => {
     mount();
     expect(button("Disconnect")).toBeTruthy();
     click("Disconnect");
-    expect(store.get(OPENROUTER_KEY_STORAGE)).toBeUndefined();
     expect(store.get(LLM_BASE_URL_STORAGE)).toBeUndefined();
     expect(button("Disconnect")).toBeUndefined();
     expect(host.textContent).toContain("No model is connected");
   });
 
-  it("is offered for a custom endpoint with no key (key-less local servers)", () => {
-    store.delete(OPENROUTER_KEY_STORAGE);
+  it("is offered for any endpoint at all — there is never a key to have", () => {
+    store.set(LLM_BASE_URL_STORAGE, "http://localhost:11434/v1");
     mount();
     expect(button("Disconnect")).toBeTruthy();
     click("Disconnect");
@@ -159,7 +163,6 @@ describe("T1 real-mode failure affordance", () => {
     mount();
     await send("give me a nav bar");
     click("Use the offline demo assist");
-    expect(store.get(OPENROUTER_KEY_STORAGE)).toBeUndefined();
     expect(store.get(LLM_BASE_URL_STORAGE)).toBeUndefined();
     expect(button("Retry")).toBeUndefined();
     expect(host.textContent).toContain("demo assist");

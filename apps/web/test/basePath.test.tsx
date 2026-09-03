@@ -10,12 +10,13 @@
  * "/ailx" Pages export) plus the no-var fallback — and forbids the inline
  * expression from coming back.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { browserSources } from "./helpers/browserSources";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -47,16 +48,16 @@ describe.each(CONFIGS)("asset URLs under the $name basePath", ({ env, prefix }) 
     expect(assetUrl("/media/logo.svg")).not.toContain("//");
   });
 
-  it("the hosted API base is prefixed too (lib/persistence.ts)", async () => {
+  it("the hosted API base is prefixed too (lib/data/persistence.ts)", async () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
-    const { browserApiOptions } = await import("../lib/persistence");
+    const { browserApiOptions } = await import("../lib/data/persistence");
     // In server mode next.config bakes "" unless a basePath is configured.
     const expected = env === undefined ? "" : env;
     expect(browserApiOptions().baseUrl).toBe(`${expected}/api`);
   });
 
-  it("snapshot image items resolve under the basePath (lib/instrument.ts)", async () => {
-    const { t2Items } = await import("../lib/instrument");
+  it("snapshot image items resolve under the basePath (lib/instrument/instrument.ts)", async () => {
+    const { t2Items } = await import("../lib/instrument/instrument");
     // The T2 bank's image items reference real files under public/t2-media.
     const media = t2Items("en")
       .map((i) => String(i.material))
@@ -68,8 +69,8 @@ describe.each(CONFIGS)("asset URLs under the $name basePath", ({ env, prefix }) 
     }
   });
 
-  it("teaser media resolve under the basePath (lib/demoItems.ts)", async () => {
-    const { TEASER_ITEMS } = await import("../lib/demoItems");
+  it("teaser media resolve under the basePath (lib/instrument/demoItems.ts)", async () => {
+    const { TEASER_ITEMS } = await import("../lib/instrument/demoItems");
     const media = TEASER_ITEMS.filter((i) => i.kind === "media" && i.imgSrc);
     expect(media.length).toBeGreaterThan(0);
     for (const i of media) {
@@ -78,8 +79,8 @@ describe.each(CONFIGS)("asset URLs under the $name basePath", ({ env, prefix }) 
     }
   });
 
-  it("track visuals resolve under the basePath (lib/TrackVisuals.tsx)", async () => {
-    const { t2VisualMedia } = await import("../lib/TrackVisuals");
+  it("track visuals resolve under the basePath (features/landing/TrackVisuals.tsx)", async () => {
+    const { t2VisualMedia } = await import("../features/landing/TrackVisuals");
     const media = t2VisualMedia();
     expect(media.length).toBeGreaterThan(0);
     for (const m of media) {
@@ -159,20 +160,9 @@ describe.each(CONFIGS)("route media under the $name basePath", ({ env, prefix })
 
 // ---- 3. the inline expression may not come back --------------------------
 
-function sourceFiles(dir: string, acc: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name === ".next" || name === "out") continue;
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) sourceFiles(full, acc);
-    else if (/\.(ts|tsx)$/.test(name)) acc.push(full);
-  }
-  return acc;
-}
-
 describe("NEXT_PUBLIC_BASE_PATH has exactly one reader", () => {
   it("is read only by lib/mode.ts (and next.config.mjs, which bakes it)", () => {
-    const offenders = [join(webDir, "app"), join(webDir, "lib")]
-      .flatMap((d) => sourceFiles(d))
+    const offenders = browserSources(/\.(ts|tsx)$/)
       .filter((f) => readFileSync(f, "utf8").includes("NEXT_PUBLIC_BASE_PATH"))
       .map((f) => relative(webDir, f).split(sep).join("/"));
     expect(offenders).toEqual(["lib/mode.ts"]);

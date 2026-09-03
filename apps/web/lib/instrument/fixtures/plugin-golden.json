@@ -1,0 +1,399 @@
+{
+  "t1": {
+    "config": null,
+    "artifact": {
+      "html": "<html><head><style>h1{color:#123}</style></head><body><header><h1>Golden</h1></header><main><section><p>fixture</p></section></main></body></html>",
+      "promptLog": [
+        {
+          "kind": "prompted",
+          "prompt": "draft",
+          "clientTs": "2026-01-01T00:00:30.000Z"
+        },
+        {
+          "kind": "revised",
+          "clientTs": "2026-01-01T00:01:00.000Z"
+        }
+      ],
+      "selfReport": "A deliberately small golden artifact with a coherent stated intent."
+    },
+    "judgments": [
+      {
+        "dimension": "functional",
+        "sample": 0,
+        "value": 0.8,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "functional",
+        "sample": 1,
+        "value": 0.7,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "functional",
+        "sample": 2,
+        "value": 0.9,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "comparative",
+        "sample": 0,
+        "value": 0.6,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "comparative",
+        "sample": 1,
+        "value": 0.5,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "comparative",
+        "sample": 2,
+        "value": 0.55,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "ambition",
+        "sample": 0,
+        "value": 0.4,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "rationale",
+        "sample": 0,
+        "value": 0.7,
+        "modelId": "golden@1"
+      }
+    ],
+    "expected": {
+      "raw": {
+        "functional": 32,
+        "comparative": 33,
+        "ambition": 8,
+        "rationale": 10.5,
+        "process.signal": 0.333
+      },
+      "scaled": 83.5
+    }
+  },
+  "t2": {
+    "config": {
+      "items": [
+        {
+          "id": "golden-t2-a",
+          "type": "media-image",
+          "stem": "Authentic?",
+          "material": "data:image/svg+xml;base64,PHN2Zy8+",
+          "options": [
+            "Synthetic",
+            "Authentic"
+          ],
+          "key": 0,
+          "signal": 0,
+          "difficulty": 0.25,
+          "rationale": "r",
+          "exposureSeconds": 6
+        },
+        {
+          "id": "golden-t2-b",
+          "type": "message-email",
+          "stem": "Hostile?",
+          "material": "From: x\n\nbody",
+          "options": [
+            "Hostile",
+            "Legitimate"
+          ],
+          "key": 1,
+          "signal": 0,
+          "difficulty": 0.5,
+          "rationale": "r",
+          "exposureSeconds": 25
+        },
+        {
+          "id": "golden-t2-c",
+          "type": "media-image",
+          "stem": "Authentic?",
+          "material": "data:image/svg+xml;base64,PHN2Zy8+",
+          "options": [
+            "Synthetic",
+            "Authentic"
+          ],
+          "key": 1,
+          "signal": 0,
+          "difficulty": 0.85,
+          "rationale": "r",
+          "exposureSeconds": 6
+        },
+        {
+          "id": "golden-t2-d",
+          "type": "provenance",
+          "stem": "Best claim?",
+          "material": "No manifest present.",
+          "options": [
+            "A",
+            "B",
+            "C"
+          ],
+          "key": 2,
+          "difficulty": 0.5,
+          "rationale": "r"
+        }
+      ]
+    },
+    "artifact": {
+      "responses": [
+        {
+          "itemId": "golden-t2-a",
+          "choice": 0,
+          "confidence": 80,
+          "latencyMs": 900
+        },
+        {
+          "itemId": "golden-t2-b",
+          "choice": 1,
+          "confidence": 60,
+          "latencyMs": 2400
+        },
+        {
+          "itemId": "golden-t2-c",
+          "choice": 0,
+          "confidence": 40,
+          "latencyMs": 1100
+        },
+        {
+          "itemId": "golden-t2-d",
+          "choice": 2,
+          "confidence": 0,
+          "latencyMs": 5000
+        }
+      ]
+    },
+    "judgments": [],
+    "expected": {
+      "raw": {
+        "sensitivity": 10.466,
+        "criterion": 9.941,
+        "calibration": 16,
+        "provenance": 15,
+        "dPrime": 0.674,
+        "criterionC": -0.337,
+        "accuracy": 0.667,
+        "brier": 0.18,
+        "weightedAccuracy": 1,
+        "answeredBinary": 3,
+        "responseCoverage": 1,
+        "hits": 1,
+        "falseAlarms": 1,
+        "nSignal": 1,
+        "nNoise": 2
+      },
+      "scaled": 51.407
+    }
+  },
+  "t3": {
+    "config": {
+      "title": "Golden scenario",
+      "brief": "Advise on the golden question.",
+      "sourceTitle": "Golden source",
+      "sourceExcerpt": "Section 1: the golden figure is 38.",
+      "plantedErrors": [
+        {
+          "id": "pe-g",
+          "topic": "golden figure",
+          "claim": "The figure is 61.",
+          "truth": "It is 38."
+        }
+      ],
+      "correctAdvice": [
+        {
+          "id": "ca-g",
+          "topic": "golden advice",
+          "claim": "38 supports the reform."
+        }
+      ],
+      "minWords": 20
+    },
+    "artifact": {
+      "transcript": [
+        {
+          "seq": 0,
+          "verb": "prompted",
+          "object": "prompt:1",
+          "text": "What is the figure?",
+          "clientTs": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "seq": 1,
+          "verb": "assisted",
+          "object": "assist:1",
+          "claimIds": [
+            "pe-g",
+            "ca-g"
+          ],
+          "clientTs": "2026-01-01T00:00:01.000Z"
+        },
+        {
+          "seq": 2,
+          "verb": "challenged",
+          "object": "claim:pe-g",
+          "clientTs": "2026-01-01T00:00:02.000Z"
+        },
+        {
+          "seq": 3,
+          "verb": "verified",
+          "object": "claim:ca-g",
+          "claimIds": [
+            "ca-g"
+          ],
+          "clientTs": "2026-01-01T00:00:03.000Z"
+        },
+        {
+          "seq": 4,
+          "verb": "accepted",
+          "object": "claim:ca-g",
+          "clientTs": "2026-01-01T00:00:04.000Z"
+        }
+      ],
+      "finalAnswer": "The figure is 38 per Section 1, so the reform is justified; the assistant's 61 was rejected after checking the source directly and carefully."
+    },
+    "judgments": [
+      {
+        "dimension": "analysis",
+        "sample": 0,
+        "value": 0.6,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "analysis",
+        "sample": 1,
+        "value": 0.8,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "analysis",
+        "sample": 2,
+        "value": 0.6,
+        "modelId": "golden@1"
+      }
+    ],
+    "expected": {
+      "raw": {
+        "overReliance": 50,
+        "analysis": 30,
+        "process": 16.042,
+        "underReliance": 30,
+        "plantedSurfaced": 1,
+        "plantedCaught": 1,
+        "adviceSurfaced": 1,
+        "adviceAdopted": 1,
+        "adviceDeliberated": 1,
+        "promptCount": 1,
+        "revisionChainLength": 0,
+        "verificationCount": 1,
+        "verificationsChecked": 1,
+        "discriminatingVerifications": 1,
+        "discriminatingVerificationRate": 0.5,
+        "deliberationRate": 1,
+        "meanJuryBand": 0.667,
+        "jurySpread": 0.2,
+        "wordCount": 24,
+        "analysis.lengthGate": 1,
+        "reliance.over": 0,
+        "reliance.under": 0,
+        "reliance.index": 0,
+        "overReliance.underpowered": 1,
+        "condition.timeBudgetMinutes": 0
+      },
+      "scaled": 126.042
+    }
+  },
+  "t4": {
+    "config": null,
+    "artifact": {
+      "drafts": [
+        {
+          "index": 0,
+          "prompt": "poster",
+          "svg": "<svg/>",
+          "clientTs": "2026-01-01T00:00:00.000Z"
+        },
+        {
+          "index": 1,
+          "prompt": "poster, focal figure, wide margins",
+          "svg": "<svg/>",
+          "clientTs": "2026-01-01T00:00:01.000Z"
+        }
+      ],
+      "finals": {
+        "images": [
+          {
+            "kind": "image",
+            "fromDraftIndex": 1,
+            "prompt": "poster, focal figure, wide margins",
+            "asset": "<svg/>",
+            "clientTs": "2026-01-01T00:00:02.000Z"
+          }
+        ]
+      },
+      "chosenSet": [
+        0
+      ],
+      "note": "Chose the second frame: the focal figure reads first, as the brief asks.",
+      "disclosed": true
+    },
+    "judgments": [
+      {
+        "dimension": "generation",
+        "sample": 0,
+        "value": 0.3,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "generation",
+        "sample": 1,
+        "value": 0.7,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "brief-fit",
+        "sample": 0,
+        "value": 0.6,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "comparative",
+        "sample": 0,
+        "value": 0.5,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "direction-note",
+        "sample": 0,
+        "value": 0.6,
+        "modelId": "golden@1"
+      },
+      {
+        "dimension": "provenance",
+        "sample": 0,
+        "value": 0.9,
+        "modelId": "golden@1"
+      }
+    ],
+    "expected": {
+      "raw": {
+        "brief-fit": 18,
+        "comparative": 20,
+        "craft": 12.029,
+        "provenance": 9,
+        "craft.steering": 0.743,
+        "craft.note": 0.6,
+        "craft.quota": 0.25,
+        "finals.images": 1,
+        "finals.video": 0,
+        "drafts.count": 2
+      },
+      "scaled": 59.029
+    }
+  }
+}

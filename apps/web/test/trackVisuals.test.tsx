@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * CSS track visuals (now the non-WebGL fallback behind lib/track3d):
+ * CSS track visuals (now the non-WebGL fallback behind features/landing/track3d):
  * smoke-renders the four animated mini-previews
  * and pins their contracts — each card links to /exam, the T2 preview uses
  * REAL snapshot media with REAL/AI stamps, T3 shows the strike-through
@@ -9,7 +9,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { TrackCards, t2VisualMedia } from "../lib/TrackVisuals";
+import { TrackCards, t2VisualMedia } from "../features/landing/TrackVisuals";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 

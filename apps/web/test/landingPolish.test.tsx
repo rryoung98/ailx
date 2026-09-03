@@ -61,11 +61,12 @@ describe("funnel section", () => {
     const steps = h.querySelectorAll(".wyg-steps .wyg-step");
     expect(steps).toHaveLength(4);
     const titles = [...h.querySelectorAll(".wyg-title")].map((t) => t.textContent);
-    // Static export copy for step two; the hosted variant is asserted in
+    // Step two is now the same headline in both builds — the streak works
+    // without an account. Only its link differs; that is asserted in
     // landingFunnel.test.tsx.
     expect(titles).toEqual([
       "Play one card.",
-      "Meet the families.",
+      "Come back tomorrow.",
       "Then take the whole thing.",
       "Keep what it leaves you.",
     ]);

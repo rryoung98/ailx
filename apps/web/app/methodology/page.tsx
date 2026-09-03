@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Annotation } from "../../lib/Annotation";
+import { Annotation } from "../../components/ui/Annotation";
 import { assetUrl } from "../../lib/mode";
 
 export const metadata: Metadata = { title: "Methodology — AILX" };
@@ -186,12 +186,30 @@ export default function Methodology() {
           temperature&nbsp;0: a judgment is evidence collected once, stored immutably and
           content-addressed, and the guarantee is that <strong>re-scoring reproduces, not that
           re-judging does</strong>. Ask the judge the same question twice and you may get two
-          answers; ask the scorer twice and you cannot. CI enforces purity by running{" "}
-          <code>score()</code> in a sandbox where{" "}
-          <code>fetch</code>, <code>Date.now</code> and <code>Math.random</code> throw, with
-          golden fixtures per track failing the build on any drift. Re-scores are inserts linked
+          answers; ask the scorer twice and you cannot. CI checks purity by running{" "}
+          <code>score()</code> inside a harness that replaces the clock ({" "}
+          <code>Date.now</code>, zero-argument <code>new Date()</code>,{" "}
+          <code>performance.now</code>), randomness (<code>Math.random</code>,{" "}
+          <code>crypto</code>), the network (<code>fetch</code>, <code>XMLHttpRequest</code>,{" "}
+          <code>WebSocket</code>) and deferred scheduling (<code>setTimeout</code> and friends)
+          with stubs that throw, rejects a scorer that returns a promise or adds a global, and
+          fails the build on any drift from the per-track golden fixtures. It is a trap set on
+          globals, <em>not</em> a sandbox: it cannot see a reference captured before the call, a{" "}
+          <code>node:fs</code> imported at module load, or a read of <code>process.env</code>,
+          so it is a strong smoke test for accidental impurity rather than a proof of it. The
+          proof of record is the golden fixtures plus the append-only inputs. Re-scores are inserts linked
           by <code>superseded_by</code>, so no history is destroyed, and the stored model manifest
           makes it possible in 2029 to prove which model version produced a 2026 certificate.
+        </p>
+        <p>
+          One limit, stated plainly rather than implied away. Byte-identical recomputation is
+          verified <em>on the same JavaScript runtime</em>: CI replays every stored score on the
+          Node version it pins. Scoring is not yet proven byte-identical <em>across</em> runtime
+          versions, because a score record does not currently store the runtime it was produced
+          on, and some scoring steps use unicode case folding, whose tables move with the
+          engine’s ICU version. Closing that gap means recording the runtime in provenance and
+          replaying old scores on it. Until then the claim is: reproducible from stored inputs,
+          on a recorded runtime.
         </p>
         <p className="faint small">
           This showcase build exercises the same contracts client-side: the purity

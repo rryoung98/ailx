@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, statSync, existsSync, readdirSync } from "node:fs";
+import { statSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadBank } from "../src/loader.js";
 

@@ -9,20 +9,67 @@
  * against node:crypto in test/hash.test.ts.
  */
 
-/** Canonical JSON: stable key order, no insignificant whitespace (spec §14). */
+/**
+ * Canonical JSON: stable key order, no insignificant whitespace (spec §14).
+ *
+ * REJECTS AT THE BOUNDARY. Plain `JSON.stringify` is LOSSY: it collapses -0
+ * into 0, NaN/Infinity/-Infinity into null, and an own property explicitly set
+ * to `undefined` into that property's absence. Content addressing that is not
+ * injective is not content addressing — two different judgments would share
+ * one judgmentId and the "byte-identically recomputable" invariant would be
+ * unfalsifiable. Every one of those values is a BUG upstream, never something
+ * we want silently aliased, so the encoder throws instead of encoding.
+ *
+ * The check lives HERE, inside the single encoder, and not in a validating
+ * wrapper used only by itemId/judgmentId: there is exactly ONE canonical
+ * encoder in this repo (see the module comment above), every content address
+ * and every canonical bank line goes through it, and a second parallel encoder
+ * — a lenient one and a strict one — is precisely the drift we consolidated
+ * this module to prevent.
+ *
+ * What it does NOT check, on purpose: `toJSON()` carriers (a Date encodes as
+ * its ISO string, as JSON demands), and key ordering/unicode escaping, which
+ * are locked byte-for-byte by test/hash.test.ts and must never change.
+ *
+ * @throws {Error} on a non-finite number, on -0, on undefined/function/symbol/
+ *   bigint anywhere (including the top level and array holes).
+ */
 export function canonicalJson(value: unknown): string {
-  return JSON.stringify(sortValue(value));
+  return JSON.stringify(sortValue(value, "$"));
 }
 
-function sortValue(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(sortValue);
+function reject(path: string, what: string): never {
+  throw new Error(
+    `canonicalJson: refusing to content-address ${what} at ${path} ` +
+      `(JSON cannot represent it losslessly, so hashing it would alias two different values)`,
+  );
+}
+
+function sortValue(v: unknown, path: string): unknown {
+  if (Array.isArray(v)) {
+    // An indexed loop, not .map: .map SKIPS holes, and a hole is exactly the
+    // undefined that JSON.stringify would silently write out as null.
+    const out = new Array<unknown>(v.length);
+    for (let i = 0; i < v.length; i++) out[i] = sortValue(v[i], `${path}[${i}]`);
+    return out;
+  }
   if (v !== null && typeof v === "object") {
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(v as Record<string, unknown>).sort()) {
-      out[k] = sortValue((v as Record<string, unknown>)[k]);
+      out[k] = sortValue((v as Record<string, unknown>)[k], `${path}.${k}`);
     }
     return out;
   }
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) reject(path, `the non-finite number ${String(v)}`);
+    // Object.is separates -0 from 0; JSON.stringify does not.
+    if (Object.is(v, -0)) reject(path, "negative zero");
+    return v;
+  }
+  if (v === undefined) reject(path, "undefined");
+  if (typeof v === "function") reject(path, "a function");
+  if (typeof v === "symbol") reject(path, "a symbol");
+  if (typeof v === "bigint") reject(path, "a bigint");
   return v;
 }
 

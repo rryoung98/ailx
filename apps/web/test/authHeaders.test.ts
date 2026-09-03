@@ -16,7 +16,7 @@ import {
   devUser,
   hasAuthTokenSource,
   setAuthTokenSource,
-} from "../lib/authHeaders";
+} from "../lib/data/authHeaders";
 
 const storage = {
   map: new Map<string, string>(),

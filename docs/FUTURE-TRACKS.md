@@ -99,7 +99,7 @@ Three rules the export must not break, all covered by tests:
 
 Code: `packages/backend/src/t1/export.ts` (download + handlers),
 `packages/backend/src/t1/github.ts` (device flow, single-commit push, Vercel link),
-`apps/web/lib/siteExport.ts` and `apps/web/lib/SiteExportPanel.tsx` (client).
+`apps/web/features/report/siteExport.ts` and `apps/web/features/report/SiteExportPanel.tsx` (client).
 Configuration: `AILX_GITHUB_CLIENT_ID`. Unset, rungs 2 and 3 answer 501 and the panel
 offers Download alone.
 

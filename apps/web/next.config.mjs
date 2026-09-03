@@ -22,7 +22,8 @@ const serverMode = process.env.AILX_BACKEND === "1";
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? (serverMode ? "" : "/ailx");
 
 /**
- * Why the server build has to prune one traced file.
+ * Why the server build has to prune one traced file, and why this key is a
+ * PATH and not a wildcard.
  *
  * Next traces every app entry into `.next/server/<entry>.js.nft.json`, and for
  * app entries it ALWAYS lists `<entry>_client-reference-manifest.js`
@@ -42,9 +43,20 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? (serverMode ? "" : "/ailx"
  * a route handler only needs a client reference manifest for `use cache`,
  * which no AILX route uses, and the runtime already treats it as optional.
  * Delete this the day Next matches `/route(\.[^/]+)?$/` like it does `/page`.
+ *
+ * THE KEY MUST NAME EVERY ROUTE HANDLER, and it silently stopped doing so.
+ * It read `/api/**` from the day the handlers lived under `app/api/`. The one
+ * surviving handler then moved to `app/s/[token]/card.png` and this key was
+ * not moved with it, so the prune matched nothing and EVERY Production deploy
+ * this project ever attempted failed on the ENOENT above — twelve of them,
+ * green build and green CI each time. `test/nextConfig.test.ts` now derives
+ * these keys from the files on disk, so moving a handler breaks a test in the
+ * same commit instead of the deploy a day later. The glob list is scoped per
+ * PAGE, so it must not be widened to `/**`: a real PAGE needs the manifest
+ * this drops.
  */
 const dropMissingRouteManifests = {
-  "/api/**": ["**/*_client-reference-manifest.js"],
+  "/s/[token]/card.png": ["**/*_client-reference-manifest.js"],
 };
 
 /**

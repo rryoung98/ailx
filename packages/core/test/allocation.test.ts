@@ -21,12 +21,19 @@ import {
 } from "../src/allocation.js";
 
 describe("score allocation", () => {
-  it("totals 400 points, the number every report and the spec quote", () => {
-    expect(TOTAL_POINTS).toBe(400);
+  it("totals 375 points, the number every report and the spec quote", () => {
+    expect(TOTAL_POINTS).toBe(375);
   });
 
-  it("allocates 160/80/160 to the three scored tracks and 0 to the showcase", () => {
-    expect(trackPoints("t1")).toBe(160);
+  /**
+   * T1 is 135, not 160. The 25-point prompt-log process component was removed
+   * on 2026-09-02 (TEN-80): it was monotone in prompt volume, and no published
+   * study validates such a score against an independent outcome. The points
+   * were removed rather than redistributed — see the T1 comment in
+   * `src/allocation.ts`.
+   */
+  it("allocates 135/80/160 to the three scored tracks and 0 to the showcase", () => {
+    expect(trackPoints("t1")).toBe(135);
     expect(trackPoints("t2")).toBe(80);
     expect(trackPoints("t3")).toBe(160);
     expect(trackPoints("t4")).toBe(0);
@@ -54,7 +61,7 @@ describe("score allocation", () => {
     expect(sum).toBeCloseTo(1, 12);
   });
 
-  it("partitions all 400 points across the four resolution mechanisms", () => {
+  it("partitions all 375 points across the four resolution mechanisms", () => {
     const by = pointsByResolution();
     expect(RESOLUTIONS.reduce((s, r) => s + by[r], 0)).toBe(TOTAL_POINTS);
   });
@@ -64,10 +71,10 @@ describe("score allocation", () => {
    * majority of the instrument and the LLM jury is a fifth of it; a change
    * that inverts either of those is a change to what AILX claims.
    */
-  it("bounds LLM-jury exposure at 80 of 400 and keeps 220 model-free", () => {
+  it("bounds LLM-jury exposure at 80 of 375 and keeps 195 model-free", () => {
     const by = pointsByResolution();
     expect(by["llm-judge"]).toBe(80);
-    expect(by["model-free"]).toBe(220);
+    expect(by["model-free"]).toBe(195);
     expect(by["human-cj"]).toBe(60);
     expect(by["machine-gate"]).toBe(40);
     expect(by["model-free"]).toBeGreaterThan(TOTAL_POINTS / 2);
@@ -138,5 +145,20 @@ describe("score allocation", () => {
       provenance: 15,
     });
     expect(weightsFor("t4")).toEqual({});
+  });
+
+  /**
+   * T1 has no component keyed on the prompt log, and it may not grow one
+   * again without this test being deleted in front of a reviewer. The signal
+   * itself is still computed and still reported — see the T1 score test's
+   * "volume invariance" block.
+   */
+  it("gives T1 no process component: the prompt log is a diagnostic (TEN-80)", () => {
+    expect(weightsFor("t1")).toEqual({
+      functional: 40,
+      comparative: 60,
+      ambition: 20,
+      rationale: 15,
+    });
   });
 });

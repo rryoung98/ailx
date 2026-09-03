@@ -3,8 +3,8 @@
  * instrument snapshot — not separate toy content (review follow-up).
  */
 import { describe, it, expect } from "vitest";
-import { TEASER_ITEMS, TEASER_BANK_IDS } from "../lib/demoItems";
-import { snapshotTrack } from "../lib/instrument";
+import { TEASER_ITEMS, TEASER_BANK_IDS } from "../lib/instrument/demoItems";
+import { snapshotTrack } from "../lib/instrument/instrument";
 
 describe("landing teaser uses real snapshot items", () => {
   const bank = snapshotTrack("t2").bank!;

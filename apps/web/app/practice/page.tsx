@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  CLAIM_PROMISE,
+  LOCAL_PRACTICE_BASIS,
   PRACTICE_BANK,
   PRACTICE_DECK_SIZE,
   PRACTICE_EFFICACY_NOTE,
@@ -8,7 +10,7 @@ import {
   ARTEFACT_FAMILIES,
   FAMILY_META,
 } from "@ailx/report";
-import { PracticeDrill } from "../../lib/PracticeDrill";
+import { PracticeDrill } from "../../features/practice/PracticeDrill";
 import { isServerMode } from "../../lib/mode";
 
 /**
@@ -111,14 +113,14 @@ export default function PracticePage() {
             which is also why your practice percentage is not a measurement of you: past the
             first few rounds you are partly recognising pictures whose answer you have already
             been given.{" "}
+            {LOCAL_PRACTICE_BASIS}{" "}
             {isServerMode() ? (
               <>
-                Your rounds are recorded and your streak is worked out on the server.{" "}
+                Signed in, the round is recorded on your account instead, and the streak is
+                worked out on the server. {CLAIM_PROMISE}{" "}
                 <Link href="/progress">See your progress →</Link>
               </>
-            ) : (
-              <>This is the static demo build: rounds play, and nothing is recorded.</>
-            )}
+            ) : null}
           </p>
         </section>
       </div>

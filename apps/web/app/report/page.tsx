@@ -7,25 +7,63 @@ import {
   type SequencedEntry,
 } from "@ailx/session";
 import { TOTAL_POINTS } from "@ailx/core";
-import { buildSampleAttemptLog } from "../../lib/sampleAttempt";
-import { scoreTrack } from "../../lib/registry";
+import { buildSampleAttemptLog } from "../../lib/instrument/sampleAttempt";
+import { replayTrackScore, scoreTrack, trackScoredEntry } from "../../lib/instrument/registry";
+import type { TrackId } from "@ailx/session";
+
+/**
+ * Recompute a track's score of record from its stored inputs and say what
+ * came back. Four outcomes, and none of them is silent:
+ *  - byte-identical: the claim in AGENTS.md, verified rather than asserted;
+ *  - VOID: a stored judgment no longer content-addresses to its recorded id;
+ *  - MISMATCH: intact evidence, and score() disagrees with the number anyway;
+ *  - not replayable here: the exam service issued it and kept the evidence.
+ */
+function ScoreReplayLine({ trackId, stored, locale, attemptId }: {
+  trackId: TrackId;
+  stored: Parameters<typeof replayTrackScore>[1];
+  locale: string;
+  attemptId?: string;
+}) {
+  const r = replayTrackScore(trackId, stored, locale, attemptId);
+  const label =
+    r.status === "byte-identical"
+      ? "✓ recomputed from the stored artifact and judgments — byte-identical"
+      : r.status === "not-replayable-here"
+        ? `· not replayable in this browser (${r.detail})`
+        : r.status === "judgment-mutated"
+          ? `✗ VOID — a stored judgment was altered (${r.detail})`
+          : `✗ MISMATCH — ${r.detail}`;
+  return (
+    <p
+      className="faint small mono"
+      style={{ margin: "0.2rem 0 0", color: r.status.startsWith("byte") ? undefined : "var(--warn, #b45309)" }}
+      data-testid={`replay-${trackId}`}
+      data-replay-status={r.status}
+    >
+      {label}
+    </p>
+  );
+}
 import {
-  AXES, calibrationBins, candidateComposite, DEMO_SCORE_NOTE, formatTrackScore, participantExport,
-  playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact, TRACK_META, trackInsights,
+  AXES, calibrationBins, candidateComposite, componentValue, DEMO_SCORE_NOTE, formatTrackScore,
+  participantExport, playerTypeFor, researchExport, shareProcessFrom, t2ResponsesFromArtifact,
+  TRACK_META, trackInsights,
 } from "@ailx/report";
-import { CalibrationCurve } from "../../lib/CalibrationCurve";
-import { CharacterPortrait, CharacterVoice } from "../../lib/CharacterPortrait";
-import { CredentialPanel } from "../../lib/CredentialPanel";
-import { Diagnosis } from "../../lib/Diagnosis";
-import { t2AnswerKeys } from "../../lib/instrument";
-import { fetchServerAnswerKeys } from "../../lib/hostedDeck";
-import { loadSiteSubmission, type SiteSubmission } from "../../lib/siteUpload";
-import { Reveal } from "../../lib/Reveal";
-import { SiteLink } from "../../lib/SiteLink";
-import { SiteExportPanel } from "../../lib/SiteExportPanel";
-import { downloadBlob } from "../../lib/siteExport";
-import { ShareLink } from "../../lib/ShareLink";
-import { TrackRadar } from "../../lib/TrackRadar";
+import { CalibrationCurve } from "../../features/report/CalibrationCurve";
+import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPortrait";
+import { CredentialPanel } from "../../features/report/CredentialPanel";
+import { Diagnosis } from "../../features/report/Diagnosis";
+import { t2AnswerKeys } from "../../lib/instrument/instrument";
+import { fetchServerAnswerKeys } from "../../lib/instrument/hostedDeck";
+import { loadSiteSubmission, type SiteSubmission } from "../../lib/data/siteUpload";
+import { RelianceCard } from "../../features/report/RelianceCard";
+import { Reveal } from "../../components/ui/Reveal";
+import { SiteLink } from "../../components/ui/SiteLink";
+import { SiteExportPanel } from "../../features/report/SiteExportPanel";
+import { downloadBlob } from "../../features/report/siteExport";
+import { ShareLink } from "../../features/report/ShareLink";
+import { TrackRadar } from "../../components/TrackRadar";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 
@@ -109,7 +147,7 @@ function SiteLiveLink({ attemptId }: { attemptId?: string }) {
 
 function download(filename: string, data: unknown) {
   // One save mechanism for both downloads on this page (the JSON export here
-  // and the T1 site ZIP in SiteExportPanel) — see lib/siteExport.ts.
+  // and the T1 site ZIP in SiteExportPanel) — see features/report/siteExport.ts.
   downloadBlob(filename, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
 }
 
@@ -189,14 +227,10 @@ export default function ReportPage() {
         // default T2 deck — scoring with the fixture's attemptId would
         // rotate to a different deck and lapse every response.
         const rec = scoreTrack(t, artifact, "en");
-        sampleLog = append(sampleLog, {
-          type: "track_scored", trackId: t, score: rec.score,
-          judgments: rec.judgments,
-          rubricVersion: rec.rubricVersion,
-          scoringDigest: rec.scoringDigest,
-          modelManifest: rec.modelManifest,
-          ts: sampleLog[sampleLog.length - 1].ts + 1000,
-        });
+        sampleLog = append(
+          sampleLog,
+          trackScoredEntry(t, rec, sampleLog[sampleLog.length - 1].ts + 1000),
+        );
       }
       setLog(sampleLog);
     } else setLog(loadAttempt(window.localStorage));
@@ -376,7 +410,7 @@ export default function ReportPage() {
                     <p className="muted" style={{ margin: 0 }}>{p.tagline}</p>
                   </div>
                 </div>
-                <div className="ptype-code" aria-label={`Type code ${p.code}`}>
+                <div className="ptype-code" role="img" aria-label={`Type code ${p.code}`}>
                   {p.poles.map((pole) => (
                     <span key={pole.track} className={`ptype-letter${pole.high ? " hi" : ""}`} title={`${pole.track.toUpperCase()}: ${pole.label}`}>
                       {pole.letter}
@@ -452,14 +486,10 @@ export default function ReportPage() {
                 <span className="mono">{formatTrackScore(score, ts.judgments, t)}</span>
               </div>
               {meta.components.map((c) => {
-                const ALIASES: Record<string, string[]> = {
-                  gates: ["gates", "functional"],
-                  dprime: ["dprime", "sensitivity"],
-                  brief: ["brief", "brief-fit"],
-                  direction: ["direction", "craft"],
-                };
-                const keys = ALIASES[c.key] ?? [c.key];
-                const v = keys.map((k) => score.raw[k]).find((x) => typeof x === "number") ?? 0;
+                // One alias table, in @ailx/report: a raw record is a stored
+                // wire surface, so a component key that was renamed in the
+                // scorer must still be found in an older attempt.
+                const v = componentValue(score.raw, c.key);
                 return (
                   <div key={c.key} style={{ display: "grid", gridTemplateColumns: "minmax(10rem, 1fr) 2fr 6.5rem", gap: "0.8rem", alignItems: "center", margin: "0.35rem 0" }}>
                     <span className="small muted">{c.label}</span>
@@ -468,6 +498,10 @@ export default function ReportPage() {
                   </div>
                 );
               })}
+              {/* T3's two reliance rates, each with its interval and the
+                  band, because 8 planted errors cannot support a bare
+                  two-decimal rate (TEN-35). */}
+              {t === "t3" && <RelianceCard raw={score.raw} />}
               {t === "t1" && !sample && <SiteLiveLink attemptId={state.attemptId ?? undefined} />}
               {t === "t4" && !sample && <ShareToGallery artifact={ts.artifact} />}
               {t === "t2" && calBins.some((b) => b.n > 0) && (
@@ -481,6 +515,13 @@ export default function ReportPage() {
                 {ts.modelManifest?.screening ? `judge ${ts.modelManifest.screening}` : ts.modelManifest?.pipeline ?? ts.modelManifest?.note}
                 {ts.timedOut ? " · ended on the clock" : ""}
               </p>
+              {/* The auditor's check, run in front of the candidate: score()
+                  is re-run over the STORED artifact and the STORED judgment
+                  rows and compared byte for byte to the number of record. The
+                  judge is not called — that is the whole point, and it is why
+                  re-scoring reproduces while re-judging does not. */}
+              <ScoreReplayLine trackId={t} stored={ts} locale={state.config?.locale ?? "en"}
+                attemptId={sample ? undefined : state.attemptId} />
               {ts.judgments && ts.judgments.length > 0 && (
                 <details className="small" style={{ marginTop: "0.5rem" }}>
                   <summary className="faint mono">

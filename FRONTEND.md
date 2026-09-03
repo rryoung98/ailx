@@ -1,7 +1,7 @@
 # FRONTEND.md — AILX frontend standard
 
-The standard the AILX frontend is held to. `AGENTS.md` is the root contract (invariants,
-commands, engineering philosophy); this file does not restate it. Where they touch, `AGENTS.md`
+AILX frontend code must follow this standard. `AGENTS.md` is the root contract (invariants,
+commands, engineering philosophy). This file does not repeat it. Where they overlap, `AGENTS.md`
 wins.
 
 Section order: 1 Philosophy · 2 Module structure · 3 File tree · 4 Security · 5 Clean code ·
@@ -13,8 +13,8 @@ Status: this repo **does not comply yet**. §9 is the honest gap.
 
 ## 1. Philosophy
 
-This is not a website. It is a **measuring instrument with a browser front end**, run against a
-clock, producing a score someone will act on.
+This is a **measuring instrument with a browser front end**. It runs against a clock and produces
+a score someone will act on.
 
 - **A UI bug is a scoring defect.** Focus lost on answer commit inflates `decisionLatency`, which
   is a scored input. Jank during a T2 drag contaminates a measurement. Treat interaction defects
@@ -40,7 +40,7 @@ Non-goals: design-system generality, framework abstraction, speculative multi-te
 
 > **If it decides a score, it lives in `packages/`. If it draws a pixel, it lives in `apps/web`.**
 
-Everything else follows from that.
+This rule sets every other boundary.
 
 | Kind of code | Home | Why |
 |---|---|---|
@@ -52,7 +52,7 @@ Everything else follows from that.
 
 **`apps/web` may not contain a function whose output reaches a score, a report figure, or an
 audit digest.** If you are about to write one, you are in the wrong package. The derivation
-layer now lives in `@ailx/report` (§9 step 4); `lib/instrument.ts` and `lib/validateChecks.ts`
+layer now lives in `@ailx/report` (§9 step 4); `lib/instrument/instrument.ts` and `lib/instrument/validateChecks.ts`
 are the remaining holdouts, both coupled to the app's asset/base-path seam.
 
 Corollary: **the audit digest must not be computed in the browser.** `scoringDigest()` now reads
@@ -72,7 +72,7 @@ with `pnpm --filter @ailx/content-tools run snapshot:2026.1` — CI fails if it 
 
 ### 2.3 Server-only vs client-safe — codify what exists
 
-The repo already has the right convention. It is now a rule.
+The repo already uses this convention. It is now required.
 
 1. **`app/api/**/route.api.ts` and `app/**/page.api.tsx`** are the only file patterns that may
    import server capability. `next.config.mjs` keeps `api.ts`/`api.tsx` out of `pageExtensions`
@@ -90,20 +90,26 @@ The repo already has the right convention. It is now a rule.
 4. **Build-mode branching goes through `lib/mode.ts`.** One spelling of
    `NEXT_PUBLIC_AILX_BACKEND`, one truth. Never re-test the raw env var at a call site
    ([Next.js dual-mode drift is invisible unless both builds run in CI](https://nextjs.org/docs/app/guides/static-exports)).
-5. **`"use client"` is a module-graph boundary, not a runtime one**
+5. **Every exam-service URL comes from the route manifest.** `apiPath()` in
+   `@ailx/contract` owns the path; `lib/mode.ts` `apiBase()` owns the host prefix. A path
+   spelled at a call site is how a browser once called a route the deployed service did not
+   have, so `test/routeManifest.test.ts` parses every source in `apps/web` and fails the build
+   when a request call — `fetch`, a `fetchFn`, `serviceFetch`/`useService`, an HTTP verb method
+   or `new URL` — is given a literal path that starts with a manifest segment.
+6. **`"use client"` is a module-graph boundary, not a runtime one**
    ([Next.js](https://nextjs.org/docs/app/guides/server-and-client-boundary)). Anything a client
    component imports enters the browser bundle. Push `"use client"` to leaves; pass `children`
-   to keep server subtrees out of the client graph. `lib/NavLink.tsx` is the pattern.
-6. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
+   to keep server subtrees out of the client graph. `components/ui/NavLink.tsx` is the pattern.
+7. **Never `'use server'` in this repo.** It marks every export of a module as a public POST
    endpoint, and static export does not support Server Actions anyway. Use `route.api.ts`.
 
-Three mechanisms, deliberately overlapping, because they fail at different times: directory
-convention (2), TypeScript (3), and the build (`pageExtensions`). Adopt `import 'server-only'`
-only if a real leak happens — see §7.
+Three mechanisms overlap because they fail at different times: directory convention (2),
+TypeScript (3), and the build (`pageExtensions`). Adopt `import 'server-only'` only if a real
+leak happens — see §7.
 
 ### 2.4 Barrel files — a decision, not a menu
 
-The field genuinely disagrees. [Feature-Sliced Design mandates an `index.ts` per
+The field disagrees. [Feature-Sliced Design mandates an `index.ts` per
 slice](https://feature-sliced.design/docs/reference/public-api); [TkDodo measured a Next.js app
 drop from 11k to ~3.5k modules (−68%) by deleting internal
 barrels](https://tkdodo.eu/blog/please-stop-using-barrel-files); [Marvin
@@ -123,21 +129,21 @@ only](https://vercel.com/blog/how-we-optimized-package-imports-in-next-js), not 
   TkDodo describes and `import/no-cycle` exists to catch.
 - Subpath exports (`@ailx/backend/t1`) are fine and preferred over one giant barrel.
 
-We side with TkDodo/Bulletproof over FSD: FSD buys *enforceable* encapsulation at a tooling cost,
-and its own docs concede the cost while admitting barrels do not actually prevent deep imports.
-For a repo this size, workspace packages already give us enforceable boundaries for free.
+We choose TkDodo/Bulletproof over FSD. FSD provides *enforceable* encapsulation at a tooling cost.
+Its own docs acknowledge the cost and admit that barrels do not prevent deep imports. For a repo
+this size, workspace packages already enforce those boundaries.
 
 ### 2.5 Structure philosophy — Bulletproof, not FSD
 
 We adopt [Bulletproof React](https://github.com/alan2207/bulletproof-react/blob/master/docs/project-structure.md)'s
-shape (feature folders, unidirectional imports `shared → feature → route`, no cross-feature
-imports) and reject [FSD](https://feature-sliced.design/docs/get-started/overview)'s six-layer
-taxonomy. Reason: FSD's placement decisions are its weakest part — [its own examples were
+shape: feature folders, unidirectional imports `shared → feature → route`, and no cross-feature
+imports. We reject [FSD](https://feature-sliced.design/docs/get-started/overview)'s six-layer
+taxonomy. FSD's placement decisions are its weakest part — [its own examples were
 re-sliced repeatedly](https://philrich.dev/fsd-vs-clean-architecture/) — and `apps/web` is a
 7-route app. A taxonomy with more layers than the app has routes is ceremony (§7).
 
-Colocation ([Kent C. Dodds](https://kentcdodds.com/blog/colocation)) governs *within* a feature:
-component, its CSS module, its test, its local helpers sit together. Layer-first governs only at
+Colocation ([Kent C. Dodds](https://kentcdodds.com/blog/colocation)) applies *within* a feature.
+Keep a component, its CSS module, its test, and its local helpers together. Layer-first applies only at
 the workspace boundary. When shared logic "loses its home", it moves up one level — to
 `components/` or to a package — never sideways into another feature.
 
@@ -155,19 +161,20 @@ apps/web/
     exam/
       page.tsx
       error.tsx                 # REQUIRED: exam-scoped, offers checkpoint resume
-    api/**/route.api.ts         # server mode only; thin adapters over @ailx/backend
+    s/[token]/card.png/route.api.ts   # the ONE route handler (AGENTS.md)
   features/                     # one folder per product surface; no cross-feature imports
-    exam/                       # runner host, phase machine, clock, checkpoint resume
-    report/                     # report rendering (data comes from @ailx/report)
-    landing/                    # hero, teaser, scroll cinema, track visuals
-    connect/                    # model connection panel
-  components/                   # cross-feature presentational only; zero domain knowledge
-    ui/                         # PillCTA, NavLink, SiteLink, Reveal, Annotation
-    Loader.tsx
+    daily/  exam/  gallery/  landing/  practice/  progress/
+    report/  review/  share/  verify/  world/
+  components/                   # used by two or more surfaces
+    ui/                         # zero domain knowledge: Annotation, NavLink, PillCTA, Reveal, SiteLink
+    CharacterPortrait.tsx  FunnelStep.tsx  GalleryCard.tsx  Loader.tsx
+    Moderation.tsx  PageNotice.tsx  PlaceholderRunner.tsx  ShareTargets.tsx  TrackRadar.tsx
   lib/                          # cross-cutting, non-visual, browser-safe
     mode.ts                     # THE build-mode seam
-    persistence.ts  checkpoints.ts  registry.ts
-    server/                     # server-only; importable ONLY from route.api.ts
+    data/                       # service seam + browser storage
+    instrument/                 # released-practice tier and the derivation over it
+    auth/                       # Clerk mount, identity state
+    server/                     # server-only; importable ONLY from page.api.tsx / route.api.ts
   styles/
     tokens.css                  # design tokens, one source of truth
     globals.css                 # @layer reset, tokens, base, utilities — nothing route-specific
@@ -179,17 +186,15 @@ packages/
   session/       # event log, projection, StorageLike
   report/        # pure scoring-adjacent + report logic
   tracks/*/      # per-track Runner + score(), shipped together
-  backend/       # persistence, auth, snapshot store, sandbox headers
   content-tools/
 ```
 
-**Rationale, one line each.** `app/` holds routing and nothing else, so a route file is always
-readable in one screen. `features/` gives deletability: removing a surface is `rm -rf` plus one
-route. `components/ui/` is presentational-only so it can never drag domain code into a landing
-page. `lib/` is the narrow cross-cutting waist; if it grows past ~10 files again, it has become
-a grab-bag and something belongs in a feature or a package. `styles/` separates tokens from
-rules so contrast tests have one target. `e2e/` is separate from `test/` because the runners,
-speed, and flake budgets differ (§6).
+`app/` holds only routing, so a route file stays readable in one screen. `features/` makes a
+surface easy to delete with `rm -rf` plus one route. `components/ui/` contains only presentation
+code, so it cannot pull domain code into a landing page. `lib/` is the narrow shared layer. If it
+grows past ~10 files again, it has become a grab-bag, and something belongs in a feature or a
+package. `styles/` separates tokens from rules, giving contrast tests one target. Keep `e2e/`
+separate from `test/` because the runners, speed, and flake budgets differ (§6).
 
 ### "Where does X go?" — run this in order
 
@@ -203,24 +208,35 @@ speed, and flake budgets differ (§6).
 5. **Is it non-visual and used by 2+ features?** → `lib/`.
 6. **Otherwise** → colocate next to its only caller. It is not shared yet.
 
-### Today's `apps/web/lib` grab-bag, mapped
+### What moved, and what has not (TEN-63, 2026-09-02)
 
-| Today | Goes to | Because |
-|---|---|---|
-| `composite.ts` `insights.ts` `playerType.ts` `calibration.ts` `exportTiers.ts` `judging.ts` | `packages/report` | Feeds scores/report figures → rule 1. Gains the purity sandbox; backend can reuse. |
-| `instrument.ts` `validateChecks.ts` | `packages/core` (or `content-tools`) | Instrument/content validation is content-addressing territory, not app territory. |
-| `demoItems.ts` `sampleAttempt.ts` `demo.ts` `fixtures/` | `packages/report/fixtures` or `test/fixtures` | Fixtures are data; they must be reachable from package tests. |
-| `registry.ts` | split: plugin wiring stays in `lib/`; `scoringDigest()` moves to `packages/core` as a build-time source hash | The digest is the audit artifact (§2.1). |
-| `HeroCanvas.tsx` `Teaser.tsx` `TrackVisuals.tsx` `Reveal.tsx` `svgArt.ts` `track3d/` | `features/landing/` | One surface only. |
-| `ConnectPanel.tsx` | `features/connect/` | One surface. |
-| `PlaceholderRunner.tsx` `useSwipeCard.ts` `checkpoints.ts` | `features/exam/` | Exam-only. |
-| `CalibrationCurve.tsx` `Annotation.tsx` | `features/report/` | Report-only. |
-| `Loader.tsx` `NavLink.tsx` `PillCTA.tsx` `SiteLink.tsx` | `components/ui/` | Used by the shell. Loader's 14.2 kB inline SVG path moves to `public/media/` (§9). |
-| `mode.ts` `persistence.ts` `siteUpload.ts` `redirect404.ts` | stay in `lib/` | Cross-cutting, non-visual, browser-safe. |
-| `server/` | stays | Already correct. |
+`apps/web/lib` held 37 components and 24 modules in one directory. It now
+holds `mode.ts`, three small helpers and four directories, and the tree above
+is what the app actually looks like.
 
-Move by `git mv` in one PR per column group, tests updated in the same commit. No barrels are
-created on the way.
+- Everything that renders left `lib/`. One surface → `features/<surface>/`.
+  Two or more → `components/`, and `components/ui/` when it also has zero
+  domain knowledge.
+- The rest of `lib/` split in two: `data/` for the service seam and browser
+  storage, `instrument/` for the released-practice tier and the derivation
+  over it.
+- The `apps/web` guards that scan "the frontend" share
+  `test/helpers/browserSources.ts`. Adding a directory of browser code means
+  adding it to `BROWSER_ROOTS`, or those guards stop seeing it.
+  `packages/core/test/publicClaims.test.ts` cannot import that helper, so it
+  carries the same list by hand and says so.
+
+Two rows of the old plan are still open. `lib/instrument/instrument.ts` and
+`lib/instrument/validateChecks.ts` belong in `packages/` by rule 1, blocked
+on `instrument.ts` calling `assetUrl()` — docs/PLAN.md tracks that one.
+`scoringDigest()` in `lib/instrument/registry.ts` belongs in `packages/core`
+as a build-time source hash; PLAN.md says the rest of `registry.ts` stays in
+the app, because it dynamic-imports React Runners. `svgArt.ts` did not go to `features/landing/` as drafted: its
+one caller is `demoItems.ts`, so it sits beside it in `lib/instrument/`
+(rule 6). `useSwipeCard.ts` did go, with its one caller `Teaser.tsx`.
+
+Move by `git mv`, one coherent group per commit, tests updated in the same
+commit. No barrels are created on the way.
 
 ---
 
@@ -234,8 +250,8 @@ requirement IDs (`v5.0.0-<ch>.<sec>.<req>`) in security tests so claims are audi
 
 ### 4.1 Hosting untrusted candidate sites
 
-The current design (`packages/backend/src/t1/handlers.ts` `sandboxHeaders`) is right. It is now
-mandatory and testable.
+The current design (`packages/backend/src/t1/handlers.ts` `sandboxHeaders`) is mandatory and
+testable.
 
 - **`Content-Security-Policy: sandbox allow-scripts` as a RESPONSE HEADER, never only an iframe
   attribute.** The header applies sandbox flags to a *top-level* document, so protection survives
@@ -300,8 +316,12 @@ mandatory and testable.
   `services/openrouter-proxy` or a `route.api.ts`, never in the bundle.
 - `NEXT_PUBLIC_AILX_BACKEND` and `NEXT_PUBLIC_BASE_PATH` are the only permitted public vars;
   both are non-secret build facts read through `lib/mode.ts`.
-- A candidate-supplied model key is held in memory for the session and never persisted to
-  `localStorage` or sent to our backend.
+- **A candidate-supplied model key never reaches the browser at all** (TEN-62). The exam
+  service does the OAuth exchange and stores the key sealed against the caller's identity;
+  this app starts the connection, hands back the `?code=&state=` it was redirected with, and
+  displays a 12-hex fingerprint. There is no key slot in `localStorage`, and no request
+  builder in `packages/tracks/*` takes a key parameter, so no call site can send one. What a
+  model call carries from here is IDENTITY, through `TrackUIProps.modelFetch`.
 
 ### 4.4 XSS and URL handling in our own UI
 
@@ -320,7 +340,7 @@ mandatory and testable.
 
 ### 4.5 Upload validation (T1)
 
-`packages/backend/src/t1/zip.ts` is the model; these are now rules.
+Follow the model in `packages/backend/src/t1/zip.ts` and these rules.
 
 - **Enforce limits on DECLARED sizes before inflating anything** — entry count, per-file bytes,
   total bytes. That is how a zip bomb is refused without being decompressed.
@@ -354,10 +374,10 @@ mandatory and testable.
 
 ### 4.7 Never trusted from the client
 
-In a scored exam the browser is the candidate's territory. In hosted mode the server treats as
-**advisory only**: client-computed scores, client-reported timings and latencies, item answer
-keys, attempt completion claims, and item selection. Scores of record are recomputed server-side
-from the append-only event log by `packages/*`. The static demo build has no server and
+In a scored exam, the browser is the candidate's territory. In hosted mode the server treats
+these as **advisory only**: client-computed scores, client-reported timings and latencies, item
+answer keys, attempt completion claims, and item selection. `packages/*` recomputes the score of
+record on the server from the append-only event log. The static demo build has no server and
 therefore issues **no score of record** — the UI must never imply otherwise (`lib/mode.ts`
 `footerModeCopy()` is the precedent: say what the build actually does).
 
@@ -451,8 +471,8 @@ therefore issues **no score of record** — the UI must never imply otherwise (`
 
 ## 6. Testing strategy
 
-Today: ~1,077 vitest tests, **zero E2E**. `docs/PLAN.md` deferred Playwright "to the hosted
-phase". That phase has arrived.
+Today there are ~1,077 vitest tests and **zero E2E**. `docs/PLAN.md` deferred Playwright "to the hosted
+phase". The hosted phase has arrived.
 
 ### 6.1 Our position in the pyramid-vs-trophy fight: neither
 
@@ -465,7 +485,7 @@ there:
 > Focus on [tests that] establish clear boundaries, run quickly & reliably, and only fail for
 > useful reasons."
 
-So: **no ratio target.** Instead, classify by resources and determinism
+There is **no ratio target.** Classify tests by resources and determinism
 ([Google test sizes](https://testing.googleblog.com/2010/12/test-sizes.html)) and place each test
 at the cheapest level that can actually observe the behaviour.
 
@@ -483,8 +503,8 @@ belong in E2E.
 
 ### 6.3 Tool: Playwright
 
-Chosen over Cypress and WebdriverIO. Reasons, in our order: it drives the browser out-of-process,
-so multi-origin and multi-tab work natively — [Cypress is one superdomain per test and needs
+We choose Playwright over Cypress and WebdriverIO. It drives the browser out-of-process, so
+multi-origin and multi-tab work natively — [Cypress is one superdomain per test and needs
 `cy.origin`](https://docs.cypress.io/app/references/trade-offs), and we must navigate between the
 app origin and a sandboxed candidate site with an opaque origin. Cheap `BrowserContext`
 isolation makes parallel workers safe. `page.clock` gives deterministic time. `page.route` stubs
@@ -494,7 +514,7 @@ covers the a11y floor. WebdriverIO only wins if we need Appium/mobile grids; we 
 ### 6.4 What MUST be covered E2E — and how to assert it
 
 The dogfood found an **infinite redirect loop on the live-site link** and **focus loss on T2
-answering** while the unit suite was green — and one suite asserted *"a 308 was emitted"* while
+answering** while the unit suite was green. One suite asserted *"a 308 was emitted"* while
 the loop existed. That is the whole argument:
 
 > **A status code is one edge of a redirect graph. The user-visible outcome is the graph's fixed
@@ -586,7 +606,7 @@ Four true stories from this repo, all of them green at the time:
 4. A dogfooder found the confidence panel **invisible** on provenance items — it rendered
    behind the card. Every DOM assertion passed.
 
-The common cause is not carelessness. It is that
+The common cause is
 [jsdom lists Layout as unimplemented](https://www.npmjs.com/package/jsdom): every box it
 reports is 0x0 at (0,0). "Is this modal centred", "is it above the fold", "is it covered",
 "is this tap target big enough" are not questions jsdom answers wrongly — they are
@@ -640,8 +660,7 @@ a box by hand is a bug.
 - `expectTextNotClipped` / `expectNoInnerScroll` — content is not silently truncated by
   its container, and a modal step is not something you must scroll INSIDE.
 
-Two harness notes that are easy to get wrong, both of them ways to make a true contract
-report a false failure:
+Two harness details can make a true contract report a false failure:
 
 - **Settle the harness's own scroll first.** Playwright scrolls an element into view as
   part of its actionability checks, so a click can move the page for reasons that have
@@ -665,8 +684,8 @@ it, is the assertion that proves nothing actually moved.
 
 #### 6.7.3 A test that cannot fail is worse than no test
 
-It costs the same to run, and it spends the reviewer's trust. Story 3 above is the proof:
-the injector was patching a call the code no longer made.
+It costs the same to run and wastes the reviewer's trust. In story 3 above, the injector
+patched a call the code no longer made.
 
 - **Every visual contract is mutation-tested.** `e2e/visual-contracts.spec.ts` breaks the
   exact thing each contract protects — a corner modal, a panel above the fold, a
@@ -704,9 +723,9 @@ passed, and always would have — the floor is now 312
 
 #### 6.7.4 Screenshot baselines: few, deterministic, or not at all
 
-A baseline earns its keep only where a human would notice the regression instantly AND the
-pixels are deterministic. Anything else becomes flake that people learn to click past,
-which costs more than the bug it was meant to catch.
+Use a baseline only where a human would notice the regression instantly AND the pixels are
+deterministic. Anything else becomes flake that people learn to click past. That costs more
+than the bug it was meant to catch.
 
 `e2e/visual-baselines.spec.ts` holds four ELEMENT screenshots of copy-only surfaces with
 no seeded content and no clock in frame: the pause overlay, the time-up notice, the runner
@@ -726,8 +745,7 @@ image before committing it; an unread baseline is a rubber stamp.
 
 #### 6.7.5 A green run can also be a lie about WHERE it looked
 
-Two more shapes of the same bug, both cheap to hit and both recorded here so the next
-person recognises them:
+The same bug has two more forms:
 
 - **A dev server poisons a build-output scan.** `next dev` writes development chunks into
   `apps/web/.next/static`, and `test/bundleSecrecy.test.ts` greps that directory. Run
@@ -736,6 +754,13 @@ person recognises them:
   passes on dev output that a production bundle would have failed. The secrecy scan reads
   BUILD output: stop the dev server (and do not run a second build in `apps/web`) before
   trusting it, since `next build` and `next dev` fight over the same directory.
+- **A suite that resolves `dist/` measures the last build, not this tree.** Every
+  `@ailx/*` package has `main: dist/index.js`, so an unaliased vitest project read build
+  output: on a clean clone 75 test files failed to collect ("Failed to resolve entry for
+  package @ailx/core"), and with a stale build the run passed on code nobody had
+  rebuilt. `vitest.shared.ts` holds one alias table pointing every package at its `src`,
+  every project uses it, and `packages/core/test/workspaceWiring.test.ts` fails if a
+  package stops. The Next builds still consume `dist/`.
 - **A surface that cannot be reached is not a surface that passes.** T4's finish step has
   no contract, because in hosted mode the T4 runner deals its content from
   `GET /attempts/:id/track/t4` and this app serves no such route: the track opens on a
@@ -745,8 +770,8 @@ person recognises them:
 
 ## 7. Flexible, not over-engineered
 
-This section **governs sections 1–6**. `AGENTS.md` demands right-sized engineering and minimal
-diff; a standard that prescribes ceremony contradicts it.
+This section **governs sections 1–6**. `AGENTS.md` requires right-sized engineering and a minimal
+diff. A standard that prescribes ceremony contradicts it.
 
 ### 7.1 The tradeoff rule
 
@@ -802,7 +827,7 @@ review.
 
 ## 8. Review checklist
 
-Run this on every frontend PR. Each item is checkable in under a minute.
+Check every frontend PR against this list. Each item takes under a minute to check.
 
 **Boundaries**
 - [ ] No new function in `apps/web` whose output reaches a score, report figure, or audit digest.
@@ -811,6 +836,7 @@ Run this on every frontend PR. Each item is checkable in under a minute.
 - [ ] No new barrel/`index.ts` in `apps/web`; no `utils.ts`.
 - [ ] Value imports do not cross the client boundary where a `type` import would do.
 - [ ] Build-mode branching goes through `lib/mode.ts`.
+- [ ] Every exam-service URL comes from `apiPath()`; no path spelled at a call site.
 
 **Security**
 - [ ] No secret in `NEXT_PUBLIC_*`; no new public env var.
@@ -844,8 +870,8 @@ Run this on every frontend PR. Each item is checkable in under a minute.
 
 ## 9. Migration plan
 
-The repo does not comply. Evidence: `/tmp/ailx-research-01a04bca/frontend-audit.md`. Ordered by
-risk removed per line changed. One PR per numbered step.
+The repo does not comply. See `/tmp/ailx-research-01a04bca/frontend-audit.md`. The order reflects
+risk removed per line changed. Use one PR per numbered step.
 
 *In flight at the time of writing:* work adding `app/error.tsx`, `app/global-error.tsx`,
 `RunnerErrorBoundary`, `PersistWarning` and T2 focus/keyboard tests is uncommitted in the
@@ -856,7 +882,7 @@ than assuming, and renumber nothing.
 
 1. **Error boundaries.** Add `app/global-error.tsx`, `app/error.tsx`, and an exam-scoped boundary
    around `<mod.Runner>` that records the crash as a track event and offers checkpoint resume
-   (`lib/checkpoints.ts` already exists). ~60 lines. Today one uncaught throw white-screens a
+   (`lib/data/checkpoints.ts` already exists). ~60 lines. Today one uncaught throw white-screens a
    candidate mid-exam with the clock running. *Gap: §5.*
 2. **T2 focus management.** Stop disabling the button the candidate just pressed; mark the deck
    `inert` instead, move focus to the confidence slider on sheet open, return it to "Lock in".
@@ -907,6 +933,6 @@ than assuming, and renumber nothing.
     Vitest 3.
 16. **Next 16** in its own PR — nothing in the codebase blocks it.
 
-Steps 1–3 are hours. Steps 4–5 are the ones that protect the claim in `docs/POSITIONING.md` that
-audit-grade recomputability is a strategic asset. Do not start step 7 before step 4: moving files
-twice is the expensive way.
+Steps 1–3 take hours. Steps 4–5 protect the claim in `docs/POSITIONING.md` that audit-grade
+recomputability is a strategic asset. Do not start step 7 before step 4. Otherwise, the files
+must move twice.

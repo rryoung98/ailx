@@ -1,5 +1,5 @@
 /**
- * `lib/credentialView.ts` — unwrapping the public Open Badges document.
+ * `features/verify/credentialView.ts` — unwrapping the public Open Badges document.
  *
  * /verify/<code> renders a stranger's only source of truth, from a PUBLIC
  * endpoint, so this parser has to be hostile-input safe: a document that is
@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 import { buildCredentialClaim, credentialDocument, type CredentialClaim } from "@ailx/report";
 import { initialState, TRACK_IDS, type SessionState } from "@ailx/session";
-import { credentialViewFrom } from "../lib/credentialView";
+import { credentialViewFrom } from "../features/verify/credentialView";
 
 const ORIGIN = "https://ailx.example";
 const CODE = "AILX-2026.1-AB12-CD34-EF56-GH78";

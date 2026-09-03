@@ -36,7 +36,7 @@ jobs:
         with:
           ref: ${{ steps.rev.outputs.sha }}
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -55,7 +55,7 @@ jobs:
             "$AILX_SHA" "${{ github.ref_name }}" "${{ github.run_id }}" \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > apps/web/out/version.json
           touch apps/web/out/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: apps/web/out
 
@@ -70,7 +70,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # Versioning, deliberately minimal: one immutable tag per deployed commit.
   # A 1-repo, 1-app project with no consumers publishing no packages gains

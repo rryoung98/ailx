@@ -17,6 +17,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import {
+  CLAIMED_DAYS_BASIS,
+  CLAIM_PROMISE,
   PROGRESS_BASIS,
   progressReport,
   type PracticeDayCounts,
@@ -34,8 +36,8 @@ import {
   stubJsonFetch,
   type StubbedCall,
 } from "./helpers/clientPage";
-import { setAuthTokenSource } from "../lib/authHeaders";
-import { ProgressView } from "../lib/ProgressView";
+import { setAuthTokenSource } from "../lib/data/authHeaders";
+import { ProgressView } from "../features/progress/ProgressView";
 import { metadata } from "../app/progress/page.api";
 
 installMemoryStorage();
@@ -68,6 +70,8 @@ const busyDays: PracticeDayCounts[] = [4, 3, 2, 1, 0].map((n) => ({
 
 let status = 200;
 let payload: ProgressReport;
+/** Days this account claimed from a browser, as the service reports them. */
+let claimedDays: string[] = [];
 let calls: StubbedCall[] = [];
 
 const markup = async (): Promise<string> => renderClient(createElement(ProgressView));
@@ -82,11 +86,12 @@ beforeEach(() => {
     ],
   });
   window.localStorage.setItem("ailx:dev-user", "player-1");
+  claimedDays = [];
   calls = stubJsonFetch(() => ({
     status,
     body:
       status === 200
-        ? { progress: payload }
+        ? { progress: payload, claimedDays }
         : { error: { code: "unauthorized", message: "authentication required" } },
   }));
 });
@@ -294,5 +299,44 @@ describe("honesty", () => {
   it("is not a game economy: no currency, no unlocks, no leaderboard", async () => {
     const html = await markup();
     expect(html).not.toMatch(/\bcoins?\b|\bgems?\b|\bXP\b|\bpoints? earned\b|unlock|badge|level up/i);
+  });
+});
+
+/**
+ * Days a signed-out browser handed over at sign-in. They are the browser's
+ * word, not a server stamp, and the page says which is which rather than
+ * blending them invisibly into days we measured ourselves.
+ */
+describe("claimed practice days", () => {
+  it("labels a claimed day in words, and explains what a claimed day is", async () => {
+    claimedDays = [back(4), back(3)];
+    const html = await markup();
+    expect(html).toContain("brought from a browser");
+    expect(html).toContain(CLAIMED_DAYS_BASIS);
+  });
+
+  it("labels only the days the service named", async () => {
+    claimedDays = [back(4)];
+    const html = await markup();
+    expect(html.match(/brought from a browser/g)).toHaveLength(1);
+  });
+
+  it("says nothing about claimed days when there are none", async () => {
+    const html = await markup();
+    expect(html).not.toContain("brought from a browser");
+    expect(html).not.toContain(CLAIMED_DAYS_BASIS);
+  });
+
+  it("survives a service that sends no claimedDays field at all", async () => {
+    claimedDays = undefined as never;
+    const html = await markup();
+    expect(html).toContain("day streak");
+    expect(html).not.toContain("brought from a browser");
+  });
+
+  it("promises the anonymous visitor their days will move, on the page that asks", async () => {
+    status = 401;
+    const html = await markup();
+    expect(html).toContain(CLAIM_PROMISE);
   });
 });

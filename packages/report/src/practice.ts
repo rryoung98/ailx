@@ -260,8 +260,14 @@ export function gradePractice(itemId: string, choice: number): boolean {
   return item !== undefined && choice === item.key;
 }
 
-/** Deterministic Fisher-Yates over the @ailx/session seeded PRNG. */
-function seededShuffle<T>(arr: readonly T[], seed: string): T[] {
+/**
+ * Deterministic Fisher-Yates over the @ailx/session seeded PRNG.
+ *
+ * Exported because the daily challenge (./daily.ts) deals from the same
+ * corpus and must shuffle it the same way; two copies of a shuffle are two
+ * decks that agree until one of them is edited.
+ */
+export function seededShuffle<T>(arr: readonly T[], seed: string): T[] {
   const out = [...arr];
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(seededUniform(`${seed}:${i}`, i) * (i + 1));

@@ -2,15 +2,25 @@
  * T2 per-attempt deck rotation — regression tests.
  * The deck is deterministic per attemptId (seed = sha256(attemptId + bank
  * sha256) through the pure @ailx/track-t2 sampler), varies across attempts,
- * and holds the balance invariants: 6 items = 2 media (1 AI + 1 real, difficulty-
- * matched) + 2 text/message (1 signal + 1 benign) + 2 provenance. Without
- * an attemptId the fixed
- * default deck is returned (fixtures, /validate). The operational
- * instrument uses fixed forms; this rotation is demo-only.
+ * and holds the balance invariants. The released tier declares a deck of one
+ * media pair, two text items and two provenance (config.deck in t2's
+ * track.yaml), so an en deck is 6 items: 2 media (1 AI + 1 real,
+ * difficulty-matched) + 2 text/message (1 signal + 1 benign) + 2 provenance.
+ * Without an attemptId the fixed default deck is returned (fixtures,
+ * /validate). The operational instrument uses fixed forms; this rotation is
+ * demo-only.
  */
 import { describe, expect, it } from "vitest";
-import { t2AnswerKeys, t2DeckItemIds, t2DeckRecords, t2BankSha256, t2Items, trackConfig } from "../lib/instrument";
-import { scoreTrack } from "../lib/registry";
+import {
+  t2AnswerKeys,
+  t2BankSha256,
+  t2DeckComposition,
+  t2DeckItemIds,
+  t2DeckRecords,
+  t2Items,
+  trackConfig,
+} from "../lib/instrument/instrument";
+import { scoreTrack } from "../lib/instrument/registry";
 import { T2_TOTAL_POINTS } from "@ailx/track-t2";
 
 type Item = ReturnType<typeof t2Items>[number];
@@ -118,5 +128,66 @@ describe("T2 deck rotation (demo-only)", () => {
     // attemptId must not silently agree (rotated items count as lapses).
     const withoutId = scoreTrack("t2", artifact);
     expect(withoutId.score.scaled).toBeLessThan(withId.score.scaled);
+  });
+  /**
+   * THE DECK IS THE SAME AFTER TEN-48. The sampler now reads `config.deck`
+   * from the instrument instead of holding the numbers itself, so these ids
+   * are pinned against the real released bank: same attempt id, same bank
+   * sha256, same items in the same order. A recorded attempt re-derives its
+   * deck from stored inputs alone (F16), so a change here is a change to
+   * every deck already recorded.
+   */
+  it("deals the ids it dealt before the sampler read the declaration", () => {
+    expect(t2BankSha256()).toBe(
+      "695cb4573d83fa9bb70937fddfc483fd74057cd249cb367f0bd976edf8a30511",
+    );
+    expect(t2DeckItemIds("en", "att-golden")).toEqual([
+        "db482cd7e9d0d80490d73d01e022ac906029e96a7edb914461b5b8a4b7c71f94",
+        "40a6526ecc7b6a0f4a018ffdf6075bbd4c98531ed8c5bb1de3267e301dc36191",
+        "08a88a7beba12c10f67ee3761db43986e72b20ff74df9d15000d3d956880a2f6",
+        "e5c2f2a504b3ecf7074c4ae7befa8f954df8cfd43c8067a4d3ea1fa141e49f01",
+        "b4cb1960c7bf6ea9ed9516537cf67761bde0d0324ef4985ef557e02631f8c5e5",
+        "c064fbdcea13b94da112295a592f0cdd8a11c145e8ef16ce5984e77b0be8c28e",
+      ]);
+    expect(t2DeckItemIds("en", "00000000-0000-4000-8000-000000000000")).toEqual([
+        "99aa164bad9534302bf6410ec3fa57834867290ed3e5e2c0aed698c4af81b7fd",
+        "1c8ff5ea70da707850836ee4da907a72e21f898136c3c9f7e49e1d7880e6e02c",
+        "e5c2f2a504b3ecf7074c4ae7befa8f954df8cfd43c8067a4d3ea1fa141e49f01",
+        "08a88a7beba12c10f67ee3761db43986e72b20ff74df9d15000d3d956880a2f6",
+        "b4cb1960c7bf6ea9ed9516537cf67761bde0d0324ef4985ef557e02631f8c5e5",
+        "c064fbdcea13b94da112295a592f0cdd8a11c145e8ef16ce5984e77b0be8c28e",
+      ]);
+    expect(t2DeckItemIds("en")).toEqual([
+        "99aa164bad9534302bf6410ec3fa57834867290ed3e5e2c0aed698c4af81b7fd",
+        "1c8ff5ea70da707850836ee4da907a72e21f898136c3c9f7e49e1d7880e6e02c",
+        "08a88a7beba12c10f67ee3761db43986e72b20ff74df9d15000d3d956880a2f6",
+        "a78afdff4d93e3ee261ea94db503c460cd7f7405ca10383a234ec62023d876e6",
+        "b4cb1960c7bf6ea9ed9516537cf67761bde0d0324ef4985ef557e02631f8c5e5",
+        "c064fbdcea13b94da112295a592f0cdd8a11c145e8ef16ce5984e77b0be8c28e",
+      ]);
+    // ja and ko hold one provenance item each, so they are dealt 5, not 6.
+    expect(t2DeckItemIds("ja", "att-golden")).toEqual([
+        "eb8a1ecdb191f988d0a7d4959bd58e5fc8aa2ccab44c1ced90bf06f2f23f3af4",
+        "9a329c4d4d0fb465ac851213d4509a079d523540ea43d329a624b78f7445c413",
+        "896ef91898f0fc31e4e8d81cc7ca602a08b39e8c79d600ff9ef9acd434fd2977",
+        "cea6f4526502532744dac668ff869fa6242830123a17133e348cd4d33b8964cd",
+        "9afd7a80e3ff5745e67f20150429228cb3b6a2786082f72c2509eb33bd69f51c",
+      ]);
+    expect(t2DeckItemIds("ko", "att-golden")).toEqual([
+        "467f1542f1768b7d6b12c4a1cf1bab38818862623c3436956a036a436a6a79fd",
+        "6400207b520b6a0fc47316b30c7778c6fdd786ee4ff25bc08729cc482277e26b",
+        "0c0ba40a715f675c3ed9c737407d261d1c71fa996eeae1532e69f2dd44fa4e84",
+        "21c7a83e8996e1a442dde96fd78640d6253bb19520c479bb7222da941a9ee36b",
+        "d012ebe571eea7236546163071baeb557c3479e190418711517d5a1d0eba0723",
+      ]);
+  });
+
+  it("the deck it deals is the deck the instrument declares", () => {
+    expect(t2DeckComposition()).toEqual({ mediaPairs: 1, text: 2, provenance: 2 });
+    const declared = t2DeckComposition();
+    const deck = t2Items("en", "att-declared");
+    expect(deck.filter(isMedia)).toHaveLength(2 * declared.mediaPairs);
+    expect(deck.filter((i) => !isMedia(i) && i.type !== "provenance")).toHaveLength(declared.text);
+    expect(deck.filter((i) => i.type === "provenance")).toHaveLength(declared.provenance);
   });
 });

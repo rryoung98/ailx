@@ -1,8 +1,10 @@
 /**
  * T3 pure scoring — spec §T3 "Score allocation". 160 points.
- *   50 RSR    planted-error detection: caught & rejected seeded wrong outputs
- *   30 RAIR   deliberate adoption of correct advice
- *   35        process quality from the transcript
+ *   50 overReliance   planted-error detection: caught & rejected seeded wrong
+ *                     outputs
+ *   30 underReliance  deliberate adoption of correct advice
+ *   35        process quality from the transcript (a quarter of it is
+ *             DISCRIMINATING verification — see {@link verificationTally})
  *   45        analysis quality from STORED jury judgments (never called here)
  * 115 of 160 points are model-free measurement of behaviour.
  * No I/O, no clock, no randomness.
@@ -27,14 +29,25 @@
  * The design that survives all three is not to ask but to make the model
  * genuinely asymmetric and measure what the candidate did. On a planted-error
  * claim the assistant is actively harmful, so rejecting it is appropriate
- * NON-reliance (RSR). On a correct-advice claim it is right and faster, so
- * adopting it is appropriate reliance (RAIR). The key is then an empirical
+ * NON-reliance (the `overReliance` component). On a correct-advice claim it
+ * is right and faster, so adopting it is appropriate reliance (the
+ * `underReliance` component). The key is then an empirical
  * one — did the model make the answer better — not a normative one, and it is
  * two-tailed by construction. {@link relianceIndex} reports both tails.
  *
- * HONESTY NOTE ON THE EVIDENCE. RSR and RAIR are named after the appropriate-
- * reliance literature, but the two-tailed INDEX below is AILX's own
- * construction: we have found no published index or scoring scheme for
+ * HONESTY NOTE ON THE EVIDENCE. The two components were called `rsr` and
+ * `rair` until 2026-09-02, after Schemmer, Kühl, Benz, Bartos and Satzger
+ * (IUI '23, doi:10.1145/3581641.3584066). We do not compute those two
+ * statistics. Both condition on an independent first answer the candidate
+ * commits BEFORE the model speaks, and T3 has no such first stage: every
+ * denominator here is surfaced claims. What this file measures is the pair
+ * the wider literature calls over- and under-reliance (Passi & Vorvoreanu,
+ * Overreliance on AI: Literature Review, MSR-TR-2022-12), so the components
+ * carry those names. Spec §T3, "Stated against our own case", states this
+ * in full; `docs/TRANSFER-STUDY.md` §3.1 is the block that would let us
+ * report the published RSR and RAIR beside them.
+ *
+ * The two-tailed INDEX below is AILX's own construction: we have found no published index or scoring scheme for
  * calibrated reliance to inherit, and no published validity evidence for this
  * one. It is defended here on design grounds — it is behavioural, keyless,
  * un-gameable by verbal sophistication and symmetric — and it is reported
@@ -42,11 +55,21 @@
  * would hide which failure a candidate made. Treat it as descriptive until it
  * has been validated against something external.
  *
- * RAIR (F5): appropriate reliance is a SEQUENCE, not a final stance. A claim
+ * UNDER-RELIANCE (F5): appropriate reliance is a SEQUENCE, not a final stance. A claim
  * must first be deliberated — challenged, or THAT claim checked against the
  * source after it surfaced — before its acceptance earns full credit. A blind
  * instant accept of correct advice earns half credit: the candidate happened
  * to be right, but exhibited the same behaviour that swallows planted errors.
+ *
+ * VERIFICATION (TEN-30): the verification quarter of Process scores checks
+ * that RESOLVED a claim, never the number of checks. Rationale and the limit
+ * of what the transcript can show are on {@link verificationTally}.
+ *
+ * TIME CONDITION (TEN-30): a form may declare `timeBudgetMinutes`, so the
+ * same task can be run at 90 minutes or at 30 and the record says which. The
+ * value is copied into raw as `condition.timeBudgetMinutes` and changes no
+ * arithmetic. A form that declares nothing records 0 and behaves exactly as
+ * before.
  *
  * Analysis (F6): stored jury judgment values are NORMALIZED [0,1] by contract
  * (JudgeResponse.value); out-of-range stored values throw. The word-count
@@ -56,31 +79,113 @@
  * 'analysis.lengthGate'. The component is clamped to [0, weights.analysis].
  */
 import type { Judgment } from "@ailx/core";
+import { meanValue, round3, validatedValues } from "@ailx/core";
 import type { T3Artifact, T3Config, T3Turn } from "./types.js";
 
 /** Demo jury band scale — DemoJudge normalizes bands 0..5 to [0,1] by /5. */
 export const RUBRIC_BAND_MAX = 5;
 
 /**
- * Planted errors a form must SURFACE before its RSR rate is worth reporting
- * as a rate.
+ * Planted errors a form must SURFACE before the over-reliance rate is worth
+ * reporting as a rate.
  *
  * Four was the shipped number and 50 points now ride on it. A four-item
  * subtest cannot have usable reliability: catching 2 of 4 versus 3 of 4 is a
  * 12.5-point difference decided by essentially one event. Eight is the floor
- * this file will report against; `raw['rsr.underpowered']` is 1 when a
- * sitting came in under it, so an underpowered RSR is visible in the record
- * rather than inferred from the form.
+ * this file will report against; `raw['overReliance.underpowered']` is 1 when
+ * a sitting came in under it, so an underpowered rate is visible in the
+ * record rather than inferred from the form.
  */
-export const RSR_MIN_SURFACED = 8;
+export const OVER_RELIANCE_MIN_SURFACED = 8;
 
 /**
- * |relianceIndex| within this band is reported as CALIBRATED. Declared
- * constant, not a fitted threshold — there is no validation set to fit it on.
+ * |relianceIndex| within this band is reported as CALIBRATED.
+ *
+ * ARBITRARY. 0.25 is a declared cutline, not a derived one: no cohort has sat
+ * this instrument, so there is nothing to fit it on, and no published
+ * reliability figure exists for any behavioural reliance measure (TEN-32
+ * evidence review; the one direct test-retest study of advice taking found
+ * ICC < 0.5 — Karvelis et al., PLoS ONE 19(11):e0312255, 2024).
+ *
+ * What would derive it: reliance rates from a cohort that sat this form, plus
+ * a test-retest sitting on a parallel form ≥ 14 days later. The band should
+ * then be set no narrower than the measurement error it must survive — the
+ * width of the interval on a single candidate's rate, and the ICC(2,1) of
+ * `reliance.over` and `reliance.under` across the two sittings. Until then
+ * the band is a presentation choice and moves no points.
  */
 export const RELIANCE_CALIBRATED_BAND = 0.25;
 
 export type RelianceBand = "over-reliant" | "calibrated" | "under-reliant";
+
+/** A two-sided 95% interval on a rate or on a difference of two rates. */
+export interface Interval {
+  lo: number;
+  hi: number;
+}
+
+/** 95% two-sided normal quantile. */
+const Z95 = 1.959963985;
+
+/**
+ * Wilson score interval for a proportion — TEN-35.
+ *
+ * A reliance rate is estimated from 8 events at most, and the interval is the
+ * point of reporting it: at p = 0.5 on 8 trials the 95% interval is about
+ * ±0.35, so 5 of 8 and 7 of 8 do not separate.
+ *
+ * Wilson, not Wald: the Wald interval p ± z·sqrt(p(1−p)/n) has coverage far
+ * below nominal at small n and collapses to zero width at p = 0 and p = 1,
+ * which is exactly where an 8-event reliance rate lands most often. Wilson
+ * keeps its bounds inside [0, 1], stays non-degenerate at the extremes, and
+ * is the interval Newcombe (1998, Statistics in Medicine 17:857–872) puts
+ * first for small samples. Clopper–Pearson would also be defensible but is
+ * conservative and needs an incomplete beta function; Wilson is closed form,
+ * so it stays pure and needs no numerical library.
+ *
+ * `n = 0` returns [0, 1]: nothing was observed, so nothing is excluded.
+ */
+export function wilsonInterval(successes: number, n: number): Interval {
+  if (n <= 0) return { lo: 0, hi: 1 };
+  const p = successes / n;
+  const d = 1 + (Z95 * Z95) / n;
+  const centre = (p + (Z95 * Z95) / (2 * n)) / d;
+  const half = (Z95 / d) * Math.sqrt((p * (1 - p)) / n + (Z95 * Z95) / (4 * n * n));
+  // At p = 0 the bound is 0 and at p = 1 it is 1, exactly; the arithmetic
+  // above leaves ~1e-17 of float residue there. Pin the two ends.
+  return {
+    lo: successes <= 0 ? 0 : Math.max(0, centre - half),
+    hi: successes >= n ? 1 : Math.min(1, centre + half),
+  };
+}
+
+/**
+ * Interval on `secondRate − firstRate` by Newcombe's hybrid score method
+ * (method 10 of Newcombe 1998, Statistics in Medicine 17:873–890), built
+ * from the two Wilson intervals.
+ *
+ * The index is a difference of two independent rates, and a difference score
+ * is the least reliable object in this literature (Hedge, Powell & Sumner,
+ * Behav. Res. Methods 50:1166–1186, 2018; Enkavi et al., PNAS 2019, median
+ * contrast ICC 0.174). Naively adding the two half-widths overstates the
+ * width; the square-and-add form below is the standard fix and keeps the
+ * bounds inside [−1, 1].
+ */
+export function proportionDifferenceInterval(
+  firstSuccesses: number,
+  firstN: number,
+  secondSuccesses: number,
+  secondN: number,
+): Interval {
+  const p1 = firstN > 0 ? firstSuccesses / firstN : 0;
+  const p2 = secondN > 0 ? secondSuccesses / secondN : 0;
+  const a = wilsonInterval(firstSuccesses, firstN);
+  const b = wilsonInterval(secondSuccesses, secondN);
+  const d = p2 - p1;
+  const lo = d - Math.sqrt((p2 - b.lo) ** 2 + (a.hi - p1) ** 2);
+  const hi = d + Math.sqrt((b.hi - p2) ** 2 + (p1 - a.lo) ** 2);
+  return { lo: Math.max(-1, lo), hi: Math.min(1, hi) };
+}
 
 export interface Reliance {
   /** Surfaced planted errors the candidate did NOT challenge, in [0,1]. */
@@ -133,24 +238,33 @@ export function relianceIndex(
 }
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const round3 = (x: number) => Math.round(x * 1000) / 1000;
 
 export interface T3Raw {
-  rsr: number;
+  overReliance: number;
   analysis: number;
   process: number;
-  rair: number;
+  underReliance: number;
   /** Diagnostics */
   plantedSurfaced: number;
   plantedCaught: number;
   adviceSurfaced: number;
   adviceAdopted: number;
-  /** Advice claims accepted only after deliberation (full RAIR credit). */
+  /** Advice claims accepted only after deliberation (full adoption credit). */
   adviceDeliberated: number;
   promptCount: number;
   revisionChainLength: number;
-  /** DISTINCT surfaced claims checked against the source (`verifiedClaimIds`). */
+  /**
+   * DISTINCT surfaced claims checked against the source (`verifiedClaimIds`).
+   * VOLUME. Reported as a diagnostic and scored nowhere — see
+   * {@link verificationTally}.
+   */
   verificationCount: number;
+  /** Checks that could be judged: known-status claims, checked before the answer was final. */
+  verificationsChecked: number;
+  /** Of those, the ones whose check was followed by the right call on the claim. */
+  discriminatingVerifications: number;
+  /** The scored rate, `discriminating / max(checked, DISCRIMINATING_MIN_CHECKS)`. */
+  discriminatingVerificationRate: number;
   deliberationRate: number;
   meanJuryBand: number;
   jurySpread: number;
@@ -166,8 +280,16 @@ export interface T3Raw {
   "reliance.over": number;
   "reliance.under": number;
   "reliance.index": number;
-  /** 1 when the form surfaced fewer than RSR_MIN_SURFACED planted errors. */
-  "rsr.underpowered": number;
+  /** 1 when the form surfaced fewer than OVER_RELIANCE_MIN_SURFACED plants. */
+  "overReliance.underpowered": number;
+  /**
+   * The time budget the FORM declared for this sitting, in minutes, or 0 when
+   * it declared none (every sitting before TEN-30). Carried into the stored
+   * record so a later analysis can compare the 90- and 30-minute conditions
+   * without guessing what a sitting ran under. It is a label, not a score:
+   * nothing in score() branches on it.
+   */
+  "condition.timeBudgetMinutes": number;
 }
 
 /** Final stance per claim id: last challenged/accepted turn wins. */
@@ -179,6 +301,121 @@ function finalStances(transcript: ReadonlyArray<T3Turn>): Map<string, "challenge
     }
   }
   return stance;
+}
+
+/**
+ * Checks needed before the verification term can pay in full. Two distinct
+ * DISCRIMINATING checks, the same scale as the volume rule this replaced.
+ */
+export const DISCRIMINATING_MIN_CHECKS = 2;
+
+/**
+ * What one sitting's verification behaviour was worth.
+ *
+ * `checked` is the denominator: distinct claims of KNOWN truth status that
+ * the candidate checked after the assistant raised them and before the
+ * answer was final. `discriminating` is the subset the check resolved.
+ */
+export interface VerificationTally {
+  checked: number;
+  discriminating: number;
+  /** `discriminating / max(checked, DISCRIMINATING_MIN_CHECKS)`, in [0,1]. */
+  rate: number;
+}
+
+/**
+ * DISCRIMINATING VERIFICATION — the scored verification measure (TEN-30).
+ *
+ * The old rule paid for volume: two distinct claims checked, full quarter of
+ * the Process component, whatever the checks found. Volume is the wrong
+ * target. A candidate who knows the transcript is scored can check every
+ * claim and learn nothing, and that performative checking is the behaviour
+ * this track exists to detect.
+ *
+ * A check counts as discriminating when all of these hold:
+ *
+ *  1. it names the claim it checked (`object: 'claim:<id>'`) and that claim
+ *     was raised by the assistant first — the existing {@link verifiedClaimIds}
+ *     rule;
+ *  2. the form knows whether the claim was true: it is a planted error or a
+ *     correct-advice claim. A surfaced claim in neither list is dropped from
+ *     numerator AND denominator, because nothing in the record says whether
+ *     there was an error to find;
+ *  3. the check happened before the `submitted` turn. A check after the
+ *     answer is final cost the candidate nothing and changed nothing;
+ *  4. the candidate's final stance BEFORE the answer was final was recorded
+ *     after the check, and it resolves the claim the right way: challenged a
+ *     planted error, accepted correct advice. A stance taken after the
+ *     `submitted` turn changed nothing the candidate wrote, so it neither
+ *     earns nor removes credit.
+ *
+ * Repeat checks of one claim count once, in both halves of the fraction.
+ *
+ * WHAT THIS CANNOT SEE, stated plainly. The transcript records that a claim
+ * was checked, not what the candidate read. So "discriminating" here means
+ * *the check was followed by the right call on that claim*, not *the
+ * candidate found the discrepancy in the source*. A lucky call after an
+ * idle press scores the same as a real one. Separating those two needs an
+ * event we do not record — which passage the candidate opened, and whether
+ * they marked a mismatch — and inventing that event before the timed/untimed
+ * arm of `docs/TRANSFER-STUDY.md` §3.5 runs would be building an instrument
+ * for a study nobody has designed. What the rule DOES buy is that checking
+ * everything no longer pays: every check the candidate does not resolve, or
+ * resolves the wrong way, sits in their denominator and pays nothing.
+ *
+ * The planted half overlaps the over-reliance component by construction
+ * (that component pays for the stance, this pays for the check that preceded
+ * it). That is deliberate: the two components measure the outcome and the
+ * process that produced it, and the verification term is a quarter of
+ * Process, not a second over-reliance component.
+ */
+export function verificationTally(
+  transcript: ReadonlyArray<T3Turn>,
+  plantedIds: ReadonlyArray<string>,
+  adviceIds: ReadonlyArray<string>,
+): VerificationTally {
+  const planted = new Set(plantedIds);
+  const advice = new Set(adviceIds);
+  const submittedAt = transcript.findIndex((t) => t.verb === "submitted");
+  const answerFinalAt = submittedAt < 0 ? transcript.length : submittedAt;
+
+  const surfacedAt = new Map<string, number>();
+  const finalStanceAt = new Map<string, { at: number; verb: "challenged" | "accepted" }>();
+  transcript.forEach((t, i) => {
+    if (t.verb === "assisted" && t.claimIds) {
+      for (const id of t.claimIds) if (!surfacedAt.has(id)) surfacedAt.set(id, i);
+    }
+    // Both halves of the coupling stop at the answer: a stance recorded after
+    // the candidate submitted changed nothing they wrote.
+    if (i < answerFinalAt && (t.verb === "challenged" || t.verb === "accepted") && t.object.startsWith("claim:")) {
+      finalStanceAt.set(t.object.slice("claim:".length), { at: i, verb: t.verb });
+    }
+  });
+
+  const firstCheckAt = new Map<string, number>();
+  transcript.forEach((t, i) => {
+    if (i >= answerFinalAt) return;
+    if (t.verb !== "verified" || !t.object.startsWith("claim:")) return;
+    const id = t.object.slice("claim:".length);
+    if (!planted.has(id) && !advice.has(id)) return;
+    const raisedAt = surfacedAt.get(id);
+    if (raisedAt === undefined || i <= raisedAt) return;
+    if (!firstCheckAt.has(id)) firstCheckAt.set(id, i);
+  });
+
+  let discriminating = 0;
+  for (const [id, checkedAt] of firstCheckAt) {
+    const stance = finalStanceAt.get(id);
+    if (!stance || stance.at <= checkedAt) continue;
+    const resolves = planted.has(id) ? "challenged" : "accepted";
+    if (stance.verb === resolves) discriminating++;
+  }
+  const checked = firstCheckAt.size;
+  return {
+    checked,
+    discriminating,
+    rate: discriminating / Math.max(checked, DISCRIMINATING_MIN_CHECKS),
+  };
 }
 
 /**
@@ -227,11 +464,13 @@ export function revisionChainLength(transcript: ReadonlyArray<T3Turn>): number {
 }
 
 /**
- * RAIR credit for one correct-advice claim, in {0, 0.5, 1} — F5.
+ * Adoption credit for one correct-advice claim, in {0, 0.5, 1} — F5.
+ * This is what the `underReliance` component pays: 1 for a deliberated
+ * adoption, 0.5 for a blind instant accept, 0 for a refusal.
  * Order is read from transcript array position (the transcript is
  * append-only; array order is event order).
  */
-export function rairCreditForClaim(
+export function adoptionCreditForClaim(
   transcript: ReadonlyArray<T3Turn>,
   claimId: string,
 ): number {
@@ -261,17 +500,23 @@ export function rairCreditForClaim(
   return deliberated ? 1 : 0.5;
 }
 
+/**
+ * Stored jury values for the analysis dimension, RANGE-CHECKED and in the
+ * canonical ascending order — F6.
+ *
+ * The order matters to the arithmetic, not just to the eye. These values are
+ * averaged, floating-point addition is not associative, and stored rows
+ * arrive in whatever order the database returns them: the three legal values
+ * [0.1, 0.2, 0.30000000000000004] mean 0.20000000000000004 in one permutation
+ * and 0.19999999999999998 in another, and the jury values [0.69, 0.41,
+ * 0.5831666666666665] carry that difference past round3 — 25.247 points in
+ * two arrival orders, 25.248 in the other four (pinned in test/score.test.ts).
+ * So the values are canonically sorted before they
+ * are summed and the result is order-invariant BY CONSTRUCTION. The one
+ * implementation lives in `@ailx/core` (`judgments.ts`); T1 and T4 share it.
+ */
 function validatedAnalysisValues(judgments: ReadonlyArray<Judgment>): number[] {
-  return judgments
-    .filter((j) => j.dimension === "analysis")
-    .map((j) => {
-      if (!Number.isFinite(j.value) || j.value < 0 || j.value > 1) {
-        throw new Error(
-          `t3 judgment out of range: dimension=${j.dimension} sample=${j.sample} value=${j.value} (expected normalized [0,1])`,
-        );
-      }
-      return j.value;
-    });
+  return validatedValues(judgments, "analysis", "t3");
 }
 
 export function scoreT3(
@@ -287,24 +532,24 @@ export function scoreT3(
     if (t.verb === "assisted" && t.claimIds) for (const id of t.claimIds) surfacedIds.add(id);
   }
 
-  // --- RSR (25): reject the seeded wrong outputs ---------------------------
+  // --- Over-reliance (50): reject the seeded wrong outputs -----------------
   const plantedIds = cfg.plantedErrors.map((e) => e.id);
   const plantedSurfaced = plantedIds.filter((id) => surfacedIds.has(id));
   const plantedCaught = plantedSurfaced.filter((id) => stance.get(id) === "challenged");
-  const rsr =
+  const overReliance =
     plantedSurfaced.length > 0
-      ? cfg.weights.rsr * (plantedCaught.length / plantedSurfaced.length)
+      ? cfg.weights.overReliance * (plantedCaught.length / plantedSurfaced.length)
       : 0;
 
-  // --- RAIR (10): deliberate adoption of correct advice — F5 ---------------
+  // --- Under-reliance (30): deliberate adoption of correct advice — F5 -----
   const adviceIds = cfg.correctAdvice.map((a) => a.id);
   const adviceSurfaced = adviceIds.filter((id) => surfacedIds.has(id));
   const adviceAdopted = adviceSurfaced.filter((id) => stance.get(id) === "accepted");
-  const credits = adviceSurfaced.map((id) => rairCreditForClaim(transcript, id));
+  const credits = adviceSurfaced.map((id) => adoptionCreditForClaim(transcript, id));
   const adviceDeliberated = credits.filter((c) => c === 1).length;
-  const rair =
+  const underReliance =
     adviceSurfaced.length > 0
-      ? cfg.weights.rair * (credits.reduce((s, c) => s + c, 0) / adviceSurfaced.length)
+      ? cfg.weights.underReliance * (credits.reduce((s, c) => s + c, 0) / adviceSurfaced.length)
       : 0;
 
   // --- Process (20): decomposition, iteration, verification, deliberation --
@@ -313,16 +558,17 @@ export function scoreT3(
   const verificationCount = verifiedClaimIds(transcript).size;
   const actedOn = [...surfacedIds].filter((id) => stance.has(id)).length;
   const deliberationRate = surfacedIds.size > 0 ? actedOn / surfacedIds.size : 0;
+  const verification = verificationTally(transcript, plantedIds, adviceIds);
   const q = cfg.weights.process / 4;
   const process =
     q * clamp01(promptCount / 3) +      // decomposition into multiple prompts
     q * clamp01(chain / 2) +            // iterative revision chain (revision_of)
-    q * clamp01(verificationCount / 2) + // checked 2 distinct claims at source
+    q * verification.rate +             // checks that RESOLVED a claim (TEN-30)
     q * deliberationRate;               // deliberate stance on surfaced claims
 
   // --- Analysis (45): stored jury judgments only — F6 ----------------------
   const vals = validatedAnalysisValues(judgments);
-  const meanJury = vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+  const meanJury = meanValue(vals);
   const jurySpread = vals.length > 0 ? Math.max(...vals) - Math.min(...vals) : 0;
   const wordCount = finalAnswer.trim().length === 0 ? 0 : finalAnswer.trim().split(/\s+/).length;
   // Declared length gate: capped at 1 — can only withhold, never add.
@@ -340,10 +586,10 @@ export function scoreT3(
   );
 
   const raw: T3Raw = {
-    rsr: round3(rsr),
+    overReliance: round3(overReliance),
     analysis: round3(analysis),
     process: round3(process),
-    rair: round3(rair),
+    underReliance: round3(underReliance),
     plantedSurfaced: plantedSurfaced.length,
     plantedCaught: plantedCaught.length,
     adviceSurfaced: adviceSurfaced.length,
@@ -352,6 +598,9 @@ export function scoreT3(
     promptCount,
     revisionChainLength: chain,
     verificationCount,
+    verificationsChecked: verification.checked,
+    discriminatingVerifications: verification.discriminating,
+    discriminatingVerificationRate: round3(verification.rate),
     deliberationRate: round3(deliberationRate),
     meanJuryBand: round3(meanJury),
     jurySpread: round3(jurySpread),
@@ -360,11 +609,13 @@ export function scoreT3(
     "reliance.over": round3(reliance.over),
     "reliance.under": round3(reliance.under),
     "reliance.index": round3(reliance.index),
-    "rsr.underpowered": plantedSurfaced.length < RSR_MIN_SURFACED ? 1 : 0,
+    "overReliance.underpowered":
+      plantedSurfaced.length < OVER_RELIANCE_MIN_SURFACED ? 1 : 0,
+    "condition.timeBudgetMinutes": cfg.timeBudgetMinutes ?? 0,
   };
   return {
     raw,
-    scaled: round3(raw.rsr + raw.analysis + raw.process + raw.rair),
+    scaled: round3(raw.overReliance + raw.analysis + raw.process + raw.underReliance),
     reliance,
   };
 }

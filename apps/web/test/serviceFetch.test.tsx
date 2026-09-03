@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * `lib/serviceFetch.ts` — the ONE path a page takes to the exam service.
+ * `lib/data/serviceFetch.ts` — the ONE path a page takes to the exam service.
  *
  * Seven pages share it, so every rule it enforces is enforced seven times or
  * not at all: the URL comes from the seam, identity is a HEADER and only when
@@ -9,15 +9,15 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
-import { DEV_USER_HEADER } from "@ailx/contract";
+import { apiPath, DEV_USER_HEADER, type ApiPath } from "@ailx/contract";
 import {
   SERVICE_ERROR_COPY,
   firstValueQuery,
   serviceFetch,
   useService,
   type ServiceState,
-} from "../lib/serviceFetch";
-import { setAuthTokenSource } from "../lib/authHeaders";
+} from "../lib/data/serviceFetch";
+import { setAuthTokenSource } from "../lib/data/authHeaders";
 import { installMemoryStorage, renderClient, renderClientPending } from "./helpers/clientPage";
 
 installMemoryStorage();
@@ -58,20 +58,20 @@ describe("where it asks", () => {
   it("hangs the path off apiBase() — same-origin, basePath included", async () => {
     stub(200);
     vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "/ailx");
-    await serviceFetch("/progress");
+    await serviceFetch(apiPath("progress"));
     expect(seen[0].url).toBe("/ailx/api/progress");
   });
 
   it("follows the seam to the exam service's /v1 prefix", async () => {
     stub(200);
     vi.stubEnv("NEXT_PUBLIC_AILX_API_BASE", SERVICE);
-    await serviceFetch("/gallery?type=MSVD");
+    await serviceFetch(apiPath("gallery", {}, "?type=MSVD"));
     expect(seen[0].url).toBe(`${SERVICE}/v1/gallery?type=MSVD`);
   });
 
   it("never caches: a revocation must be visible the moment it lands", async () => {
     stub(200);
-    await serviceFetch("/share/abc");
+    await serviceFetch(apiPath("shareView", { token: "abc" }));
     expect(seen[0].cache).toBe("no-store");
   });
 });
@@ -79,21 +79,21 @@ describe("where it asks", () => {
 describe("identity", () => {
   it("sends nothing at all unless the caller asks for it", async () => {
     stub(200);
-    await serviceFetch("/gallery");
+    await serviceFetch(apiPath("gallery"));
     expect(seen[0].headers[DEV_USER_HEADER]).toBeUndefined();
     expect(seen[0].headers.authorization).toBeUndefined();
   });
 
   it("sends the asserted dev id as a HEADER — the Lax cookie cannot cross an origin", async () => {
     stub(200);
-    await serviceFetch("/progress", { identified: true });
+    await serviceFetch(apiPath("progress"), { identified: true });
     expect(seen[0].headers[DEV_USER_HEADER]).toBe("player-9");
   });
 
   it("prefers a proven token, and never sends both", async () => {
     stub(200);
     setAuthTokenSource(async () => "jwt-7");
-    await serviceFetch("/progress", { identified: true });
+    await serviceFetch(apiPath("progress"), { identified: true });
     expect(seen[0].headers.authorization).toBe("Bearer jwt-7");
     expect(seen[0].headers[DEV_USER_HEADER]).toBeUndefined();
   });
@@ -102,7 +102,7 @@ describe("identity", () => {
 describe("what a page is told", () => {
   it("returns the parsed body on 200", async () => {
     stub(200, { progress: { streak: 3 } });
-    const state = await serviceFetch<{ progress: { streak: number } }>("/progress");
+    const state = await serviceFetch<{ progress: { streak: number } }>(apiPath("progress"));
     expect(state).toEqual({ state: "ready", data: { progress: { streak: 3 } } });
   });
 
@@ -110,7 +110,7 @@ describe("what a page is told", () => {
     for (const status of [400, 401, 403, 404, 500]) {
       seen = [];
       stub(status, {});
-      expect(await serviceFetch("/x")).toEqual({ state: "missing", status });
+      expect(await serviceFetch(apiPath("aggregates"))).toEqual({ state: "missing", status });
     }
   });
 
@@ -118,12 +118,12 @@ describe("what a page is told", () => {
     vi.stubGlobal("fetch", async () => {
       throw new TypeError("Failed to fetch");
     });
-    expect(await serviceFetch("/x")).toEqual({ state: "error", message: SERVICE_ERROR_COPY });
+    expect(await serviceFetch(apiPath("aggregates"))).toEqual({ state: "error", message: SERVICE_ERROR_COPY });
   });
 
   it("treats an unparseable 200 body as an error rather than as data", async () => {
     vi.stubGlobal("fetch", async () => new Response("<html>gateway</html>", { status: 200 }));
-    expect((await serviceFetch("/x")).state).toBe("error");
+    expect((await serviceFetch(apiPath("aggregates"))).state).toBe("error");
   });
 
   it("stays in loading when its own abort fired — a torn-down page shows nothing", async () => {
@@ -132,7 +132,7 @@ describe("what a page is told", () => {
       ctrl.abort();
       throw new DOMException("aborted", "AbortError");
     });
-    expect(await serviceFetch("/x", { signal: ctrl.signal })).toEqual({ state: "loading" });
+    expect(await serviceFetch(apiPath("aggregates"), { signal: ctrl.signal })).toEqual({ state: "loading" });
   });
 });
 
@@ -155,16 +155,16 @@ describe("firstValueQuery", () => {
 });
 
 describe("useService", () => {
-  function Probe({ path }: { path: string | null }) {
+  function Probe({ path }: { path: ApiPath | null }) {
     const state: ServiceState<{ ok: boolean }> = useService(path, { identified: true });
     return createElement("p", null, JSON.stringify(state));
   }
 
   it("is loading while the call is in flight, and ready once it lands", async () => {
     vi.stubGlobal("fetch", () => new Promise<Response>(() => {}));
-    expect(await renderClientPending(createElement(Probe, { path: "/x" }))).toContain('"loading"');
+    expect(await renderClientPending(createElement(Probe, { path: apiPath("aggregates") }))).toContain('"loading"');
     stub(200, { ok: true });
-    expect(await renderClient(createElement(Probe, { path: "/x" }))).toContain('"ready"');
+    expect(await renderClient(createElement(Probe, { path: apiPath("aggregates") }))).toContain('"ready"');
   });
 
   it("asks for nothing at all when there is nothing to ask for", async () => {

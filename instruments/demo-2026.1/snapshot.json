@@ -81,7 +81,7 @@
         },
         "rubric": {
           "track": "t1-creative-build",
-          "total_points": 160,
+          "total_points": 135,
           "criteria": [
             {
               "id": "functional-gates",
@@ -110,18 +110,11 @@
               "points": 15,
               "scored_by": "judge",
               "judged": true
-            },
-            {
-              "id": "process-signal",
-              "name": "Prompt-log process signal",
-              "points": 25,
-              "scored_by": "arithmetic",
-              "judged": false
             }
           ]
         },
         "prompts": [],
-        "rubricVersion": "81ff5ad77d2a639a1e65bba8ea466bbbf5791e416047784824b6079decd92af1"
+        "rubricVersion": "3d340041ab0f1765a5e623ed03797f1605504462c4eaf9ebdac7b58bf1c32543"
       },
       {
         "trackId": "t2-discrimination",
@@ -132,48 +125,47 @@
           "blocks": [
             {
               "id": "media-image",
-              "items": 36,
-              "split": "18 synthetic / 18 authentic",
+              "bank_items": 8,
               "exposure_seconds": 6,
               "response": "binary+confidence"
             },
             {
               "id": "media-video",
-              "items": 14,
-              "split": "7 / 7",
+              "bank_items": 0,
               "exposure_seconds": 12,
               "response": "binary+confidence"
             },
             {
               "id": "media-audio",
-              "items": 10,
-              "split": "5 / 5",
+              "bank_items": 0,
               "exposure_seconds": 10,
               "response": "binary+confidence"
             },
             {
               "id": "message-email",
-              "items": 40,
-              "split": "20 hostile / 20 legitimate",
+              "bank_items": 4,
               "exposure_seconds": 25,
               "response": "binary+confidence"
             },
             {
               "id": "message-page",
-              "items": 20,
-              "split": "10 / 10",
+              "bank_items": 4,
               "exposure_seconds": 25,
               "response": "binary+confidence"
             },
             {
               "id": "provenance",
-              "items": 12,
-              "split": null,
+              "bank_items": 4,
               "exposure_seconds": null,
               "response": "structured-selection+short-text",
               "untimed": true
             }
           ],
+          "deck": {
+            "media_pairs": 1,
+            "text": 2,
+            "provenance": 2
+          },
           "scoring": {
             "sensitivity_model": "signal-detection",
             "correction": "log-linear",
@@ -762,8 +754,8 @@
             "count_per_form": 4
           },
           "reliance_constructs": [
-            "RSR",
-            "RAIR"
+            "over-reliance",
+            "under-reliance"
           ],
           "jury": {
             "kind": "heterogeneous-three-model",
@@ -778,14 +770,14 @@
           "criteria": [
             {
               "id": "planted-error-detection",
-              "name": "Planted-error detection (RSR)",
+              "name": "Planted-error detection (over-reliance tail)",
               "points": 50,
               "scored_by": "arithmetic",
               "judged": false
             },
             {
               "id": "appropriate-reliance",
-              "name": "Deliberate adoption of correct advice (RAIR)",
+              "name": "Deliberate adoption of correct advice (under-reliance tail)",
               "points": 30,
               "scored_by": "arithmetic",
               "judged": false
@@ -807,7 +799,7 @@
           ]
         },
         "prompts": [],
-        "rubricVersion": "e0bb0b7b8889fc8e00212a780c8a88a0ee1a8413e180f2287791423c2f557194"
+        "rubricVersion": "1c0b2fc5eff7f47b6a94fd80214f8044a03745497351bd60666afcf30dca7ebf"
       },
       {
         "trackId": "t4-generative",
@@ -873,22 +865,42 @@
       "packageVersion": "0.0.1",
       "sources": [
         {
+          "path": "@ailx/core/src/allocation.ts",
+          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
+        },
+        {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/judgments.ts",
+          "sha256": "69b2f911d76e9ab1b20991efb5d85a6da6a5df9cd7e819a3fb53fbfd3ffb0ed7"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
+        {
           "path": "src/plugin.ts",
           "sha256": "aad22b8949c42e21fb91b7c7d1a05665b051126c6df367b8de51f95fbffdfe64"
         },
         {
           "path": "src/score.ts",
-          "sha256": "cf66c6fc83c8123e7022e80b8c4ce44f89bc011f942388299e415d8b57c080bd"
+          "sha256": "fdce4ff1b52841a8442333f1b79b6ede5259bea13ab0905e202ce76af031e762"
         },
         {
           "path": "src/types.ts",
-          "sha256": "886aa536f10d668b9597f28bdb1e6ca287705f4794586e24127b3135dbba31e7"
+          "sha256": "69e4a0b960533ae1697000f937152d6c098c89255456cda021a0948b357108e6"
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "5947f628cec8ffb38fe3e736d9e340d8ef2309ce3ef9efe2a8b631e482d0e88e"
+      "digest": "5e5abfdb8a1dc9220aec1d13d80ce9bfc026bbf5e10425dea5281f15a521d906"
     },
     {
       "trackId": "t2",
@@ -896,12 +908,28 @@
       "packageVersion": "0.1.0",
       "sources": [
         {
+          "path": "@ailx/core/src/allocation.ts",
+          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
+        },
+        {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
+        {
           "path": "src/plugin.ts",
           "sha256": "bdee4b063db5a3dfe9c5ed6b5de285270dbd65dc82f1676ca8196f5044eaf814"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "f4ab81b0f0bf5b2e8fbede2b84f68007efbc1263de31ddadd56f0f0cf88040e4"
+          "sha256": "b68e0ef6a491ddfe80e9ffe2859cfb02ad1775592820118476e96d9121b075f8"
         },
         {
           "path": "src/types.ts",
@@ -909,9 +937,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "0b08fa8d10a8efb05a9292da75e76adab893be614babeff84bcbad58dcc246e7"
+      "digest": "4ac4a4584c622fb9c2ac37781dbdb56bfbce9b1089556fcf573c33175a14f511"
     },
     {
       "trackId": "t3",
@@ -919,22 +947,42 @@
       "packageVersion": "0.0.1",
       "sources": [
         {
+          "path": "@ailx/core/src/allocation.ts",
+          "sha256": "6ff84888a7956e0fb2e3fe090ca4f894145d118341776f5374ab9e81d027dc92"
+        },
+        {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/judgments.ts",
+          "sha256": "69b2f911d76e9ab1b20991efb5d85a6da6a5df9cd7e819a3fb53fbfd3ffb0ed7"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
+        {
           "path": "src/plugin.ts",
-          "sha256": "01c0556a8841e718e7bdaeeb3158733e2da3fa3321d34aa46eeaf2f56b075082"
+          "sha256": "95e088f0be6b5b49a9c3bd9dd59703e62f76d1e4c3f3a621366b885b0c06409c"
         },
         {
           "path": "src/scoring.ts",
-          "sha256": "909b454d7500f3a26a17ec50de6010d32342c3511610fa51e63cfa416ec13023"
+          "sha256": "3d686bf19e5111f7684ca416ee3ea6122188265d9dadbabe1e95e51644de33e8"
         },
         {
           "path": "src/types.ts",
-          "sha256": "250ca873296d60a29bd0f6be35c7c08af08e9396f07d13fe693080d190e12796"
+          "sha256": "b689942581c83b729d30916dd3d0298e69d2322023803ab49871ecef84de1800"
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "65741e794c7be3e3a23346a05b2049ae4089a51f7ea0f8e44c1d7a27882c648c"
+      "digest": "049db8670e4190a0b6b0356df5fdee328714e6f21f585bd9198896851409eed8"
     },
     {
       "trackId": "t4",
@@ -942,12 +990,28 @@
       "packageVersion": "0.0.1",
       "sources": [
         {
+          "path": "@ailx/core/src/index.ts",
+          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+        },
+        {
+          "path": "@ailx/core/src/judgments.ts",
+          "sha256": "69b2f911d76e9ab1b20991efb5d85a6da6a5df9cd7e819a3fb53fbfd3ffb0ed7"
+        },
+        {
+          "path": "@ailx/core/src/plugin.ts",
+          "sha256": "86c259176c480a0cdae4e7060c73408753b23c84a7f54f4e3cb5c7a92b67bbbf"
+        },
+        {
+          "path": "@ailx/core/src/rounding.ts",
+          "sha256": "9466f9b06471c55ddc51a1378f37595dc784c4ec3a9c7022137f1e7508127585"
+        },
+        {
           "path": "src/plugin.ts",
           "sha256": "bff0441c61a666292cf35d278c97ea50032e1b504e5e591fa534bccd0a6e54ef"
         },
         {
           "path": "src/score.ts",
-          "sha256": "fb9492052e6ec2fb78b6f0d6786611a21e2303704bb80fa92831b6c6ed9be2b0"
+          "sha256": "8aaa46a82219bcb12dd72f4e9165273fdafff1f1a12ed19f254daa940dfae9c5"
         },
         {
           "path": "src/types.ts",
@@ -955,9 +1019,9 @@
         }
       ],
       "externals": [
-        "@ailx/core@0.1.0"
+        "@ailx/core@0.4.0"
       ],
-      "digest": "c5dfc791d6dc7569e12a8fb580df3f66c9328e63224071f57ef6d5db01453729"
+      "digest": "e42beeeb13006c950338b2dc6d80569da42048b74548f78f574f7234903f6561"
     }
   ]
 }

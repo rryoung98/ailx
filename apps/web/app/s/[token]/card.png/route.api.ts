@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { apiPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
 import { pageOrigin, serverApiBase } from "../../../../lib/server/page";
 import { characterDataUrl } from "../../../../lib/server/portrait";
@@ -6,7 +7,7 @@ import {
   SHARE_CARD_HEIGHT,
   SHARE_CARD_WIDTH,
   shareCardElement,
-} from "../../../../lib/shareCardArt";
+} from "../../../../features/share/shareCardArt";
 
 /**
  * GET /s/:token/card.png — the og:image for a share view.
@@ -42,7 +43,7 @@ export async function GET(
   try {
     // Over HTTP to the exam service, exactly as the page does — this app has
     // no store to read and no handler to call.
-    const res = await fetch(`${await serverApiBase()}/share/${encodeURIComponent(token)}`, {
+    const res = await fetch(`${await serverApiBase()}${apiPath("shareView", { token })}`, {
       cache: "no-store",
     });
     if (!res.ok) return notFound();

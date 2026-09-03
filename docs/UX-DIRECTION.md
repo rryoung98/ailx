@@ -10,10 +10,10 @@ return daily, feel themselves improving, and share what they got.
 ## The tension, stated honestly
 
 `AILX-Spec-2026.1.md` says the opposite in one place: "No cosmetic unlocks or currency.
-The audience is adult professionals at a diplomatic summit; the tone should be closer to a
-well-made instrument than to a mobile game."
+The audience is adult professionals; the tone should be closer to a well-made instrument
+than to a mobile game."
 
-That rule was written for a summit audience. The product has since chosen virality as its
+That rule was written for a professional exam audience. The product has since chosen virality as its
 main focus. Both can be true — but only if the surfaces are separated deliberately.
 
 ## The resolution: split the surfaces

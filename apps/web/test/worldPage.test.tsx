@@ -21,7 +21,7 @@ import {
   stubJsonFetch,
   type StubbedCall,
 } from "./helpers/clientPage";
-import { WorldView } from "../lib/WorldView";
+import { WorldView } from "../features/world/WorldView";
 import { metadata } from "../app/world/page.api";
 
 const shapes = (n: number): TrackRawScores[] =>
@@ -94,6 +94,22 @@ describe("what it publishes", () => {
     expect(html).toContain("<caption");
     expect(html).toContain('scope="row"');
     expect(html).toContain("2026-02-02");
+  });
+
+  // docs/SAMPLING.md §11: a Track A surface carries its own disclosure, in the
+  // payload, above the finding. This page is the only public one that counts
+  // people, so it is the one that has to say what the count is not.
+  it("says the cohort is self-selected, above the first count", async () => {
+    const html = await markup();
+    expect(html).toContain("self-selected");
+    expect(html).toContain("not a sample of any country");
+    expect(html.indexOf("self-selected")).toBeLessThan(html.indexOf("runs started"));
+  });
+
+  it("never describes the stored runs as a population", async () => {
+    const html = await markup();
+    expect(html).not.toContain("whole population");
+    expect(html).toContain("no figure on this page describes a population");
   });
 });
 

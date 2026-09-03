@@ -19,7 +19,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import Home from "../app/page";
 import Methodology from "../app/methodology/page";
-import { Annotation } from "../lib/Annotation";
+import { Annotation } from "../components/ui/Annotation";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 

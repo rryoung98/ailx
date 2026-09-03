@@ -16,10 +16,10 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { SCENE_IDS } from "../lib/track3d/registry";
-import { usePrefersReducedMotion, useSceneVisibility } from "../lib/track3d/presence";
-import { TrackScene } from "../lib/track3d/TrackScene";
-import { TrackBands, supportLine } from "../lib/track3d/TrackBands";
+import { SCENE_IDS } from "../features/landing/track3d/registry";
+import { usePrefersReducedMotion, useSceneVisibility } from "../features/landing/track3d/presence";
+import { TrackScene } from "../features/landing/track3d/TrackScene";
+import { TrackBands, supportLine } from "../features/landing/track3d/TrackBands";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -53,26 +53,26 @@ describe("lazy-import boundary (no three in the server graph)", () => {
 
   it.each([
     "app/page.tsx",
-    "lib/track3d/TrackBands.tsx",
-    "lib/track3d/CampusJourney.tsx",
-    "lib/track3d/TrackScene.tsx",
-    "lib/track3d/registry.ts",
-    "lib/track3d/presence.ts",
-    "lib/TrackVisuals.tsx",
+    "features/landing/track3d/TrackBands.tsx",
+    "features/landing/track3d/CampusJourney.tsx",
+    "features/landing/track3d/TrackScene.tsx",
+    "features/landing/track3d/registry.ts",
+    "features/landing/track3d/presence.ts",
+    "features/landing/TrackVisuals.tsx",
   ])("%s never statically imports three/@react-three", (rel) => {
     expect(src(rel)).not.toMatch(STATIC_THREE);
   });
 
   it("scenes.tsx is reached only via a dynamic import in registry.ts", () => {
-    const registry = src("lib/track3d/registry.ts");
+    const registry = src("features/landing/track3d/registry.ts");
     expect(registry).toContain('import("./scenes")');
     expect(registry).not.toMatch(/^\s*import\s[^;]*from\s+["']\.\/scenes["']/m);
     // no other landing module short-circuits the boundary
-    for (const rel of ["app/page.tsx", "lib/track3d/TrackBands.tsx", "lib/track3d/CampusJourney.tsx", "lib/track3d/TrackScene.tsx"]) {
+    for (const rel of ["app/page.tsx", "features/landing/track3d/TrackBands.tsx", "features/landing/track3d/CampusJourney.tsx", "features/landing/track3d/TrackScene.tsx"]) {
       expect(src(rel)).not.toMatch(/from\s+["'][^"']*scenes["']/);
     }
     // and the scenes module is the one place three is allowed
-    expect(src("lib/track3d/scenes.tsx")).toMatch(/from\s+["']three["']/);
+    expect(src("features/landing/track3d/scenes.tsx")).toMatch(/from\s+["']three["']/);
   });
 
   it("registry lists exactly the four track scenes", () => {
@@ -83,7 +83,7 @@ describe("lazy-import boundary (no three in the server graph)", () => {
 // ---- anti-grain guard (user-reported: "grainy as hell") ------------------
 
 describe("scene render quality", () => {
-  const scenes = () => src("lib/track3d/scenes.tsx");
+  const scenes = () => src("features/landing/track3d/scenes.tsx");
 
   it("renders at the device pixel ratio up to 2 (no sub-DPR upscaling grain)", () => {
     expect(scenes()).toContain("dpr={[1, 2]}");

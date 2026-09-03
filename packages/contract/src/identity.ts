@@ -33,7 +33,7 @@ export const DEV_USER_COOKIE = "ailx_dev_user";
  * sides of the repository split.
  *
  * It has to live here because the guarantee spans two repos and neither can
- * see the other: the BROWSER writes the id (`apps/web/lib/persistence.ts`, the
+ * see the other: the BROWSER writes the id (`apps/web/lib/data/persistence.ts`, the
  * public repo) and `DevAuthProvider` decides whether to accept it (the private
  * one). The public suite used to import `DevAuthProvider` to close that loop,
  * which is exactly the in-process coupling the split removes. So the shape is

@@ -44,7 +44,7 @@ const ROW_KEYWORDS: ReadonlyArray<readonly [string, Resolution]> = [
  * stopped being checked, so a missing row fails rather than being skipped.
  */
 function specMechanismTable(): Record<Resolution, { designed: number; implemented: number }> {
-  const heading = "#### How the 400 points are actually resolved";
+  const heading = "#### How the 375 points are actually resolved";
   const start = SPEC.indexOf(heading);
   expect(start, "§04 mechanism-table heading").toBeGreaterThan(-1);
   const section = SPEC.slice(start, SPEC.indexOf("\n#### ", start + heading.length));
@@ -83,6 +83,17 @@ describe("AILX-Spec-2026.1 §04 agrees with the allocation table", () => {
    * resolves through the stored-judge path today, whatever mechanism it is
    * designed for, because score() cannot tell a stored human comparison from
    * a stored model judgment.
+   *
+   * What this assertion does NOT do is check the metadata against the code.
+   * It reads `implemented` / `resolvedBy` — the same flags the spec sentence
+   * was derived from — so it proves the prose agrees with the table and
+   * nothing more. A component mislabelled `model-free` while its points come
+   * from a stored judgment passes here. That gap is closed empirically by
+   * `apps/web/test/allocationResolution.test.ts`, which runs the REAL plugin
+   * score() over a fixture, varies only the stored judgments, and asserts
+   * that the components which MOVE are exactly the ones this table calls
+   * judge-resolved. It lives in apps/web because core is what the track
+   * plugins import, so core may not import them back.
    */
   it("states an implemented LLM-jury exposure that matches the unimplemented set", () => {
     const spec = specMechanismTable();
@@ -102,11 +113,11 @@ describe("AILX-Spec-2026.1 §04 agrees with the allocation table", () => {
   });
 
   it("quotes the same per-track point totals the code allocates", () => {
-    expect(SPEC).toContain("**T1 — Creative Build** (160 pts");
+    expect(SPEC).toContain("**T1 — Creative Build** (135 pts");
     expect(SPEC).toContain("**T2 — Synthetic-Media Discrimination** (80 pts");
     expect(SPEC).toContain("**T3 — Calibrated Reliance** (160 pts");
     expect(SPEC).toContain("**T4 — Generative Direction** (**0 pts — unscored showcase**");
-    expect(trackPoints("t1")).toBe(160);
+    expect(trackPoints("t1")).toBe(135);
     expect(trackPoints("t2")).toBe(80);
     expect(trackPoints("t3")).toBe(160);
     expect(trackPoints("t4")).toBe(0);

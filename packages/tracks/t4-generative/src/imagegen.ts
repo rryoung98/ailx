@@ -1,12 +1,14 @@
 /**
- * OpenRouter BYOK image generation for the T4 draft loop.
+ * Image generation for the T4 draft loop.
  *
- * Mirrors t1/src/openrouter.ts conventions: the repo and deployed site are
- * PUBLIC, there is NO key here and never will be. The candidate's OpenRouter
- * key lives only in their browser's localStorage — the SAME slots T1 uses
- * (OPENROUTER_KEY_STORAGE / LLM_BASE_URL_STORAGE), so connecting once in the
- * T1 assist panel also connects T4. The constants are small local duplicates
- * on purpose: the track packages do not depend on each other.
+ * Mirrors t1/src/openrouter.ts conventions, including the one that changed in
+ * TEN-62: THE BROWSER HOLDS NO PROVIDER KEY. There is no key slot and no
+ * parameter that could carry a key into a request. What is left is an
+ * OpenAI-compatible ENDPOINT — the exam service's model gateway, the capped
+ * shared-demo proxy, or a local server — read from the SAME slot T1 uses
+ * (LLM_BASE_URL_STORAGE), so connecting once connects both tracks. The
+ * constant is a small local duplicate on purpose: the track packages do not
+ * depend on each other.
  *
  * Everything here is pure / DOM-free (fetch is injected) so the request
  * builder, response parser and error mapping are unit-testable without
@@ -14,16 +16,21 @@
  * consumes the stored artifact.
  */
 
-/** Same localStorage slot as T1's assist panel — read/write compatible. */
-export const OPENROUTER_KEY_STORAGE = "ailx:openrouter-key";
-/** Same slot as T1: persisted OpenAI-compatible API base override. */
+/** Same slot as T1: the persisted OpenAI-compatible endpoint. */
 export const LLM_BASE_URL_STORAGE = "ailx:llm-base-url";
-export const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 
-/** Normalize a user-entered base URL (trim, strip trailing slashes). Pure. */
+/**
+ * Normalize an endpoint (trim, strip trailing slashes). Empty stays EMPTY —
+ * the old `https://openrouter.ai/api/v1` default only worked because a key
+ * sat beside it in this browser. Pure.
+ */
 export function normalizeBaseUrl(base: string | null | undefined): string {
-  const trimmed = (base ?? "").trim().replace(/\/+$/, "");
-  return trimmed.length > 0 ? trimmed : DEFAULT_BASE_URL;
+  return (base ?? "").trim().replace(/\/+$/, "");
+}
+
+/** Is there an endpoint to call at all? Pure. */
+export function hasModelEndpoint(base: string | null | undefined): boolean {
+  return normalizeBaseUrl(base) !== "";
 }
 
 /** chat-completions endpoint for any OpenAI-compatible base. Pure. */
@@ -59,13 +66,18 @@ export function buildImageRequest(prompt: string, model: string): ImageChatPaylo
 }
 
 /**
- * Request init (headers/body) for fetch. Pure — key is passed in. An empty
- * key omits the Authorization header (local OpenAI-compatible servers).
+ * Request init (headers/body) for fetch. Pure.
+ *
+ * No `Authorization` header, and no parameter that could become one: the
+ * endpoint holds its own key, and the host's injected fetch says who is
+ * asking.
  */
-export function buildImageFetchInit(apiKey: string, payload: ImageChatPayload): RequestInit {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (apiKey.trim().length > 0) headers.Authorization = `Bearer ${apiKey.trim()}`;
-  return { method: "POST", headers, body: JSON.stringify(payload) };
+export function buildImageFetchInit(payload: ImageChatPayload): RequestInit {
+  return {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  };
 }
 
 export type ImageGenErrorKind =
@@ -143,23 +155,27 @@ type FetchLike = (url: string, init?: RequestInit) => Promise<{
  */
 export async function requestImage(
   fetchImpl: FetchLike,
-  apiKey: string,
   payload: ImageChatPayload,
   baseUrl?: string,
 ): Promise<GeneratedImage> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
-    res = await fetchImpl(chatCompletionsUrl(baseUrl), buildImageFetchInit(apiKey, payload));
+    res = await fetchImpl(chatCompletionsUrl(baseUrl), buildImageFetchInit(payload));
   } catch {
     throw new ImageGenError("Network error reaching the image endpoint.", "network");
   }
   if (!res.ok) {
     if (res.status === 401) {
-      throw new ImageGenError("OpenRouter rejected the key (401). Check the key.", "auth", 401);
+      throw new ImageGenError(
+        // The only action a candidate has mid-run is the offline simulator.
+        "The image endpoint would not accept this request (401). Use the offline demo to finish the track.",
+        "auth",
+        401,
+      );
     }
     if (res.status === 429) {
       throw new ImageGenError(
-        "OpenRouter rate limit (429). Wait a moment and retry.",
+        "Image rate limit (429). Wait a moment and retry.",
         "rate-limit",
         429,
       );

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { TrackUIProps } from "@ailx/core";
 import { demoAssist } from "./assist.js";
@@ -9,21 +9,14 @@ import {
   buildVibeRequest,
   clearLlmConnection,
   CURATED_MODELS,
-  DEFAULT_BASE_URL,
   extractHtmlFence,
   fetchModelIds,
+  hasModelEndpoint,
   LLM_BASE_URL_STORAGE,
   normalizeBaseUrl,
-  OPENROUTER_KEY_STORAGE,
   OpenRouterError,
   requestVibeCompletion,
 } from "./openrouter.js";
-import {
-  cleanCallbackUrl,
-  exchangeCodeForKey,
-  extractCallbackCode,
-  PKCE_VERIFIER_STORAGE,
-} from "./sso.js";
 import { t1Plugin } from "./plugin.js";
 import { T1_TOTAL_POINTS, T1_WEIGHTS, type PromptLogEntry } from "./types.js";
 
@@ -179,10 +172,10 @@ export function Runner(props: TrackUIProps) {
     chatFromPromptLog(restored?.promptLog ?? []),
   );
   const [assistPrompt, setAssistPrompt] = useState("");
-  // BYOK OpenRouter vibe coding — key lives ONLY in the candidate's browser.
-  const [orKey, setOrKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
-  const [ssoBusy, setSsoBusy] = useState(false);
+  // Real vibe coding. The endpoint is the exam service's model gateway, the
+  // capped shared-demo proxy, or a local server; the provider key is held by
+  // whichever of those it is, never here (TEN-62).
+  const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState<string>(CURATED_MODELS[0]);
   const [customModel, setCustomModel] = useState("");
   const [modelOptions, setModelOptions] = useState<ReadonlyArray<string>>(CURATED_MODELS);
@@ -213,94 +206,56 @@ export function Runner(props: TrackUIProps) {
 
   const now = () => new Date().toISOString();
   const effectiveModel = customModel.trim() || model;
-  const hasKey = orKey.trim().length > 0;
   const effectiveBase = normalizeBaseUrl(baseUrl);
-  const customBase = effectiveBase !== DEFAULT_BASE_URL;
-  // Real mode: a key (pasted or via SSO), OR a custom local/self-hosted
-  // endpoint (key optional for e.g. Ollama/vLLM).
-  const realMode = hasKey || customBase;
+  /**
+   * How this runner reaches the model.
+   *
+   * The host's transport when there is one: in the hosted build it attaches
+   * the sitting's IDENTITY, which is the only credential a request from this
+   * browser now carries. Without one — the static export, and every unit test
+   * that renders the runner bare — the browser's own `fetch` is used, and the
+   * endpoint it reaches (the capped demo proxy, or a local server) is
+   * responsible for its own key.
+   */
+  const modelFetch = useMemo(
+    () => props.modelFetch ?? ((url: string, init?: RequestInit) => fetch(url, init)),
+    [props.modelFetch],
+  );
+  // Real mode is exactly "there is an endpoint to call". It used to also be
+  // "there is a key in this browser", and there is no such thing any more.
+  const realMode = hasModelEndpoint(effectiveBase);
 
   // Keep the newest chat bubble in view.
   useEffect(() => {
     chatEndRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
   }, [chat.length, assistBusy]);
 
-  // Load persisted key + base URL on mount (browser only — SSR safe).
+  /**
+   * The endpoint this run talks to, from the ONE shared browser slot the
+   * run-start panel owns: the exam service's model gateway in the hosted
+   * build, the capped shared-demo proxy or a local server in the static
+   * export. It is a URL, not a credential — there is no credential here.
+   */
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(OPENROUTER_KEY_STORAGE);
-      if (stored) setOrKey(stored);
       const storedBase = window.localStorage.getItem(LLM_BASE_URL_STORAGE);
       if (storedBase) setBaseUrl(storedBase);
     } catch {
-      /* storage unavailable (private mode etc.) — BYOK simply not persisted */
+      /* storage unavailable (private mode etc.) — simply not persisted */
     }
   }, []);
 
-  // OAuth PKCE callback: ?code= in the URL + a stored verifier -> exchange
-  // for a user-scoped key, then clean the URL. Client-side only.
-  useEffect(() => {
-    const code = extractCallbackCode(window.location.search);
-    if (!code) return;
-    let verifier: string | null = null;
-    try {
-      verifier = window.localStorage.getItem(PKCE_VERIFIER_STORAGE);
-    } catch {
-      /* ignore */
-    }
-    if (!verifier) return;
-    let cancelled = false;
-    setSsoBusy(true);
-    exchangeCodeForKey(fetch, code, verifier)
-      .then((key) => {
-        if (cancelled) return;
-        updateKey(key);
-        setAssistError(null);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setAssistError(
-          e instanceof OpenRouterError ? e.message : "OpenRouter sign-in failed.",
-        );
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setSsoBusy(false);
-        try {
-          window.localStorage.removeItem(PKCE_VERIFIER_STORAGE);
-        } catch {
-          /* ignore */
-        }
-        window.history.replaceState(null, "", cleanCallbackUrl(window.location.href));
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const updateKey = (value: string) => {
-    setOrKey(value);
-    setAssistError(null);
-    try {
-      if (value.trim().length > 0) {
-        window.localStorage.setItem(OPENROUTER_KEY_STORAGE, value.trim());
-      } else {
-        window.localStorage.removeItem(OPENROUTER_KEY_STORAGE);
-      }
-    } catch {
-      /* non-fatal */
-    }
-  };
-
-  /**
-   * Leave real mode for good: clear BOTH stored slots and reset the local
-   * state. Clearing only the key left a custom base URL behind, which kept
-   * realMode true and every retry failing.
+    /**
+   * Leave real mode for good: forget the endpoint and reset the local state.
+   *
+   * This is a RUN-LOCAL escape from a dead endpoint, not a disconnection. In
+   * the hosted build the service still holds the key; the candidate finishes
+   * the run on the offline demo assist and can reconnect afterwards from the
+   * run-start panel. `props.onModelDisconnect` lets the host hear it — the
+   * static export uses it to clear the stored slot.
    */
   const disconnect = () => {
-    setOrKey("");
-    setBaseUrl(DEFAULT_BASE_URL);
+    setBaseUrl("");
     setAssistError(null);
     setFailedPrompt(null);
     try {
@@ -308,6 +263,7 @@ export function Runner(props: TrackUIProps) {
     } catch {
       /* non-fatal */
     }
+    props.onModelDisconnect?.();
   };
 
   /**
@@ -330,7 +286,7 @@ export function Runner(props: TrackUIProps) {
       return;
     }
     let cancelled = false;
-    fetchModelIds(fetch, orKey.trim(), effectiveBase).then((ids) => {
+    fetchModelIds(modelFetch, effectiveBase).then((ids) => {
       if (cancelled || ids.length === 0) return;
       const merged = [...CURATED_MODELS, ...ids.filter((id) => !CURATED_MODELS.includes(id))];
       setModelOptions(merged);
@@ -338,8 +294,9 @@ export function Runner(props: TrackUIProps) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realMode, orKey, effectiveBase]);
+    // The deps below are complete; the lint disable that sat here was left
+    // over from an earlier version of this effect.
+  }, [realMode, modelFetch, effectiveBase]);
 
   // Checkpoint every meaningful mutation with explicit next values (state
   // setters have not committed yet when handlers run).
@@ -402,8 +359,8 @@ export function Runner(props: TrackUIProps) {
   };
 
   /**
-   * Real vibe-coding loop (BYOK): send brief + current document + request to
-   * OpenRouter, expect the COMPLETE updated document in one ```html fence,
+   * Real vibe-coding loop: send brief + current document + request to the
+   * connected endpoint, expect the COMPLETE updated document in one ```html fence,
    * apply it to the editor and refresh the sandboxed preview. The CSP
    * srcdoc wrapper is unchanged — the artifact stays a contained site.
    * Errors surface inline and never crash the runner.
@@ -445,7 +402,7 @@ export function Runner(props: TrackUIProps) {
         currentHtml: html,
         userPrompt: p,
       });
-      const text = await requestVibeCompletion(fetch, orKey.trim(), payload, effectiveBase);
+      const text = await requestVibeCompletion(modelFetch, payload, effectiveBase);
       const nextHtml = extractHtmlFence(text);
       if (nextHtml === null) {
         setAssistError("The model reply contained no ```html document fence. Try rephrasing.");
@@ -554,7 +511,7 @@ export function Runner(props: TrackUIProps) {
           {chat.length === 0 && (
             <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
               {realMode
-                ? "Real vibe coding (your key/endpoint, your browser only). Describe a change — the model returns the full updated document and the preview re-renders."
+                ? "Real vibe coding. This browser holds no provider key — the call goes to the endpoint above, which pays for it. Describe a change and the model returns the full updated document."
                 : "demo simulator — deterministic offline demo: same prompt, same answer. It replies with a SNIPPET and does not edit your document: paste what you want into the Code tab yourself. Every prompt is logged to your submission artifact."}
             </p>
           )}

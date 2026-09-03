@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { withQueryClient } from "./helpers/clientPage";
 import ExamPage from "../app/exam/page";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -47,11 +48,13 @@ describe("run start screen", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
 
     const connect = host.querySelector('section[aria-label="AI connection"]');
     expect(connect, "ConnectPanel must render on the start screen").not.toBeNull();
-    expect(connect!.textContent).toContain("Connect OpenRouter");
+    // The static export (this test's build) offers the capped shared demo,
+    // never a sign-in: there is no service to hold a key against (TEN-62).
+    expect(connect!.textContent).toContain("Try the shared demo model");
 
     const list = host.querySelector("ul.rule-rows");
     expect(list).not.toBeNull();
@@ -75,7 +78,7 @@ describe("run start screen", () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
 
     const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
     expect(pill.textContent).toContain("Connect a model to start");
@@ -89,12 +92,14 @@ describe("run start screen", () => {
     expect(connect.className).toContain("connect-attention");
   });
 
-  it("enables the start once a key is stored (and after ConnectPanel announces a change)", async () => {
-    window.localStorage.setItem("ailx:openrouter-key", "sk-or-test");
+  it("enables the start once an endpoint is stored (and after ConnectPanel announces a change)", async () => {
+    // The gate reads the ENDPOINT slot and nothing else: the key slot it also
+    // used to read no longer exists in either build.
+    window.localStorage.setItem("ailx:llm-base-url", "https://exam.example/v1/model");
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
 
     const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
     expect(pill.textContent).toContain("Start your run");
@@ -105,12 +110,12 @@ describe("run start screen", () => {
     expect(host.textContent).toContain("Ready");
   });
 
-  it("a custom base URL (local model, no key) also opens the gate", async () => {
+  it("a local endpoint also opens the gate", async () => {
     window.localStorage.setItem("ailx:llm-base-url", "http://localhost:11434/v1");
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
-    await act(async () => { root!.render(createElement(ExamPage)); });
+    await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
     const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
     expect(pill.textContent).toContain("Start your run");
   });

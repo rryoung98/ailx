@@ -148,6 +148,52 @@ describe("T2 released bank", () => {
       expect(JSON.stringify(item.material)).not.toMatch(/"(src|href|image_url|media_url)"/);
     }
   });
+  /**
+   * TEN-48. `track.yaml` states how many items each block holds, and the
+   * bank is beside it. Before this the file declared a 132-item form of six
+   * blocks and the released bank held 20 in four, and nothing compared the
+   * two. The private service refuses a snapshot whose declaration its bank
+   * does not meet (`assertBankAgreesWithSnapshot`); this is the same check
+   * on the tier this repo owns, where the file is edited.
+   */
+  it("declares the block counts its bank actually holds", () => {
+    // Bank item type to declared block id. The same map as
+    // apps/web/lib/instrument/instrument.ts TYPE_MAP; content-tools must not import the
+    // web app, so it is restated with this comment rather than shared.
+    const BLOCK_OF: Record<string, string> = {
+      "text-authenticity": "message-page",
+      "image-provenance": "media-image",
+      "message-hostility": "message-email",
+      "provenance-reasoning": "provenance",
+    };
+    const held = new Map<string, number>();
+    for (const i of bank.items) {
+      // No fallback block. `type` is a free string, so a typo would otherwise
+      // be counted as provenance and the totals would still add up.
+      const block = BLOCK_OF[i.type];
+      expect(block, `bank item ${i.id} has unknown type ${i.type}`).toBeDefined();
+      held.set(block, (held.get(block) ?? 0) + 1);
+    }
+    const t2 = pkg.tracks.find((t) => t.trackId === "t2-discrimination")!;
+    const blocks = t2.config.blocks as Array<{ id: string; bank_items: number }>;
+    let declaredTotal = 0;
+    for (const b of blocks) {
+      expect(Number.isInteger(b.bank_items), `${b.id} declares no integer bank_items`).toBe(true);
+      expect(held.get(b.id) ?? 0, b.id).toBe(b.bank_items);
+      declaredTotal += b.bank_items;
+    }
+    // The other direction: a block the bank fills but nobody declared.
+    for (const id of held.keys()) expect(blocks.map((b) => b.id), id).toContain(id);
+    expect(declaredTotal).toBe(bank.items.length);
+  });
+
+  it("declares what one sitting is dealt", () => {
+    const t2 = pkg.tracks.find((t) => t.trackId === "t2-discrimination")!;
+    // The sampler reads these numbers (@ailx/track-t2 sampleT2DeckIds); the
+    // released tier deals one media pair, two text items, two provenance.
+    expect(t2.config.deck).toEqual({ media_pairs: 1, text: 2, provenance: 2 });
+  });
+
   it("bank verifies as canonical without rewrites (CI gate)", () => {
     const r = hashBank(join(DIR, "tracks/t2-discrimination/items/bank.jsonl"), false);
     expect(r.changed).toBe(false);

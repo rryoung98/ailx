@@ -3,8 +3,8 @@ import { append, project, TRACK_IDS } from "@ailx/session";
 import {
   candidateComposite, participantExport, researchExport,
 } from "@ailx/report";
-import { scoreTrack } from "../lib/registry";
-import { buildSampleAttemptLog } from "../lib/sampleAttempt";
+import { scoreTrack, trackScoredEntry } from "../lib/instrument/registry";
+import { buildSampleAttemptLog } from "../lib/instrument/sampleAttempt";
 
 function scoredLog() {
   let log = buildSampleAttemptLog();
@@ -13,15 +13,7 @@ function scoredLog() {
   for (const t of TRACK_IDS) {
     ts += 1000;
     const rec = scoreTrack(t, state.tracks[t].artifact);
-    log = append(log, {
-      type: "track_scored", trackId: t,
-      score: rec.score,
-      judgments: rec.judgments,
-      rubricVersion: rec.rubricVersion,
-      scoringDigest: rec.scoringDigest,
-      modelManifest: rec.modelManifest,
-      ts,
-    });
+    log = append(log, trackScoredEntry(t, rec, ts));
   }
   return append(log, { type: "attempt_completed", ts: ts + 1000 });
 }

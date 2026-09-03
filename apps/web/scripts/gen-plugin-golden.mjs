@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Regenerates apps/web/lib/fixtures/plugin-golden.json — the pinned golden
+ * Regenerates apps/web/lib/instrument/fixtures/plugin-golden.json — the pinned golden
  * fixtures for the four REAL track plugin score() functions (F16).
  *
  * Run from the repo root AFTER `pnpm -r build`:
@@ -83,7 +83,7 @@ const FIXTURES = {
         { seq: 1, verb: "assisted", object: "assist:1", claimIds: ["pe-g", "ca-g"], clientTs: "2026-01-01T00:00:01.000Z" },
         { seq: 2, verb: "challenged", object: "claim:pe-g", clientTs: "2026-01-01T00:00:02.000Z" },
         // Verification names the claim it checked (F5): an unattributed
-        // `verified` event buys no process points and no RAIR credit.
+        // `verified` event buys no process points and no adoption credit.
         { seq: 3, verb: "verified", object: "claim:ca-g", claimIds: ["ca-g"], clientTs: "2026-01-01T00:00:03.000Z" },
         { seq: 4, verb: "accepted", object: "claim:ca-g", clientTs: "2026-01-01T00:00:04.000Z" },
       ],
@@ -135,6 +135,6 @@ for (const t of ["t1", "t2", "t3", "t4"]) {
   out[t] = { ...f, expected: score[t](f) };
 }
 
-const dest = join(root, "apps/web/lib/fixtures/plugin-golden.json");
+const dest = join(root, "apps/web/lib/instrument/fixtures/plugin-golden.json");
 writeFileSync(dest, JSON.stringify(out, null, 2) + "\n");
 console.log("wrote", dest);

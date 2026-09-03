@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { shareCardPath, shareUrlPath } from "@ailx/contract";
+import { apiPath, shareCardPath, shareUrlPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
 import { pageOrigin, serverApiBase } from "../../../lib/server/page";
-import { ShareView, type SharedView } from "../../../lib/ShareView";
+import { ShareView, type SharedView } from "../../../features/share/ShareView";
 
 /**
  * /s/<token> — the share view.
@@ -12,7 +12,7 @@ import { ShareView, type SharedView } from "../../../lib/ShareView";
  * page simply does not exist in the GitHub Pages static export. That is the
  * page twin of the long-standing `route.api.ts` rule. The extension controls
  * static INCLUSION, not whether the file is server-only, so the page itself
- * is `lib/ShareView.tsx` and reads `apiBase()/share/<token>` over HTTP
+ * is `features/share/ShareView.tsx` and reads `apiBase()/share/<token>` over HTTP
  * (docs/ARCHITECTURE.md §10.1).
  *
  * `generateMetadata` stays on the SERVER and does its own read: the Open
@@ -27,7 +27,7 @@ type ShareParams = { params: Promise<{ token: string }> };
 /** The same anonymous read the page makes. Never counts a view (see below). */
 async function readShare(token: string): Promise<SharedView | null> {
   try {
-    const res = await fetch(`${await serverApiBase()}/share/${encodeURIComponent(token)}`, {
+    const res = await fetch(`${await serverApiBase()}${apiPath("shareView", { token })}`, {
       cache: "no-store",
     });
     if (res.status !== 200) return null;

@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { SiteLink } from "../lib/SiteLink";
+import { SiteLink } from "../components/ui/SiteLink";
 
 const URL_PATH = "/api/site/sha256:9f2b7c1d8e4a6b3f0c5d2e1a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c/";
 
