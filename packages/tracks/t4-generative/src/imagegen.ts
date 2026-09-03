@@ -167,7 +167,8 @@ export async function requestImage(
   if (!res.ok) {
     if (res.status === 401) {
       throw new ImageGenError(
-        "The image endpoint would not accept this sitting (401). Sign in again, or use the offline demo.",
+        // The only action a candidate has mid-run is the offline simulator.
+        "The image endpoint would not accept this request (401). Use the offline demo to finish the track.",
         "auth",
         401,
       );

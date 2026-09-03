@@ -64,6 +64,31 @@ export function hasModelEndpoint(base: string | null | undefined): boolean {
   return normalizeBaseUrl(base) !== "";
 }
 
+/**
+ * Is this a URL a browser may be pointed at for model calls?
+ *
+ * A review found that the manual box persisted whatever was typed, so a key
+ * pasted into userinfo (`https://user:sk-or-…@host/v1`) or a query string
+ * would land in `localStorage` and in every request URL — the exact leak this
+ * change exists to close, through the one input that survived it.
+ *
+ * So: http(s) only, no credentials, no query, no fragment. `http:` stays
+ * allowed because a local model server (Ollama, vLLM) is the reason this box
+ * exists, and it reaches no network. Pure.
+ */
+export function isUsableModelEndpoint(base: string | null | undefined): boolean {
+  const normalized = normalizeBaseUrl(base);
+  if (normalized === "") return false;
+  let url: URL;
+  try {
+    url = new URL(normalized);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  return url.username === "" && url.password === "" && url.search === "" && url.hash === "";
+}
+
 /** chat-completions endpoint for any OpenAI-compatible base. Pure. */
 export function chatCompletionsUrl(baseUrl?: string): string {
   return `${normalizeBaseUrl(baseUrl)}/chat/completions`;
@@ -196,10 +221,14 @@ export async function requestVibeCompletion(
   }
   if (!res.ok) {
     const msg =
+      // Mid-run, the only action the candidate actually HAS is the offline
+      // assist: the static export has no sign-in, and no build offers a
+      // connect button inside a running track. A review caught both messages
+      // naming something impossible.
       res.status === 401
-        ? "The model endpoint would not accept this sitting (401). Sign in again, or use the offline demo assist."
+        ? "The model endpoint would not accept this request (401). Use the offline demo assist to finish the track."
         : res.status === 402
-          ? "The shared demo budget is spent (402). Connect your own provider key, or use the offline demo assist."
+          ? "The shared demo budget is spent (402). Use the offline demo assist to finish the track."
           : res.status === 429
             ? "Model rate limit (429). Wait a moment and retry."
             : `Model endpoint error (HTTP ${res.status}).`;

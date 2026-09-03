@@ -13,6 +13,7 @@ import {
   modelsUrl,
   CURATED_MODELS,
   hasModelEndpoint,
+  isUsableModelEndpoint,
   LLM_BASE_URL_STORAGE,
   OpenRouterError,
 } from "../src/openrouter.js";
@@ -117,7 +118,7 @@ describe("requestVibeCompletion (mocked fetch — no network)", () => {
     // 401 is no longer "check your key" — this browser has none. It means the
     // endpoint would not accept the SITTING.
     await expect(at(401)).rejects.toThrow(/401/);
-    await expect(at(401)).rejects.toThrow(/sitting/i);
+    await expect(at(401)).rejects.toThrow(/offline demo assist/i);
     await expect(at(401)).rejects.not.toThrow(/check the key/i);
     // 402 is the shared demo budget, which only exists now that somebody
     // else's key is paying.
@@ -184,6 +185,29 @@ describe("the endpoint (the exam gateway, the demo proxy, a local server)", () =
     expect(normalizeBaseUrl("http://localhost:11434/v1/")).toBe("http://localhost:11434/v1");
     expect(normalizeBaseUrl(" http://localhost:11434/v1// ")).toBe("http://localhost:11434/v1");
   });
+  it("isUsableModelEndpoint refuses a URL that could carry a key", () => {
+    // A review found the one input that survived the change: the manual
+    // endpoint box persisted whatever was typed, so a key in userinfo or a
+    // query string went to localStorage and into every request URL.
+    expect(isUsableModelEndpoint("http://localhost:11434/v1")).toBe(true);
+    expect(isUsableModelEndpoint("https://exam.example/v1/model/")).toBe(true);
+    for (const bad of [
+      "https://user:sk-or-v1-secret@host.example/v1",
+      "https://user@host.example/v1",
+      "https://host.example/v1?api_key=sk-or-v1-secret",
+      "https://host.example/v1#sk-or-v1-secret",
+      "javascript:alert(1)",
+      "data:text/plain,hi",
+      "sk-or-v1-secret",
+      "",
+      "   ",
+      null,
+      undefined,
+    ]) {
+      expect({ bad, usable: isUsableModelEndpoint(bad) }).toEqual({ bad, usable: false });
+    }
+  });
+
   it("hasModelEndpoint is the connected predicate", () => {
     expect(hasModelEndpoint(undefined)).toBe(false);
     expect(hasModelEndpoint(null)).toBe(false);

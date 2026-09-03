@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ConnectPanel, connectedCopy } from "../features/exam/ConnectPanel";
+import { resetClaimedCallbacks } from "../lib/data/modelGateway";
 import { QueryProvider } from "../lib/QueryProvider";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -121,6 +122,7 @@ function setInput(aria: string, value: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  resetClaimedCallbacks();
   calls = [];
   replies = {};
   navigated = null;
@@ -231,8 +233,8 @@ describe("the hosted build connects through the service", () => {
     const text = host.textContent ?? "";
     expect(text).toContain("a1b2c3d4e5f6");
     expect(text).toContain("this browser never received your key");
-    expect(text).toContain("sealed against your account");
-    expect(text).toContain("Disconnect deletes it");
+    expect(text).toContain("stores the key against your account");
+    expect(text).toContain("Disconnect asks the service to delete it");
     // The claim that stopped being true is gone.
     expect(text).not.toContain("key stays in this browser");
   });
@@ -368,12 +370,17 @@ describe("the callback, which the SERVICE redeems", () => {
 });
 
 describe("the connected copy", () => {
-  it("states three checkable facts and claims nothing about spending", () => {
+  it("states only what THIS repo makes true", () => {
     const copy = connectedCopy("a1b2c3d4e5f6");
     expect(copy).toContain("never received your key");
-    expect(copy).toContain("sealed against your account");
-    expect(copy).toContain("Disconnect deletes it");
+    expect(copy).toContain("only ever shows the fingerprint");
     expect(copy).toContain("a1b2c3d4e5f6");
+    // A review flagged both of these as backend guarantees the public repo
+    // cannot show. The browser ASKS for a deletion; it does not perform one,
+    // and it carries no sitting id that could scope the spend.
+    expect(copy).toContain("asks the service to delete it");
+    expect(copy).not.toContain("only for your sitting");
+    expect(copy).not.toContain("sealed");
   });
 
   it("reads without a fingerprint too (a service that returned none)", () => {
@@ -387,5 +394,125 @@ describe("both builds", () => {
     setHosted(false);
     await mount();
     expect(host.textContent).toContain("you can retry it or switch to the free offline demo simulators");
+  });
+});
+
+describe("defects a codex review found, pinned so they cannot come back", () => {
+  it("a hosted build with NO api base offers nothing: there is no gateway to call", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_AILX_API_BASE", "");
+    await mount();
+    // Falls back to the static panel rather than offering a Connect button
+    // that would 404 on this app's own origin — this repo has no api routes.
+    expect(button("Connect OpenRouter")).toBeUndefined();
+    expect(calls).toEqual([]);
+  });
+
+  it("the manual endpoint box survives being TYPED into, one character at a time", async () => {
+    setHosted(false);
+    await mount();
+    await click("Manual setup");
+    for (const partial of ["h", "ht", "http://localhost:11434", "http://localhost:11434/v1"]) {
+      setInput("API base URL", partial);
+      expect(
+        host.querySelector('input[aria-label="API base URL"]'),
+        `the box vanished after typing "${partial}"`,
+      ).toBeTruthy();
+    }
+    expect(window.localStorage.getItem(ENDPOINT_SLOT)).toBe("http://localhost:11434/v1");
+  });
+
+  it.each([
+    ["a key in userinfo", "https://user:sk-or-v1-secret@host.example/v1"],
+    ["a key in the query", "https://host.example/v1?api_key=sk-or-v1-secret"],
+    ["a key in the fragment", "https://host.example/v1#sk-or-v1-secret"],
+    ["a javascript: URL", "javascript:alert(1)"],
+    ["not a URL at all", "sk-or-v1-secret"],
+  ])("refuses %s in the endpoint box, and stores nothing", async (_what, typed) => {
+    setHosted(false);
+    await mount();
+    await click("Manual setup");
+    setInput("API base URL", typed);
+    expect(window.localStorage.getItem(ENDPOINT_SLOT)).toBeNull();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("a key does not belong in a URL");
+  });
+
+  it("a callback landing does NOT also fire a status read that could overwrite it", async () => {
+    setHosted(true);
+    land("?code=c-1&state=st-1");
+    replies = {
+      "/model/key": { status: 200, body: { connected: false, provider: "openrouter" } },
+      "/model/connect/callback": {
+        status: 200,
+        body: { connected: true, provider: "openrouter", fingerprint: "0f0f0f0f0f0f" },
+      },
+    };
+    await mount();
+    expect(calls.filter((c) => c.url.endsWith("/model/key"))).toHaveLength(0);
+    expect(window.localStorage.getItem(ENDPOINT_SLOT)).toBe("https://exam.example/v1/model");
+  });
+
+  it("re-reads what the service holds on focus, so a sign-out cannot leave a stale Connected", async () => {
+    setHosted(true);
+    replies = {
+      "/model/key": { status: 200, body: { connected: true, provider: "openrouter", fingerprint: "0f0f0f0f0f0f" } },
+    };
+    await mount();
+    expect(window.localStorage.getItem(ENDPOINT_SLOT)).toBe("https://exam.example/v1/model");
+    replies["/model/key"] = { status: 401, body: {} };
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("does not know who you are");
+  });
+
+  it("a refused DELETE does not claim the key was deleted", async () => {
+    setHosted(true);
+    replies = {
+      "/model/key": { status: 200, body: { connected: true, provider: "openrouter", fingerprint: "0f0f0f0f0f0f" } },
+    };
+    await mount();
+    replies["/model/key"] = { status: 500, body: {} };
+    await click("Disconnect");
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("what it holds is unknown");
+    // Still shown as connected: the service may well still hold it.
+    expect(host.textContent).toContain("0f0f0f0f0f0f");
+    expect(window.localStorage.getItem(ENDPOINT_SLOT)).toBe("https://exam.example/v1/model");
+  });
+
+  it("a fingerprint that is not a fingerprint is never rendered", async () => {
+    setHosted(true);
+    replies = {
+      "/model/key": {
+        status: 200,
+        body: { connected: true, provider: "openrouter", fingerprint: "sk-or-v1-not-a-fingerprint" },
+      },
+    };
+    await mount();
+    expect(host.textContent).not.toContain("sk-or-v1");
+    expect(host.textContent).toContain("never received your key");
+  });
+
+  it("says so when storage is blocked, instead of showing a connection the run cannot see", async () => {
+    setHosted(true);
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        ...shim,
+        // Only the endpoint slot is blocked. A browser that refuses EVERY
+        // write has no dev identity either, and is refused earlier with a
+        // different, also honest, message.
+        setItem: (k: string, v: string) => {
+          if (k === ENDPOINT_SLOT) throw new Error("blocked");
+          store.set(k, String(v));
+        },
+      },
+    });
+    replies = {
+      "/model/key": { status: 200, body: { connected: true, provider: "openrouter", fingerprint: "0f0f0f0f0f0f" } },
+    };
+    await mount();
+    expect(host.textContent).toContain("blocked local storage");
+    Object.defineProperty(window, "localStorage", { configurable: true, value: shim });
   });
 });

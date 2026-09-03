@@ -145,7 +145,7 @@ describe("t4 imagegen — requestImage error mapping", () => {
   it("maps 401 to auth with a user-facing message", async () => {
     const f = vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) }));
     await expect(requestImage(f, payload, BASE)).rejects.toThrow(/401/);
-    await expect(requestImage(f, payload, BASE)).rejects.toThrow(/sitting/i);
+    await expect(requestImage(f, payload, BASE)).rejects.toThrow(/offline demo/i);
     expect(await kindOf(f)).toBe("auth");
   });
 

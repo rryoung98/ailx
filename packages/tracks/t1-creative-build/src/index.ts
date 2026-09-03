@@ -14,6 +14,7 @@ export {
   LLM_CONNECTION_KEYS,
   clearLlmConnection,
   hasModelEndpoint,
+  isUsableModelEndpoint,
   normalizeBaseUrl,
   chatCompletionsUrl,
   modelsUrl,

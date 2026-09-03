@@ -24,6 +24,9 @@ import {
   modelGatewayBase,
   modelGatewayFetch,
   readKeyStatus,
+  readStatusBody,
+  safeCallerHeaders,
+  resetClaimedCallbacks,
   startConnect,
 } from "../lib/data/modelGateway";
 
@@ -49,6 +52,7 @@ function stub(status: number, body: unknown) {
 
 beforeEach(() => {
   store.clear();
+  resetClaimedCallbacks();
   calls = [];
   stub(200, {});
   currentUrl = "http://localhost/exam";
@@ -129,10 +133,34 @@ describe("what a call carries", () => {
     });
     const init = calls[0].init!;
     expect(init.body).toBe("{}");
-    expect(init.headers).toMatchObject({
+    // toEqual, not toMatchObject: a review pointed out that a forwarded
+    // provider `Authorization` would have passed the looser assertion.
+    expect(init.headers).toEqual({
       "Content-Type": "application/json",
       "x-ailx-dev-user": "web-abc",
     });
+  });
+
+  it("DROPS a credential header a runner tried to set", async () => {
+    store.set("ailx:dev-user", "web-abc");
+    await modelGatewayFetch("https://exam.example/v1/model/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer sk-or-should-not-travel",
+        "X-Api-Key": "sk-or-neither-should-this",
+      },
+    });
+    expect(calls[0].init?.headers).toEqual({
+      "Content-Type": "application/json",
+      "x-ailx-dev-user": "web-abc",
+    });
+  });
+
+  it("takes headers in every shape fetch accepts, and filters all three", () => {
+    expect(safeCallerHeaders(new Headers({ accept: "a", authorization: "b" }))).toEqual({ accept: "a" });
+    expect(safeCallerHeaders([["Accept", "a"], ["Authorization", "b"]])).toEqual({ Accept: "a" });
+    expect(safeCallerHeaders(undefined)).toEqual({});
   });
 
   it.each([
@@ -177,9 +205,44 @@ describe("what a refusal is reported as", () => {
     expect(await startConnect()).toMatchObject({ ok: false });
   });
 
-  it("a non-200 key status reads as disconnected rather than throwing", async () => {
+  it("a non-200 key status is a REFUSAL, not 'there is no key'", async () => {
     stub(401, {});
-    expect(await readKeyStatus()).toEqual({ connected: false, provider: "openrouter" });
+    expect(await readKeyStatus()).toEqual({ ok: false, httpStatus: 401 });
+  });
+
+  it("a refused DELETE never reports a deletion that may not have happened", async () => {
+    stub(500, {});
+    expect(await disconnectKey()).toEqual({ ok: false, httpStatus: 500 });
+  });
+
+  it("a thrown fetch is a refusal with no status, not a silent disconnect", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("offline");
+    }));
+    expect(await readKeyStatus()).toEqual({ ok: false, httpStatus: 0 });
+  });
+
+  it("a 200 whose body is not a status is refused, not cast", async () => {
+    stub(200, { nope: 1 });
+    expect(await readKeyStatus()).toMatchObject({ ok: false });
+  });
+});
+
+describe("the status body, read rather than cast", () => {
+  it("keeps a 12-hex fingerprint and DROPS anything else claiming to be one", () => {
+    expect(readStatusBody({ connected: true, provider: "openrouter", fingerprint: "a1b2c3d4e5f6" }))
+      .toMatchObject({ fingerprint: "a1b2c3d4e5f6" });
+    // The page says it only ever shows a fingerprint. This is what makes that
+    // true of the BROWSER rather than a hope about the service.
+    for (const bad of ["sk-or-v1-deadbeef", "A1B2C3D4E5F6", "a1b2c3", "", null, 12]) {
+      expect(readStatusBody({ connected: true, fingerprint: bad })?.fingerprint).toBeUndefined();
+    }
+  });
+
+  it("refuses a body with no boolean `connected`", () => {
+    expect(readStatusBody({ provider: "openrouter" })).toBeNull();
+    expect(readStatusBody(null)).toBeNull();
+    expect(readStatusBody("connected")).toBeNull();
   });
 });
 
@@ -212,11 +275,16 @@ describe("claiming the callback", () => {
     expect([...store.keys()]).toEqual([]);
   });
 
-  it("survives a history that refuses to rewrite: the claim still stands once", () => {
+  it("stays one-shot when history refuses to rewrite (the code stays in the URL)", () => {
+    // A review found this hole: the URL was the ONLY record of the claim, so
+    // a browser that refuses `replaceState` let StrictMode's second pass
+    // redeem the same single-use code again.
     vi.spyOn(window.history, "replaceState").mockImplementation(() => {
       throw new Error("blocked");
     });
     currentUrl = "http://localhost/exam?code=c-1&state=st-1";
     expect(claimModelCallback()).toEqual({ code: "c-1", state: "st-1" });
+    expect(currentUrl).toContain("code=c-1");
+    expect(claimModelCallback()).toBeNull();
   });
 });

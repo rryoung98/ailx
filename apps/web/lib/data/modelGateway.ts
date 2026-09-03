@@ -25,7 +25,7 @@
 import { apiPath, MODEL_ROOT, type ApiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
-import { apiBase, isServerMode } from "../mode";
+import { apiBase, apiOrigin, isServerMode } from "../mode";
 
 /** What the service says about a stored key. Never the key. */
 export interface KeyStatus {
@@ -34,6 +34,45 @@ export interface KeyStatus {
   /** 12 hex characters. Enough to recognise a key, useless to spend. */
   readonly fingerprint?: string;
   readonly connectedAt?: string;
+}
+
+/**
+ * A status the service AUTHORITATIVELY gave (200), or a refusal with its
+ * status.
+ *
+ * The two used to be flattened into `{ connected: false }`, and a review
+ * caught what that costs: a 500 on DELETE told the reader their key had been
+ * deleted when the service may still hold it, and a 401 on GET silently
+ * cleared the stored endpoint. A refusal is a different fact from "there is
+ * no key", and the panel says so.
+ */
+export type KeyStatusResult =
+  | { readonly ok: true; readonly status: KeyStatus }
+  | { readonly ok: false; readonly httpStatus: number };
+
+/** 12 lowercase hex. Anything else is not a fingerprint, whatever it claims. */
+const FINGERPRINT_RE = /^[0-9a-f]{12}$/;
+
+/**
+ * Read a status body, keeping only what the contract promises.
+ *
+ * The body was cast before, and a review pointed out what that means: this
+ * page claims it "sees only a fingerprint", and an unchecked cast makes that
+ * a claim about the SERVICE rather than about this code. A `fingerprint` that
+ * is not 12 hex characters — an OpenRouter key, say — is DROPPED here, so the
+ * claim is true of the browser no matter what arrives.
+ */
+export function readStatusBody(body: unknown): KeyStatus | null {
+  if (typeof body !== "object" || body === null) return null;
+  const raw = body as Record<string, unknown>;
+  if (typeof raw.connected !== "boolean") return null;
+  const print = typeof raw.fingerprint === "string" && FINGERPRINT_RE.test(raw.fingerprint) ? raw.fingerprint : undefined;
+  return {
+    connected: raw.connected,
+    provider: typeof raw.provider === "string" ? raw.provider : "openrouter",
+    fingerprint: print,
+    connectedAt: typeof raw.connectedAt === "string" ? raw.connectedAt : undefined,
+  };
 }
 
 /** Where the browser is sent, and the state the service expects back. */
@@ -51,11 +90,15 @@ export interface ModelCallback {
 /**
  * Is there a service to hold a key at all?
  *
- * The hosted build has one; the Pages export does not, and asking it to
- * connect would be a 401 dressed up as an offer.
+ * BOTH conditions, and a review found out why. `AILX_BACKEND=1` alone means
+ * "this build compiles the database-reading pages"; it does not mean a model
+ * gateway answers. This repo has NO api routes (AGENTS.md, "The repository
+ * split"), so a hosted build with `NEXT_PUBLIC_AILX_API_BASE` unset would
+ * offer a Connect button that calls `/api/model/connect/start` — a 404 on its
+ * own origin. The gateway lives on the exam service or nowhere.
  */
 export function modelGatewayAvailable(): boolean {
-  return isServerMode();
+  return isServerMode() && apiOrigin() !== "";
 }
 
 /**
@@ -124,25 +167,68 @@ export async function modelGatewayFetch(input: string, init: RequestInit = {}): 
   const storage = browserStorage();
   const toGateway = modelGatewayAvailable() && input.startsWith(`${modelGatewayBase()}/`);
   const identity = storage === null || !toGateway ? {} : await authHeaders(storage);
-  return fetch(input, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), ...identity } });
+  return fetch(input, { ...init, headers: { ...safeCallerHeaders(init.headers), ...identity } });
+}
+
+/**
+ * Headers a track runner is allowed to set on a model call.
+ *
+ * An ALLOWLIST, because a review pointed out that forwarding the caller's
+ * headers verbatim leaves the credential-free boundary open: a runner could
+ * still put `Authorization` or `X-API-Key` on a request and this function
+ * would carry it. Nothing in `packages/tracks` sets either today — that is
+ * the point of keeping it impossible rather than merely absent. Identity is
+ * added afterwards and cannot be spoofed by a caller, because it is spread
+ * last.
+ */
+const CALLER_HEADERS = new Set(["content-type", "accept"]);
+
+export function safeCallerHeaders(headers: HeadersInit | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (headers === undefined) return out;
+  const entries =
+    headers instanceof Headers
+      ? [...headers.entries()]
+      : Array.isArray(headers)
+        ? headers
+        : Object.entries(headers);
+  for (const [name, value] of entries) {
+    if (CALLER_HEADERS.has(String(name).toLowerCase())) out[String(name)] = String(value);
+  }
+  return out;
 }
 
 /** Connected or not, and under which fingerprint. */
-export async function readKeyStatus(): Promise<KeyStatus> {
-  const { status, body } = await gatewayCall(apiPath("modelKey"));
-  if (status !== 200 || typeof body !== "object" || body === null) {
-    return { connected: false, provider: "openrouter" };
+export async function readKeyStatus(): Promise<KeyStatusResult> {
+  let answered: { status: number; body: unknown };
+  try {
+    answered = await gatewayCall(apiPath("modelKey"));
+  } catch {
+    return { ok: false, httpStatus: 0 };
   }
-  return body as KeyStatus;
+  const status = readStatusBody(answered.body);
+  if (answered.status !== 200 || status === null) return { ok: false, httpStatus: answered.status };
+  return { ok: true, status };
 }
 
 /** Forget the stored key. Revoking it at the provider is the owner's to do. */
-export async function disconnectKey(): Promise<KeyStatus> {
-  const { status, body } = await gatewayCall(apiPath("disconnectModelKey"), { method: "DELETE" });
-  if (status !== 200 || typeof body !== "object" || body === null) {
-    return { connected: false, provider: "openrouter" };
+export async function disconnectKey(): Promise<KeyStatusResult> {
+  let answered: { status: number; body: unknown };
+  try {
+    answered = await gatewayCall(apiPath("disconnectModelKey"), { method: "DELETE" });
+  } catch {
+    return { ok: false, httpStatus: 0 };
   }
-  return body as KeyStatus;
+  const status = readStatusBody(answered.body);
+  if (answered.status !== 200 || status === null) return { ok: false, httpStatus: answered.status };
+  return { ok: true, status };
+}
+
+/** What a failed read or delete means, by status. Said once. */
+export function statusFailureCopy(httpStatus: number): string {
+  if (httpStatus === 401) return "The AILX service does not know who you are, so it will not say what it holds. Sign in.";
+  if (httpStatus === 0) return "The AILX service could not be reached, so what it holds is unknown. Nothing here was changed.";
+  return `The AILX service refused (HTTP ${httpStatus}), so what it holds is unknown. Nothing here was changed.`;
 }
 
 /**
@@ -211,6 +297,25 @@ export async function finishConnect(
  * with none of the use. There is no verifier to look for any more — the
  * service holds it, which is the point of the change.
  */
+/**
+ * Codes this page load has already claimed.
+ *
+ * Taking the code out of the URL is the primary one-shot, and a review found
+ * the hole: when `history.replaceState` throws — a locked-down browser, an
+ * iframe — the code stays in `location.search` and the next caller redeems it
+ * again. An in-memory record cannot outlive the page, which is exactly the
+ * scope a single-use authorization code needs.
+ */
+const claimedCodes = new Set<string>();
+
+/**
+ * Forget what this page load claimed. TESTS ONLY — a real page load starts
+ * with an empty set, and there is no browser event that should empty it.
+ */
+export function resetClaimedCallbacks(): void {
+  claimedCodes.clear();
+}
+
 export function claimModelCallback(): ModelCallback | null {
   let code: string | null = null;
   let state: string | null = null;
@@ -221,7 +326,8 @@ export function claimModelCallback(): ModelCallback | null {
   } catch {
     return null;
   }
-  if (code === null || code === "") return null;
+  if (code === null || code === "" || claimedCodes.has(code)) return null;
+  claimedCodes.add(code);
   try {
     const url = new URL(window.location.href);
     url.searchParams.delete("code");

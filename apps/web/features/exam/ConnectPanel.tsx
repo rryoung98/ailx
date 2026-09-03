@@ -27,6 +27,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   clearLlmConnection,
   hasModelEndpoint,
+  isUsableModelEndpoint,
   LLM_BASE_URL_STORAGE,
   normalizeBaseUrl,
 } from "@ailx/track-t1";
@@ -38,7 +39,9 @@ import {
   modelGatewayBase,
   readKeyStatus,
   startConnect,
+  statusFailureCopy,
   type KeyStatus,
+  type KeyStatusResult,
   type ModelCallback,
 } from "../../lib/data/modelGateway";
 
@@ -60,17 +63,34 @@ export const SHARED_DEMO_BASE_URL = "https://ailx-shared-demo.vercel.app/api/v1"
 /**
  * What a connected candidate is told, in the hosted build.
  *
- * Three facts, all of them checkable, and none of them the old claim: the
- * browser never receives the key, the service holds it sealed against this
- * identity, and it can be revoked. It deliberately does NOT say the key
- * cannot be spent by us — it can, that is what connecting it is for.
+ * Every clause is something THIS code makes true, after a review flagged the
+ * first draft for claiming backend guarantees the public repo cannot show:
+ *
+ *  - "never received your key" — the exchange is the service's, and no module
+ *    here can build an `Authorization` header for a provider;
+ *  - "only ever shows this fingerprint" — `readStatusBody()` drops anything
+ *    that is not 12 hex characters, so it is true whatever arrives;
+ *  - "asks the service to delete it", not "deletes it" — the browser makes a
+ *    request, and a refusal is now reported instead of claimed as success.
+ *
+ * The word "sealed" is gone. It is true (AES-256-GCM per identity, in the
+ * private repo) and it is not this page's to promise; the service's own
+ * README is where a reader can check it.
  */
 export function connectedCopy(fingerprint: string | undefined): string {
   const print = fingerprint === undefined ? "" : ` · ${fingerprint}`;
-  return `● Connected${print} — this browser never received your key. The AILX service holds it sealed against your account and spends it only for your sitting. Disconnect deletes it.`;
+  return `● Connected${print} — this browser never received your key: the AILX service exchanged the sign-in and stores the key against your account. This page only ever shows the fingerprint. Disconnect asks the service to delete it.`;
 }
 
 /** What the static export is told instead of being offered a key box. */
+/** A typed endpoint that cannot be used, and why — never a silent drop. */
+export const UNUSABLE_ENDPOINT_COPY =
+  "That is not an endpoint this browser will use. It must be an http(s) URL with no username, password, query or fragment — a key does not belong in a URL, and this box will not carry one.";
+
+/** Storage is blocked, so the panel and the Start gate disagree. Say so. */
+export const STORAGE_BLOCKED_COPY =
+  "This browser blocked local storage, so the run cannot see the connection this panel is showing. Allow storage for this site, or the Start button stays shut.";
+
 export const STATIC_NO_KEY_COPY =
   "This is the static demo on GitHub Pages. There is no AILX service here to hold a provider key against, so there is nothing to sign in to and no key to paste. Use the capped shared demo model, or point this build at a model running on your own machine.";
 
@@ -80,6 +100,9 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
+  /** Storage refused a write, so what this panel says and what the run-start
+   *  gate reads have come apart. Said out loud rather than swallowed. */
+  const [storageBlocked, setStorageBlocked] = useState(false);
 
   /**
    * Record what the service just said, and mirror it into the ONE endpoint
@@ -101,11 +124,28 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
     try {
       if (s.connected) window.localStorage.setItem(LLM_BASE_URL_STORAGE, modelGatewayBase());
       else clearLlmConnection(window.localStorage);
+      setStorageBlocked(false);
     } catch {
-      /* non-fatal — the panel still shows the truth it was told */
+      // A review caught the desync: the panel would say Connected while the
+      // Start gate, which reads the slot, stayed shut — and the reader would
+      // have no idea why. Say it instead of swallowing it.
+      setStorageBlocked(true);
     }
     announceChange();
   }, []);
+
+  /** What the service said, or why it would not say. Refusals are not "no key". */
+  const applyResult = useCallback(
+    (result: KeyStatusResult) => {
+      if (result.ok) {
+        applyStatus(result.status);
+        setError(null);
+      } else {
+        setError(statusFailureCopy(result.httpStatus));
+      }
+    },
+    [applyStatus],
+  );
 
   // Static export: hydrate the stored endpoint. Nothing else is stored.
   useEffect(() => {
@@ -118,39 +158,15 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
     }
   }, [hosted]);
 
-  // Hosted: ask the service whether it is holding a key for this identity.
-  useEffect(() => {
-    if (!hosted) return;
-    let cancelled = false;
-    void readKeyStatus().then((s) => {
-      if (!cancelled) applyStatus(s);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [hosted, applyStatus]);
-
-  const updateBaseUrl = (value: string) => {
-    setBaseUrl(value);
-    setError(null);
-    try {
-      if (hasModelEndpoint(value)) window.localStorage.setItem(LLM_BASE_URL_STORAGE, normalizeBaseUrl(value));
-      else window.localStorage.removeItem(LLM_BASE_URL_STORAGE);
-    } catch {
-      /* non-fatal */
-    }
-    announceChange();
-  };
-
   /**
    * The callback, as a MUTATION.
    *
    * One non-idempotent call, no retry, no cache entry, side effects in the
    * handlers. It carries a `code` and a `state` and no verifier: the verifier
-   * is on the service, which is what moved. `claimModelCallback()` still
-   * takes the code OUT of the URL before the request, so StrictMode's second
-   * pass has nothing to spend (TEN-64 defect 1) and the code does not sit in
-   * browser history.
+   * is on the service, which is what moved. `claimModelCallback()` takes the
+   * code out of the URL AND records it in memory, so StrictMode's second pass
+   * has nothing to spend (TEN-64 defect 1) even in a browser that refuses
+   * `history.replaceState`.
    */
   const exchange = useMutation({
     mutationFn: (claim: ModelCallback) => finishConnect(claim),
@@ -166,11 +182,60 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   });
   const claim = exchange.mutate;
 
+  /**
+   * Hosted: find out what the service holds — ONE effect, because a review
+   * found the race when there were two.
+   *
+   * A landing that carries a callback used to fire the status GET and the
+   * callback POST together, and a "not connected" GET answering last
+   * overwrote the connection that had just been made. The callback is
+   * authoritative when there is one, so the GET is not made at all.
+   *
+   * It re-runs on FOCUS and on a cross-tab storage write, which is the
+   * cheapest honest answer to a sign-out: the tab that signed out is not
+   * necessarily this one, and a stale "Connected" here would open the Start
+   * gate on a sitting whose model calls all 401.
+   */
   useEffect(() => {
     if (!hosted) return;
     const claimed = claimModelCallback();
-    if (claimed !== null) claim(claimed);
-  }, [hosted, claim]);
+    if (claimed !== null) {
+      claim(claimed);
+      return;
+    }
+    let cancelled = false;
+    const read = () => {
+      void readKeyStatus().then((result) => {
+        if (!cancelled) applyResult(result);
+      });
+    };
+    read();
+    window.addEventListener("focus", read);
+    window.addEventListener("storage", read);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", read);
+      window.removeEventListener("storage", read);
+    };
+  }, [hosted, claim, applyResult]);
+
+  const updateBaseUrl = (value: string) => {
+    setBaseUrl(value);
+    try {
+      // A half-typed URL is not an error and not a connection: it is simply
+      // not usable yet, so nothing is stored and nothing is claimed.
+      if (isUsableModelEndpoint(value)) {
+        window.localStorage.setItem(LLM_BASE_URL_STORAGE, normalizeBaseUrl(value));
+        setError(null);
+      } else {
+        window.localStorage.removeItem(LLM_BASE_URL_STORAGE);
+        setError(hasModelEndpoint(value) ? UNUSABLE_ENDPOINT_COPY : null);
+      }
+    } catch {
+      setStorageBlocked(true);
+    }
+    announceChange();
+  };
 
   const connect = useMutation({
     mutationFn: () => startConnect(),
@@ -188,10 +253,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
 
   const forget = useMutation({
     mutationFn: () => disconnectKey(),
-    onSuccess: (s) => {
-      applyStatus(s);
-      setError(null);
-    },
+    onSuccess: applyResult,
     onError: () => setError("The AILX service could not be reached to disconnect."),
   });
 
@@ -215,7 +277,10 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
     if (attention > 0) setShowManual(true);
   }, [attention]);
 
-  const endpointSet = hasModelEndpoint(baseUrl);
+  // Connected statically means USABLE, not merely non-empty. A review found
+  // that any keystroke made `connected` true, which closed the very input the
+  // reader was still typing into.
+  const endpointSet = isUsableModelEndpoint(baseUrl);
   const sharedDemo = endpointSet && normalizeBaseUrl(baseUrl) === SHARED_DEMO_BASE_URL;
   const connected = hosted ? status?.connected === true : endpointSet;
 
@@ -253,6 +318,11 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
             >
               Disconnect
             </button>
+            {hosted ? null : (
+              <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setShowManual((v) => !v)}>
+                {showManual ? "Hide manual setup" : "Manual setup"}
+              </button>
+            )}
           </span>
         ) : (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
@@ -266,7 +336,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
               </button>
             )}
             {hosted ? null : (
-              <button type="button" className="btn" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setShowManual((s) => !s)}>
+              <button type="button" className="btn" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => setShowManual((v) => !v)}>
                 {showManual ? "Hide manual setup" : "Manual setup"}
               </button>
             )}
@@ -282,7 +352,10 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
           {STATIC_NO_KEY_COPY}
         </p>
       )}
-      {showManual && !connected && !hosted ? (
+      {storageBlocked ? (
+        <p role="alert" style={{ margin: 0, color: "var(--bad)", fontSize: 12 }}>{STORAGE_BLOCKED_COPY}</p>
+      ) : null}
+      {showManual && !hosted ? (
         <div style={{ display: "grid", gap: 6 }}>
           <input
             aria-label="API base URL"
