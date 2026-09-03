@@ -74,6 +74,15 @@ const DECK_MAX_H = 460;
  * whether a SHORT DESKTOP window (1440x700) can hold the deck and its
  * answer buttons without the page scrolling: 320 costs that by two pixels,
  * 312 keeps both promises with four pixels to spare.
+ *
+ * It is the floor for a SHORT item, and that is all it can be: a stem, an
+ * option label and a material are data, and nothing bounds their length. A
+ * provenance option label is a sentence, the step echoes it back in full on
+ * the "Your call" line, and at 390px wide that line ran to five lines and
+ * 102px — which is how a constant floor came to hide Lock in on some items
+ * and not others (TEN-89). The Runner measures what the step's controls
+ * really need and passes it as `stepMinHeight`; this stays the floor under
+ * that measurement.
  */
 const DECK_MIN_H = 312;
 /** Breathing room under the answer buttons, so they are not flush against
@@ -307,6 +316,15 @@ export interface SwipeDeckProps {
    */
   stepOpen?: boolean;
   /**
+   * The height this item's confidence step needs for its controls, measured
+   * by the Runner (which owns the step's DOM). It is a FLOOR on the frame,
+   * never a ceiling: below it the step's own controls would sit behind an
+   * internal scrollbar, which is the one thing the frame exists to prevent
+   * (TEN-89). The step is drawn `inset: 0` of this frame, so the frame is the
+   * only thing that can give it room.
+   */
+  stepMinHeight?: number;
+  /**
    * Ref to the FIRST answer/option button. The Runner uses it to hand focus
    * back to the deck when the confidence sheet closes, so a keyboard user is
    * never dropped on <body> between items (audit P0-2).
@@ -327,7 +345,7 @@ export interface SwipeDeckProps {
   overlay?: ReactNode;
 }
 
-export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, stepOpen, answerRef, overlay }: SwipeDeckProps) {
+export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, onStimulusReady, lang, stepOpen, stepMinHeight, answerRef, overlay }: SwipeDeckProps) {
   const swipeable = item.options.length === 2;
   const [webgl, setWebgl] = useState(false);
   useEffect(() => {
@@ -359,6 +377,13 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
    * height can never feed back into the measurement.
    */
   const [fitHeight, setFitHeight] = useState<number | null>(null);
+  /**
+   * The frame is never shorter than this. `DECK_MIN_H` is what the step's
+   * controls need for a SHORT item; a long option label needs more, and the
+   * Runner measures how much (TEN-89). Below the floor the page is allowed to
+   * scroll — the step is not.
+   */
+  const floor = Math.max(DECK_MIN_H, stepMinHeight ?? 0);
   useIsoLayoutEffect(() => {
     const box = containerRef.current;
     const root = rootRef.current;
@@ -371,7 +396,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
       const pageTop = b.top + window.scrollY;
       const below = r.bottom - b.bottom;
       const available = window.innerHeight - pageTop - below - DECK_GUTTER;
-      setFitHeight(Math.round(Math.max(DECK_MIN_H, Math.min(DECK_MAX_H, available))));
+      setFitHeight(Math.round(Math.max(floor, Math.min(DECK_MAX_H, available))));
     };
     fit();
     window.addEventListener("resize", fit);
@@ -386,7 +411,9 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
       window.removeEventListener("resize", fit);
       ro?.disconnect();
     };
-  }, []);
+    // Re-fits when the floor moves, i.e. when the item (and with it the
+    // step's controls) changes.
+  }, [floor]);
 
   const itemUrlRef = useRef<string | null>(null);
 
@@ -536,7 +563,7 @@ export function SwipeDeck({ item, nextItems, enabled, onChoose, deckHasImages, o
           // Measured fit (see DECK_MAX_H); the CSS value is the pre-measure
           // and no-JS fallback, never taller than the measured ceiling.
           height: fitHeight === null ? `min(56vh, ${DECK_MAX_H}px)` : `${fitHeight}px`,
-          minHeight: DECK_MIN_H,
+          minHeight: floor,
           touchAction: "pan-y",
         }}
       >

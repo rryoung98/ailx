@@ -260,6 +260,39 @@ describe("deck structure", () => {
     expect(text).toContain("swipe or");
   });
 
+  /**
+   * TEN-89: the frame is the confidence step's frame, so its floor is what
+   * decides whether the step's controls can be reached without scrolling
+   * INSIDE a timed, scored step. 312px is the floor for a short item; the
+   * Runner measures what a long option label really needs and asks for it.
+   * jsdom lays nothing out, so what is provable here is the arithmetic —
+   * apps/web/e2e/visual.spec.ts measures the geometry in a browser.
+   */
+  it("takes the step's measured floor when it is taller than the deck's own", () => {
+    const frame = (stepMinHeight?: number) => {
+      act(() => {
+        root.render(
+          createElement(SwipeDeck, {
+            item: items[0],
+            nextItems: [],
+            enabled: true,
+            onChoose: () => {},
+            ...(stepMinHeight === undefined ? {} : { stepMinHeight }),
+          }),
+        );
+      });
+      const el = container.querySelector<HTMLElement>('[data-testid="swipe-deck"]')!
+        .querySelector<HTMLElement>("div[style*='min-height']")!;
+      return el.style.minHeight;
+    };
+    expect(frame()).toBe("312px");
+    // A step that needs nothing (jsdom, or a short item) never LOWERS it…
+    expect(frame(0)).toBe("312px");
+    expect(frame(200)).toBe("312px");
+    // …and one that needs more gets it, rather than hiding its own controls.
+    expect(frame(350)).toBe("350px");
+  });
+
   it("multi-option (provenance) items render option buttons, not a swipe surface", () => {
     const chosen: number[] = [];
     const prov = items.find((i) => i.options.length > 2)!;

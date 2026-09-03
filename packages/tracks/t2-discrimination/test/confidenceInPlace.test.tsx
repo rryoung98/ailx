@@ -130,6 +130,11 @@ function answer(index = 0) {
   });
 }
 
+/** A provenance item is answered by BUTTON: one per option, inside the deck. */
+function optionButtons(): HTMLButtonElement[] {
+  return buttons().filter((b) => b.className.includes("t2-option-btn"));
+}
+
 function setConfidence(value: number) {
   const el = container.querySelector<HTMLInputElement>('input[type="range"]')!;
   act(() => {
@@ -472,5 +477,75 @@ describe("the in-place step does not touch scored timing", () => {
     const responded = events.filter((e) => e.verb === "responded");
     expect(responded).toHaveLength(1);
     expect((responded[0].result as { latencyMs: number }).latencyMs).toBe(420);
+  });
+});
+
+/**
+ * TEN-89. The step overflowed a 390x844 phone on SOME items and not others,
+ * and the CI failure moved with the deal (23px, 48px, none) because a
+ * provenance option label is a SENTENCE and the "Your call" line echoes it in
+ * full. Two halves to the fix, and jsdom can see one of them: the step's
+ * height must depend on the ITEM, never on which option was chosen or on
+ * whether the hint is up, so that sizing the frame from it is stable and so
+ * that nothing moves under the candidate mid-item. The geometry itself —
+ * that the frame is then tall enough — is measured in a real browser by
+ * apps/web/e2e/visual.spec.ts against a stated worst-case item.
+ */
+describe("the step's height is a property of the item, not of the answer", () => {
+  const yourCall = () => [...sheet().querySelectorAll("p")][0];
+  const visibleText = (el: HTMLElement) =>
+    [...el.querySelectorAll("span")]
+      .filter((s) => s.style.visibility !== "hidden")
+      .map((s) => (s.textContent ?? "").trim());
+
+  it("lays out every option label before one has been chosen", () => {
+    mount(provenanceConfig);
+    startDeck();
+    const spans = [...yourCall().querySelectorAll("span")];
+    // One per option, plus the "not yet chosen" placeholder.
+    expect(spans).toHaveLength(provenanceConfig.items[0].options.length + 1);
+    for (const opt of provenanceConfig.items[0].options) {
+      expect(spans.some((s) => (s.textContent ?? "").includes(opt))).toBe(true);
+    }
+    // …all of them in ONE grid cell, so the line is as tall as the longest.
+    for (const s of spans) expect(s.style.gridArea).toBe("1 / 1");
+    expect(yourCall().style.display).toBe("grid");
+  });
+
+  it("shows only the placeholder before the answer and only the call after it", () => {
+    mount(provenanceConfig);
+    startDeck();
+    expect(visibleText(yourCall())).toEqual(["Your call: —"]);
+    act(() => optionButtons()[1].click());
+    expect(visibleText(yourCall())).toEqual([`Your call: ${provenanceConfig.items[0].options[1]}`]);
+  });
+
+  it("keeps the hint's space when it no longer applies, instead of resizing the step", () => {
+    mount(provenanceConfig);
+    startDeck();
+    act(() => optionButtons()[0].click());
+    const hint = sheet().querySelector<HTMLElement>('[data-testid="confidence-hint"]')!;
+    expect(hint.style.visibility).toBe("visible");
+    setConfidence(70);
+    // Still laid out — and still out of the a11y tree, which is what
+    // `visibility: hidden` buys that `display: none` would not.
+    expect(sheet().contains(hint)).toBe(true);
+    expect(hint.style.visibility).toBe("hidden");
+  });
+
+  it("groups the controls the candidate must reach, and leaves the material out", () => {
+    mount(provenanceConfig);
+    startDeck();
+    act(() => optionButtons()[0].click());
+    const controls = sheet().querySelector<HTMLElement>('[data-testid="confidence-controls"]')!;
+    expect(controls).not.toBeNull();
+    expect(controls.contains(yourCall())).toBe(true);
+    expect(controls.querySelector('input[type="range"]')).not.toBeNull();
+    expect(controls.querySelector('[data-testid="confidence-hint"]')).not.toBeNull();
+    expect(controls.contains(lockIn())).toBe(true);
+    // The material is the one part that may scroll on its own, so it is the
+    // one part that is NOT measured as a floor for the frame.
+    const stimulus = sheet().querySelector<HTMLElement>('[data-testid="judged-stimulus"]')!;
+    expect(controls.contains(stimulus)).toBe(false);
   });
 });

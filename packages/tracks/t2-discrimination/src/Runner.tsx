@@ -24,6 +24,20 @@ const LAPSE_NOTICE_MS = 1600;
 const DEFAULT_CONFIDENCE = 50;
 
 /**
+ * How much of the judged stimulus the confidence step must still show once
+ * its controls have taken what they need — two lines of the material at
+ * 0.9rem/1.5 (43.2px), plus the 0.6rem gap under it.
+ *
+ * TEN-89: the step's controls are the part that may NEVER be scrolled to, so
+ * the deck frame is sized from their measured height plus this. The material
+ * itself keeps its own scrollbar (`stimulusTextStyle`), which is how a long
+ * item has always been shown on a card; what changed is that a long OPTION
+ * LABEL — the "Your call" line echoes it in full — can no longer push Lock in
+ * off the bottom of a 390x844 phone.
+ */
+const STEP_STIMULUS_MIN_H = 53;
+
+/**
  * Every focus() this track performs is a SCROLL-FREE focus.
  *
  * Moving focus is the last thing that still scrolled the page: a browser
@@ -127,6 +141,7 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
   const shownAt = useRef(0);
   const decisionLatency = useRef<number | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLInputElement>(null);
   const answerRef = useRef<HTMLButtonElement>(null);
   const replayBtnRef = useRef<HTMLButtonElement>(null);
@@ -245,6 +260,52 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
   );
   const untimed = !item || item.type === "provenance";
   const exposure = item?.exposureSeconds ?? (untimed ? 0 : 15);
+
+  /**
+   * The height the deck frame must have for THIS item's confidence step, so
+   * that its controls are never behind an internal scrollbar (TEN-89).
+   *
+   * Measured, not assumed: a stem, an option label and a material are all
+   * DATA, and nothing in the instrument bounds their length — the failing CI
+   * runs reported 23px of overflow, then 48px, on the same commit, because
+   * each run was dealt a different item. The controls block carries no
+   * `flex`, so its height depends on the item and the viewport WIDTH but
+   * never on the frame height this feeds: measuring it can not oscillate.
+   *
+   * A ResizeObserver catches the reflows a render does not: the web font
+   * landing, a rotation, a zoom.
+   */
+  const [stepMinHeight, setStepMinHeight] = useState(0);
+  useEffect(() => {
+    const controls = controlsRef.current;
+    const sheet = sheetRef.current;
+    if (!controls || !sheet || typeof window === "undefined") return;
+    const px = (v: string) => {
+      const n = Number.parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const measure = () => {
+      // `offsetHeight`, not a client rect: it is the border-box height in
+      // layout pixels and no spec mocks it, so a unit test that fakes
+      // geometry cannot accidentally hand the deck a floor.
+      const controlsH = controls.offsetHeight;
+      // jsdom lays nothing out and reports every box as zero: a floor derived
+      // from that would be a made-up number, so ask for nothing instead.
+      if (controlsH <= 0) {
+        setStepMinHeight(0);
+        return;
+      }
+      const s = window.getComputedStyle(sheet);
+      const chrome =
+        px(s.paddingTop) + px(s.paddingBottom) + px(s.borderTopWidth) + px(s.borderBottomWidth);
+      setStepMinHeight(Math.ceil(controlsH + chrome + STEP_STIMULUS_MIN_H));
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(controls);
+    return () => ro.disconnect();
+  }, [item?.id, phase]);
 
   const record = useCallback(
     (choiceIdx: number, conf: number) => {
@@ -465,6 +526,7 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
           lang={contentLang}
           enabled={!sheetOpen && !lapse}
           stepOpen={sheetOpen}
+          stepMinHeight={stepMinHeight}
           onChoose={(i) => {
             if (choice !== null || lapse) return;
             decisionLatency.current = Math.max(0, Math.round(performance.now() - shownAt.current));
@@ -545,10 +607,33 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
                   {item.material}
                 </div>
               )}
-              <p style={{ margin: "0 0 0.4rem", fontWeight: 600 }}>
-                Your call: <span lang={contentLang}>{choice !== null ? item.options[choice] : "—"}</span>
+              {/* CONTROLS: the part of the step that must never be behind a
+                  scrollbar. It carries no `flex`, so its height is the item's
+                  and the viewport's — which is what the deck frame is sized
+                  from (see stepMinHeight above). */}
+              <div ref={controlsRef} data-testid="confidence-controls">
+              {/* The candidate's own call, echoed in full — an option label is
+                  a sentence on a provenance item and truncating it would hide
+                  what they are rating. Every option is laid into ONE grid
+                  cell, all but the chosen one hidden, so the line reserves the
+                  longest of them from the start: the step is then the same
+                  height before and after the answer, and answering cannot
+                  resize the frame under the hand reaching for the slider. */}
+              <p style={{ display: "grid", margin: "0 0 0.4rem", fontWeight: 600 }}>
+                {item.options.map((opt, i) => (
+                  <span
+                    key={i}
+                    lang={contentLang}
+                    style={{ gridArea: "1 / 1", visibility: choice === i ? "visible" : "hidden" }}
+                  >
+                    Your call: {opt}
+                  </span>
+                ))}
+                <span style={{ gridArea: "1 / 1", visibility: choice === null ? "visible" : "hidden" }}>
+                  Your call: —
+                </span>
               </p>
-              <label style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+              <label style={{ display: "block", color: "var(--muted)", fontSize: "0.9rem" }}>
                 How sure? {confidence === null ? "not set" : confidence}
                 <input
                   ref={sliderRef}
@@ -586,19 +671,26 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
                   style={{ width: "100%", accentColor: "var(--accent)", fontSize: 16 }}
                 />
               </label>
-              {sheetOpen && confidence === null && (
-                <p
-                  data-testid="confidence-hint"
-                  style={{ margin: "0.5rem 0 0", color: "var(--muted)", fontSize: "0.85rem" }}
-                >
-                  Set how sure you are — confidence is scored, never assumed for you.
-                </p>
-              )}
+              {/* Always laid out, hidden until it applies: the hint appears
+                  when the step opens and goes again the moment a confidence
+                  is set, and a step that changed height twice mid-item would
+                  move Lock in while it is being pressed. `visibility: hidden`
+                  keeps the space and still takes it out of the a11y tree. */}
+              <p
+                data-testid="confidence-hint"
+                style={{
+                  margin: "0.5rem 0 0",
+                  color: "var(--muted)",
+                  fontSize: "0.85rem",
+                  visibility: sheetOpen && confidence === null ? "visible" : "hidden",
+                }}
+              >
+                Set how sure you are — confidence is scored, never assumed for you.
+              </p>
               <button
                 style={{
                   ...btn,
                   marginTop: "0.8rem",
-                  alignSelf: "flex-start",
                   opacity: sheetOpen && confidence !== null ? 1 : 0.5,
                   display: "inline-flex",
                   alignItems: "center",
@@ -625,6 +717,7 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
                 </svg>
                 Lock in
               </button>
+              </div>
             </div>
           }
         />
