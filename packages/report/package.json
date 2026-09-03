@@ -14,7 +14,7 @@
     "@ailx/session": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
+    "typescript": "^7.0.2",
     "vitest": "^2.1.0",
     "@types/node": "^22.0.0"
   }
