@@ -272,13 +272,48 @@ Vercel calls lstat on every traced file, so the deployment fails.
 `next.config.mjs` removes the dangling entry in server mode only:
 
 ```js
-outputFileTracingExcludes: { "/api/**": ["**/*_client-reference-manifest.js"] }
+outputFileTracingExcludes: { "/s/[token]/card.png": ["**/*_client-reference-manifest.js"] }
 ```
 
 A route handler needs that manifest only for `use cache`. No AILX route uses
 it. Do not "fix" this by renaming the handlers to `route.ts`. That name would
 include the whole API in the GitHub Pages export. Delete the exclude when Next
 matches `/route(\.[^/]+)?$/` as it already matches `/page`.
+
+### 6.1 The key rotted, and it cost every deployment (2026-09-03)
+
+That key read `/api/**` until 2026-09-03, which was correct when the handlers
+lived under `app/api/`. The repository split then deleted all of them but one,
+and the survivor moved to `app/s/[token]/card.png`. The exclude did not move
+with it, so it matched nothing and the very failure this section describes came
+straight back — on the Open Graph card instead of a credential route. Every
+Production deployment this project has ever recorded failed on it, twelve of
+them, from 2026-09-02T02:23Z onward, with `pnpm test`, `pnpm -r build` and the
+whole `ci` workflow green throughout.
+
+Two things stop it happening a third time.
+
+- `apps/web/test/nextConfig.test.ts` no longer repeats the key. It walks
+  `apps/web/app/` for `route.api.ts` files and asserts the exclude keys are
+  exactly those page paths. Move the handler and the test fails in the same
+  commit. It also refuses a `/**` key: widening the glob would strip the
+  manifest a real PAGE needs and ship a build that deploys green and 500s.
+- `.github/workflows/deploy-status.yml` fails a run when Vercel reports a
+  failed Production deployment. Nothing gated on the deploy before, which is
+  why a dead staging site stayed invisible for a day.
+
+**The only local command that proves a deploy will work** is Vercel's own
+builder, because the failure is in its tracing step and not in Next:
+
+```sh
+cd apps/web
+rm -rf .next .vercel/output
+AILX_BACKEND=1 npx vercel build --prod   # needs `vercel link` once
+```
+
+`next build` cannot see this class of fault. Bumping Next does not fix it
+either: 15.5.23 and 15.5.25 (the newest 15.x) both fail identically, and the
+mismatched regexes are still in `flight-manifest-plugin.js` in both.
 
 ## 7. Deploy
 

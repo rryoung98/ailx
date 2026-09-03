@@ -4,7 +4,9 @@
  * that recognises `route.api.ts` route handlers.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const saved = {
   AILX_BACKEND: process.env.AILX_BACKEND,
@@ -54,11 +56,51 @@ describe("next.config.mjs", () => {
   // handlers leave a dangling trace entry that makes Vercel's builder fail
   // with ENOENT. The server build must prune it; the export build has no
   // route handlers to prune.
-  it("prunes the client reference manifest Next never writes for route.api.ts", async () => {
-    const cfg = await loadConfig({ AILX_BACKEND: "1" });
-    const excludes = cfg.outputFileTracingExcludes as Record<string, string[]>;
-    expect(Object.keys(excludes)).toEqual(["/api/**"]);
-    expect(excludes["/api/**"]).toEqual(["**/*_client-reference-manifest.js"]);
+  //
+  // These assertions are DERIVED from the files on disk, not copied from the
+  // config. The old test froze the literal key `/api/**`; the handler then
+  // moved to `app/s/[token]/card.png`, the key did not, and every Production
+  // deploy failed for a day with CI green. A test that repeats the config
+  // cannot catch the config going stale.
+  describe("the client reference manifest Next never writes for route.api.ts", () => {
+    /** Every route handler under app/, as the PAGE path tracing keys on. */
+    function routeHandlerPaths(): string[] {
+      const appDir = fileURLToPath(new URL("../app", import.meta.url));
+      const found: string[] = [];
+      const walk = (dir: string): void => {
+        for (const e of readdirSync(dir, { withFileTypes: true })) {
+          const full = join(dir, e.name);
+          if (e.isDirectory()) walk(full);
+          else if (/^route\.api\.tsx?$/.test(e.name)) {
+            found.push(`/${relative(appDir, dir).split(sep).join("/")}`);
+          }
+        }
+      };
+      walk(appDir);
+      return found.sort();
+    }
+
+    it("prunes it for every route handler this app has, by exact page path", async () => {
+      const cfg = await loadConfig({ AILX_BACKEND: "1" });
+      const excludes = cfg.outputFileTracingExcludes as Record<string, string[]>;
+      const handlers = routeHandlerPaths();
+      // The repo allows exactly one (packages/core/test/frontendOnly.test.ts).
+      expect(handlers).toHaveLength(1);
+      expect(Object.keys(excludes).sort()).toEqual(handlers);
+      for (const key of handlers) {
+        expect(excludes[key]).toEqual(["**/*_client-reference-manifest.js"]);
+      }
+    });
+
+    it("never widens the prune to pages, which need the manifest", async () => {
+      const cfg = await loadConfig({ AILX_BACKEND: "1" });
+      const excludes = cfg.outputFileTracingExcludes as Record<string, string[]>;
+      for (const key of Object.keys(excludes)) {
+        // `/**` or `/s/**` would also strip the share PAGE's manifest and
+        // ship a deploy that builds green and 500s on first render.
+        expect(key.endsWith("/**"), key).toBe(false);
+      }
+    });
   });
 
   it("does not touch file tracing in the static export", async () => {
