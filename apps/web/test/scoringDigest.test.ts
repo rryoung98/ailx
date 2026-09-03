@@ -14,9 +14,17 @@
 import { describe, expect, it } from "vitest";
 import { TRACK_IDS } from "@ailx/session";
 import SNAPSHOT from "../../../instruments/demo-2026.1/snapshot.json";
+import type { SnapshotScorer } from "../lib/instrument/instrument";
 import { scoringDigest } from "../lib/instrument/registry";
 
-const scorers = (SNAPSHOT as { scorers?: Array<{ trackId: string; digest: string; sources: Array<{ path: string }> }> }).scorers;
+// The JSON is read straight from the tier rather than through the app's
+// reader, so this stays a test of the committed FILE. Its shape comes from
+// `SnapshotScorer`, the one description of a scorer record the browser has:
+// the cast that used to sit here named only `trackId`, `digest` and
+// `sources[].path`, so `sha256` and `externals` — the two fields that make
+// the record a content address rather than a label — were invisible to the
+// checker and unasserted by accident.
+const scorers = (SNAPSHOT as { scorers?: SnapshotScorer[] }).scorers;
 
 describe("scoring digest", () => {
   it("is carried by the committed instrument snapshot for every track", () => {
