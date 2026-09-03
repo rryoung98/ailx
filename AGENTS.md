@@ -104,6 +104,15 @@ handler requires a decision in front of a reviewer.
   inside a sitting is instrumented; the session's own `visit_started` still
   rides along when the sitting is the first thing a browser does.
 
+## Analytics and session replay
+- `docs/ADR-analytics.md` — GA4 and (deferred) self-hosted OpenReplay: measured
+  bundle cost in both build modes, why no tracker may go in the static GitHub
+  Pages export, which surfaces a recorder may run on at all (never inside a
+  sitting and never on the report — the screen carries operational item content
+  and the candidate's own answers), the consent rules including that refusing
+  analytics may not change anything about a sitting, and the concrete mechanism
+  that keeps a share token out of a third party's URL log. Nothing is installed.
+
 ## Frontend/backend separation
 - `docs/ARCHITECTURE.md` — the decision document for splitting the frontend from
   the exam: why content custody (a private, digest-pinned item bank plus a
