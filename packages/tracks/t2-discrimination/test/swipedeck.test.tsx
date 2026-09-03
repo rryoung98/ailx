@@ -291,6 +291,11 @@ describe("deck structure", () => {
     expect(frame(200)).toBe("312px");
     // …and one that needs more gets it, rather than hiding its own controls.
     expect(frame(350)).toBe("350px");
+    // Deliberately UNCAPPED. Nothing bounds an item's length, so a cap would
+    // be the constant floor's bug again at a larger number: past the point
+    // where a step cannot fit a screen at all, the page scrolls and the step
+    // still does not, which is the trade this frame has always made.
+    expect(frame(2000)).toBe("2000px");
   });
 
   it("multi-option (provenance) items render option buttons, not a swipe surface", () => {

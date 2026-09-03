@@ -40,7 +40,14 @@ export function isImageMaterial(material: string): boolean {
   );
 }
 
-const useIsoLayoutEffect =
+/**
+ * `useLayoutEffect` in a browser, `useEffect` on the server (React warns
+ * about the former during SSR). Exported because the Runner measures the
+ * confidence step the same way and for the same reason: a measurement that
+ * resizes the frame must land BEFORE the browser paints, or the candidate
+ * sees the deck jump once per item.
+ */
+export const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /**

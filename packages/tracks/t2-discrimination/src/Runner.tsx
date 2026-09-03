@@ -11,7 +11,7 @@ import type { T2PresentationConfig, T2PresentedItem, T2Response } from "./types.
 import { isRevealedT2Item } from "./types.js";
 import { validateT2PresentationConfig } from "./plugin.js";
 import { decodeT2Checkpoint, encodeT2Checkpoint, type T2Phase } from "./checkpoint.js";
-import { SwipeDeck, isImageMaterial, stimulusTextStyle } from "./SwipeDeck.js";
+import { SwipeDeck, isImageMaterial, stimulusTextStyle, useIsoLayoutEffect } from "./SwipeDeck.js";
 
 type Phase = T2Phase;
 
@@ -25,8 +25,10 @@ const DEFAULT_CONFIDENCE = 50;
 
 /**
  * How much of the judged stimulus the confidence step must still show once
- * its controls have taken what they need — two lines of the material at
- * 0.9rem/1.5 (43.2px), plus the 0.6rem gap under it.
+ * its controls have taken what they need: two lines of the material at
+ * 0.9rem/1.5 (43.2px) inside the box `stimulusTextStyle` draws around it
+ * (0.75rem of padding top and bottom, a 1px border on each) plus the 0.6rem
+ * gap under it — 79px, of which 26 is the box and not the words.
  *
  * TEN-89: the step's controls are the part that may NEVER be scrolled to, so
  * the deck frame is sized from their measured height plus this. The material
@@ -35,7 +37,7 @@ const DEFAULT_CONFIDENCE = 50;
  * LABEL — the "Your call" line echoes it in full — can no longer push Lock in
  * off the bottom of a 390x844 phone.
  */
-const STEP_STIMULUS_MIN_H = 53;
+const STEP_STIMULUS_MIN_H = 79;
 
 /**
  * Every focus() this track performs is a SCROLL-FREE focus.
@@ -276,7 +278,10 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
    * landing, a rotation, a zoom.
    */
   const [stepMinHeight, setStepMinHeight] = useState(0);
-  useEffect(() => {
+  // A LAYOUT effect: the floor it produces resizes the deck frame, and a
+  // frame that finds its height after the first paint is a jump the
+  // candidate sees on every item.
+  useIsoLayoutEffect(() => {
     const controls = controlsRef.current;
     const sheet = sheetRef.current;
     if (!controls || !sheet || typeof window === "undefined") return;
