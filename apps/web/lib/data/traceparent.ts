@@ -25,11 +25,17 @@
  * no token, no answer, no item. It is 16 random bytes and 8 more.
  */
 
+import { TRACEPARENT_HEADER } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { authHeaders } from "./authHeaders";
 
-/** The W3C header name. Lower case, because `fetch` lower-cases it anyway. */
-export const TRACEPARENT_HEADER = "traceparent";
+/**
+ * The W3C header name, from the CONTRACT rather than typed out again here.
+ * A header the exam service does not allow in a preflight is a request the
+ * browser never sends at all, so the name and the service's CORS allow-list
+ * have to come from one place (`BROWSER_REQUEST_HEADERS`).
+ */
+export { TRACEPARENT_HEADER };
 
 /** Version `00` is the only one specified; flags `01` means "sampled". */
 const VERSION = "00";
