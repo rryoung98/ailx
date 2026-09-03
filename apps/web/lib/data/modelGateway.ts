@@ -112,10 +112,18 @@ async function gatewayCall(
  *
  * The runner builds the request; this adds WHO is asking. It cannot add a
  * provider credential, because it does not have one.
+ *
+ * IDENTITY IS ONLY EVER SENT TO THE GATEWAY. A runner's endpoint can be a
+ * local Ollama, or the standalone demo proxy, or anything a reader typed into
+ * the manual box; sending them `x-ailx-dev-user` (or a Clerk JWT) would hand
+ * this browser's identity to a third party for no benefit, and in the static
+ * export EVERY endpoint is a third party. So the prefix is checked, and a
+ * request that is not going to the gateway goes out bare.
  */
 export async function modelGatewayFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const storage = browserStorage();
-  const identity = storage === null ? {} : await authHeaders(storage);
+  const toGateway = modelGatewayAvailable() && input.startsWith(`${modelGatewayBase()}/`);
+  const identity = storage === null || !toGateway ? {} : await authHeaders(storage);
   return fetch(input, { ...init, headers: { ...(init.headers as Record<string, string> | undefined), ...identity } });
 }
 

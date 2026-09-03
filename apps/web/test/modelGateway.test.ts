@@ -134,6 +134,23 @@ describe("what a call carries", () => {
       "x-ailx-dev-user": "web-abc",
     });
   });
+
+  it.each([
+    ["a local model server", "http://localhost:11434/v1/chat/completions"],
+    ["the standalone demo proxy", "https://ailx-shared-demo.vercel.app/api/v1/chat/completions"],
+    ["a look-alike origin", "https://exam.example.evil/v1/model/chat/completions"],
+  ])("sends NO identity to %s — it is a third party", async (_what, url) => {
+    store.set("ailx:dev-user", "web-abc");
+    await modelGatewayFetch(url, { method: "POST", body: "{}" });
+    expect(calls[0].init?.headers).toEqual({});
+  });
+
+  it("sends no identity anywhere in the static export, where every endpoint is a third party", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    store.set("ailx:dev-user", "web-abc");
+    await modelGatewayFetch("https://exam.example/v1/model/chat/completions", { method: "POST" });
+    expect(calls[0].init?.headers).toEqual({});
+  });
 });
 
 describe("what a refusal is reported as", () => {
