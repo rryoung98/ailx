@@ -7,6 +7,7 @@ import {
   expect,
   lockInButton,
   logInTrack,
+  routeWorstCaseT2Deck,
   seedRun,
   test,
 } from "./fixtures";
@@ -233,6 +234,38 @@ for (const [label, viewport] of [
       await answerButtons(page).first().click();
       await expect(confidenceDialog(page)).toBeVisible();
       await assertConfidenceStepGeometry(page, `${label}, provenance item`, {
+        coarsePointer: viewport !== null,
+      });
+    });
+
+    /**
+     * TEN-89, and the reason it took three CI runs to believe: the deck is
+     * dealt fresh every run, so the previous test measures whichever
+     * provenance item it happened to be given and the overflow it reports
+     * changed between runs on one commit (23px, then 48px, then none). Here
+     * the deck is STATED — the tallest item shape the instrument permits,
+     * harder than anything the operational bank holds (fixtures.ts) — so the
+     * same question is asked the same way every run.
+     */
+    test("the step is reachable on the tallest item the instrument permits", async ({
+      page,
+      devUser,
+      attemptId,
+    }) => {
+      await seedRun(page, devUser, { attemptId, log: logInTrack(attemptId, "t2") });
+      await routeWorstCaseT2Deck(page);
+      await page.goto("/exam");
+      await startDeck(page);
+
+      // The step's height is a property of the ITEM, not of the answer: the
+      // "Your call" line reserves its longest option and the hint keeps its
+      // place, so answering may not resize the frame under the candidate.
+      await settleOn(answerButtons(page).first());
+      await expectStablePosition(deckFrame(page), `the deck frame (${label}, worst-case item)`, async () => {
+        await answerButtons(page).first().click();
+        await expect(confidenceDialog(page)).toBeVisible();
+      });
+      await assertConfidenceStepGeometry(page, `${label}, worst-case item`, {
         coarsePointer: viewport !== null,
       });
     });

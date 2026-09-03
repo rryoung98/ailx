@@ -226,6 +226,71 @@ export async function remainingSeconds(page: Page): Promise<number> {
 }
 
 // ---------------------------------------------------------------------------
+// The tallest T2 item shape (TEN-89)
+// ---------------------------------------------------------------------------
+
+/**
+ * A deterministic WORST-CASE T2 deck, served in place of the one the exam
+ * service dealt.
+ *
+ * TEN-89: the confidence step overflowed a 390x844 phone on SOME items, and
+ * the amount changed run to run on the same commit — every run is dealt a
+ * different deck, so the failure depended on the ITEM, not on the build. A
+ * spec that measures whatever it is dealt is a coin flip, and a coin flip is
+ * why the failure was dismissed as flake twice.
+ *
+ * So the deck is stated here instead. The shape is the tallest one the
+ * instrument permits, and every dimension is at or beyond the operational
+ * bank's worst as measured against a live `services/api` on 2026-09-03: four
+ * options (only provenance items have more than two), the longest option
+ * label at 154 characters against the bank's longest 123, a two-line stem and
+ * a material long enough to need its own scrolling. No bank content is
+ * copied — the item is written for this test, and it is deliberately harder
+ * than anything the bank holds, because content length is DATA and no
+ * validator bounds it.
+ *
+ * It is routed at the transport, not seeded: `seedRun` writes no recorded
+ * deck, so `fetchPresentedDeck` has nothing to compare this against and the
+ * app presents exactly what arrives.
+ */
+export const WORST_CASE_T2_ITEM = Object.freeze({
+  id: "e2e-worst-case-provenance",
+  type: "provenance",
+  difficulty: 0.5,
+  stem:
+    "A caption claims this file was captured on a named device at a named time. Read the provenance note below, then choose the reading that the note actually supports — not the one it merely makes it easy to believe.",
+  material:
+    "A provenance note travels with the file and records what a tool observed, never what a person intended. This note lists a capture device, a capture time, an editing application and one later export step. Each entry is written by the tool that performed it, and each survives copying, re-encoding and re-hosting exactly as written. Nothing in the note is signed by the person who wrote the caption, and nothing in it is invalidated by an edit — an edit adds an entry rather than removing one. The export step at the end of the chain rewrites the pixels and keeps the earlier entries verbatim.",
+  options: [
+    "The file's own metadata cannot settle the question here, because every field a caption relies on survives a re-encode unchanged and is trivially rewritten",
+    "The caption describes a derivative file, so the provenance of the original is not evidence about the thing shown",
+    "The signing chain is intact but says nothing about capture, so it answers a different question from the one the caption asks",
+    "There is no way to tell from this file alone, and saying so is the correct call rather than a refusal to answer",
+  ],
+});
+
+/**
+ * Serve {@link WORST_CASE_T2_ITEM} as this attempt's whole deck. Install it
+ * BEFORE the exam page is opened; a redacted sitting deck carries no `key`
+ * and no `rationale`, and neither does this one.
+ */
+export async function routeWorstCaseT2Deck(page: Page): Promise<void> {
+  await page.route(/\/attempts\/[^/]+\/items(\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { "access-control-allow-origin": "*" },
+      body: JSON.stringify({
+        phase: "sitting",
+        deckDigest: "sha256:e2e-worst-case",
+        released: false,
+        items: [WORST_CASE_T2_ITEM],
+      }),
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Fault injection
 // ---------------------------------------------------------------------------
 
