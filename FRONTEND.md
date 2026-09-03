@@ -545,6 +545,12 @@ Required specs:
    reported as saved, resume works. Offline: the UI states it, and nothing silently drops a response.
 7. **`@axe-core/playwright` scan** on landing, exam, and report; zero violations. Rescan after
    opening the confidence sheet — a scan only sees the current state.
+8. **The cross-origin preflight** — one OPTIONS to the exam service asserting it allows every
+   name in `BROWSER_REQUEST_HEADERS` (`@ailx/contract`) and the method a seeded run is created
+   with. The frontend and the service are two origins, so a header the service does not allow is
+   a request the browser NEVER SENDS: the app says "Failed to fetch" and every other spec here
+   fails at a locator that has nothing to do with the cause. Adding `traceparent` to the browser
+   did exactly that on 2026-09-03 (`e2e/preflight.spec.ts`).
 
 ### 6.5 Determinism and isolation
 

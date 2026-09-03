@@ -11,7 +11,7 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { DEV_USER_HEADER } from "@ailx/contract";
+import { BROWSER_REQUEST_HEADERS, DEV_USER_HEADER, isAllowedRequestHeader } from "@ailx/contract";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setAuthTokenSource } from "../lib/data/authHeaders";
 import {
@@ -132,10 +132,12 @@ const APP_ROOT = join(__dirname, "..");
  * below match prose — several modules explain `authHeaders()` in a comment
  * without calling it, and a doc comment is not a call site.
  */
+function stripComments(text: string): string {
+  return text.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
 function codeOf(file: string): string {
-  return readFileSync(file, "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  return stripComments(readFileSync(file, "utf8"));
 }
 
 describe("no call site opts out", () => {
@@ -223,5 +225,68 @@ describe("no call site opts out", () => {
       .filter((f) => /from "@opentelemetry\/|require\("@opentelemetry\//.test(codeOf(f)))
       .map((f) => f.slice(APP_ROOT.length + 1));
     expect(imports).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The preflight
+// ---------------------------------------------------------------------------
+
+/**
+ * OUR header names, as string literals in a file's CODE. Narrow on purpose:
+ * `x-ailx-*` and `traceparent` are the names this app INVENTS and puts on a
+ * preflighted request. A platform header it reads rather than sends
+ * (`x-forwarded-proto`) or writes on a RESPONSE (`x-robots-tag`) crosses no
+ * preflight and is none of this rule's business.
+ */
+function headerLiterals(text: string): string[] {
+  return Array.from(text.matchAll(/["'`](x-ailx-[a-z0-9-]+|traceparent)["'`]/gi), (m) => m[1]!.toLowerCase());
+}
+
+describe("every header we send survives the preflight", () => {
+  /**
+   * The browser and the exam service sit on different origins, so EVERY call
+   * this app makes is preflighted. A header the service does not list in
+   * `Access-Control-Allow-Headers` is not dropped — the request is never
+   * sent, and the app sees a bare "Failed to fetch".
+   *
+   * That is not hypothetical. Adding `traceparent` here on 2026-09-03 broke
+   * every hosted call — no deck, no sync, no published T1 site — because the
+   * service's allow-list was four strings typed out in the private repo. The
+   * list is `BROWSER_REQUEST_HEADERS` now, and this is the assertion from the
+   * sending side.
+   */
+  it("the trace and identity headers are both on the agreed list", async () => {
+    const dev = await serviceHeaders(storage);
+    for (const name of Object.keys(dev)) expect({ name, allowed: isAllowedRequestHeader(name) }).toEqual({ name, allowed: true });
+    expect(Object.keys(dev)).toContain(TRACEPARENT_HEADER);
+
+    setAuthTokenSource(async () => "jwt-abc");
+    const clerk = await serviceHeaders(storage);
+    for (const name of Object.keys(clerk)) expect({ name, allowed: isAllowedRequestHeader(name) }).toEqual({ name, allowed: true });
+    expect(Object.keys(clerk)).toContain("authorization");
+  });
+
+  it("no module types a header name the service has not agreed to", () => {
+    const offenders = sourceFiles(APP_ROOT)
+      .filter((f) => !f.includes("/test/") && !f.includes("/e2e/"))
+      .flatMap((f) =>
+        headerLiterals(codeOf(f))
+          .filter((name) => !isAllowedRequestHeader(name))
+          .map((name) => `${f.slice(APP_ROOT.length + 1)}: ${name}`),
+      );
+    expect(offenders).toEqual([]);
+  });
+
+  it("that scan really reads a header name — it is not matching nothing forever", () => {
+    // The check above passes today with zero literals to look at, because the
+    // seam composes them. Prove the scanner still bites, or it would go on
+    // passing after `fetch(url, { headers: { "x-ailx-whatever": … } })` came
+    // back, and comments about a header are not a header.
+    expect(headerLiterals('headers: { "x-ailx-new-idea": v }')).toEqual(["x-ailx-new-idea"]);
+    expect(headerLiterals('headers: { "traceparent": v }')).toEqual(["traceparent"]);
+    expect(headerLiterals(stripComments('// sends "x-ailx-new-idea" one day'))).toEqual([]);
+    expect(headerLiterals('const s = "x-ailx-new-idea";').every(isAllowedRequestHeader)).toBe(false);
+    expect(BROWSER_REQUEST_HEADERS.every(isAllowedRequestHeader)).toBe(true);
   });
 });

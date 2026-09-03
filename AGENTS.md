@@ -12,7 +12,7 @@ browser called a route the deployed service did not have. Do not bring either ba
 
 - `apps/web/` — Next.js frontend. Static export on GitHub Pages, and a hosted build (`AILX_BACKEND=1`) that adds the seven database-reading PAGES. It has NO API routes: it calls the exam service through `lib/mode.ts`
 - `packages/core/` — TrackPlugin interface, scoring purity harness, content addressing, the T1 ZIP writer
-- `packages/contract/` — the browser-facing API CONTRACT: wire types, frozen URL spellings, query parsers, the dev-identity predicate. Pure — no `node:`, no env, no I/O
+- `packages/contract/` — the browser-facing API CONTRACT: wire types, frozen URL spellings, query parsers, the dev-identity predicate, and `BROWSER_REQUEST_HEADERS` — the one list of request headers the browser sends, which is what the exam service must allow in a CORS preflight. Pure — no `node:`, no env, no I/O
 - `packages/report/` — pure scoring-adjacent derivation: composite, insights, calibration, export tiers, demo judging, track metadata
 - `packages/tracks/` — t1-creative-build, t2-discrimination, t3-reasoning, t4-generative
 - `packages/session/` — event-sourced session engine
