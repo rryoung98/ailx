@@ -33,7 +33,7 @@ themselves, each with a stated reason. Everything that just loads a page and
 measures it keeps running — `visual-contracts.spec.ts` in full, and the landing
 contracts in `visual.spec.ts`. A layer that only runs where a private service
 happens to be up is a layer that stops running (FRONTEND.md §6.7.3). Current
-service-free result: **22 passed, 21 skipped**.
+service-free result: **26 passed, 21 skipped**.
 
 Playwright then runs `next build && next start` itself with `AILX_BACKEND=1`
 (which for a frontend means only "compile the `page.api.tsx` pages") and
