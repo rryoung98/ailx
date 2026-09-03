@@ -24,7 +24,7 @@
  */
 import { apiPath, MODEL_ROOT, type ApiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
-import { authHeaders } from "./authHeaders";
+import { serviceHeaders } from "./traceparent";
 import { apiBase, apiOrigin, isServerMode } from "../mode";
 
 /** What the service says about a stored key. Never the key. */
@@ -134,7 +134,7 @@ async function gatewayCall(
   init: RequestInit = {},
 ): Promise<{ status: number; body: unknown }> {
   const storage = browserStorage();
-  const identity = storage === null ? {} : await authHeaders(storage);
+  const identity = storage === null ? {} : await serviceHeaders(storage);
   const res = await fetch(`${apiBase()}${path}`, {
     ...init,
     cache: "no-store",
@@ -166,7 +166,7 @@ async function gatewayCall(
 export async function modelGatewayFetch(input: string, init: RequestInit = {}): Promise<Response> {
   const storage = browserStorage();
   const toGateway = modelGatewayAvailable() && input.startsWith(`${modelGatewayBase()}/`);
-  const identity = storage === null || !toGateway ? {} : await authHeaders(storage);
+  const identity = storage === null || !toGateway ? {} : await serviceHeaders(storage);
   return fetch(input, { ...init, headers: { ...safeCallerHeaders(init.headers), ...identity } });
 }
 

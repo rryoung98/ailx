@@ -134,8 +134,13 @@ describe("what a call carries", () => {
     const init = calls[0].init!;
     expect(init.body).toBe("{}");
     // toEqual, not toMatchObject: a review pointed out that a forwarded
-    // provider `Authorization` would have passed the looser assertion.
-    expect(init.headers).toEqual({
+    // provider `Authorization` would have passed the looser assertion. The
+    // trace id is per-call, so it is asserted by SHAPE and then removed —
+    // dropping it from the comparison entirely would reopen the same hole.
+    const sent = { ...(init.headers as Record<string, string>) };
+    expect(sent.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+    delete sent.traceparent;
+    expect(sent).toEqual({
       "Content-Type": "application/json",
       "x-ailx-dev-user": "web-abc",
     });
@@ -151,7 +156,10 @@ describe("what a call carries", () => {
         "X-Api-Key": "sk-or-neither-should-this",
       },
     });
-    expect(calls[0].init?.headers).toEqual({
+    const dropped = { ...(calls[0].init?.headers as Record<string, string>) };
+    expect(dropped.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/);
+    delete dropped.traceparent;
+    expect(dropped).toEqual({
       "Content-Type": "application/json",
       "x-ailx-dev-user": "web-abc",
     });
