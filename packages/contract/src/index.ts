@@ -133,4 +133,10 @@ export {
   type ModerationCaseDetail,
   type ModerationComment,
 } from "./moderation.js";
+export {
+  WITHHELD_REASONS,
+  isWithheldItem,
+  type WithheldItem,
+  type WithheldReason,
+} from "./items.js";
 export { T1_LIMITS } from "./t1.js";

@@ -450,6 +450,36 @@ describe("presented deck vs recorded deck", () => {
     expect(resolved.phase).toBe("review");
     expect(resolved.items[0]).toMatchObject({ key: 1, correct: true, yourChoice: 1 });
   });
+
+  /**
+   * TEN-68. A withheld entry holds the position of an item the ledger later
+   * withdrew, so the ids the review deals still match the ids the exposure log
+   * recorded. That is what stops this looking like the short deck above.
+   */
+  it("accepts a review whose withdrawn item comes back as a withheld entry", async () => {
+    const items = [
+      { ...sittingItem("itm-1"), phase: "review", key: 1, rationale: "why", yourChoice: 1 },
+      { phase: "withheld", id: "itm-2", withheld: "withdrawn", yourChoice: 0 },
+      { ...sittingItem("itm-3"), phase: "review", key: 0, rationale: "why", yourChoice: 0 },
+    ];
+    const resolved = await (await present(RECORDED, items, { phase: "review" })).deck;
+    expect(resolved.items).toHaveLength(3);
+    // The whole entry: no stem, no options, no key, no rationale rode along.
+    expect(resolved.items[1]).toEqual({
+      phase: "withheld",
+      id: "itm-2",
+      withheld: "withdrawn",
+      yourChoice: 0,
+    });
+  });
+
+  it("still refuses when a withheld entry replaces an item that was never dealt", async () => {
+    const items = [
+      { phase: "withheld", id: "itm-ghost", withheld: "withdrawn" },
+      ...dealt.slice(1),
+    ];
+    await expect((await present(RECORDED, items)).deck).rejects.toBeInstanceOf(DeckMismatchError);
+  });
 });
 
 describe("startServerAttempt", () => {
