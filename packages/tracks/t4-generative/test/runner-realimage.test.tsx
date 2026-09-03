@@ -11,13 +11,13 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { TrackEvent } from "@ailx/core";
 import { Runner } from "../src/Runner.js";
-import { OPENROUTER_KEY_STORAGE, CURATED_IMAGE_MODELS } from "../src/imagegen.js";
+import { LLM_BASE_URL_STORAGE, CURATED_IMAGE_MODELS } from "../src/imagegen.js";
 import { IMAGE_MODEL_ID } from "../src/imageModel.js";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 // This jsdom build ships no localStorage — install a minimal in-memory shim
-// (the Runner reads the shared BYOK slot through it).
+// (the Runner reads the shared endpoint slot through it).
 const lsStore = new Map<string, string>();
 Object.defineProperty(window, "localStorage", {
   configurable: true,
@@ -77,9 +77,10 @@ function generateButton(c: HTMLElement): HTMLButtonElement {
 
 const flush = () => act(async () => {});
 
-describe("T4 runner — real OpenRouter image generation", () => {
-  it("with a stored key, generate calls the endpoint and stores the dataUri + served model id", async () => {
-    window.localStorage.setItem(OPENROUTER_KEY_STORAGE, "sk-test");
+describe("T4 runner — real image generation through a connected endpoint", () => {
+  it("with a connected endpoint, generate calls it and stores the dataUri + served model id", async () => {
+    // Real mode is an ENDPOINT now, never a key in this browser (TEN-62).
+    window.localStorage.setItem(LLM_BASE_URL_STORAGE, "https://exam.example/v1/model");
     const fetchMock = vi.fn(async () => ({
       ok: true,
       status: 200,
@@ -99,7 +100,9 @@ describe("T4 runner — real OpenRouter image generation", () => {
     await flush();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(url).toBe("https://exam.example/v1/model/chat/completions");
+    // The browser attaches no credential of its own; the endpoint holds one.
+    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
     const body = JSON.parse(String(init.body));
     expect(body.model).toBe(CURATED_IMAGE_MODELS[0]);
     expect(body.modalities).toEqual(["image", "text"]);
@@ -115,7 +118,8 @@ describe("T4 runner — real OpenRouter image generation", () => {
   });
 
   it("surfaces a refusal inline and records no draft", async () => {
-    window.localStorage.setItem(OPENROUTER_KEY_STORAGE, "sk-test");
+    // Real mode is an ENDPOINT now, never a key in this browser (TEN-62).
+    window.localStorage.setItem(LLM_BASE_URL_STORAGE, "https://exam.example/v1/model");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({

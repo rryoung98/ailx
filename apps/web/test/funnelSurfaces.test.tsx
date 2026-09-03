@@ -228,7 +228,8 @@ describe("the daily", () => {
 
 describe("the scored sitting", () => {
   it("counts the start, and emits nothing else while the run is under way", async () => {
-    window.localStorage.setItem("ailx:openrouter-key", "sk-or-test");
+    // A connection is an ENDPOINT now, never a key in this browser (TEN-62).
+    window.localStorage.setItem("ailx:llm-base-url", "https://exam.example/v1/model");
     const ExamPage = (await import("../app/exam/page")).default;
     await render(ExamPage);
     await click(/Start your run/);

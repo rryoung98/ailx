@@ -356,7 +356,9 @@ apps/
 services/
   api/         PHASE 2 · Hono host over @ailx/backend handlers
   worker/      PHASE 2 · pg-boss consumer running @ailx/backend/judging
-  openrouter-proxy/                                                    (unchanged)
+  openrouter-proxy/  unchanged, and it STAYS: the service's /v1/model/* gateway
+                     refuses an anonymous caller, so the Pages export cannot use
+                     it (TEN-62)
 instruments/
   demo-2026.1/ NEW · public practice tier (keys published on purpose)
   2026.1/      operational; bank moves to a private digest-pinned artefact

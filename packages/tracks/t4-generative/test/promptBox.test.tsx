@@ -167,7 +167,7 @@ describe("T4 prompt box", () => {
   });
 
   it("puts the prompt back when a real generation fails", async () => {
-    lsStore.set("ailx:openrouter-key", "sk-test");
+    lsStore.set("ailx:llm-base-url", "https://exam.example/v1/model");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -184,7 +184,7 @@ describe("T4 prompt box", () => {
   });
 
   it("keeps freshly typed text instead of restoring a failed prompt over it", async () => {
-    lsStore.set("ailx:openrouter-key", "sk-test");
+    lsStore.set("ailx:llm-base-url", "https://exam.example/v1/model");
     let reject: (e: Error) => void = () => {};
     vi.stubGlobal(
       "fetch",

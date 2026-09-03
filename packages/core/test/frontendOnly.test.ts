@@ -174,3 +174,72 @@ describe("what a browser legitimately needs is still here", () => {
     expect(read("apps/web/lib/mode.ts")).toContain("NEXT_PUBLIC_AILX_API_BASE");
   });
 });
+
+/**
+ * TEN-62: the browser holds no provider credential, in EITHER build.
+ *
+ * The key, the PKCE verifier and the browser-side token exchange were deleted
+ * from `apps/web` and `packages/tracks`. A codex review pointed out that the
+ * only guard was a source scan of ONE file (T1's `Runner.tsx`), so a key path
+ * re-added in the panel, in the gateway client, in T4, or under a different
+ * slot name would have gone through green. This scans every browser source in
+ * the repo, which is the scope the claim is made at.
+ *
+ * The shared-demo proxy under `services/` is deliberately EXCLUDED: it is a
+ * deployed service that holds the operator's key on purpose, and it never
+ * runs in a browser.
+ */
+describe("no provider credential can reach a browser", () => {
+  const browserSources = files.filter(
+    (f) =>
+      /^(apps\/web|packages\/(tracks|contract|report|session|core))\//.test(f) &&
+      /\.(ts|tsx)$/.test(f) &&
+      !f.includes("/test/") &&
+      !f.endsWith(".test.ts") &&
+      !f.endsWith(".test.tsx"),
+  );
+
+  /** Source with comments removed: prose ABOUT a deleted slot is not a slot. */
+  const code = (text: string): string =>
+    text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("reads a real set of sources", () => {
+    expect(browserSources.length).toBeGreaterThan(50);
+    expect(browserSources).toContain("apps/web/features/exam/ConnectPanel.tsx");
+    expect(browserSources).toContain("apps/web/lib/data/modelGateway.ts");
+    expect(browserSources).toContain("packages/tracks/t4-generative/src/imagegen.ts");
+  });
+
+  it.each([
+    ["the deleted key slot", /ailx:openrouter-key/],
+    ["a PKCE verifier slot", /pkce-verifier|PKCE_VERIFIER/],
+    ["a browser-side code exchange", /code_verifier|code_challenge/],
+  ])("names %s nowhere", (_what, pattern) => {
+    const offenders = browserSources.filter((f) => pattern.test(code(read(f))));
+    expect(offenders).toEqual([]);
+  });
+
+  it("the comment stripper does not hide a real slot behind a comment", () => {
+    expect(/ailx:openrouter-key/.test(code('const k = "ailx:openrouter-key";'))).toBe(true);
+    expect(/ailx:openrouter-key/.test(code('// the old ailx:openrouter-key slot'))).toBe(false);
+  });
+
+  /**
+   * `authHeaders` mints the ONE `Authorization` header a browser sends, and it
+   * is a Clerk session JWT — this browser's own identity, never a provider's
+   * credential. Allowed by name for the same reason the card route is: a
+   * second minter has to be a decision in front of a reviewer.
+   */
+  it("mints an Authorization header in exactly one place", () => {
+    const minters = browserSources.filter((f) => /authorization`?:\s*`Bearer/i.test(read(f)));
+    expect(minters).toEqual(["apps/web/lib/data/authHeaders.ts"]);
+  });
+
+  it("keeps the shared-demo proxy, which the static export still needs", () => {
+    // The exam service's /v1/model/* routes are all behind auth, so a build
+    // with no identity cannot use them (AGENTS.md, "The shared demo has no
+    // anonymous path"). Deleting this would leave the Pages export unable to
+    // call a model at all.
+    expect(exists("services/openrouter-proxy")).toBe(true);
+  });
+});

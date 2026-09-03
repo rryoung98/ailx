@@ -17,7 +17,7 @@
  */
 import { apiPath, DEFAULT_REPO_NAME } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
-import { authHeaders } from "../../lib/data/authHeaders";
+import { serviceHeaders } from "../../lib/data/traceparent";
 import { isServerMode } from "../../lib/mode";
 import {
   browserApiOptions,
@@ -176,7 +176,7 @@ export async function downloadSiteZip(
   let res: Response;
   try {
     res = await opts.fetchFn(exportUrl(opts, serverAttemptId, "exportSite"), {
-      headers: await authHeaders(storage),
+      headers: await serviceHeaders(storage),
     });
   } catch {
     return { ok: false, ...OFFLINE };
@@ -214,7 +214,7 @@ export async function startGithubExport(
   try {
     res = await opts.fetchFn(exportUrl(opts, serverAttemptId, "startGithubExport"), {
       method: "POST",
-      headers: await authHeaders(storage),
+      headers: await serviceHeaders(storage),
     });
   } catch {
     return { ok: false, ...OFFLINE };
@@ -267,7 +267,7 @@ export async function pollGithubExport(
   try {
     res = await opts.fetchFn(exportUrl(opts, serverAttemptId, "finishGithubExport"), {
       method: "POST",
-      headers: { "content-type": "application/json", ...(await authHeaders(storage)) },
+      headers: { "content-type": "application/json", ...(await serviceHeaders(storage)) },
       body: JSON.stringify(input),
     });
   } catch {

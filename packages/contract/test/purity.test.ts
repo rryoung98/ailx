@@ -62,13 +62,36 @@ describe("@ailx/contract is pure", () => {
     }
   });
 
+  /**
+   * The model gateway's own spellings, which say the OPPOSITE of a leak.
+   *
+   * `modelKey`, `disconnectModelKey` and the `/key` path are the routes by
+   * which a browser asks whether the SERVICE is holding a provider key for it
+   * and tells it to forget one (TEN-62). No route returns a key — a caller
+   * sees a 12-hex fingerprint — and a provider key is not a marking scheme in
+   * any case. They are removed before the check so the rule below keeps its
+   * teeth everywhere else: an answer key, a rationale or a rubric would still
+   * fail on the bare word.
+   */
+  const MODEL_GATEWAY_KEY_SPELLINGS = /\bdisconnectModelKey\b|\bmodelKey\b|\/key\b/g;
+
   it("names no marking scheme — the browser holds no key", () => {
     for (const { name, text } of sources) {
-      expect({ name, leaks: /\bkey\b|rationale|rubric|judgePrompt|answerKey/i.test(text) }).toEqual({
+      const scanned = text.replace(MODEL_GATEWAY_KEY_SPELLINGS, "");
+      expect({ name, leaks: /\bkey\b|rationale|rubric|judgePrompt|answerKey/i.test(scanned) }).toEqual({
         name,
         leaks: false,
       });
     }
+  });
+
+  it("the model-gateway exemption is narrow: an answer key still fails", () => {
+    const scan = (text: string) =>
+      /\bkey\b|rationale|rubric|judgePrompt|answerKey/i.test(text.replace(MODEL_GATEWAY_KEY_SPELLINGS, ""));
+    expect(scan('modelKey: { method: "GET", path: `${MODEL_ROOT}/key` }')).toBe(false);
+    expect(scan("const answerKey = 3;")).toBe(true);
+    expect(scan("the key is B")).toBe(true);
+    expect(scan("rubric weights")).toBe(true);
   });
 
   it("depends on no server package", () => {

@@ -1,26 +1,27 @@
 /**
- * OpenRouter BYOK vibe-coding support for the T1 assist panel.
+ * Vibe-coding model calls for the T1 assist panel.
  *
- * The repo and the deployed site are PUBLIC: there is NO key here and never
- * will be. The candidate pastes their own OpenRouter key, which lives only
- * in their browser's localStorage under OPENROUTER_KEY_STORAGE.
+ * THE BROWSER HOLDS NO PROVIDER KEY (TEN-62). It used to: the candidate
+ * pasted an OpenRouter key, or signed in and did the PKCE exchange here, and
+ * the result sat in localStorage under `ailx:openrouter-key`. That slot is
+ * gone, and so is every parameter that carried a key into a request. What is
+ * left is an OpenAI-compatible ENDPOINT — the exam service's model gateway in
+ * the hosted build, the capped shared-demo proxy in the static export, or a
+ * local server such as Ollama — plus whatever identity the HOST attaches
+ * through the injected fetch. This module cannot send an `Authorization`
+ * header, because it has nothing to put in one.
  *
- * Everything in this module is pure / DOM-free (fetch is injected) so the
- * request builder, fence parser and response handling are unit-testable
- * without network. Model calls happen in the RUNNER only; score() stays
- * pure and consumes the stored artifact.
+ * Everything here is pure / DOM-free (fetch is injected) so the request
+ * builder, fence parser and response handling are unit-testable without
+ * network. Model calls happen in the RUNNER only; score() stays pure and
+ * consumes the stored artifact.
  */
 
-export const OPENROUTER_KEY_STORAGE = "ailx:openrouter-key";
-/** Persisted OpenAI-compatible API base (Ollama/vLLM/etc. for local models). */
+/** Persisted OpenAI-compatible API base (the gateway, the demo proxy, Ollama). */
 export const LLM_BASE_URL_STORAGE = "ailx:llm-base-url";
-export const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 
 /** Every browser-local slot that makes up "a connected model". */
-export const LLM_CONNECTION_KEYS: ReadonlyArray<string> = [
-  OPENROUTER_KEY_STORAGE,
-  LLM_BASE_URL_STORAGE,
-];
+export const LLM_CONNECTION_KEYS: ReadonlyArray<string> = [LLM_BASE_URL_STORAGE];
 
 /** Minimal write surface of localStorage (keeps this module DOM-free). */
 export interface ClearableStorage {
@@ -45,16 +46,47 @@ export function clearLlmConnection(storage: ClearableStorage | null | undefined)
     }
   }
 }
-export const OPENROUTER_CHAT_URL = `${DEFAULT_BASE_URL}/chat/completions`;
-export const OPENROUTER_MODELS_URL = `${DEFAULT_BASE_URL}/models`;
-
 /**
- * Normalize a user-entered base URL: trim, drop trailing slashes, fall back
- * to the OpenRouter default when empty. Pure.
+ * Normalize an endpoint: trim, drop trailing slashes. Empty stays EMPTY.
+ *
+ * There is deliberately no default any more. The old fallback was
+ * `https://openrouter.ai/api/v1`, which only worked because a key sat beside
+ * it in this browser; with the key gone, a request there is a guaranteed 401
+ * dressed up as a connection. "No endpoint" is now a state the caller must
+ * handle, and `hasModelEndpoint()` is how it asks. Pure.
  */
 export function normalizeBaseUrl(base: string | null | undefined): string {
-  const trimmed = (base ?? "").trim().replace(/\/+$/, "");
-  return trimmed.length > 0 ? trimmed : DEFAULT_BASE_URL;
+  return (base ?? "").trim().replace(/\/+$/, "");
+}
+
+/** Is there an endpoint to call at all? Pure. */
+export function hasModelEndpoint(base: string | null | undefined): boolean {
+  return normalizeBaseUrl(base) !== "";
+}
+
+/**
+ * Is this a URL a browser may be pointed at for model calls?
+ *
+ * A review found that the manual box persisted whatever was typed, so a key
+ * pasted into userinfo (`https://user:sk-or-…@host/v1`) or a query string
+ * would land in `localStorage` and in every request URL — the exact leak this
+ * change exists to close, through the one input that survived it.
+ *
+ * So: http(s) only, no credentials, no query, no fragment. `http:` stays
+ * allowed because a local model server (Ollama, vLLM) is the reason this box
+ * exists, and it reaches no network. Pure.
+ */
+export function isUsableModelEndpoint(base: string | null | undefined): boolean {
+  const normalized = normalizeBaseUrl(base);
+  if (normalized === "") return false;
+  let url: URL;
+  try {
+    url = new URL(normalized);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  return url.username === "" && url.password === "" && url.search === "" && url.hash === "";
 }
 
 /** chat-completions endpoint for any OpenAI-compatible base. Pure. */
@@ -117,16 +149,17 @@ export function buildVibeRequest(input: VibeRequestInput): ChatPayload {
 }
 
 /**
- * Request init (headers/body) for fetch. Pure — key is passed in.
- * An empty key omits the Authorization header entirely: local
- * OpenAI-compatible servers (Ollama/vLLM) usually need no key.
+ * Request init (headers/body) for fetch. Pure.
+ *
+ * There is no `Authorization` header and no parameter that could become one.
+ * The endpoint is either the exam service's gateway — which authenticates the
+ * CALLER, not the key, and pays out of a key it holds sealed — or a proxy or
+ * a local server that needs no credential from this browser.
  */
-export function buildFetchInit(apiKey: string, payload: ChatPayload): RequestInit {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (apiKey.trim().length > 0) headers.Authorization = `Bearer ${apiKey.trim()}`;
+export function buildFetchInit(payload: ChatPayload): RequestInit {
   return {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   };
 }
@@ -169,29 +202,36 @@ type FetchLike = (url: string, init?: RequestInit) => Promise<{
 }>;
 
 /**
- * Call OpenRouter chat completions and return the raw assistant text.
- * fetch is injected for testability; throws OpenRouterError with a
- * user-facing message on 401/429/network/shape failures.
+ * Call the endpoint's chat completions and return the raw assistant text.
+ *
+ * `fetchImpl` is injected for testability AND for identity: the host passes
+ * one that attaches who is asking, which is the only credential a request
+ * from this browser now carries.
  */
 export async function requestVibeCompletion(
   fetchImpl: FetchLike,
-  apiKey: string,
   payload: ChatPayload,
   baseUrl?: string,
 ): Promise<string> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
-    res = await fetchImpl(chatCompletionsUrl(baseUrl), buildFetchInit(apiKey, payload));
+    res = await fetchImpl(chatCompletionsUrl(baseUrl), buildFetchInit(payload));
   } catch {
     throw new OpenRouterError("Network error reaching the model endpoint.", null);
   }
   if (!res.ok) {
     const msg =
+      // Mid-run, the only action the candidate actually HAS is the offline
+      // assist: the static export has no sign-in, and no build offers a
+      // connect button inside a running track. A review caught both messages
+      // naming something impossible.
       res.status === 401
-        ? "OpenRouter rejected the key (401). Check the key."
-        : res.status === 429
-          ? "OpenRouter rate limit (429). Wait a moment and retry."
-          : `OpenRouter error (HTTP ${res.status}).`;
+        ? "The model endpoint would not accept this request (401). Use the offline demo assist to finish the track."
+        : res.status === 402
+          ? "The shared demo budget is spent (402). Use the offline demo assist to finish the track."
+          : res.status === 429
+            ? "Model rate limit (429). Wait a moment and retry."
+            : `Model endpoint error (HTTP ${res.status}).`;
     throw new OpenRouterError(msg, res.status);
   }
   let json: unknown;
@@ -218,16 +258,10 @@ export function parseModelsResponse(json: unknown): string[] {
     .sort();
 }
 
-/** Fetch the model list from any OpenAI-compatible base (key optional). */
-export async function fetchModelIds(
-  fetchImpl: FetchLike,
-  apiKey: string,
-  baseUrl?: string,
-): Promise<string[]> {
+/** Fetch the model list from any OpenAI-compatible base. No credential. */
+export async function fetchModelIds(fetchImpl: FetchLike, baseUrl?: string): Promise<string[]> {
   try {
-    const headers: Record<string, string> = {};
-    if (apiKey.trim().length > 0) headers.Authorization = `Bearer ${apiKey.trim()}`;
-    const res = await fetchImpl(modelsUrl(baseUrl), { headers });
+    const res = await fetchImpl(modelsUrl(baseUrl), {});
     if (!res.ok) return [];
     return parseModelsResponse(await res.json());
   } catch {

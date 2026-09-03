@@ -9,7 +9,17 @@ import { REQUIRES_SERVICE, hasExamService } from "./service";
  * asserted here is one the candidate can act on.
  */
 
-const OPENROUTER = "https://openrouter.ai/**";
+/**
+ * A model endpoint that exists only for this spec.
+ *
+ * It used to be `https://openrouter.ai/**`, because the browser called the
+ * provider directly with a key it held. It no longer holds one and no longer
+ * calls the provider: the endpoint is whatever the run-start panel connected
+ * (TEN-62). What this spec still needs is a real failure at a real endpoint,
+ * so it seeds one and refuses every request to it.
+ */
+const MODEL_ENDPOINT = "https://model.e2e.invalid/v1";
+const MODEL_ROUTE = "https://model.e2e.invalid/**";
 
 // Every test here SEEDS through the exam service, so the whole file skips with a
 // stated reason when there is none. Measurement specs are unaffected: they take
@@ -18,11 +28,11 @@ test.skip(!hasExamService(), REQUIRES_SERVICE);
 
 test.describe("T1 failure paths", () => {
   test("a failed model call offers retry and an offline assist", async ({ page, devUser, attemptId }) => {
-    await page.route(OPENROUTER, (route) => route.abort("failed"));
+    await page.route(MODEL_ROUTE, (route) => route.abort("failed"));
     await seedRun(page, devUser, {
       attemptId,
       log: logInTrack(attemptId, "t1"),
-      modelKey: "sk-e2e-not-a-real-key",
+      modelEndpoint: MODEL_ENDPOINT,
     });
     await page.goto("/exam");
 

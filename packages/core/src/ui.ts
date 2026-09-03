@@ -35,6 +35,26 @@ export interface TrackUIProps {
    * candidate can still change a scored input.
    */
   onPresentation?(screen: string | null): void;
+  /**
+   * How a model call is issued.
+   *
+   * The host attaches WHO is asking; the runner builds WHAT is asked. No host
+   * passes a provider key, because no host has one (TEN-62): in the hosted
+   * build this fetch carries the sitting's identity to the exam service's
+   * model gateway, which spends a key it holds sealed against that identity.
+   * Undefined means "use the browser's own fetch" — the static export, whose
+   * endpoint is a capped proxy or a local server, and every bare unit test.
+   *
+   * WHICH endpoint is not passed here: the runner reads the one shared
+   * browser slot (`ailx:llm-base-url`), which the run-start panel owns.
+   */
+  modelFetch?: (url: string, init?: RequestInit) => Promise<Response>;
+  /**
+   * Told when the runner gives up on the endpoint mid-run and falls back to
+   * the offline demo assist. It is not a disconnection: a key the service
+   * holds is still held. The static export uses it to clear the stored slot.
+   */
+  onModelDisconnect?(): void;
 }
 
 /**

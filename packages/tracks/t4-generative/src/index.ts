@@ -25,9 +25,9 @@ export {
   MOOD_VOCAB,
 } from "./imageModel.js";
 export {
-  OPENROUTER_KEY_STORAGE,
   LLM_BASE_URL_STORAGE,
-  DEFAULT_BASE_URL,
+  hasModelEndpoint,
+  normalizeBaseUrl,
   CURATED_IMAGE_MODELS,
   buildImageRequest,
   buildImageFetchInit,

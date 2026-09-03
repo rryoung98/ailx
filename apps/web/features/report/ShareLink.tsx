@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
-import { authHeaders } from "../../lib/data/authHeaders";
+import { serviceHeaders } from "../../lib/data/traceparent";
 import {
   DEFAULT_SHARE_SECTIONS,
   SHARE_NOTE_MAX,
@@ -170,7 +170,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
         method: API_ROUTES[route].method,
         headers: {
           "content-type": "application/json",
-          ...(await authHeaders(window.localStorage)),
+          ...(await serviceHeaders(window.localStorage)),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });

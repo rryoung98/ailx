@@ -12,9 +12,12 @@ import {
   normalizeBaseUrl,
   parseImageResponse,
   requestImage,
-  OPENROUTER_KEY_STORAGE,
+  hasModelEndpoint,
   LLM_BASE_URL_STORAGE,
 } from "../src/imagegen.js";
+
+/** Any endpoint; the module has no default and must not grow one. */
+const BASE = "https://exam.example/v1/model";
 
 const PNG_URI = "data:image/png;base64,aGVsbG8="; // "hello"
 
@@ -39,22 +42,25 @@ describe("t4 imagegen — request builder", () => {
     });
   });
 
-  it("adds a Bearer header only when a key is present", () => {
+  it("sends NO credential, and takes no parameter that could become one", () => {
     const p = buildImageRequest("x", "m");
-    const withKey = buildImageFetchInit(" sk-abc ", p);
-    expect((withKey.headers as Record<string, string>).Authorization).toBe("Bearer sk-abc");
-    const noKey = buildImageFetchInit("", p);
-    expect((noKey.headers as Record<string, string>).Authorization).toBeUndefined();
-    expect(withKey.method).toBe("POST");
-    expect(JSON.parse(String(withKey.body))).toEqual(p);
+    const init = buildImageFetchInit(p);
+    expect(Object.keys(init.headers as Record<string, string>)).toEqual(["Content-Type"]);
+    expect(buildImageFetchInit.length).toBe(1);
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual(p);
   });
 
-  it("targets the OpenRouter chat-completions endpoint by default", () => {
-    expect(chatCompletionsUrl()).toBe("https://openrouter.ai/api/v1/chat/completions");
+  it("has no default endpoint: empty stays empty (TEN-62)", () => {
+    // The old default was the provider's own origin, reachable only with a
+    // key this browser no longer holds.
+    expect(normalizeBaseUrl(undefined)).toBe("");
+    expect(normalizeBaseUrl("  ")).toBe("");
+    expect(hasModelEndpoint("  ")).toBe(false);
+    expect(hasModelEndpoint(BASE)).toBe(true);
     expect(chatCompletionsUrl("http://localhost:11434/v1/")).toBe(
       "http://localhost:11434/v1/chat/completions",
     );
-    expect(normalizeBaseUrl("  ")).toBe("https://openrouter.ai/api/v1");
   });
 });
 
@@ -68,9 +74,13 @@ describe("t4 imagegen — model catalog & shared storage slots", () => {
     ]);
   });
 
-  it("reuses the exact localStorage slots T1 uses", () => {
-    expect(OPENROUTER_KEY_STORAGE).toBe("ailx:openrouter-key");
+  it("reuses the exact endpoint slot T1 uses, and declares no key slot", async () => {
     expect(LLM_BASE_URL_STORAGE).toBe("ailx:llm-base-url");
+    const mod: Record<string, unknown> = await import("../src/imagegen.js");
+    for (const [name, value] of Object.entries(mod)) {
+      if (typeof value !== "string") continue;
+      expect({ name, holdsKey: value.includes("openrouter-key") }).toEqual({ name, holdsKey: false });
+    }
   });
 });
 
@@ -125,7 +135,7 @@ describe("t4 imagegen — requestImage error mapping", () => {
 
   async function kindOf(fetchImpl: Parameters<typeof requestImage>[0]) {
     try {
-      await requestImage(fetchImpl, "k", payload);
+      await requestImage(fetchImpl, payload, BASE);
       return "ok";
     } catch (e) {
       return (e as ImageGenError).kind;
@@ -134,13 +144,14 @@ describe("t4 imagegen — requestImage error mapping", () => {
 
   it("maps 401 to auth with a user-facing message", async () => {
     const f = vi.fn(async () => ({ ok: false, status: 401, json: async () => ({}) }));
-    await expect(requestImage(f, "k", payload)).rejects.toThrow(/rejected the key \(401\)/);
+    await expect(requestImage(f, payload, BASE)).rejects.toThrow(/401/);
+    await expect(requestImage(f, payload, BASE)).rejects.toThrow(/offline demo/i);
     expect(await kindOf(f)).toBe("auth");
   });
 
   it("maps 429 to rate-limit", async () => {
     const f = async () => ({ ok: false, status: 429, json: async () => ({}) });
-    await expect(requestImage(f, "k", payload)).rejects.toThrow(/rate limit/);
+    await expect(requestImage(f, payload, BASE)).rejects.toThrow(/rate limit/);
     expect(await kindOf(f)).toBe("rate-limit");
   });
 
@@ -169,7 +180,7 @@ describe("t4 imagegen — requestImage error mapping", () => {
 
   it("returns the image on success and sends the right request", async () => {
     const f = vi.fn(async () => okResponse(imageJson(PNG_URI, "served/model")));
-    const out = await requestImage(f, "sk-key", payload, "http://localhost:1/v1");
+    const out = await requestImage(f, payload, "http://localhost:1/v1");
     expect(out).toEqual({ dataUri: PNG_URI, modelId: "served/model" });
     expect(f).toHaveBeenCalledWith(
       "http://localhost:1/v1/chat/completions",
