@@ -432,12 +432,17 @@ export const T3_SCENARIO = {
         "No such annex exists in the record. Section 5.3 says the fee cap is a staff recommendation, not a mandate.",
     },
     {
-      id: "pe-arithmetic-cost",
-      topic: "cost assessor training registry contingency",
+      // The BACKLOG arithmetic plant, not the cost one, because the exam
+      // service's released form deals this instance (TEN-73 recorded that the
+      // two tiers' T3 forms had stopped being the same form). Keeping the same
+      // four ids in both tiers is as close to that as this repo can get
+      // without reaching into the other one.
+      id: "pe-arithmetic-backlog",
+      topic: "processing time saving months pooled panels",
       claim:
-        "Assessor training and the registry platform together account for about half the $46m programme cost, leaving roughly $23m of contingency.",
+        "A 41% cut on a 38-month median saves about 6 months, which is too small to change the negotiating position.",
       truth:
-        "Section 7.1: $31m + $9m = $40m of $46m, i.e. about 87%. Contingency is $6m, not $23m.",
+        "Section 3.2: 41% of 38 months is about 15.6 months, not 6. The saving is roughly two and a half times what the claim states.",
     },
   ],
   /**
@@ -477,7 +482,7 @@ export const T3_SCENARIO = {
 
 /** Pinned sha256(canonicalJson(T3_SCENARIO)) — asserted at test time. */
 export const T3_SCENARIO_SHA256 =
-  "08603dcff41e8e821ea70f7e6f1858f55729ba6fa2e0a8645692fe3a6dfca6b6";
+  "11fd99e33131468bd45bba7b517b93d35a588abc8610ad835633fb729b7d6ff4";
 
 /**
  * HOW MANY PLANTS THE INSTRUMENT DECLARES: `config.seeded_errors.count_per_form`

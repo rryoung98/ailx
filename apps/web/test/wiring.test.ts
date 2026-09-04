@@ -103,7 +103,7 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
     // ids and numeric traps (61→38 months etc.) intact.
     expect(cfg.sourceTitle).toContain("Trilateral AI Workforce Readiness Memorandum");
     expect(cfg.plantedErrors.map((e) => e.id)).toEqual([
-      "pe-figure", "pe-causal", "pe-citation", "pe-arithmetic-cost",
+      "pe-figure", "pe-causal", "pe-citation", "pe-arithmetic-backlog",
     ]);
     expect(cfg.correctAdvice.map((a) => a.id)).toEqual([
       "ca-cluster", "ca-equity", "ca-capacity", "ca-sequencing",
