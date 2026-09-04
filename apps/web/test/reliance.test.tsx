@@ -89,8 +89,17 @@ describe("the report never shows a reliance rate without its interval", () => {
 
   it("carries the precision and reliability notes with the numbers", async () => {
     await render(createElement(ReportPage));
+    const raw = completedState().tracks.t3.score!.raw;
     const section = host.querySelector('[data-testid="t3-reliance"]')!;
-    expect(section.textContent).toContain(formatInterval(wilsonInterval(5, 8)));
+    // The precision note is worked from the plants THIS sitting surfaced
+    // (TEN-91), not from a count written into the sentence.
+    expect(section.textContent).toContain(relianceReportFromRaw(raw)!.precisionNote);
+    const n = raw.plantedSurfaced;
+    if (n >= 2) {
+      expect(section.textContent).toContain(formatInterval(wilsonInterval(Math.floor(n / 2), n)));
+    } else {
+      expect(section.textContent).toContain("fewer than two events is not an estimate");
+    }
     expect(section.textContent).toContain("Karvelis");
     expect(section.textContent).toContain("ICC below 0.5");
   });

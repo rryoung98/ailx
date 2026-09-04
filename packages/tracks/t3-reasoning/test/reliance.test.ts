@@ -176,14 +176,40 @@ describe("relianceReportFromRaw", () => {
   it("names the precision and the missing reliability evidence", () => {
     const r = relianceReportFromRaw(raw([3, 8], [1, 4]))!;
     expect(r.precisionNote).toContain("8 planted errors and 4 correct suggestions");
-    // The quoted example intervals are the ones wilsonInterval really returns.
+    // The quoted example intervals are the ones wilsonInterval really returns,
+    // for the events THIS sitting had.
+    expect(r.precisionNote).toContain(formatInterval(wilsonInterval(4, 8)));
     expect(r.precisionNote).toContain(formatInterval(wilsonInterval(5, 8)));
-    expect(r.precisionNote).toContain(formatInterval(wilsonInterval(7, 8)));
     expect(r.reliabilityNote).toContain("ICC below 0.5");
     expect(r.reliabilityNote).toContain("Karvelis");
     // The intervals assume independence, which reliance behaviour does not obey.
     expect(r.independenceNote).toContain("assume the events are independent");
     expect(r.independenceNote).toContain("wider than the one shown");
+  });
+
+  it("works the precision example from the plants the sitting had (TEN-91)", () => {
+    // The released form plants 4, not 8. The sentence used to say "Eight
+    // events cannot pin a rate" whatever the sitting surfaced, which would
+    // have become false the day the form changed.
+    const r = relianceReportFromRaw(raw([2, 4], [1, 4]))!;
+    expect(r.precisionNote).toContain("4 planted errors and 4 correct suggestions");
+    expect(r.precisionNote).toContain("4 events cannot pin a rate: 2 of 4 is 0.50");
+    expect(r.precisionNote).toContain(formatInterval(wilsonInterval(2, 4)));
+    expect(r.precisionNote).toContain("3 of 4 is 0.75");
+    expect(r.precisionNote).toContain(formatInterval(wilsonInterval(3, 4)));
+    expect(r.precisionNote).not.toContain("Eight events");
+    // Two events is the smallest count with an adjacent pair to show.
+    expect(relianceReportFromRaw(raw([1, 2], [1, 2]))!.precisionNote).toContain(
+      "2 events cannot pin a rate: 1 of 2 is 0.50",
+    );
+    // One event has no pair, so it says so instead of inventing one.
+    const single = relianceReportFromRaw(raw([0, 1], [0, 1]))!;
+    expect(single.precisionNote).toContain("fewer than two events is not an estimate");
+    expect(single.precisionNote).not.toContain("cannot pin a rate:");
+    // A sitting that surfaced nothing still gets a sentence, not a crash.
+    expect(relianceReportFromRaw(raw([0, 0], [0, 0]))!.precisionNote).toContain(
+      "fewer than two events is not an estimate",
+    );
   });
 
   it("says one error, not one errors, when a single plant surfaced", () => {

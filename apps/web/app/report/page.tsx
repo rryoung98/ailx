@@ -423,8 +423,10 @@ export default function ReportPage() {
                 );
               })}
               {/* T3's two reliance rates, each with its interval and the
-                  band, because 8 planted errors cannot support a bare
-                  two-decimal rate (TEN-35). */}
+                  band, because a form's handful of planted errors cannot
+                  support a bare two-decimal rate (TEN-35). The 2026.1 forms
+                  plant four, under the eight-plant floor, so the card also
+                  carries the underpowered note (TEN-91). */}
               {t === "t3" && <RelianceCard raw={score.raw} />}
               {t === "t1" && !sample && <SiteLiveLink attemptId={state.attemptId ?? undefined} />}
               {t === "t4" && !sample && <ShareToGallery artifact={ts.artifact} />}
