@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { assetUrl, eventLogCopy, footerModeCopy, isServerMode } from "../lib/mode";
+import { accessCopy, assetUrl, eventLogCopy, footerModeCopy, isServerMode } from "../lib/mode";
 import RootLayout from "../app/layout";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -43,6 +43,44 @@ describe("footerModeCopy", () => {
     expect(copy).not.toMatch(/no network calls/i);
     expect(copy).not.toMatch(/everything runs in your browser/i);
     expect(copy).toContain("AILX backend");
+  });
+
+  it("promises no simulator for a model call the service will not make", () => {
+    // TEN-62 put the key on the exam service, which refuses an unconnected
+    // caller. "without one, every model call is a deterministic simulator"
+    // described a build that no longer exists.
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    const copy = footerModeCopy();
+    expect(copy).not.toMatch(/without one, every model call is a deterministic simulator/i);
+    expect(copy).toContain("the service makes no model call for you");
+    expect(copy).toContain("this browser never receives one");
+  });
+});
+
+describe("accessCopy", () => {
+  /**
+   * Staging switched to Clerk on 2026-09-04 and the hero still said "no
+   * account" while the exam service refused an anonymous sitting.
+   */
+  it("keeps the account-free promise where it is true", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    expect(accessCopy()).toContain("no account");
+  });
+
+  it("keeps it in a hosted build that mounts no auth", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    expect(accessCopy()).toContain("no account");
+  });
+
+  it("drops it where a sitting needs one, and still says the play is free", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    const copy = accessCopy();
+    expect(copy).not.toMatch(/no account/i);
+    expect(copy).toContain("free to play");
+    expect(copy).toContain("needs an account");
   });
 });
 

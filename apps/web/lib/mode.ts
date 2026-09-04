@@ -37,11 +37,35 @@ export function isClerkEnabled(): boolean {
  * Footer provenance line. The static showcase really is offline — the
  * hosted build is not, and claiming "no network calls" there is a lie the
  * dogfooder caught on every page.
+ *
+ * The hosted half also stopped promising a simulator. TEN-62 moved the
+ * provider key onto the exam service, which refuses an unconnected caller,
+ * so "without one, every model call is a deterministic simulator" is not
+ * what a hosted deployment does: the service makes no call at all, and it is
+ * each RUNNER that offers a labelled offline fallback. The static build is
+ * unchanged, because there the simulator really is every model call.
  */
 export function footerModeCopy(): string {
   return isServerMode()
-    ? "AILX 2026.1 · hosted build. Your run — event log, responses and any published site snapshot — is saved on the AILX backend. Model calls go to the model you connect; without one, every model call is a deterministic simulator seeded by SHA-256 of its inputs."
+    ? "AILX 2026.1 · hosted build. Your run — event log, responses and any published site snapshot — is saved on the AILX backend. Model calls go through the exam service, which holds the key for the model you connect; this browser never receives one. Connect nothing and the service makes no model call for you; a track that can carry on without one falls back to its own offline simulator and says so on screen."
     : "AILX 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs. No network calls. Everything runs in your browser.";
+}
+
+/**
+ * The landing hero's access line, which is a PROMISE about what a visitor
+ * needs before they can play.
+ *
+ * "free to play · no account" is true of the static GitHub Pages demo and of
+ * the practice and daily loops in every build. It is false of a SITTING on a
+ * deployment that mounts Clerk (`AILX_AUTH=clerk` on staging): the exam
+ * service refuses an anonymous caller, so the run cannot start without an
+ * account. One sentence cannot be true of both, so the build says which one
+ * it is — and the free half stays said, because it is still true.
+ */
+export function accessCopy(): string {
+  return isClerkEnabled()
+    ? "AILX 2026.1 · free to play · a scored sitting needs an account"
+    : "AILX 2026.1 · free to play · no account";
 }
 
 /**

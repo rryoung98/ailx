@@ -8,7 +8,7 @@ import { Reveal } from "../components/ui/Reveal";
 import { CharacterPortrait } from "../components/CharacterPortrait";
 import { CampusJourney } from "../features/landing/track3d/CampusJourney";
 import { TrackBands } from "../features/landing/track3d/TrackBands";
-import { assetUrl, isServerMode } from "../lib/mode";
+import { accessCopy, assetUrl, isServerMode } from "../lib/mode";
 import { CHARACTER_CAST, PRACTICE_OPTIONS, TRACK_LIST } from "@ailx/report";
 import { TOTAL_POINTS } from "@ailx/core";
 
@@ -221,7 +221,7 @@ export default function Home() {
                   the calls to action — the card lands where the fold is. */}
               <div className="hero-grid">
                 <div className="hero-copy">
-                  <div className="eyebrow hero-fade">AILX 2026.1 · free to play · no account</div>
+                  <div className="eyebrow hero-fade">{accessCopy()}</div>
                   <h1 className="hero-title">
                     <span className="hero-line hero-line-1">Benchmarks rate the models.</span>
                     <br />
