@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
 import {
-  append, attestJudgments, nextTrack, project,
+  append, nextTrack, project,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
 import {
-  DeckMismatchError, getAttemptPersistence, scoreTrackOnServer, startServerAttempt,
+  DeckMismatchError, getAttemptPersistence, startServerAttempt,
 } from "../../lib/data/persistence";
 import { fetchHostedTrackConfig } from "../../lib/instrument/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/data/siteUpload";
@@ -17,7 +17,7 @@ import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
 } from "../../lib/data/checkpoints";
 import {
-  checkpointToArtifact, loadTrackModule, scoreTrack, trackModelManifest,
+  checkpointToArtifact, loadTrackModule, scoreTrack,
   trackScoredEntry, type TrackModule,
 } from "../../lib/instrument/registry";
 import { t3FormBudgetSeconds, trackConfig } from "../../lib/instrument/instrument";
@@ -35,6 +35,7 @@ import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
 import { eventLogCopy } from "../../lib/mode";
 import { funnel } from "../../lib/data/funnel";
+import { completionSummary, SERVICE_SCORES_THIS_TRACK } from "../../lib/instrument/scoreSources";
 
 function demoConfig(locale: "en"): SessionConfig {
   return {
@@ -164,9 +165,6 @@ export default function ExamPage() {
     { attemptId: string; trackId: TrackId; config: unknown | null } | undefined
   >(undefined);
   hostedTrackRef.current = hostedTrack;
-  /** A server-issued score that has not landed yet (see finishTrack). */
-  const [scoreError, setScoreError] = useState<string | null>(null);
-  const scoreRetryRef = useRef<{ attemptId: string; trackId: TrackId; artifact: unknown } | null>(null);
   // T1 live-site upload (server mode). The last submission is kept for the
   // retry affordance; static mode never leaves "idle".
   const [siteStatus, setSiteStatus] = useState<SiteStatus>({ state: "idle" });
@@ -375,53 +373,6 @@ export default function ExamPage() {
     if (last) uploadT1Site(last.attemptId, last.artifact);
   }, [uploadT1Site]);
 
-  /**
-   * Ask the SERVER for a hosted T2 score and record it.
-   *
-   * `track_scored` is allowed to arrive after `track_completed` — the
-   * session machine requires only that the track be completed first — so a
-   * slow or failed round-trip never costs the candidate their work or their
-   * place in the run. Until it lands the track reads "recorded, not scored",
-   * which is the truth, and the retry re-issues the same request.
-   */
-  const requestServerScore = useCallback((attemptId: string, trackId: TrackId, artifact: unknown) => {
-    scoreRetryRef.current = { attemptId, trackId, artifact };
-    setScoreError(null);
-    void scoreTrackOnServer(attemptId, trackId, artifact)
-      .then((remote) => {
-        if (remote === null) throw new Error("this run has no server attempt to score against");
-        const cur = logRef.current ? project(logRef.current) : null;
-        // A retry that races a landed score must not append a second one:
-        // the machine refuses a silent re-score, and it is right to.
-        if (cur?.tracks[trackId].score !== undefined) return;
-        commit([
-          {
-            type: "track_scored", trackId, score: remote.score,
-            /**
-             * The exam service holds the answer key this browser must not
-             * have, so it — not this log — is the replay surface for a score
-             * it issued. `scoredBy: "server"` says exactly that. When the
-             * service hands the judgment rows back it carries them, attested
-             * like any other; when it does not, the log records no evidence
-             * AND makes no claim to any, which is the narrow truth rather
-             * than the broad falsehood `judgments: []` used to imply.
-             */
-            ...attestJudgments(remote.judgments ?? []),
-            scoredBy: "server",
-            rubricVersion: remote.rubricVersion,
-            scoringDigest: remote.scoringDigest,
-            modelManifest: trackModelManifest(trackId),
-            ts: stamp(),
-          },
-        ]);
-        scoreRetryRef.current = null;
-      })
-      .catch((err: unknown) => {
-        setScoreError(
-          `the server has not issued your ${trackId.toUpperCase()} score yet: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      });
-  }, [commit, stamp]);
 
   /**
    * Complete + score a track through the REAL plugins. timedOut is DERIVED
@@ -441,10 +392,18 @@ export default function ExamPage() {
      * mark its own paper (docs/ARCHITECTURE.md §4). T1 and T4 are JUDGED
      * tracks: the server refuses to score them (400), because a judgment it
      * did not make is not one it may invent, so those keep the local demo
-     * jury exactly as before. The completion is committed first and on its
-     * own: the artifact is the candidate's work and must survive a scoring
-     * round-trip that fails. Every other case is unchanged, and safe because
+     * jury exactly as before. Every other case is unchanged, and safe because
      * the bundled released-practice tier publishes its keys on purpose.
+     *
+     * THE BROWSER ASKS FOR NO SCORE HERE, AND FOR NONE LATER (TEN-126).
+     * TEN-66 moved score issuance to `/finalize`, and the service refuses
+     * `POST /attempts/:id/score` on an open sitting with 409 `not_finalized`
+     * — that refusal is what closed the answer-key oracle of TEN-60. This
+     * page kept asking anyway, so a live sitting on 2026-09-04 printed
+     * "POST /attempts/…/score failed: 409" to the candidate mid-run and
+     * ended T2 and T3 "recorded, not scored". The track completion is
+     * recorded and nothing else: the scores of record arrive at finalize,
+     * and the report reads them from the service.
      */
     const serverScored =
       (t === "t2" || t === "t3") &&
@@ -452,8 +411,7 @@ export default function ExamPage() {
       hostedTrackRef.current?.config != null;
     if (serverScored && cur.attemptId) {
       commit([{ type: "track_completed", trackId: t, artifact, timedOut, ts }]);
-      requestServerScore(cur.attemptId, t, artifact);
-      if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
+      clearCheckpoint(window.localStorage, cur.attemptId, t);
       return;
     }
     const rec = scoreTrack(t, artifact, cur.config?.locale ?? "en", cur.attemptId ?? undefined);
@@ -464,7 +422,7 @@ export default function ExamPage() {
     if (cur.attemptId) clearCheckpoint(window.localStorage, cur.attemptId, t);
     // T1's artifact is a servable site: publish it (server mode; no-op otherwise).
     if (t === "t1" && cur.attemptId) uploadT1Site(cur.attemptId, artifact);
-  }, [commit, requestServerScore, stamp, uploadT1Site]);
+  }, [commit, stamp, uploadT1Site]);
 
   // Timeout watchdog: budget exhausted → score the last checkpoint (F1/F2).
   useEffect(() => {
@@ -742,22 +700,11 @@ export default function ExamPage() {
       <PersistWarning warning={persistWarning} />
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Run complete</h1>
-          <p className="lede">All four tracks are scored. The diagnostic report is the real reward.</p>
+          {/* Derived, never asserted (TEN-129). The old line said "All four
+              tracks are scored" on a run where the service had scored none of
+              them yet, on the same screen as the error saying so. */}
+          <p className="lede" data-testid="completion-summary">{completionSummary(state)}</p>
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
-          {scoreError && (
-            <p className="small" role="alert" data-testid="score-error" style={{ margin: "0 0 1rem" }}>
-              {scoreError}{" "}
-              <button
-                className="btn"
-                onClick={() => {
-                  const last = scoreRetryRef.current;
-                  if (last) requestServerScore(last.attemptId, last.trackId, last.artifact);
-                }}
-              >
-                Retry scoring
-              </button>
-            </p>
-          )}
           <p style={{ display: "flex", gap: "0.8rem" }}>
             <Link href="/report" className="btn primary">Open the diagnostic report →</Link>
             <ResetButton onReset={resetAttempt} />
@@ -781,6 +728,7 @@ export default function ExamPage() {
           <TimeUpNotice
             trackId={justFinished}
             budgetSeconds={state.config!.budgets[justFinished]}
+            serviceScored={state.tracks[justFinished].score === undefined}
             onContinue={() => setTimeUpAck(justFinished)}
           />
         </main>
@@ -803,7 +751,12 @@ export default function ExamPage() {
                   <span style={{ flex: 1 }}>{t.name}</span>
                   {ts.status === "completed" ? (
                     <span className="small mono" style={{ color: "var(--good)" }}>
-                      ✓ {formatTrackScore(ts.score, ts.judgments, t.id)}
+                      {/* A hosted T2/T3 has no local score and never will:
+                          the service issues it at finalize. "recorded, not
+                          scored" is true of this browser and reads as a
+                          failure, so the service's tracks say whose score it
+                          is (TEN-126). */}
+                      ✓ {ts.score === undefined ? SERVICE_SCORES_THIS_TRACK : formatTrackScore(ts.score, ts.judgments, t.id)}
                     </span>
                   ) : t.id === next ? (
                     <span className="small mono" style={{ color: "var(--warn)" }}>next</span>
@@ -818,20 +771,6 @@ export default function ExamPage() {
             <p className="faint small" style={{ margin: "-0.8rem 0 1.5rem" }}>{DEMO_SCORE_NOTE}</p>
           ) : null}
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
-          {scoreError && (
-            <p className="small" role="alert" data-testid="score-error" style={{ margin: "0 0 1rem" }}>
-              {scoreError}{" "}
-              <button
-                className="btn"
-                onClick={() => {
-                  const last = scoreRetryRef.current;
-                  if (last) requestServerScore(last.attemptId, last.trackId, last.artifact);
-                }}
-              >
-                Retry scoring
-              </button>
-            </p>
-          )}
           {next ? (
             <>
               <p className="muted" style={{ margin: "0 0 0.8rem" }}>{TRACK_META[next].hype}</p>
@@ -1032,8 +971,8 @@ export default function ExamPage() {
  * happened, what was kept, and what is never charged.
  */
 function TimeUpNotice({
-  trackId, budgetSeconds, onContinue,
-}: { trackId: TrackId; budgetSeconds: number; onContinue: () => void }) {
+  trackId, budgetSeconds, onContinue, serviceScored,
+}: { trackId: TrackId; budgetSeconds: number; onContinue: () => void; serviceScored: boolean }) {
   const meta = TRACK_META[trackId];
   const headingRef = useRef<HTMLHeadingElement>(null);
   // The screen replaces the whole workspace: land focus on it, or a
@@ -1048,9 +987,21 @@ function TimeUpNotice({
         working, so the track closed itself.
       </p>
       <p className="muted">
-        Your work was kept: {meta.code} was scored from everything saved up to
-        that moment, by the same deterministic scorer as a track you finish by
-        hand. Nothing was discarded, and the run continues.
+        {/* A hosted T2/T3 is not scored in this browser at all, so the old
+            sentence promised a local score that never comes (TEN-126). */}
+        {serviceScored ? (
+          <>
+            Your work was kept: everything you saved up to that moment was recorded,
+            and the exam service scores {meta.code} when your sitting is finalized.
+            Nothing was discarded, and the run continues.
+          </>
+        ) : (
+          <>
+            Your work was kept: {meta.code} was scored from everything saved up to
+            that moment, by the same deterministic scorer as a track you finish by
+            hand. Nothing was discarded, and the run continues.
+          </>
+        )}
       </p>
       <p className="muted">
         Only working time is charged. The screens shown after you submit — T2&apos;s

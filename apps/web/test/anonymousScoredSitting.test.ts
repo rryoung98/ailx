@@ -98,12 +98,14 @@ describe("an anonymous browser gets no server attempt", () => {
     expect(calls).toEqual([]);
   });
 
-  it("NEVER asks the server to score a run it does not know about", async () => {
-    const { scoreTrackOnServer } = await loadPersistence();
-    expect(await scoreTrackOnServer("att-local", "t2", { responses: [] })).toBeNull();
-    // The one that matters: no score of record was even requested. A local
-    // run is scored by the bundled released-practice tier, whose keys are
-    // published on purpose, and that is not a result anybody may claim.
+  it("NEVER asks the server to score a run at all — the builder is gone", async () => {
+    const persistence = await loadPersistence();
+    // TEN-126: the browser asked for a per-track score at track completion and
+    // the service refused an open sitting with 409, so the request shape was
+    // removed rather than deferred. `/finalize` issues the scores (TEN-66) and
+    // the report reads them back off GET /attempts/:id.
+    expect("scoreTrackOnServer" in persistence).toBe(false);
+    expect("postTrackScore" in persistence).toBe(false);
     expect(calls.filter((c) => c.url.includes("/score"))).toEqual([]);
   });
 
