@@ -17,7 +17,8 @@
  * Only the service knows which routes it mounts, and the private repo vendors
  * this file, so the check it owes there runs both ways. Every entry must be
  * mounted at `/v1${path}` for its method, and every mounted `/v1` route must
- * appear here. Neither direction reads a response body, so `response` is a
+ * appear here — with ONE declared exception, `funnelEvents`, which the
+ * service does not mount yet and which says so on its own entry (TEN-133). Neither direction reads a response body, so `response` is a
  * name a reader can check, not a type a compiler enforces (docs/ADR-orpc.md
  * §8, TEN-43) — unless the route also has a schema in `API_RESPONSE_SCHEMAS`,
  * which the browser validates the body against (docs/ADR-zod-tanstack.md). `getAttempt` and `countShareView` have no caller in `apps/web`;
@@ -130,6 +131,24 @@ export const API_ROUTES = {
   disconnectModelKey: { method: "DELETE", path: `${MODEL_ROOT}/key`, response: "{ connected: false, provider, removed }" },
   startModelConnect: { method: "POST", path: `${MODEL_ROOT}/connect/start`, response: "{ provider, state, authorizeUrl, expiresAt }" },
   finishModelConnect: { method: "POST", path: `${MODEL_ROOT}/connect/callback`, response: "{ connected: true, provider, fingerprint }" },
+  // ---- funnel ------------------------------------------------------------
+  /**
+   * THE FUNNEL SINK, WHICH NO DEPLOYMENT MOUNTS YET (TEN-133).
+   *
+   * `FUNNEL_EVENTS_PATH` lived only in `./funnel.js`, outside this manifest,
+   * so `apps/web/test/routeManifest.test.ts` could not see the spelling and
+   * nothing compared it with the service. On 2026-09-04 every page load on
+   * staging posted here and got 404 `no such route`: the exam service
+   * registers no `/v1/events`, and all funnel telemetry was dropped in
+   * silence. It is listed HERE so the browser's one spelling is the
+   * manifest's, and so the day the service mounts it, both sides mean the
+   * same URL. Until then the emitter stops posting after the first 404
+   * rather than repeating it on every page (`apps/web/lib/data/funnel.ts`).
+   *
+   * This is the ONE entry the service does not mount. Every other route in
+   * this file is live.
+   */
+  funnelEvents: { method: "POST", path: "/events", response: "{ ok: true }" },
   // ---- public reads (the token or the code IS the capability) -------------
   shareView: { method: "GET", path: "/share/:token", response: "{ share: SharedView }" },
   countShareView: { method: "POST", path: "/share/:token/views", response: "{ views: number }" },

@@ -14,7 +14,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ScoresOfRecord } from "../features/report/ScoresOfRecordPanel";
+import { ScoresOfRecordView } from "../features/report/ScoresOfRecordPanel";
+import { useScoresOfRecord } from "../features/report/useScoresOfRecord";
 import { installMemoryStorage } from "./helpers/clientPage";
 import {
   BOUND_COPY,
@@ -90,6 +91,14 @@ function stubReads(bodies: unknown[], status = 200): void {
   });
 }
 
+/**
+ * The report page owns the read and hands it to the panel (TEN-128), so the
+ * test mounts the same pairing: one `useScoresOfRecord`, one view.
+ */
+function Harness() {
+  return createElement(ScoresOfRecordView, { view: useScoresOfRecord(ATTEMPT) });
+}
+
 interface Mounted {
   html: () => string;
   click: (testId: string) => Promise<void>;
@@ -104,7 +113,7 @@ async function mount(): Promise<Mounted> {
   let root: Root;
   await act(async () => {
     root = createRoot(host);
-    root.render(createElement(ScoresOfRecord, { attemptId: ATTEMPT }));
+    root.render(createElement(Harness));
   });
   const settle = async () => {
     for (let i = 0; i < 4; i += 1) await act(async () => { await Promise.resolve(); });

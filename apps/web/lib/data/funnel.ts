@@ -443,7 +443,24 @@ function browserStore(which: "local" | "session"): StorageLike | null {
  * Fire and forget either way. Nothing here reads the response, because there
  * is no answer this app would act on.
  */
+let sinkAbsent = false;
+
+/**
+ * A 404 means the deployment mounts no funnel sink, and it will not grow one
+ * inside this page's life. TEN-133: staging answered `no such route` to every
+ * page load — landing, /exam, /practice, /daily — and the emitter, which
+ * reads no response at all, posted again on the next page and the next. The
+ * telemetry was lost either way; the difference is that this says so once, to
+ * the console, and then stops making the request.
+ *
+ * Only 404 and 405 count. A 500, a 429 or an offline browser is a sink that
+ * exists and is having a bad minute, and silencing the emitter for those
+ * would throw away events the service would have taken.
+ */
+const SINK_MISSING = new Set([404, 405]);
+
 function browserSend(url: string, body: string): void {
+  if (sinkAbsent) return;
   try {
     void fetch(url, {
       method: "POST",
@@ -452,7 +469,16 @@ function browserSend(url: string, body: string): void {
       keepalive: true,
       // Anonymous by construction: no cookie, no identity header.
       credentials: "omit",
-    }).catch(() => undefined);
+    })
+      .then((res) => {
+        if (!SINK_MISSING.has(res.status)) return;
+        sinkAbsent = true;
+        console.warn(
+          `[ailx funnel] ${url} answered ${res.status}: this deployment mounts no funnel sink, ` +
+            "so no KPI event is being recorded. Nothing else is affected.",
+        );
+      })
+      .catch(() => undefined);
   } catch {
     // Offline, blocked, or a browser that refuses the call. Drop it.
   }
@@ -521,9 +547,10 @@ export function funnel(): Funnel {
   return singleton;
 }
 
-/** Test hook: drop the singleton AND the listener it registered. */
+/** Test hook: drop the singleton, its listener, and the missing-sink latch. */
 export function resetFunnel(): void {
   listeners?.abort();
   listeners = null;
   singleton = null;
+  sinkAbsent = false;
 }

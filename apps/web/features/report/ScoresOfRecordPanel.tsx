@@ -22,28 +22,19 @@
  * Nothing here writes. The panel reports what the service holds; the local
  * event log, the composite and the replay line are unchanged by it.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { apiPath } from "@ailx/contract";
 import { formatTrackScore, TRACK_META } from "@ailx/report";
-import { TRACK_IDS, type TrackId } from "@ailx/session";
-import { serviceFetch } from "../../lib/data/serviceFetch";
+import { TRACK_IDS } from "@ailx/session";
 import { isServerMode } from "../../lib/mode";
 import {
   BOUND_COPY,
-  DEFAULT_POLL_MS,
   NO_SCORES_COPY,
   OPEN_SITTING_COPY,
-  POLL_BOUND_MS,
   READ_ERROR_COPY,
-  parseAttemptScores,
   pollDelayMs,
   stateCopy,
-  type AttemptScores,
   type TrackScoreRecord,
 } from "./scoresOfRecord";
-
-/** What went wrong on the LAST read. The previous answer stays on screen. */
-type ReadFailure = { kind: "missing"; status: number } | { kind: "error" };
+import type { ScoresView } from "./useScoresOfRecord";
 
 function TrackLine({ record, justArrived }: { record: TrackScoreRecord; justArrived: boolean }) {
   const meta = TRACK_META[record.trackId];
@@ -92,82 +83,16 @@ function TrackLine({ record, justArrived }: { record: TrackScoreRecord; justArri
   );
 }
 
-export function ScoresOfRecord({ attemptId }: { attemptId: string }) {
-  // undefined: nothing read yet. null: the service returned no `scores`.
-  const [scores, setScores] = useState<AttemptScores | null | undefined>(undefined);
-  const [failure, setFailure] = useState<ReadFailure | null>(null);
-  const [bounded, setBounded] = useState(false);
-  /** Bumped by "Check again": restarts the read AND the bound. */
-  const [round, setRound] = useState(0);
-  const [arrived, setArrived] = useState<TrackId[]>([]);
-  /** The tracks the LAST read said were pending — the arrival comparison. */
-  const wasPending = useRef<Set<TrackId>>(new Set());
-  const serverMode = isServerMode();
-
-  useEffect(() => {
-    if (!serverMode) return;
-    let cancelled = false;
-    let timer = 0;
-    const startedAt = Date.now();
-
-    const schedule = (ms: number): void => {
-      // The bound is measured in TIME, not in reads, so it holds whatever
-      // cadence the service asks for.
-      if (Date.now() - startedAt + ms > POLL_BOUND_MS) {
-        setBounded(true);
-        return;
-      }
-      timer = window.setTimeout(() => void read(), ms);
-    };
-
-    const read = async (): Promise<void> => {
-      const res = await serviceFetch(apiPath("getAttempt", { id: attemptId }), { identity: "required" });
-      if (cancelled) return;
-      if (res.state === "ready") {
-        const parsed = parseAttemptScores(res.data);
-        setFailure(null);
-        setScores(parsed);
-        const nowScored = (parsed?.tracks ?? []).filter(
-          (t) => t.state === "scored" && wasPending.current.has(t.trackId),
-        );
-        if (nowScored.length > 0) {
-          setArrived((prev) => [...new Set([...prev, ...nowScored.map((t) => t.trackId)])]);
-        }
-        wasPending.current = new Set(
-          (parsed?.tracks ?? []).filter((t) => t.state === "pending_judging").map((t) => t.trackId),
-        );
-        // Nothing owed: stop. This is the ordinary way polling ends.
-        if (parsed?.pending === true) schedule(pollDelayMs(parsed));
-        return;
-      }
-      if (res.state === "missing") {
-        // 401/404 will not fix itself on a retry, so stop rather than loop.
-        setFailure({ kind: "missing", status: res.status });
-        return;
-      }
-      if (res.state === "error") {
-        // Offline or a blip: keep the last good answer on screen and try
-        // again, still inside the same bound.
-        setFailure({ kind: "error" });
-        schedule(DEFAULT_POLL_MS);
-      }
-    };
-
-    void read();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [attemptId, round, serverMode]);
-
-  const checkAgain = useCallback(() => {
-    setBounded(false);
-    setRound((r) => r + 1);
-  }, []);
-
+/**
+ * The panel proper: it renders a read it is GIVEN. The read itself is
+ * `useScoresOfRecord`, because the report's unlock gate must decide from the
+ * same answer this panel draws (TEN-128).
+ */
+export function ScoresOfRecordView({ view }: { view: ScoresView }) {
+  const { scores, failure, bounded, arrived, checkAgain } = view;
   // The static export has no exam service, so it has no scores of record and
   // this panel is not part of that page at all.
-  if (!serverMode) return null;
+  if (!isServerMode()) return null;
 
   const arrivedCopy = arrived
     .map((t) => {

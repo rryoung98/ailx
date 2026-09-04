@@ -17,7 +17,6 @@ import {
   clearAttempt,
   loadAttemptValidated,
   saveAttempt,
-  type JudgmentRecord,
   type SequencedEntry,
   type StorageLike,
   type ValidatedLog,
@@ -533,79 +532,18 @@ export async function postTranscriptTurn(
 }
 
 /**
- * Ask the server to score a completed track. The browser holds no answer
- * key in hosted mode, so it cannot grade its own sitting: the marking scheme
- * stays inside `@ailx/instrument` and only the resulting score comes back
- * (ATP/ITC §3.6 — scoring at the server level, docs/ARCHITECTURE.md §4).
- */
-export interface ServerTrackScore {
-  score: { raw: Record<string, number>; scaled: number };
-  /**
-   * The judgment rows the SERVICE's score() consumed, when it hands them
-   * back. Empty means the service kept its evidence, not that there was
-   * none — the session log records that difference as `scoredBy: "server"`
-   * rather than pretending an unevidenced local score.
-   */
-  judgments: JudgmentRecord[];
-  rubricVersion: string;
-  scoringDigest: string;
-}
-
-/**
- * Judgment rows off the wire are UNTRUSTED input, so every field is checked
- * before it can become part of a score of record. A malformed row is dropped
- * rather than coerced: a judgment with a missing modelId or a NaN value would
- * content-address to something meaningless, and a meaningless content address
- * is worse than no evidence at all.
+ * THE BROWSER NO LONGER ASKS FOR A TRACK SCORE (TEN-126).
  *
- * The ARRAY ORDER here is the service's, and the service's order is not a
- * contract. It is not canonicalized here on purpose: `attestJudgments` at the
- * one point these rows enter the log is where ordering is decided, so there
- * is a single place that knows what canonical means.
+ * `postTrackScore` and `scoreTrackOnServer` used to build
+ * `POST /attempts/:id/score` here, and the exam page called them at TRACK
+ * completion. TEN-60 closed the answer-key oracle by refusing that route on
+ * an open sitting, TEN-66 moved score issuance into `/finalize`, and this
+ * caller never stopped asking — so the live run of 2026-09-04 collected eight
+ * 409s and printed one of them to the candidate. The request shape is gone
+ * rather than deferred: with no builder for it, no code path can score an
+ * open attempt. The scores of record are read back through
+ * `GET /attempts/:id` (`features/report/scoresOfRecord.ts`).
  */
-function parseServerJudgments(raw: unknown): JudgmentRecord[] {
-  if (!Array.isArray(raw)) return [];
-  const out: JudgmentRecord[] = [];
-  for (const r of raw) {
-    if (typeof r !== "object" || r === null) continue;
-    const j = r as Record<string, unknown>;
-    if (typeof j.dimension !== "string" || j.dimension.length === 0) continue;
-    if (typeof j.modelId !== "string" || j.modelId.length === 0) continue;
-    if (typeof j.sample !== "number" || !Number.isInteger(j.sample)) continue;
-    if (typeof j.value !== "number" || !Number.isFinite(j.value)) continue;
-    if (j.evidence !== undefined && typeof j.evidence !== "string") continue;
-    const row: JudgmentRecord = {
-      dimension: j.dimension,
-      sample: j.sample,
-      value: j.value === 0 ? 0 : j.value, // -0 hashes differently from 0
-      modelId: j.modelId,
-    };
-    if (typeof j.evidence === "string") row.evidence = j.evidence;
-    out.push(row);
-  }
-  return out;
-}
-
-export async function postTrackScore(
-  storage: StorageLike,
-  opts: ApiPersistenceOptions,
-  attemptId: string,
-  trackId: string,
-  artifact: unknown,
-): Promise<ServerTrackScore> {
-  const path = apiPath("scoreTrack", { id: attemptId });
-  const body = await postJson(storage, opts, path, { trackId, artifact });
-  const score = body.score as { raw?: Record<string, number>; scaled?: unknown } | undefined;
-  if (!score || typeof score.scaled !== "number") {
-    throw new Error(`POST ${path} returned no score`);
-  }
-  return {
-    score: { raw: score.raw ?? {}, scaled: score.scaled },
-    judgments: parseServerJudgments(body.judgments),
-    rubricVersion: String(body.rubricVersion ?? ""),
-    scoringDigest: String(body.scoringDigest ?? ""),
-  };
-}
 
 /**
  * True when THIS attempt is one the server knows about. A server-mode run
@@ -633,20 +571,6 @@ function isServerAttempt(attemptId: string): boolean {
 export async function fetchServerDeck(attemptId: string): Promise<PresentedDeck | null> {
   if (!isServerAttempt(attemptId)) return null;
   return fetchPresentedDeck(window.localStorage, browserApiOptions(), attemptId);
-}
-
-/**
- * Browser entry point for a SERVER-ISSUED score. Returns null when the
- * attempt is not the server's — the bundled deck's keys are published on
- * purpose, so the caller may score that one locally.
- */
-export async function scoreTrackOnServer(
-  attemptId: string,
-  trackId: string,
-  artifact: unknown,
-): Promise<Awaited<ReturnType<typeof postTrackScore>> | null> {
-  if (!isServerAttempt(attemptId)) return null;
-  return postTrackScore(window.localStorage, browserApiOptions(), attemptId, trackId, artifact);
 }
 
 /**

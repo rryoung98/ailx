@@ -21,6 +21,15 @@ The static GitHub Pages export has no backend. With `NEXT_PUBLIC_AILX_API_BASE`
 unset the emitter mints no id, writes no storage and sends nothing. Every
 number below therefore describes the HOSTED build only.
 
+**No deployment stores any of it yet.** The sink is
+`POST <apiBase>/events` (`funnelEvents` in the route manifest), and the exam
+service mounts no such route: staging answered 404 `no such route` to every
+page load on 2026-09-04, and the whole funnel was dropped in silence
+(TEN-133). The path was outside `API_ROUTES` until then, so no manifest check
+could see it. It is inside now, and the browser stops posting after the first
+404 and says so once to the console. **Every number below is a number nobody
+can query today.** It becomes real when the service mounts the route.
+
 **The exam surface emits one funnel step: `sitting_started`.** Nothing inside
 a sitting is instrumented. (The session's own `visit_started` still goes out
 when the sitting is the first thing a browser does; it says a browser opened
