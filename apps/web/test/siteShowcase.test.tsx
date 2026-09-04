@@ -10,7 +10,7 @@
  *  - favicon assets exist (app/icon.svg green square + mint X, apple-icon.png);
  *  - header nav swaps the plain Play link for a compact pill (ink bg, green
  *    dot) while other links stay plain;
- *  - mobile pill guard: teaser + connect panel are [data-pill-clear] zones
+ *  - mobile pill guard: connect panel + landing CTAs are [data-pill-clear] zones
  *    and the CSS hides .pill-cta-cleared under 640px.
  */
 import { TOTAL_POINTS } from "@ailx/core";
@@ -252,10 +252,10 @@ describe("header play pill", () => {
 });
 
 describe("pill guard + scrub shortening", () => {
-  it("teaser, connect panel and the landing CTAs are marked [data-pill-clear]", () => {
-    const teaser = readFileSync(join(appDir, "..", "features", "landing", "Teaser.tsx"), "utf8");
+  it("the connect panel and the landing CTAs are marked [data-pill-clear]", () => {
+    // The landing teaser used to be checked here too; it was unreachable from
+    // any route and was deleted (TEN-63 follow-up).
     const connect = readFileSync(join(appDir, "..", "features", "exam", "ConnectPanel.tsx"), "utf8");
-    expect(teaser).toContain("data-pill-clear");
     expect(connect).toContain("data-pill-clear");
     // The landing page is where the fixed pill actually sat on top of copy.
     const landing = readFileSync(join(appDir, "page.tsx"), "utf8");
