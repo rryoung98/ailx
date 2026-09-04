@@ -10,13 +10,13 @@ Method:
 - Live HTTP check of every `provenance.source_url` and `provenance.references`
   URL — all 55 unique URLs returned 200 (manifest:
   `items/link-check.json`, gated by `packages/content-tools/test/link-manifest.test.ts`).
-- Wikimedia Commons category cross-check for all 44 media items: every
-  `key:"ai"` file sits in an AI-generated media category on Commons; every
-  `key:"real"` file does not; no file pages are missing.
-- The four `key:"ai"` text passages were regenerated for real via OpenRouter
+- Wikimedia Commons category cross-check for all 44 media items: each item's
+  recorded key agrees with the Commons categorisation of its file, in every
+  case; no file pages are missing.
+- The model-written text passages were regenerated for real via OpenRouter
   (`openai/gpt-4o-mini`, prompts committed in item provenance and
   `tools/generated-ai-passages.json`).
-- The four `key:"human"` text passages were replaced with genuine pre-2015
+- The human-written text passages were replaced with genuine pre-2015
   human text (Project Gutenberg / pre-2015 Wikipedia revisions, source URLs
   in provenance).
 
@@ -27,37 +27,27 @@ labeling matches Commons categorization; attribution in `docs/CREDITS.md`).
 Verdict for all 44: **legitimate**.
 
 Caveat (flagged, not fixed here): three Commons files each back two bank
-items via different re-encodes (`Cabine balneari.jpg`, `Green apple
-gen.png`, `Cute Hedgehog.jpg`) — an artifact of merging two curation
+items via different re-encodes — an artifact of merging two curation
 branches. Near-duplicate stimuli slightly reduce effective deck size;
 recommend deduplication in the next bank revision.
 
 ## Non-media items (22)
 
-| id (prefix) | type | locale | key | verdict | basis |
-|---|---|---|---|---|---|
-| 08a88a7beba1 | text-authenticity | en | ai | **legitimate** | genuinely model-generated via OpenRouter (openai/gpt-4o-mini, 2026-08-21); prompt in provenance |
-| a78afdff4d93 | text-authenticity | en | human | **legitimate** | genuine human text: Three Men in a Boat (1889), chapter 1 (Public domain) |
-| e3316851a3c2 | text-authenticity | en | ai | **legitimate** | genuinely model-generated via OpenRouter (openai/gpt-4o-mini, 2026-08-21); prompt in provenance |
-| d121c14a7c45 | text-authenticity | en | human | **legitimate** | genuine human text: 'Kettle', English Wikipedia, revision 633946319 (2014-11-15) (CC BY-SA 3.0) |
-| 08c6fc6951b3 | text-authenticity | en | ai | **legitimate** | genuinely model-generated via OpenRouter (openai/gpt-4o-mini, 2026-08-21); prompt in provenance |
-| 0d4a4329433c | text-authenticity | en | human | **legitimate** | genuine human text: 'London congestion charge', English Wikipedia, revision 638187193 (2014-12-15) (CC BY-SA 3.0) |
-| 896ef91898f0 | text-authenticity | ja | ai | **legitimate** | genuinely model-generated via OpenRouter (openai/gpt-4o-mini, 2026-08-21); prompt in provenance |
-| 21c7a83e8996 | text-authenticity | ko | human | **legitimate** | genuine human text: '라면', Korean Wikipedia, revision 13326844 (2014-12-21) (CC BY-SA 3.0) |
-| 7d71adb8ad13 | message-hostility | en | hostile | **legitimate-authored** | modeled on documented pattern: Credential phishing: account-suspension urgency lure with look-alike domain; refs in provenance |
-| e5c2f2a504b3 | message-hostility | en | legitimate | **legitimate-authored** | modeled on documented pattern: Legitimate-notification contrast case: informational notice with no action, link, or credential request; refs in provenance |
-| 6e77a478835b | message-hostility | en | hostile | **legitimate-authored** | modeled on documented pattern: Business email compromise / executive impersonation with urgent out-of-band payment; refs in provenance |
-| 01bd3f97ec0e | message-hostility | en | legitimate | **legitimate-authored** | modeled on documented pattern: Legitimate-notification contrast case: reply to a recipient-initiated ticket, routed into the official channel; refs in provenance |
-| 6ad59859150b | message-hostility | en | hostile | **legitimate-authored** | modeled on documented pattern: Credential harvesting riding a legitimate e-signature/file-sharing service; refs in provenance |
-| 074034989f30 | message-hostility | en | legitimate | **legitimate-authored** | modeled on documented pattern: Legitimate-notification contrast case: attachment-bearing internal notice matching a real booking, verification via known internal channel; refs in provenance |
-| e3b132b7349d | message-hostility | ja | hostile | **legitimate-authored** | modeled on documented pattern: 不在通知型スミッシング — delivery-notice smishing impersonating a carrier; refs in provenance |
-| 0c0ba40a715f | message-hostility | ko | hostile | **legitimate-authored** | modeled on documented pattern: 공공기관 사칭 스미싱 — public-agency impersonation smishing with sideloaded APK; refs in provenance |
-| b4cb1960c7bf | provenance-reasoning | en | no-evidence | **legitimate-authored** | cites real mechanism: C2PA Specification 2.1 (see provenance.mechanism); refs in provenance |
-| c064fbdcea13 | provenance-reasoning | en | self-documenting | **legitimate-authored** | cites real mechanism: C2PA Specification 2.1 (see provenance.mechanism); refs in provenance |
-| cb4d0189725e | provenance-reasoning | en | scene-true | **legitimate-authored** | cites real mechanism: C2PA Specification 2.1 (see provenance.mechanism); refs in provenance |
-| 17e05abf6af0 | provenance-reasoning | en | trust-list | **legitimate-authored** | cites real mechanism: Real case: Nikon revoked its C2PA signing certificates in September 2025 after a Z6III firmware flaw let inauthentic content carry valid signatures |
-| 7d34215878da | provenance-reasoning | en | b-only | **legitimate-authored** | cites real mechanism: C2PA Specification 2.1 (see provenance.mechanism); refs in provenance |
-| ae3cc8aeda75 | provenance-reasoning | en | derivative-file | **legitimate-authored** | cites real mechanism: C2PA Specification 2.1 (see provenance.mechanism); refs in provenance |
+This section carried a row per item — the content-addressed id prefix beside
+that item's key and the evidence for it. The per-item ledger has been removed
+(TEN-113): it belongs with the bank, which is private, and an audit report is
+not the place to publish a key. What an audit report owes a reader is the
+method, the coverage and the verdict, and all three are below. The full ledger
+is regenerable from the bank by whoever holds it.
+
+| Type | Items | Verdict | Basis |
+|---|---|---|---|
+| text-authenticity | 8 | **legitimate** | each passage is either genuinely model-generated via OpenRouter (`openai/gpt-4o-mini`, 2026-08-21, prompt in provenance) or genuine pre-2015 human text with a source URL in provenance |
+| message-hostility | 8 | **legitimate-authored** | each authored on a documented real-world pattern (phishing, business email compromise, smishing), with references in provenance |
+| provenance-reasoning | 6 | **legitimate-authored** | each cites a real mechanism (C2PA Specification 2.1, or a documented certificate-revocation case), recorded in `provenance.mechanism` |
+
+Coverage: 22 of 22 non-media items audited, 18 en / 2 ja / 2 ko. No item was
+rated anything other than the two verdicts above.
 
 ## ja/ko translation status
 
