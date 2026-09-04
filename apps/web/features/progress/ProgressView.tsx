@@ -12,7 +12,7 @@
  * COOKIE, because a navigation carries cookies and not headers. That cookie
  * is `SameSite=Lax` and is therefore NOT sent to another origin, so the
  * moment `NEXT_PUBLIC_AILX_API_BASE` names the exam service the cookie is
- * gone. So this page asks with `identified: true` and the id rides the
+ * gone. So this page asks with `identity: "required"` and the id rides the
  * HEADER from `lib/data/authHeaders.ts`, which works on both hosts. The server's
  * precedence is unchanged: an explicit header is read first, and an illegal
  * one is refused outright rather than demoted to a cookie.
@@ -57,7 +57,7 @@ import { PageError, PageLoading } from "../../components/PageNotice";
 import { useService } from "../../lib/data/serviceFetch";
 // The stylesheet stays co-located with the route it dresses (and is pinned
 // there by test/practiceDrill.test.tsx); only the markup moved out of app/.
-import styles from "../../app/progress/progress.module.css";
+import styles from "./progress.module.css";
 
 const EYEBROW = "YOUR PROGRESS";
 
@@ -270,7 +270,7 @@ export function ProgressView() {
   // claimed day is a fact about provenance, and `ProgressReport` is the pure
   // derivation both repos share.
   const result = useService<{ progress: ProgressReport; claimedDays?: string[] }>(apiPath("progress"), {
-    identified: true,
+    identity: "required",
   });
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title={PAGE_TITLE} />;

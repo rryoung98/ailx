@@ -66,9 +66,9 @@ All ja/ko items whose stem/rationale were machine-translated now carry
 stating no native-speaker review has occurred (gated by
 `packages/content-tools/test/content-legitimacy.test.ts`).
 
-## Landing teaser
+## Landing teaser (removed, 2026-09-04)
 
-`apps/web/lib/instrument/demoItems.ts` now pins three real snapshot items by
-content-addressed id (AI photo-pair member, model-generated passage,
-credential-phishing lure); `apps/web/test/teaser.test.ts` asserts they exist
-in the snapshot and that keys/tells are projections of the bank item.
+`apps/web/lib/instrument/demoItems.ts` pinned three real snapshot items by
+content-addressed id for the landing teaser. The teaser component was
+reachable from no route, so it, the derivation and `test/teaser.test.ts`
+were deleted. No released item is published on the landing page any more.

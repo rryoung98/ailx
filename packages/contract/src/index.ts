@@ -19,7 +19,13 @@
  * content-addresses). The browser holds no marking scheme — that is the whole
  * point of the split, and `apps/web/test/bundleSecrecy.test.ts` keeps biting.
  */
-export { type ApiResult, FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "./api.js";
+export {
+  type ApiError,
+  type ApiResult,
+  FORBIDDEN_RESULT,
+  UNAUTHORIZED_RESULT,
+  parseApiError,
+} from "./api.js";
 export { API_QUERY_PARSERS, API_RESPONSE_SCHEMAS, type ResponseSchema } from "./tables.js";
 export {
   API_ROUTES,
@@ -97,6 +103,7 @@ export {
   galleryFacetSchema,
   galleryListingSchema,
   galleryQuerySchema,
+  galleryQueryString,
   gallerySearchSchema,
   parseGalleryQuery,
   publicEntry,

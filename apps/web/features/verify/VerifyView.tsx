@@ -38,7 +38,7 @@ import { CREDENTIAL_ASSERTS, CREDENTIAL_ISSUER, CREDENTIAL_LIMITS } from "@ailx/
 import { credentialViewFrom } from "./credentialView";
 import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
-import { useService } from "../../lib/data/serviceFetch";
+import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
 
 const EYEBROW = "AILX · CREDENTIAL VERIFICATION";
 
@@ -77,22 +77,32 @@ function CannotConfirm() {
 export function VerifyView() {
   const params = useParams<{ code: string }>();
   const code = typeof params?.code === "string" ? params.code : null;
+  // A CAPABILITY read: the code in the URL is the whole claim, so the answer
+  // must not depend on who is holding it. Anonymous is spelled out because
+  // every call site now says which identity it wants, and silence is what
+  // let `/world` ask with none by accident (TEN-107).
   const result = useService<unknown>(
     code === null ? null : apiPath("credentialView", { code }),
+    { identity: "anonymous" },
   );
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title="Checking this credential" />;
   }
   if (result.state === "error") {
-    return <PageError eyebrow={EYEBROW} title="Checking this credential" />;
+    return <PageError eyebrow={EYEBROW} title="Checking this credential" message={result.message} />;
   }
-  // 404 is the honest "no such credential"; any other refusal is an outage
-  // and must not be reported as a failed verification.
+  // 404 is the honest "no such credential". Any other refusal is neither a
+  // verdict nor an outage: the service was reached and said no, and the page
+  // says which (TEN-107).
   if (result.state === "missing") {
     return result.status === 404 ? (
       <CannotConfirm />
     ) : (
-      <PageError eyebrow={EYEBROW} title="Checking this credential" />
+      <PageError
+        eyebrow={EYEBROW}
+        title="Checking this credential"
+        message={serviceRefusedCopy(result.status, result.reason)}
+      />
     );
   }
   const credential = credentialViewFrom(result.data);

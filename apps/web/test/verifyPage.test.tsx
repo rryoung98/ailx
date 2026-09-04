@@ -153,7 +153,7 @@ describe("how it reads the credential", () => {
   it("does NOT say 'cannot be confirmed' when the service is unreachable", async () => {
     stubFailingFetch();
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("did not answer");
     // Refusing to vouch for a real credential because a request failed would
     // be a forgery in the other direction.
     expect(html).not.toContain("Cannot be confirmed");
@@ -163,7 +163,10 @@ describe("how it reads the credential", () => {
   it("treats a 500 as an outage, not as a verdict", async () => {
     status = 500;
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    // Reached and refused, which is neither an outage nor a verdict.
+    expect(html).toContain("was reached and refused");
+    expect(html).toContain("HTTP 500");
+    expect(html).not.toContain("did not answer");
     expect(html).not.toContain("Cannot be confirmed");
   });
 

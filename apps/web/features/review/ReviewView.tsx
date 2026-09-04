@@ -16,7 +16,7 @@
  * is a UI condition — the page renders a 404 because the SERVICE refused, and
  * it can only ask because it sends an identity.
  *
- * IDENTITY. `identified: true`, so the reviewer's `x-ailx-dev-user` (or Clerk
+ * IDENTITY. `identity: "required"`, so the reviewer's `x-ailx-dev-user` (or Clerk
  * bearer) rides the header. The `ailx_dev_user` cookie is `SameSite=Lax` and
  * would simply not arrive once the exam service is on another origin, so the
  * header is the only transport that works on both hosts.
@@ -90,7 +90,7 @@ export function ReviewView() {
   const search = useSearchParams();
   const result = useService<{ listing: CaseListing }>(
     apiPath("moderationCases", {}, firstValueQuery(search)),
-    { identified: true },
+    { identity: "required" },
   );
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title={TITLE} />;
   // An unreachable service is NOT a refusal, and must not be dressed as one:

@@ -5,8 +5,10 @@
  *
  * A CLIENT component: the page reads the store, but it now does so over HTTP
  * through `apiBase()` (GET /aggregates) instead of importing the handler
- * in-process (docs/ARCHITECTURE.md §10.1). Nothing here is per person, so
- * this is the one converted page that sends NO identity at all.
+ * in-process (docs/ARCHITECTURE.md §10.1).
+ *
+ * Nothing here is per person, so it asks with `identity: "optional"`: the id
+ * this browser already has, never a minted one.
  *
  * Everything on it is a DISTRIBUTION over stored inputs, and the page says
  * out loud what it is not:
@@ -29,9 +31,10 @@ import { apiPath } from "@ailx/contract";
 import { TRACK_META, type WorldAggregates } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { PageError, PageLoading } from "../../components/PageNotice";
-import { useService } from "../../lib/data/serviceFetch";
+import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
 
 const EYEBROW = "PUBLIC AGGREGATES · DISTRIBUTIONS ONLY";
+const TITLE = "How is the world doing at keeping up with AI?";
 
 const pct = (n: number): string => `${Math.round(n * 100)}%`;
 
@@ -90,15 +93,31 @@ function Suppressed({ have, min }: { have: number; min: number }) {
 
 
 export function WorldView() {
-  const result = useService<{ aggregates: WorldAggregates }>(apiPath("aggregates"));
+  // PUBLIC read, and it used to send NOTHING at all — which is how a page
+  // meant for a visitor with no account got a 401 on staging while every
+  // identified page worked (TEN-107). The seam's own test only checks that a
+  // module does not reach PAST it; whether a given page asks for an identity
+  // was a per-call-site boolean nothing looked at. `"optional"` sends the id
+  // this browser already has and mints none.
+  const result = useService<{ aggregates: WorldAggregates }>(apiPath("aggregates"), {
+    identity: "optional",
+  });
   if (result.state === "loading") {
-    return <PageLoading eyebrow={EYEBROW} title="How is the world doing at keeping up with AI?" />;
+    return <PageLoading eyebrow={EYEBROW} title={TITLE} />;
   }
-  // A non-200 from an UNAUTHENTICATED, always-available aggregate read is not
-  // a state this page can describe honestly — it is the same outage as a
-  // thrown fetch, and is told the same way rather than drawn as zeroes.
-  if (result.state !== "ready") {
-    return <PageError eyebrow={EYEBROW} title="How is the world doing at keeping up with AI?" />;
+  // Three different failures, three different sentences. "We could not reach
+  // the service" for a 401 is false — it was reached, and it said no.
+  if (result.state === "error") {
+    return <PageError eyebrow={EYEBROW} title={TITLE} message={result.message} />;
+  }
+  if (result.state === "missing") {
+    return (
+      <PageError
+        eyebrow={EYEBROW}
+        title={TITLE}
+        message={serviceRefusedCopy(result.status, result.reason)}
+      />
+    );
   }
   const a = result.data.aggregates;
 
@@ -106,7 +125,7 @@ export function WorldView() {
     <main className="page">
       <div className="container">
         <p className="eyebrow">{EYEBROW}</p>
-        <h1 style={{ maxWidth: "20ch" }}>How is the world doing at keeping up with AI?</h1>
+        <h1 style={{ maxWidth: "20ch" }}>{TITLE}</h1>
         <p className="lede">
           Everything below is counted from stored runs and nothing else. There are no
           percentiles, no composites and no judged scores here: the judging pipeline is not
@@ -142,6 +161,14 @@ export function WorldView() {
               <span className="label">completion rate</span>
             </p>
           </div>
+          {a.participation.attemptsStarted === 0 ? (
+            /* EMPTY IS NOT BROKEN, and it is not a refusal either. Three
+               different facts, three different sentences (TEN-107). */
+            <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">
+              Nobody has started a run yet, so these counts are genuinely zero rather than
+              missing. The service answered; there is nothing stored to count.
+            </p>
+          ) : null}
           <p className="small faint">
             Counts over every stored run, so they name nobody. {a.cohortSize} run
             {a.cohortSize === 1 ? " has" : "s have"} all four tracks scored — that is the cohort

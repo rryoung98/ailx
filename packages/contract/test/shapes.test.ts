@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ALL_SHARE_SECTIONS, sharePayloadFrom } from "@ailx/report";
 
-import { FORBIDDEN_RESULT, UNAUTHORIZED_RESULT } from "../src/api.js";
+import { FORBIDDEN_RESULT, UNAUTHORIZED_RESULT, parseApiError } from "../src/api.js";
 import {
   GALLERY_MAX_PAGE_SIZE,
   GALLERY_PAGE_SIZE,
   PLAYER_TYPE_CODE_RE,
   galleryEntrySchema,
   galleryListingSchema,
+  galleryQueryString,
   parseGalleryQuery,
   publicEntry,
   type GalleryEntry,
@@ -98,6 +99,83 @@ describe("parseGalleryQuery", () => {
       limit: GALLERY_PAGE_SIZE,
       offset: 0,
     });
+  });
+});
+
+/**
+ * The other direction, and the reason TEN-107 happened: the browser wrote its
+ * own query strings, so `?sort=top&site=0` — a vocabulary no parser here has
+ * ever had — went out on the wire and came back 400. One writer, one reader,
+ * and a round trip that proves they agree.
+ */
+describe("galleryQueryString", () => {
+  const parse = (qs: string) =>
+    parseGalleryQuery(Object.fromEntries(new URLSearchParams(qs.replace(/^\?/, ""))));
+
+  const DEFAULTS = parseGalleryQuery({});
+
+  it("writes nothing at all for the default query", () => {
+    if (!DEFAULTS.ok) throw new Error(DEFAULTS.message);
+    expect(galleryQueryString(DEFAULTS.query)).toBe("");
+  });
+
+  it("OMITS an absent filter — there is no site=0, and never was", () => {
+    if (!DEFAULTS.ok) throw new Error(DEFAULTS.message);
+    const written = galleryQueryString({ ...DEFAULTS.query, withSite: false });
+    expect(written).not.toContain("site");
+    expect(galleryQueryString({ ...DEFAULTS.query, withSite: true })).toBe("?site=1");
+  });
+
+  it("round-trips every query the parser accepts", () => {
+    for (const raw of [
+      {},
+      { type: "MSVD" },
+      { sort: "oldest" },
+      { sort: "type" },
+      { site: "1" },
+      { limit: "48" },
+      { offset: "24" },
+      { type: "PTAE", sort: "type", site: "1", limit: "48", offset: "48" },
+    ]) {
+      const first = parseGalleryQuery(raw);
+      if (!first.ok) throw new Error(`${JSON.stringify(raw)}: ${first.message}`);
+      const again = parse(galleryQueryString(first.query));
+      expect({ raw, ok: again.ok }).toEqual({ raw, ok: true });
+      if (again.ok) expect(again.query).toEqual(first.query);
+    }
+  });
+
+  it("cannot write the two spellings the service refused (TEN-107)", () => {
+    if (!DEFAULTS.ok) throw new Error(DEFAULTS.message);
+    for (const query of [
+      DEFAULTS.query,
+      { ...DEFAULTS.query, withSite: true },
+      { ...DEFAULTS.query, sort: "type" as const, offset: 24 },
+    ]) {
+      const written = galleryQueryString(query);
+      expect(written).not.toContain("sort=top");
+      expect(written).not.toContain("site=0");
+    }
+  });
+});
+
+describe("parseApiError", () => {
+  it("reads the frozen refusal bodies both sides send", () => {
+    expect(parseApiError(UNAUTHORIZED_RESULT.body)).toEqual({
+      code: "unauthorized",
+      message: "authentication required",
+    });
+    expect(parseApiError(FORBIDDEN_RESULT.body)?.code).toBe("forbidden");
+  });
+
+  it("reads anything that is not the envelope as NO reason", () => {
+    // A proxy's HTML page, an empty body, a half-filled envelope: none of
+    // these is a sentence we may quote to a reader as the service's own.
+    for (const body of [null, undefined, "<html>502</html>", {}, { error: {} }, { error: "no" }, [
+      1,
+    ], { error: { code: "x" } }, { error: { code: "", message: "m" } }]) {
+      expect(parseApiError(body)).toBeNull();
+    }
   });
 });
 
