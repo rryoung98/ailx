@@ -643,7 +643,7 @@ describe("it can never show a scored item", () => {
 
 describe("styling stays on the token palette", () => {
   it("hard-codes no colour, so the measured AA contrast still holds", () => {
-    for (const file of ["components/PracticeDrill.module.css", "app/progress/progress.module.css"]) {
+    for (const file of ["components/PracticeDrill.module.css", "features/progress/progress.module.css"]) {
       const css = readFileSync(repoFile(file), "utf8");
       expect(css.match(/#[0-9a-fA-F]{3,8}\b/g), file).toBeNull();
       expect(css, file).not.toMatch(/rgb\(|hsl\(/);

@@ -57,7 +57,7 @@ import { PageError, PageLoading } from "../../components/PageNotice";
 import { useService } from "../../lib/data/serviceFetch";
 // The stylesheet stays co-located with the route it dresses (and is pinned
 // there by test/practiceDrill.test.tsx); only the markup moved out of app/.
-import styles from "../../app/progress/progress.module.css";
+import styles from "./progress.module.css";
 
 const EYEBROW = "YOUR PROGRESS";
 
