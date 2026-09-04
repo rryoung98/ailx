@@ -157,44 +157,54 @@ apps/web/
     layout.tsx
     global-error.tsx            # REQUIRED: error.tsx does not wrap its own segment's layout
     error.tsx                   # REQUIRED: root recovery ("your run is saved")
-    page.tsx  methodology/  gallery/  validate/  report/
-    exam/
-      page.tsx
-      error.tsx                 # REQUIRED: exam-scoped, offers checkpoint resume
+    not-found.tsx  globals.css
+    page.tsx  methodology/  practice/  validate/  report/  daily/  wall/  exam/
+    gallery/  progress/  review/  world/  verify/[code]/  sign-in/  sign-up/
+                                # ^ page.api.tsx: built only with AILX_BACKEND=1
+    s/[token]/page.api.tsx
     s/[token]/card.png/route.api.ts   # the ONE route handler (AGENTS.md)
   features/                     # one folder per product surface; no cross-feature imports
     daily/  exam/  gallery/  landing/  practice/  progress/
     report/  review/  share/  verify/  world/
+                                # exam/RunnerErrorBoundary.tsx is the REQUIRED
+                                # exam-scoped boundary (§5); it wraps <mod.Runner>
+                                # inside app/exam/page.tsx, not a route error.tsx
   components/                   # used by two or more surfaces
     ui/                         # zero domain knowledge: Annotation, NavLink, PillCTA, Reveal, SiteLink
     CharacterPortrait.tsx  FunnelStep.tsx  GalleryCard.tsx  Loader.tsx
-    Moderation.tsx  PageNotice.tsx  PlaceholderRunner.tsx  ShareTargets.tsx  TrackRadar.tsx
+    Moderation.tsx  PageNotice.tsx  PlaceholderRunner.tsx  PracticeDrill.module.css
+    ShareTargets.tsx  TrackRadar.tsx
   lib/                          # cross-cutting, non-visual, browser-safe
     mode.ts                     # THE build-mode seam
     data/                       # service seam + browser storage
     instrument/                 # released-practice tier and the derivation over it
     auth/                       # Clerk mount, identity state
     server/                     # server-only; importable ONLY from page.api.tsx / route.api.ts
-  styles/
-    tokens.css                  # design tokens, one source of truth
-    globals.css                 # @layer reset, tokens, base, utilities — nothing route-specific
+    origin.ts  redirect404.ts  reducedMotion.ts  QueryProvider.tsx
+    README.md                   # what each of the above is, and what may not go here
   test/                         # vitest: unit + component
   e2e/                          # playwright specs + fixtures
-  public/
+  public/  scripts/
 packages/
   core/          # TrackPlugin, content addressing, purity harness, hash
+  contract/      # browser-facing wire types, URL spellings, request headers
   session/       # event log, projection, StorageLike
   report/        # pure scoring-adjacent + report logic
   tracks/*/      # per-track Runner + score(), shipped together
   content-tools/
 ```
 
+There is no `styles/` directory yet: the app has one stylesheet,
+`app/globals.css`, plus two CSS modules colocated with their callers. A
+`styles/tokens.css` that separates tokens from rules is still open work — it
+is item 12 of the migration plan (§9).
+
 `app/` holds only routing, so a route file stays readable in one screen. `features/` makes a
 surface easy to delete with `rm -rf` plus one route. `components/ui/` contains only presentation
 code, so it cannot pull domain code into a landing page. `lib/` is the narrow shared layer. If it
 grows past ~10 files again, it has become a grab-bag, and something belongs in a feature or a
-package. `styles/` separates tokens from rules, giving contrast tests one target. Keep `e2e/`
-separate from `test/` because the runners, speed, and flake budgets differ (§6).
+package. Keep `e2e/` separate from `test/` because the runners, speed, and flake budgets
+differ (§6).
 
 ### "Where does X go?" — run this in order
 
@@ -211,7 +221,7 @@ separate from `test/` because the runners, speed, and flake budgets differ (§6)
 ### What moved, and what has not (TEN-63, 2026-09-02)
 
 `apps/web/lib` held 37 components and 24 modules in one directory. It now
-holds `mode.ts`, three small helpers and four directories, and the tree above
+holds `mode.ts`, four small helpers and four directories, and the tree above
 is what the app actually looks like.
 
 - Everything that renders left `lib/`. One surface → `features/<surface>/`.
@@ -233,7 +243,15 @@ on `instrument.ts` calling `assetUrl()` — docs/PLAN.md tracks that one.
 as a build-time source hash; PLAN.md says the rest of `registry.ts` stays in
 the app, because it dynamic-imports React Runners. `svgArt.ts` did not go to `features/landing/` as drafted: its
 one caller is `demoItems.ts`, so it sits beside it in `lib/instrument/`
-(rule 6). `useSwipeCard.ts` did go, with its one caller `Teaser.tsx`.
+(rule 6). `useSwipeCard.ts` went to `features/landing/` with its one caller
+`Teaser.tsx`, and both were deleted afterwards: walking the import graph from
+`app/**` showed the teaser was reachable from no route, and the T2 track
+package already has the swipe engine the exam actually uses.
+
+`components/` and `features/` now have guards of their own
+(`apps/web/test/moduleBoundaries.test.ts`): `components/` may not import a
+feature, a feature may not import another feature, `app/` is a leaf nothing
+imports out of, and `lib/` renders only in its three named exceptions.
 
 Move by `git mv`, one coherent group per commit, tests updated in the same
 commit. No barrels are created on the way.
