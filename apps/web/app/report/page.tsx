@@ -64,7 +64,9 @@ import { SiteExportPanel } from "../../features/report/SiteExportPanel";
 import { WithheldItems } from "../../features/report/WithheldItems";
 import { downloadBlob } from "../../features/report/siteExport";
 import { ShareLink } from "../../features/report/ShareLink";
-import { ScoresOfRecord } from "../../features/report/ScoresOfRecordPanel";
+import { ScoresOfRecordView } from "../../features/report/ScoresOfRecordPanel";
+import { useScoresOfRecord } from "../../features/report/useScoresOfRecord";
+import { reportGate } from "../../features/report/reportGate";
 import { TrackRadar } from "../../components/TrackRadar";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
@@ -262,6 +264,13 @@ export default function ReportPage() {
    */
   const [review, setReview] = useState<ServerReview | null>(null);
   const reportAttemptId = state?.attemptId;
+  /**
+   * THE ONE READ OF THE SERVICE'S SCORES. The gate below and the panel at the
+   * bottom of this page must agree about what the exam service has issued, so
+   * they read it once, here (TEN-128). The bundled sample is nobody's sitting,
+   * so it asks the service nothing.
+   */
+  const scoresView = useScoresOfRecord(sample ? null : (reportAttemptId ?? null));
   useEffect(() => {
     if (!reportAttemptId) return;
     let cancelled = false;
@@ -295,14 +304,27 @@ export default function ReportPage() {
   }
 
   if (!state || !log || !summary) {
-    const done = state ? TRACK_IDS.filter((t) => state.tracks[t].score).length : 0;
+    /* The gate counts a score of record wherever it was issued — this
+       browser's log, and the service's `scores` (TEN-128). It used to count
+       the log alone, so a finalized hosted sitting was told for ever to
+       "finish the run", with a Continue that led back to /exam and from
+       there back to here. */
+    const gate = reportGate({
+      localScored: state ? TRACK_IDS.filter((t) => state.tracks[t].score !== undefined) : [],
+      scores: scoresView.scores ?? null,
+      reading: scoresView.reading,
+    });
     return (
       <main className="page">
         <div className="container" style={{ maxWidth: 820 }}>
-          <h1>The report is the reward</h1>
-          <p className="lede">{state ? `${done} of 4 tracks scored. Finish the run to unlock it.` : "No run in this browser yet."}</p>
+          <h1>{state ? gate.headline : "The report is the reward"}</h1>
+          <p className="lede">{state ? gate.lede : "No run in this browser yet."}</p>
           <p style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
-            <Link className="btn primary" href="/exam">{state ? "Continue →" : "Play →"}</Link>
+            {!state || gate.cta !== null ? (
+              <Link className="btn primary" href={state ? gate.cta!.href : "/exam"}>
+                {state ? gate.cta!.label : "Play →"}
+              </Link>
+            ) : null}
             {!state ? (
               <button type="button" className="btn" onClick={() => setSample(true)}>
                 Peek at a sample report
@@ -314,7 +336,7 @@ export default function ReportPage() {
               judged one is the service's. So the panel that says what the
               service holds must be on this screen too, or the candidate is
               told to "finish the run" they already finished (TEN-69). */}
-          {state?.attemptId ? <ScoresOfRecord attemptId={state.attemptId} /> : null}
+          {state?.attemptId ? <ScoresOfRecordView view={scoresView} /> : null}
         </div>
       </main>
     );
@@ -484,7 +506,7 @@ export default function ReportPage() {
             pass issues after finalize has answered (TEN-69). Separate from
             the breakdown below, which is this browser's log: a hosted score
             of record is not something this page recomputed. */}
-        {!sample && state.attemptId ? <ScoresOfRecord attemptId={state.attemptId} /> : null}
+        {!sample && state.attemptId ? <ScoresOfRecordView view={scoresView} /> : null}
 
         <h2 style={{ marginTop: 0 }}>Track breakdown</h2>
         {/* Said once, in words, above the numbers it qualifies: the judging
