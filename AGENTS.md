@@ -38,7 +38,13 @@ browser called a route the deployed service did not have. Do not bring either ba
   `@ailx/backend`/`@ailx/instrument`, grows a `pg`/`node-pg-migrate`/`@clerk/backend`
   dependency, grows an `app/api/**` route, re-adds a server request adapter or `db/`, or adds
   a second route handler. It also fails if anything a browser legitimately needs goes
-  missing. `packages/content-tools/test/public-tree.test.ts` guards the content tree.
+  missing. `packages/content-tools/test/public-tree.test.ts` guards the content tree, and
+  `apps/web/test/bundleSecrecy.test.ts` guards `apps/web/public/**` — every file there must be
+  named by a committed manifest (the released-practice snapshot, the practice corpus, the
+  character manifest) or by one of two frozen lists in that test, so an asset cannot arrive
+  unremarked. It scanned only build output until TEN-117, which is how 50 undealt `t2-media`
+  files came to ship. Moving that pool to the exam service empties the frozen list; growing it
+  fails the build.
 - There: `pnpm sync:shared:check` compares the vendored copies byte for byte against THIS repo
   on every PR. **This repo is the source of truth**, so fix a shared package HERE and sync it
   there — never the other way round.
