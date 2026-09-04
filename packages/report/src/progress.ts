@@ -268,10 +268,19 @@ export const MIN_TREND_ANSWERS = 12;
 /**
  * The one sentence every progression figure is qualified by. Exported so the
  * page and its tests share a single wording (DRY) and it cannot drift.
+ *
+ * It used to say practice answers are "graded on the server", full stop. That
+ * was false for the anonymous on-ramp: a signed-out round is recorded only in
+ * the browser's own ledger (`localPractice.ts`, and the drill's
+ * `recorded = server && signed-in` rule), so the service has nothing to grade
+ * and /progress could only ever show zero while /practice showed a streak
+ * (TEN-132). Both places a practice day can live are now named.
  */
 export const PROGRESS_BASIS =
-  "Counted from what you actually did: practice answers graded on the server, and each "
-  + "sitting's own scorer output from its stored event log. No percentile, no composite and "
+  "Counted from what you actually did. Practice you finish while signed in is recorded and "
+  + "graded by the exam service. Practice you do signed out is kept by your browser and never "
+  + "reaches the service, so only that browser can show it. Each sitting's figures are that "
+  + "run's own scorer output from its stored event log. No percentile, no composite and "
   + "no judged result — the judging pipeline is not built yet, so a number implying one "
   + "would be a claim we cannot back.";
 
