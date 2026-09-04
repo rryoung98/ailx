@@ -32,12 +32,15 @@ afterEach(() => {
   host?.remove();
   root = null;
   store.clear();
+  voteReply = () => ({ ok: true, json: async () => ({ ok: true, votes: 3 }) });
   vi.unstubAllGlobals();
 });
 
+let voteReply: () => unknown = () => ({ ok: true, json: async () => ({ ok: true, votes: 3 }) });
+
 async function mount(listing: () => unknown = () => ({ ok: true, json: async () => ({ items: [SUB] }) })) {
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-    if (String(url).endsWith("/vote")) return { ok: true, json: async () => ({ ok: true }) };
+    if (String(url).endsWith("/vote")) return voteReply();
     if (String(url).includes("/subs/")) return { ok: true, json: async () => DOC };
     return listing();
   }));
@@ -104,6 +107,72 @@ describe("gallery wall", () => {
     await act(async () => { await Promise.resolve(); });
     expect(host.querySelector('[role="alert"]')).toBeNull();
     expect(host.querySelectorAll('[data-testid="gallery-card"]')).toHaveLength(1);
+  });
+
+
+  // TEN-131. The service answered `{ok:true}` whether the vote was new or a
+  // repeat, so the page kept its own guess and the next load contradicted it.
+  it("takes the count from the service, not from its own guess", async () => {
+    voteReply = () => ({ ok: true, json: async () => ({ ok: true, votes: 9 }) });
+    await mount();
+    const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
+    await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(btn.textContent).toContain("9");
+    expect(btn.getAttribute("aria-label")).toBe("You upvoted this set — 9 votes");
+  });
+
+  it("holds the count still when the vote was already counted", async () => {
+    // One vote per IP. A second browser on the same address votes again and
+    // the number does not move; the page must say so instead of adding one.
+    voteReply = () => ({ ok: true, json: async () => ({ ok: true, votes: 2 }) });
+    await mount();
+    const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
+    await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(btn.textContent).toContain("2");
+  });
+
+  it("takes the vote back when the service refuses it", async () => {
+    voteReply = () => ({ ok: false, status: 429, json: async () => ({ error: "no" }) });
+    await mount();
+    const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
+    await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(btn.textContent).toContain("2");
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
+    // and it is not remembered, so a reload does not claim a vote that failed
+    expect(JSON.parse(store.get("ailx:gallery-voted") ?? "[]")).not.toContain("abc123");
+  });
+
+  it("takes the vote back when the network drops it", async () => {
+    voteReply = () => { throw new Error("network"); };
+    await mount();
+    const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
+    await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(btn.textContent).toContain("2");
+    expect(btn.getAttribute("aria-pressed")).toBe("false");
+    expect(JSON.parse(store.get("ailx:gallery-voted") ?? "[]")).not.toContain("abc123");
+  });
+
+  it("keeps an older vote remembered when a new one fails", async () => {
+    store.set("ailx:gallery-voted", JSON.stringify(["other-set"]));
+    voteReply = () => { throw new Error("network"); };
+    await mount();
+    const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
+    await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(JSON.parse(store.get("ailx:gallery-voted")!)).toEqual(["other-set"]);
+  });
+
+  it("keeps its own count when the service answers without one", async () => {
+    voteReply = () => ({ ok: true, json: async () => ({ ok: true }) });
+    await mount();
+    const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
+    await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => { await Promise.resolve(); });
+    expect(btn.textContent).toContain("3");
   });
 
   it("uses the shared page shell, and an eyebrow class that exists", async () => {

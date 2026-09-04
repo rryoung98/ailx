@@ -12,6 +12,7 @@
  * own word, and it is kept in a store the exam path never reads
  * (`apps/web/test/anonymousScoredSitting.test.ts` pins that).
  */
+import { useEffect, useState } from "react";
 import {
   LOCAL_PRACTICE_KEY,
   claimableDays,
@@ -94,6 +95,34 @@ export function recordLocalPracticeRound(
   writeLocalLedger(storage, ledger);
   notify();
   return { ledger, qualification };
+}
+
+/**
+ * The streak this browser has earned, by its own reckoning, as a hook — read
+ * on mount and kept in step with the ledger.
+ *
+ * `null` until the first read, and `null` for a browser whose storage throws
+ * (private mode, blocked cookies): a page must be able to tell "no days" from
+ * "not asked yet" so it does not flash a wrong empty state.
+ *
+ * /progress needs this because a signed-out round never reaches the exam
+ * service (TEN-132). Without it the page reports zero days to somebody whose
+ * practice summary just said "1 day streak".
+ */
+export function useLocalStreak(): StreakSummary | null {
+  const [streak, setStreak] = useState<StreakSummary | null>(null);
+  useEffect(() => {
+    const read = (): void => {
+      try {
+        setStreak(localStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes()));
+      } catch {
+        setStreak(null);
+      }
+    };
+    read();
+    return subscribeLocalPractice(read);
+  }, []);
+  return streak;
 }
 
 /** The streak this browser has earned, by its own reckoning. */

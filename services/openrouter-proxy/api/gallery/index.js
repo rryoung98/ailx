@@ -9,28 +9,14 @@
  * Votes are a HUMAN AESTHETIC SIGNAL, deliberately outside the scored
  * instrument: the composite never reads this store.
  */
-import { put, list } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import { applyCors, clientIp, createRateLimiter } from "../_lib/guards.js";
+import { listAll } from "../_lib/blobs.js";
 
 const MAX_IMG_BYTES = 450 * 1024;
 const SUBMITS_PER_IP_PER_DAY = 6;
-// 25 pages x 1000 blobs. Past that, counts are deliberately truncated
-// rather than looping forever on a hostile/degenerate store.
-const MAX_LIST_PAGES = 25;
 
 const limiter = createRateLimiter({ windowMs: 86400_000, max: SUBMITS_PER_IP_PER_DAY });
-
-async function listAll(prefix) {
-  const blobs = [];
-  let cursor;
-  for (let page = 0; page < MAX_LIST_PAGES; page++) {
-    const res = await list({ prefix, limit: 1000, cursor });
-    blobs.push(...res.blobs);
-    if (!res.hasMore) break;
-    cursor = res.cursor;
-  }
-  return blobs;
-}
 
 export default async function handler(req, res) {
   if (applyCors(req, res, ["GET", "POST"])) return;
