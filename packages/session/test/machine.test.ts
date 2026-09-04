@@ -272,6 +272,20 @@ describe("pause reason (presentation clock hold)", () => {
     expect(project(log).pauseReason).toBeUndefined();
   });
 
+  it("accepts the CONTENT hold, and charges nothing for it (TEN-116)", () => {
+    // The track has started but the hosted deck is still in flight: the
+    // wait is the host's, so the budget must not move for it.
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
+    log = append(log, { type: "paused", reason: "loading", ts: T0 + 1_000 });
+    const held = project(log);
+    expect(held.pauseReason).toBe("loading");
+    expect(secondsRemaining(held, "t1", T0 + 600_000)).toBe(599);
+    log = append(log, { type: "resumed", ts: T0 + 600_000 });
+    expect(project(log).pauseReason).toBeUndefined();
+    expect(secondsRemaining(project(log), "t1", T0 + 601_000)).toBe(598);
+  });
+
   it("defaults an unlabelled pause to the candidate (legacy stored logs)", () => {
     let log = start();
     log = append(log, { type: "track_started", trackId: "t1", ts: T0 });

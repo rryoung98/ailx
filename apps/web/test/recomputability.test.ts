@@ -215,6 +215,23 @@ describe("replay detects the two ways a score of record goes wrong", () => {
     expect(r.status).toBe("not-replayable-here");
     expect(r.detail).toMatch(/exam service/);
   });
+
+  /**
+   * TEN-119. `scoredBy === "server"` is the whole condition. A server score
+   * that arrives WITH its evidence rows is still not this browser's to
+   * replay: the rows were judged against the OPERATIONAL bank, and the only
+   * bank in this bundle is the released-practice tier — so a local recompute
+   * would print "MISMATCH" at a candidate, which this page's own copy
+   * defines as a forged number.
+   */
+  it("a server score WITH evidence rows is still not replayed here", () => {
+    const stored = state().tracks.t3;
+    expect(stored.judgments!.length, "the case only exists with rows").toBeGreaterThan(0);
+    const r = replayTrackScore("t3", { ...stored, scoredBy: "server" });
+    expect(r.status).toBe("not-replayable-here");
+    expect(r.detail).toMatch(/exam service/);
+    expect(r.recomputed, "no local number is offered at all").toBeUndefined();
+  });
 });
 
 describe("the whole issue → persist → reload → replay path", () => {

@@ -351,8 +351,12 @@ export function replayTrackScore(
     }
   }
 
-  // 2. A score this browser did not issue is not this browser's to replay.
-  if (stored.scoredBy === "server" && judgments.length === 0) {
+  // 2. A score this browser did not issue is not this browser's to replay,
+  //    and rows the service hands back do not change that (TEN-119): they
+  //    were judged against the OPERATIONAL bank, and the only bank in this
+  //    bundle is the released-practice tier. Recomputing them here would
+  //    print a mismatch that means nothing except "wrong bank".
+  if (stored.scoredBy === "server") {
     return {
       status: "not-replayable-here",
       detail: "issued by the exam service, which holds the evidence and the key",

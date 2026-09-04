@@ -651,22 +651,24 @@ export async function scoreTrackOnServer(
 
 /**
  * Browser entry point for run start. Server mode: returns the pre-created
- * server attempt id to adopt as the session attemptId. Static mode — or a
- * server-mode create that fails (offline, backend down) — returns null and
- * the caller falls back to a client-local attempt id: the run then presents
- * this build's bundled practice deck, keyed to the local id and not recorded
- * server-side (the mirror will still lazily create an attempt for the log).
+ * server attempt id to adopt as the session attemptId. Static mode: returns
+ * null, and the caller mints a client-local id for a run on this build's
+ * bundled practice deck — the only content that build has, and a tier that
+ * issues no score of record.
+ *
+ * A HOSTED create that fails REJECTS (TEN-114). It used to return null, and
+ * the run started anyway: the sitting silently became the released-practice
+ * deck, whose keys are published on purpose, the browser marked its own
+ * paper, and the service held no record of the sitting — with nothing on
+ * screen to say so. Substituting one instrument for another is the same
+ * measurement-validity defect as {@link DeckMismatchError}, so it gets the
+ * same answer: the caller must SHOW the failure and not start the run.
  */
 export async function startServerAttempt(locale: string): Promise<string | null> {
   if (!isServerMode() || typeof window === "undefined") {
     return null;
   }
-  try {
-    return await createServerAttempt(window.localStorage, browserApiOptions(), locale);
-  } catch (err) {
-    console.warn("[ailx sync] server attempt creation failed; using a local attempt id", err);
-    return null;
-  }
+  return createServerAttempt(window.localStorage, browserApiOptions(), locale);
 }
 
 // ---------------------------------------------------------------------------

@@ -70,8 +70,14 @@ export type ScoredBy = "local" | "server";
  * clock is held for a post-submit presentation screen rather than by the
  * candidate. Absent = the candidate pressed Pause (the historical shape;
  * stored logs without it stay valid).
+ *
+ * `loading` is the host's own fault, held: the track has started but its
+ * content is not on screen yet — a hosted deck still in flight, a failed
+ * fetch waiting on a retry, or the runner module still downloading. That
+ * interval used to be charged to a non-revisitable budget, and a deck fetch
+ * that hung spent the whole of it (TEN-116).
  */
-export type PauseReason = "candidate" | "presentation";
+export type PauseReason = "candidate" | "presentation" | "loading";
 
 export type SessionLogEntry =
   | { type: "attempt_started"; attemptId: string; config: SessionConfig; ts: number }
@@ -342,7 +348,12 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
       if (s.phase !== "in_track") fail("nothing running to pause");
       // A stored/hand-edited log may not invent a pause reason: the reason
       // decides whether the interval is charged-looking or clock-held.
-      if (e.reason !== undefined && e.reason !== "candidate" && e.reason !== "presentation")
+      if (
+        e.reason !== undefined &&
+        e.reason !== "candidate" &&
+        e.reason !== "presentation" &&
+        e.reason !== "loading"
+      )
         fail(`unknown pause reason ${String(e.reason)}`);
       return;
     case "resumed":
