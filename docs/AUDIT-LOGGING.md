@@ -243,3 +243,56 @@ the three screens, auditable hold appended, no veil and no Resume, watchdog
 cannot force-finish, reload restores the hold, explicit time-up state,
 working-phase timing unchanged), `packages/session/test/machine.test.ts`
 ("pause reason"), and `packages/tracks/t{2,3,4}-*/test/clockHold.test.tsx`.
+
+## Content the candidate has not been shown (2026-09-04, TEN-116)
+
+`track_started` starts the clock. The hosted deck fetch
+(`GET /attempts/:id/items`) and the runner's dynamic import happen after it.
+A fetch that hung therefore spent the whole non-revisitable budget, the
+watchdog scored an empty artifact as a zero, and the candidate was told the
+clock "ran out while you were working" and that "your work was kept". They
+had never seen an item. Both sentences were false.
+
+A wait for OUR content is our fault, and our fault is not charged. The clock
+is held while the track has nothing presentable on screen, with the same two
+entries the crash and presentation holds use:
+
+1. `track_event` with `verb: "content_hold_opened"`;
+2. `paused` carrying `reason: "loading"` — the clock stops.
+
+`content_hold_closed` + `resumed` when the content arrives. Three details:
+
+- **A one-second grace.** Content that appears inside one tick of the 1 Hz
+  track clock costs nothing measurable, and holding for it would write a
+  pause pair into the log on every track start. The hold is for a wait the
+  candidate can see.
+- **A fetch timeout.** 20 s, so a dead socket becomes a visible failure with
+  a retry instead of an empty screen. The clock is held while it runs.
+- **A runner that mounts straight into a presentation screen** (T2 rehydrated
+  at `replay` after a reload) opens that screen on the same frame the content
+  hold is still in place. `onPresentation` hands the clock from one hold to
+  the other rather than dropping it.
+
+**Tests:** `apps/web/test/examDeckHold.test.tsx` (a hang and a 503 both leave
+the track sittable and unscored, the held-clock chrome shows, the hang ends
+in a retryable failure), plus the presentation suite above, which pins that
+the two holds do not fight.
+
+## A pause must not answer the item (2026-09-04, TEN-115)
+
+The host stops the TRACK clock on a pause and veils the workspace, but each
+runner may keep a clock of its own. T2's fixed exposure did, and it kept
+ticking behind the veil: the item on screen lapsed, was recorded as
+`choice: -1` — a miss on a signal item, a false alarm on a noise item — and
+the 1600 ms lapse notice expired unseen. The pause dialog said "your work is
+kept" the whole time.
+
+`TrackUIProps.paused` now carries the stopped clock to the runner. T2 freezes
+its exposure interval and its lapse notice on it, and moves the exposure
+anchor forward by the paused interval, so the recorded decision latency stays
+the candidate's thinking time. A presentation hold is not a pause for this
+purpose: the screen being read is the runner's own and nothing on it is
+scored.
+
+**Tests:** `apps/web/test/examT2Pause.test.tsx` (60 s paused mid-item records
+no response at all, and the item is still sittable on resume).

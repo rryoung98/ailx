@@ -16,6 +16,17 @@ export interface TrackUIProps {
   /** Seconds remaining, managed by the session engine. */
   secondsRemaining: number;
   /**
+   * The track clock is STOPPED and the workspace is hidden (a candidate
+   * pause, a runner crash, or content the host has not presented yet).
+   *
+   * A runner that runs a clock of its own MUST freeze it here, and MUST NOT
+   * charge the paused interval to any latency or exposure anchor it keeps.
+   * T2's fixed exposure used to tick behind the pause veil: the item on
+   * screen lapsed, was recorded as a non-response and scored as a miss,
+   * while the pause dialog said the candidate's work was kept (TEN-115).
+   */
+  paused?: boolean;
+  /**
    * Checkpoint persistence. The runner MUST call onCheckpoint with a
    * JSON-serializable snapshot of its in-progress state after every
    * meaningful mutation, and MUST rehydrate from `checkpoint` when

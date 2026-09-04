@@ -72,13 +72,15 @@ afterEach(() => {
 describe("an anonymous browser gets no server attempt", () => {
   it("starts no server attempt when the service refuses the caller", async () => {
     const { startServerAttempt } = await loadPersistence();
-    expect(await startServerAttempt("en")).toBeNull();
+    // The refusal REACHES the caller (TEN-114). It used to be swallowed into
+    // a null, and a hosted run then started on the published practice deck.
+    await expect(startServerAttempt("en")).rejects.toThrow(/401/);
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(["POST /api/attempts"]);
   });
 
   it("records no server attempt id, so nothing downstream believes there is one", async () => {
     const { getServerAttemptId, startServerAttempt } = await loadPersistence();
-    await startServerAttempt("en");
+    await startServerAttempt("en").catch(() => undefined);
     // Whatever attempt id the run then invents locally, the mirror knows of
     // no server attempt under it.
     expect(getServerAttemptId(window.localStorage, "att-anything")).toBeUndefined();

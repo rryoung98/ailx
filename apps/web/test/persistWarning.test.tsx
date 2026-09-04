@@ -164,9 +164,12 @@ describe("the dark-theme copies are gone", () => {
     for (const hex of ["#3a1f1f", "#7a3b3b", "#ffd9d9"]) {
       expect(src, `${hex} is a dark-theme leftover`).not.toContain(hex);
     }
-    // One component, seven call sites: five phase branches, the start gate's
-    // stale-build block (same banner, different label), and the explicit
-    // time-up screen a timed-out track now shows.
+    // One component, seven call sites: five phase branches, the explicit
+    // time-up screen a timed-out track shows, and the start gate's failure
+    // banner. That last one used to be the stale-build message, which could
+    // never render; it now carries a REACHABLE failure — the exam service
+    // refusing to open the run (TEN-114).
     expect(src.split("<PersistWarning ").length - 1).toBe(7);
+    expect(src).toContain('label="Your run did not start"');
   });
 });

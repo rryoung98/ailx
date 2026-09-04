@@ -118,7 +118,7 @@ function Material({ item, lang }: { item: T2PresentedItem; lang?: string }) {
   );
 }
 
-export function Runner({ locale, config, onEvent, onComplete, onPresentation, checkpoint, onCheckpoint }: TrackUIProps) {
+export function Runner({ locale, config, onEvent, onComplete, onPresentation, checkpoint, onCheckpoint, paused = false }: TrackUIProps) {
   // PRESENTATION config: no key, no rationale. In hosted mode this deck came
   // from GET /api/attempts/:id/items, which redacts both until the attempt is
   // finalized, so validating for secrets here would refuse the real deck.
@@ -142,6 +142,27 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
   const [replayIdx, setReplayIdx] = useState(restored?.replayIdx ?? 0);
   const shownAt = useRef(0);
   const decisionLatency = useRef<number | null>(null);
+  /**
+   * TEN-115. The host stops the TRACK clock on a pause and veils the
+   * workspace, but this runner keeps its own exposure clock, and that one
+   * used to run behind the veil: the item on screen lapsed, was recorded as
+   * a non-response (`choice: -1`) and scored as a miss — while the pause
+   * dialog said the candidate's work was kept.
+   *
+   * So the exposure freezes here too, and the exposure anchor moves forward
+   * by the paused interval, which keeps the recorded decision latency the
+   * candidate's thinking time rather than their break.
+   */
+  const pausedRef = useRef(paused);
+  const pausedAt = useRef<number | null>(null);
+  if (paused && pausedAt.current === null) pausedAt.current = performance.now();
+  pausedRef.current = paused;
+  useEffect(() => {
+    if (paused || pausedAt.current === null) return;
+    const held = Math.max(0, performance.now() - pausedAt.current);
+    pausedAt.current = null;
+    shownAt.current += held;
+  }, [paused]);
   const sheetRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const sliderRef = useRef<HTMLInputElement>(null);
@@ -385,11 +406,11 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
   }, []);
   // Safety net: never leave an item unanchored if a load event is lost.
   useEffect(() => {
-    if (phase !== "deck" || stimulusReady || !item) return;
+    if (phase !== "deck" || stimulusReady || !item || paused) return;
     const t = setTimeout(() => setReady({ id: item.id, from: "fallback" }), 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, idx, stimulusReady]);
+  }, [phase, idx, stimulusReady, paused]);
 
   // Fixed-exposure countdown per timed item; a lapse is recorded as choice -1.
   // Starts only once the stimulus is visible (stimulusReady) and once any
@@ -407,8 +428,10 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
       // Clock pauses while the confidence sheet is up: picking how sure you
       // are is reflection, not exposure — the decision latency was already
       // anchored at the swipe. (choiceRef mirrors `choice` to keep this
-      // interval stable across renders.)
-      if (choiceRef.current !== null) return;
+      // interval stable across renders.) It also pauses while the host has
+      // stopped the track clock: a pause the candidate was invited to take
+      // must not answer the item for them (TEN-115).
+      if (choiceRef.current !== null || pausedRef.current) return;
       setSecondsLeft((s) => (s === null ? null : s - 1));
     }, 1000);
     return () => clearInterval(t);
@@ -426,12 +449,14 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondsLeft]);
 
-  // The notice clears itself; until it does the deck is inert.
+  // The notice clears itself; until it does the deck is inert. It does not
+  // count down behind the pause veil: a notice that expires unseen tells the
+  // candidate nothing (TEN-115).
   useEffect(() => {
-    if (!lapse) return;
+    if (!lapse || paused) return;
     const t = setTimeout(() => setLapse(null), LAPSE_NOTICE_MS);
     return () => clearTimeout(t);
-  }, [lapse]);
+  }, [lapse, paused]);
 
   const finish = useCallback(() => {
     if (completed.current) return;

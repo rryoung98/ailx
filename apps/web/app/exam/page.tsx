@@ -61,6 +61,47 @@ type SiteStatus =
   | { state: "live"; url: string }
   | { state: "error"; kind: SiteUploadFailureKind; message: string };
 
+/**
+ * How long a hosted content fetch may hang before it becomes a visible
+ * failure with a retry. The clock is held while it runs (see the content
+ * hold below), so this costs the candidate nothing — it exists so a dead
+ * socket ends in an answer instead of an empty screen (TEN-116).
+ */
+const CONTENT_FETCH_TIMEOUT_MS = 20_000;
+
+/** How long content may take to appear before the clock is held for it. */
+const CONTENT_HOLD_GRACE_MS = 1_000;
+
+/** Reject with a plain Error when `p` has not settled in `ms`. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = window.setTimeout(
+      () => reject(new Error(`the exam service did not answer in ${Math.round(ms / 1000)}s`)),
+      ms,
+    );
+    p.then(
+      (v) => { window.clearTimeout(id); resolve(v); },
+      (err: unknown) => { window.clearTimeout(id); reject(err); },
+    );
+  });
+}
+
+/**
+ * What a candidate is told when the exam service will not open their run
+ * (TEN-114). It names the failure, says nothing was recorded, and says why
+ * the practice deck in this browser is not offered as a stand-in: its
+ * answers are published, so a score from it would mean nothing.
+ */
+function startFailureCopy(err: unknown): string {
+  const reason = err instanceof Error ? err.message : String(err);
+  return (
+    `the exam service could not open it (${reason}). Nothing was recorded and ` +
+    "no clock is running — press Start your run to try again. This browser " +
+    "holds only the practice deck, whose answers are published, so it is " +
+    "never used in place of your sitting."
+  );
+}
+
 function fmt(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -91,8 +132,19 @@ export default function ExamPage() {
   // Start gate: a run needs a connected model (key or custom base URL).
   const [connected, setConnected] = useState(false);
   const [connectAttention, setConnectAttention] = useState(0);
-  /** Start blocked because the server's recorded deck is not this build's. */
-  const [staleBuild, setStaleBuild] = useState<string | null>(null);
+  /**
+   * The run did not start, and why (TEN-114). HOSTED ONLY: the exam service
+   * holds the operational bank, so a create it refuses leaves this browser
+   * with nothing legitimate to sit. The old code swallowed that failure and
+   * started the run on the bundled practice deck — published keys, a paper
+   * the browser marks itself, no server record, and not one word on screen.
+   *
+   * This replaces a `staleBuild` banner that could never render: it was
+   * raised only for a `DeckMismatchError` out of `startServerAttempt`, which
+   * neither rethrew nor could produce one. Deck mismatch is caught where it
+   * is actually thrown — the hosted-deck effect below.
+   */
+  const [startError, setStartError] = useState<string | null>(null);
   /**
    * HOSTED CONTENT for the track about to mount. In hosted mode the deck (T2)
    * and the dealt form (T3, T4) are the SERVER's — GET /attempts/:id/items
@@ -175,6 +227,13 @@ export default function ExamPage() {
    * restores a held clock and the right chrome instead of a pause veil.
    */
   const presenting = state?.phase === "paused" && state.pauseReason === "presentation";
+  /**
+   * True while the clock is HELD because the track's content is not on
+   * screen yet — the hosted deck is in flight or failed, or the runner
+   * module is still loading. Derived from the log for the same reason
+   * `presenting` is: a reload mid-hold must restore the held clock.
+   */
+  const loadingHold = state?.phase === "paused" && state.pauseReason === "loading";
 
   /**
    * Pause is a full-workspace modal. Keyboard and screen-reader users have
@@ -247,7 +306,7 @@ export default function ExamPage() {
     if (cur?.attemptId === attemptId && cur.trackId === activeTrack) return;   // already resolved
     let cancelled = false;
     setDeckError(null);
-    fetchHostedTrackConfig(attemptId, activeTrack)
+    withTimeout(fetchHostedTrackConfig(attemptId, activeTrack), CONTENT_FETCH_TIMEOUT_MS)
       .then((config) => {
         if (!cancelled) setHostedTrack({ attemptId, trackId: activeTrack, config });
       })
@@ -266,6 +325,23 @@ export default function ExamPage() {
     // is what re-runs this — never a render loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTrack, attemptId, deckEpoch]);
+  /**
+   * The content is the SERVER's whenever the server dealt some; the static
+   * demo (and any track the server deals nothing for, T1) keeps this build's
+   * bundled config. `undefined` means the question is not answered yet, and
+   * the track must not mount: presenting this build's bundled practice
+   * content while the server holds a different scenario is exactly the
+   * divergence the deck check exists to stop.
+   */
+  const hostedConfig =
+    hostedTrack && hostedTrack.attemptId === attemptId && hostedTrack.trackId === activeTrack
+      ? hostedTrack.config
+      : undefined;
+  const deckPending = hostedConfig === undefined && deckError === null;
+  /** Is there something on screen the candidate can actually work on? */
+  const contentPresentable =
+    activeTrack !== undefined && mod !== null && !deckPending && deckError === null;
+
   const initialCheckpoint = useMemo(() => {
     if (!attemptId || !activeTrack || typeof window === "undefined") return undefined;
     return loadCheckpoint(window.localStorage, attemptId, activeTrack);
@@ -475,11 +551,22 @@ export default function ExamPage() {
     if (!cur || !cur.currentTrack) return;
     const t = cur.currentTrack;
     const opening = screen !== null;
-    // Opening: only from a running clock (a candidate/crash pause stands).
-    // Closing: only undo a hold WE placed, and only while it is still held.
-    if (opening ? cur.phase !== "in_track" : cur.pauseReason !== "presentation") return;
+    /**
+     * A runner may open its presentation screen on the very first frame it
+     * mounts — T2 rehydrated at `replay` after a reload does exactly that —
+     * and that frame is the one where the CONTENT HOLD is still in place.
+     * The hold is ours and it is over, so it hands the clock straight to
+     * the presentation hold instead of dropping it on the floor.
+     */
+    const heldForContent = cur.phase === "paused" && cur.pauseReason === "loading";
+    // Opening: only from a running clock, or from our own content hold (a
+    // candidate/crash pause stands). Closing: only undo a hold WE placed,
+    // and only while it is still held.
+    if (opening ? cur.phase !== "in_track" && !heldForContent : cur.pauseReason !== "presentation") return;
     const ts = stamp();
+    if (opening && heldForContent) contentHeldRef.current = false;
     commitIfLegal([
+      ...(opening && heldForContent ? [{ type: "resumed" as const, ts }] : []),
       {
         type: "track_event", trackId: t, ts,
         event: {
@@ -492,6 +579,53 @@ export default function ExamPage() {
       opening ? { type: "paused", reason: "presentation", ts } : { type: "resumed", ts },
     ]);
   }, [commitIfLegal, stamp]);
+
+  /**
+   * CONTENT HOLD (TEN-116). `track_started` starts the clock; the hosted
+   * deck fetch and the runner's dynamic import happen after it. A fetch that
+   * hung used to spend the entire non-revisitable budget, score an empty
+   * artifact as a zero, and then tell the candidate the clock ran out "while
+   * you were working" and that "your work was kept" — neither of which had
+   * happened. Our fault is not charged to their budget, so this holds the
+   * clock until the content is actually presentable, exactly as a runner
+   * crash does, with the same auditable cause event.
+   */
+  const contentHeldRef = useRef(false);
+  const holdContent = useCallback((hold: boolean) => {
+    const t = (logRef.current ? project(logRef.current) : null)?.currentTrack;
+    if (!t) return;
+    const ts = stamp();
+    contentHeldRef.current = hold;
+    commitIfLegal([
+      {
+        type: "track_event", trackId: t, ts,
+        event: {
+          verb: hold ? "content_hold_opened" : "content_hold_closed",
+          object: `track:${t}`,
+          context: { track: t, clock: hold ? "held" : "running" },
+          clientTs: new Date().toISOString(),
+        },
+      },
+      hold ? { type: "paused", reason: "loading", ts } : { type: "resumed", ts },
+    ]);
+  }, [commitIfLegal, stamp]);
+
+  useEffect(() => {
+    const holding = state?.phase === "paused" && state.pauseReason === "loading";
+    if (contentPresentable) {
+      if (holding && contentHeldRef.current) holdContent(false);
+      return;
+    }
+    if (holding || crashed || state?.phase !== "in_track") return;
+    /**
+     * The grace: content that arrives inside one tick of the 1 Hz track
+     * clock costs nothing measurable, and holding for it would write a
+     * pause pair into the event log on every single track start. A wait the
+     * candidate can SEE is the one that gets held.
+     */
+    const id = window.setTimeout(() => holdContent(true), CONTENT_HOLD_GRACE_MS);
+    return () => window.clearTimeout(id);
+  }, [contentPresentable, crashed, state, holdContent]);
 
   const retryRunner = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
@@ -528,7 +662,7 @@ export default function ExamPage() {
     return (
       <main className="page">
       <PersistWarning warning={persistWarning} />
-      <PersistWarning warning={staleBuild} label="Update required" />
+      <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · AILX 2026.1</div>
           <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
@@ -573,16 +707,13 @@ export default function ExamPage() {
                 try {
                   serverId = await startServerAttempt(cfg.locale);
                 } catch (err) {
-                  // This tab's bundled instrument is not the server's. Starting
-                  // would present a deck the exposure log contradicts, so the
-                  // run does NOT start — a reload picks up the current build.
-                  if (!(err instanceof DeckMismatchError)) throw err;
-                  setStaleBuild(
-                    "this tab loaded an older version of the exam content — reload the page before starting your run",
-                  );
+                  // Hosted only, and never a fallback: the practice deck is a
+                  // different instrument, and swapping it in unannounced is
+                  // the defect DeckMismatchError already refuses to ship.
+                  setStartError(startFailureCopy(err));
                   return;
                 }
-                setStaleBuild(null);
+                setStartError(null);
                 const ts = Date.now();
                 const attemptId =
                   serverId ?? `att-${sha256Hex(`${ts}:${Math.random()}`).slice(0, 12)}`;
@@ -732,20 +863,8 @@ export default function ExamPage() {
   // The veil hides the workspace for a candidate pause only. A crash shows
   // its recovery panel; a presentation hold shows the screen being read —
   // veiling either would hide the very thing the pause exists for.
-  const veiled = paused && !crashed && !presenting;
+  const veiled = paused && !crashed && !presenting && !loadingHold;
 
-  /**
-   * The content is the SERVER's whenever the server dealt some; the static
-   * demo (and any track the server deals nothing for, T1) keeps this build's
-   * bundled config. `pending` holds the track unmounted until that question
-   * is answered — mounting the local scenario first and swapping it would
-   * present a brief, a deck or an assistant the server never recorded.
-   */
-  const hostedConfig =
-    hostedTrack && hostedTrack.attemptId === state.attemptId && hostedTrack.trackId === t
-      ? hostedTrack.config
-      : undefined;
-  const deckPending = hostedConfig === undefined && deckError === null;
   const uiProps = {
     attemptId: state.attemptId!,
     locale: state.config!.locale,
@@ -768,6 +887,13 @@ export default function ExamPage() {
     onComplete: (artifact: unknown) => finishTrack(t, artifact),
     onPresentation: handlePresentation,
     secondsRemaining: remaining,
+    /**
+     * The track clock is stopped and the workspace is hidden — a candidate
+     * pause or a crash hold. A runner that keeps a clock of its own must
+     * freeze it (TEN-115); a presentation hold is not one of these, because
+     * the screen being read is the runner's own and nothing there is scored.
+     */
+    paused: paused && !presenting,
     // F2: the runner rehydrates from the last checkpoint and persists every
     // meaningful mutation back through onCheckpoint.
     checkpoint: initialCheckpoint,
@@ -817,12 +943,14 @@ export default function ExamPage() {
               {remaining <= 60 && remaining > 0 ? "Less than one minute remaining on the track clock." : ""}
             </span>
             <span className={`timer${remaining <= 60 ? " low" : ""}`} role="timer" aria-label={`Time remaining ${fmt(remaining)}`}>{fmt(remaining)}</span>
-            {presenting ? (
+            {presenting || loadingHold ? (
               /* Nothing here is scored and nothing is charged: no Pause to
                  offer, and no Resume that could restart the clock under a
-                 candidate who is only reading. */
+                 candidate who is only reading — or waiting on us. */
               <span className="badge" data-testid="clock-held" role="status">
-                clock held · this screen is not timed
+                {presenting
+                  ? "clock held · this screen is not timed"
+                  : "clock held · your content is not on screen yet"}
               </span>
             ) : paused ? (
               <button className="btn" onClick={() => commit([{ type: "resumed", ts: stamp() }])}>Resume</button>
