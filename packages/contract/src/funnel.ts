@@ -32,6 +32,8 @@
  * counting its own optimism. Every event therefore carries `firstSeenDay` and
  * `dayIndex`, and D1/D7 is a query over those (docs/KPI.md).
  */
+import { API_ROUTES } from "./routes.js";
+
 /**
  * A local calendar day, `YYYY-MM-DD`, that is also a real date.
  *
@@ -57,8 +59,16 @@ function isDay(value: unknown): value is string {
 /** Bumped when a field changes meaning. Stored with every row. */
 export const FUNNEL_SCHEMA_VERSION = 1;
 
-/** The one URL the browser posts a batch to, under `apiBase()`. */
-export const FUNNEL_EVENTS_PATH = "/events";
+/**
+ * The one URL the browser posts a batch to, under `apiBase()` — and it is the
+ * MANIFEST's spelling, not a second one.
+ *
+ * It was a bare literal here, outside `API_ROUTES`, which is why the drift in
+ * TEN-133 went unseen: the guard in `apps/web/test/routeManifest.test.ts`
+ * only knows the segments the manifest declares, so `/events` was invisible
+ * to it. No deployment mounts the route today; see the manifest entry.
+ */
+export const FUNNEL_EVENTS_PATH: string = API_ROUTES.funnelEvents.path;
 
 /** Most events a single POST may carry. A longer body is a bug, not traffic. */
 export const FUNNEL_BATCH_MAX = 20;
