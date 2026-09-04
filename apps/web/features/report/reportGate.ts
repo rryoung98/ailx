@@ -12,10 +12,11 @@
  * So the gate counts a score of record wherever it was issued: this browser's
  * log, and the `scores` object the service returns on `GET /attempts/:id` —
  * the same read the Scores of record panel renders. It does NOT copy a
- * server-issued score into the log. That is TEN-92's open question, and the
- * log is the browser's record of what the browser computed: a value it did
- * not compute has no replay behind it, and `replayTrackScore` would have
- * nothing to check.
+ * server-issued score into the log. TEN-92 settled that: the log is the
+ * browser's record of what the browser computed, a value it did not compute
+ * has no replay behind it, and `replayTrackScore` would have nothing to
+ * check. So the SERVICE issues the composite for a hosted sitting, and this
+ * lede stopped denying that a composite exists.
  *
  * Pure: state in, copy out. No fetch, no clock, no storage.
  */
@@ -60,6 +61,12 @@ export function reportGate(input: GateInput): GateView {
   }
   if (input.scores?.finalized === true) {
     const pending = input.scores.tracks.filter((t) => t.state === "pending_judging").length;
+    /* The composite is the service's for a hosted sitting (TEN-92), so this
+       lede stopped denying one exists. It still does not claim one where the
+       service issued none: a withheld composite says its own reason on the
+       page below, and a service too old to send the field says nothing at
+       all rather than a sentence that would then be wrong. */
+    const issued = input.scores.composite?.state === "issued";
     return {
       headline: "Your sitting is finished",
       lede:
@@ -67,8 +74,12 @@ export function reportGate(input: GateInput): GateView {
         (pending > 0
           ? `${pending === 1 ? "One track is" : `${pending} tracks are`} still being judged, and this page checks for the score. `
           : "") +
-        "There is no composite here: the composite is computed from the scores this browser issued, " +
-        "and it did not issue these.",
+        (issued
+          ? "It issued the composite too: this browser did not compute it and claims no replay of it."
+          : input.scores.composite?.state === "withheld"
+            ? ""
+            : "There is no composite here: the composite is computed from the scores this browser issued, " +
+              "and it did not issue these."),
       cta: null,
       scored,
     };

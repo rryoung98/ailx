@@ -75,9 +75,21 @@ describe("@ailx/contract is pure", () => {
    */
   const MODEL_GATEWAY_KEY_SPELLINGS = /\bdisconnectModelKey\b|\bmodelKey\b|\/key\b/g;
 
+  /**
+   * `rubricVersion` is the VERSION IDENTIFIER of a marking scheme, not the
+   * scheme. It is the string the exam service stamps on a score row, and the
+   * report prints it beside the score so a reader can tell which marking a
+   * number was issued under (`./composite.ts`, TEN-92). It reveals nothing:
+   * no weight, no anchor, no descriptor. The bare word `rubric` still fails,
+   * which the test below pins.
+   */
+  const RUBRIC_VERSION_SPELLING = /\brubricVersion\b/g;
+
   it("names no marking scheme — the browser holds no key", () => {
     for (const { name, text } of sources) {
-      const scanned = text.replace(MODEL_GATEWAY_KEY_SPELLINGS, "");
+      const scanned = text
+        .replace(MODEL_GATEWAY_KEY_SPELLINGS, "")
+        .replace(RUBRIC_VERSION_SPELLING, "");
       expect({ name, leaks: /\bkey\b|rationale|rubric|judgePrompt|answerKey/i.test(scanned) }).toEqual({
         name,
         leaks: false,
@@ -85,13 +97,17 @@ describe("@ailx/contract is pure", () => {
     }
   });
 
-  it("the model-gateway exemption is narrow: an answer key still fails", () => {
+  it("the exemptions are narrow: an answer key and a rubric still fail", () => {
     const scan = (text: string) =>
-      /\bkey\b|rationale|rubric|judgePrompt|answerKey/i.test(text.replace(MODEL_GATEWAY_KEY_SPELLINGS, ""));
+      /\bkey\b|rationale|rubric|judgePrompt|answerKey/i.test(
+        text.replace(MODEL_GATEWAY_KEY_SPELLINGS, "").replace(RUBRIC_VERSION_SPELLING, ""),
+      );
     expect(scan('modelKey: { method: "GET", path: `${MODEL_ROOT}/key` }')).toBe(false);
+    expect(scan("rubricVersion: string;")).toBe(false);
     expect(scan("const answerKey = 3;")).toBe(true);
     expect(scan("the key is B")).toBe(true);
     expect(scan("rubric weights")).toBe(true);
+    expect(scan("rubricWeights")).toBe(true);
   });
 
   it("depends on no server package", () => {

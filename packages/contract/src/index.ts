@@ -39,6 +39,23 @@ export {
 } from "./routes.js";
 export { clampInt } from "./clamp.js";
 export {
+  AWAITED_TRACK_STATES,
+  COMPOSITE_BANDS,
+  COMPOSITE_WITHHELD_REASONS,
+  CUTLINE_BANDS,
+  parseAttemptComposite,
+  type AttemptComposite,
+  type AwaitedTrack,
+  type AwaitedTrackState,
+  type CompositeBand,
+  type CompositeCohort,
+  type CompositeSource,
+  type CompositeWithheldReason,
+  type CutlineBand,
+  type IssuedComposite,
+  type WithheldComposite,
+} from "./composite.js";
+export {
   FUNNEL_BATCH_MAX,
   FUNNEL_EVENTS_PATH,
   FUNNEL_ID_RE,

@@ -20,6 +20,7 @@ import {
   trackList,
   tracksScoredByService,
 } from "../lib/instrument/scoreSources";
+import type { AttemptComposite } from "@ailx/contract";
 import type { TrackId } from "@ailx/session";
 
 const scored = (trackId: TrackId, scaled: number) =>
@@ -41,8 +42,33 @@ const attemptScores = (over: Partial<AttemptScores> = {}): AttemptScores => ({
   pending: false,
   pollAfterMs: 5000,
   tracks: [],
+  // Null is what a service that sends no composite field reads as, which is
+  // the deployment this gate met before TEN-92.
+  composite: null,
   ...over,
 });
+
+const ISSUED: AttemptComposite = {
+  state: "issued",
+  composite: 63.412,
+  percentile: 0.811111,
+  zComposite: 0.742,
+  band: "Merit",
+  bandCutlines: { Distinction: 76.1, Merit: 62.9, Pass: 54.2 },
+  scoredBy: "server",
+  cohort: { kind: "demo", seed: "ailx-2026.1-demo-cohort", size: 44 },
+  weights: { t1: 0.36, t2: 0.213333, t3: 0.426666 },
+  sources: [
+    { trackId: "t1", scoreId: "37", scaled: 55.5, rubricVersion: "r", scoringDigest: "d", weight: 0.36 },
+  ],
+};
+
+const WITHHELD: AttemptComposite = {
+  state: "withheld",
+  reason: "awaiting_track",
+  awaiting: [{ trackId: "t3", trackState: "pending_judging", detail: "the jury has not answered" }],
+  detail: "no composite is issued while a scored track has no score of record: T3.",
+};
 
 /** The run of record: T1 and T4 scored locally, T2 and T3 by the service. */
 const LIVE_RUN = attemptScores({ tracks: [scored("t2", 30.83), scored("t3", 103.333)] });
@@ -78,6 +104,34 @@ describe("the unlock gate counts a score of record wherever it was issued", () =
     const view = reportGate({ localScored: ["t1", "t4"], scores: LIVE_RUN, reading: false });
     expect(view.lede).toContain("no composite");
     expect(view.lede).toContain("did not issue these");
+  });
+
+  /* TEN-92: the service issues the composite now, so the three answers it can
+     give produce three different ledes. The old sentence is kept for the
+     deployment that sends no composite at all, because on that one it is
+     still true. */
+  it("says the service issued the composite, and claims no replay of it", () => {
+    const view = reportGate({
+      localScored: [],
+      scores: attemptScores({ tracks: [scored("t2", 30.83)], composite: ISSUED }),
+      reading: false,
+    });
+    expect(view.lede).not.toContain("no composite");
+    expect(view.lede).toContain("It issued the composite too");
+    expect(view.lede).toContain("claims no replay");
+  });
+
+  it("leaves a withheld composite to explain itself, and denies nothing", () => {
+    const view = reportGate({
+      localScored: [],
+      scores: attemptScores({ tracks: [pending("t3")], pending: true, composite: WITHHELD }),
+      reading: false,
+    });
+    // The panel below names the track and its state; a second, vaguer
+    // sentence up here would contradict it or repeat it.
+    expect(view.lede).not.toContain("no composite");
+    expect(view.lede).not.toContain("It issued the composite");
+    expect(view.lede).toContain("still being judged");
   });
 
   it("names how many tracks are still with the jury", () => {
