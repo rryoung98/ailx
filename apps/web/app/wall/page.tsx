@@ -71,20 +71,41 @@ export default function GalleryPage() {
     void load();
   }, [load]);
 
+  // The service answers with the count it now holds, and that count wins.
+  // A vote is one per IP, so a second browser on the same address changes
+  // nothing; before TEN-131 this page added one anyway and the next load took
+  // it away, which read as a write the service had thrown out.
   const vote = async (id: string) => {
     if (voted.has(id)) return;
+    const before = voted;
     const next = new Set(voted); next.add(id);
     setVoted(next);
     setSubs((s) => s?.map((x) => (x.id === id ? { ...x, votes: x.votes + 1 } : x)) ?? null);
+    const remember = (set: Set<string>) => {
+      try {
+        window.localStorage.setItem(VOTED_KEY, JSON.stringify([...set]));
+      } catch {
+        /* private mode: the vote still counts, this browser just forgets it */
+      }
+    };
+    remember(next);
     try {
-      window.localStorage.setItem(VOTED_KEY, JSON.stringify([...next]));
-      await fetch(`${GALLERY_API}/vote`, {
+      const res = await fetch(`${GALLERY_API}/vote`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id }),
       });
+      if (!res.ok) throw new Error(String(res.status));
+      const { votes } = (await res.json()) as { votes?: number };
+      if (typeof votes === "number") {
+        setSubs((s) => s?.map((x) => (x.id === id ? { ...x, votes } : x)) ?? null);
+      }
     } catch {
-      /* optimistic; the count self-corrects on next load */
+      // Nothing was stored, so say nothing was: put the count and the button
+      // back. Leaving them is what made the page claim a vote it had lost.
+      setVoted(before);
+      setSubs((s) => s?.map((x) => (x.id === id ? { ...x, votes: x.votes - 1 } : x)) ?? null);
+      remember(before);
     }
   };
 
