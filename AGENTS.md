@@ -139,6 +139,16 @@ handler requires a decision in front of a reviewer.
   concurrency exceeds the pool. It checks what this repo decided, not what is
   deployed: the Terraform half of the check is in the private repo and §8.4
   quotes it.
+- `docs/ADR-redis.md` — should we add Redis? **Not yet**, and the founder's stated
+  reason does not survive the code: `@clerk/backend` already caches JWKS in-process
+  (5-minute TTL, 0 network calls on a warm process), so a JWT verification is 77 µs of
+  local CPU and a Redis hop would be an order of magnitude SLOWER. Carries the first
+  timings ever taken against the deployed service (`/livez` 28 ms, `/readyz` 64 ms,
+  `/v1/gallery` 116 ms, `/v1/aggregates` 145 ms median, 1213 ms cold), the finding that
+  gallery and aggregates carry no `Cache-Control` or `ETag` at all, and five flip
+  conditions (F1-F5) that would change the answer. The strongest case FOR Redis is that
+  the rate limiter runs BEFORE the pool is leased, so the Postgres alternative would take
+  a connection to REJECT a request. Collapse `ensureParticipant` into one statement first.
 
 ## Dependency weight
 - `docs/DEPS.md` — what is installed and who pulls it in, which duplicate
