@@ -14,6 +14,7 @@ import {
   authHeaders,
   clearDevUser,
   devUser,
+  existingDevUser,
   hasAuthTokenSource,
   setAuthTokenSource,
 } from "../lib/data/authHeaders";
@@ -54,6 +55,52 @@ describe("with no provider mounted (today)", () => {
     // because that one could only ever see its own repo.
     const h = await authHeaders(storage);
     expect(isDevUserId(h[DEV_USER_HEADER])).toBe(true);
+  });
+});
+
+/**
+ * The second mode, for the PUBLIC pages (TEN-107). `/gallery` and `/world`
+ * are meant to be readable with no account, and every /v1 route is behind
+ * auth today, so they send the id this browser already has — and never make
+ * one up, because a page that works only because it minted a caller is a page
+ * that will fail for the first real visitor.
+ */
+describe("an optional identity", () => {
+  it("sends the id this browser already has", async () => {
+    storage.setItem(DEV_USER_KEY, "web-abc123");
+    expect(await authHeaders(storage, "optional")).toEqual({ [DEV_USER_HEADER]: "web-abc123" });
+  });
+
+  it("sends NOTHING when there is none, and mints none", async () => {
+    expect(await authHeaders(storage, "optional")).toEqual({});
+    expect(storage.map.size).toBe(0);
+  });
+
+  it("ignores a stored id that is not a legal one, and still mints nothing", async () => {
+    storage.setItem(DEV_USER_KEY, "not a legal id!");
+    expect(await authHeaders(storage, "optional")).toEqual({});
+    expect(storage.getItem(DEV_USER_KEY)).toBe("not a legal id!");
+  });
+
+  it("still prefers a proven token", async () => {
+    setAuthTokenSource(async () => "jwt-abc");
+    expect(await authHeaders(storage, "optional")).toEqual({ authorization: "Bearer jwt-abc" });
+  });
+
+  it("existingDevUser reads without writing — no mint, no cookie mirror", () => {
+    // Whatever a previous test left in `document.cookie` must be UNCHANGED:
+    // the point is that this function writes nothing, not that the jar is
+    // empty.
+    const before = document.cookie;
+    expect(existingDevUser(storage)).toBeNull();
+    expect(storage.map.size).toBe(0);
+    storage.setItem(DEV_USER_KEY, "web-abc123");
+    expect(existingDevUser(storage)).toBe("web-abc123");
+    expect(document.cookie).toBe(before);
+  });
+
+  it("required is still the default, and still mints", async () => {
+    expect((await authHeaders(storage))[DEV_USER_HEADER]).toMatch(/^web-/);
   });
 });
 

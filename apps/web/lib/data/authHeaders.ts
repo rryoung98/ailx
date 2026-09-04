@@ -101,6 +101,29 @@ export function hasAuthTokenSource(): boolean {
 }
 
 /**
+ * How hard a call needs an identity.
+ *
+ *  - `"required"` — the read is one person's rows, so an id is MINTED if this
+ *    browser has none. Without it the service cannot answer the question.
+ *  - `"optional"` — a PUBLIC read (`/gallery`, `/world`). It sends the id this
+ *    browser already has, so the service can attribute the read while the
+ *    policy is "everything behind auth", and sends nothing when there is none.
+ *    It must never mint one: minting would hand a first-time visitor an
+ *    identity they did not ask for, and would make a page that only works
+ *    because it invented a caller (TEN-107).
+ */
+export type IdentityMode = "required" | "optional";
+
+/**
+ * The dev id this browser ALREADY holds, or null. Read-only, deliberately:
+ * no mint, no cookie mirror, no side effect a public page could leave behind.
+ */
+export function existingDevUser(storage: StorageLike): string | null {
+  const user = storage.getItem(DEV_USER_KEY);
+  return user !== null && DEV_USER_RE.test(user) ? user : null;
+}
+
+/**
  * The identity headers for ONE request.
  *
  * A proven token wins over an asserted id, and the two are never sent
@@ -108,8 +131,14 @@ export function hasAuthTokenSource(): boolean {
  * if the precedence ever changed. A token source that throws or returns
  * nothing falls back to the dev id — the run must not die because a refresh
  * failed, and the server is the thing that decides whether that is enough.
+ *
+ * On an `"optional"` call the fallback is what this browser already has, and
+ * an empty header map when it has nothing.
  */
-export async function authHeaders(storage: StorageLike): Promise<Record<string, string>> {
+export async function authHeaders(
+  storage: StorageLike,
+  mode: IdentityMode = "required",
+): Promise<Record<string, string>> {
   if (tokenSource !== null) {
     try {
       const token = await tokenSource();
@@ -118,5 +147,7 @@ export async function authHeaders(storage: StorageLike): Promise<Record<string, 
       // Fall through: an expired/refused refresh is the server's call to make.
     }
   }
-  return { [DEV_USER_HEADER]: devUser(storage) };
+  if (mode === "required") return { [DEV_USER_HEADER]: devUser(storage) };
+  const existing = existingDevUser(storage);
+  return existing === null ? {} : { [DEV_USER_HEADER]: existing };
 }

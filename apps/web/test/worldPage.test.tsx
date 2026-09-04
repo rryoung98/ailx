@@ -6,8 +6,9 @@
  * score-shaped, it says WHY a breakdown is missing instead of rendering an
  * empty chart, the rendered markup contains no per-person value — and, since
  * it now reads the service over HTTP rather than the store in-process, that
- * it asks the SEAM for `/aggregates`, sends no identity, and says something
- * honest when the call does not land.
+ * it asks the SEAM for `/aggregates` WITH whatever identity the browser
+ * already has, and says which failure it hit rather than calling every one of
+ * them a network outage.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
@@ -18,6 +19,7 @@ import {
   renderClientPending,
   stubFailingFetch,
   stubHangingFetch,
+  installMemoryStorage,
   stubJsonFetch,
   type StubbedCall,
 } from "./helpers/clientPage";
@@ -194,10 +196,32 @@ describe("how it reads the service", () => {
     expect(calls[0].url).not.toMatch(/^https?:/);
   });
 
-  it("sends NO identity — nothing on this page is about one person", async () => {
+  /**
+   * TEN-107: this call went out with NO identity and got a 401 on staging,
+   * while every identified page worked. Nothing here is about one person, so
+   * the id is not needed to ANSWER the question — but every /v1 route is
+   * behind auth today, so a read that refuses to send one it already has is a
+   * page that cannot work at all.
+   */
+  it("forwards the identity this browser already has", async () => {
+    const store = installMemoryStorage();
+    store.set("ailx:dev-user", "web-abc123");
+    await markup();
+    expect(calls[0].headers["x-ailx-dev-user"]).toBe("web-abc123");
+  });
+
+  it("mints NO identity for a visitor who has none", async () => {
+    const store = installMemoryStorage();
     await markup();
     expect(calls[0].headers["x-ailx-dev-user"]).toBeUndefined();
     expect(calls[0].headers.authorization).toBeUndefined();
+    expect(store.size).toBe(0);
+  });
+
+  it("carries a trace either way", async () => {
+    installMemoryStorage();
+    await markup();
+    expect(calls[0].headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/);
   });
 
   it("says it is loading before the call lands, never a page of zeroes", async () => {
@@ -207,18 +231,51 @@ describe("how it reads the service", () => {
     expect(html).not.toContain("runs started");
   });
 
-  it("says so when the call throws, and invents no distribution", async () => {
+  it("says the service did not answer when the call throws, and invents no distribution", async () => {
     stubFailingFetch();
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("did not answer");
     expect(html).not.toContain("class=\"histogram\"");
     expect(html).not.toContain("runs started");
   });
 
-  it("treats a non-200 the same way: an outage, not an empty cohort", async () => {
+  /**
+   * Three failures, three sentences (TEN-107). A status the service itself
+   * sent is proof it was reached, so the page may not say it was not.
+   */
+  it("says a 500 was reached and refused, and quotes what it said", async () => {
     status = 500;
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("was reached and refused");
+    expect(html).toContain("HTTP 500");
+    expect(html).not.toContain("did not answer");
     expect(html).not.toContain("runs started");
+  });
+
+  it("names the staging 401 as ours, not the reader's connection", async () => {
+    status = 401;
+    const html = await markup();
+    expect(html).toContain("HTTP 401");
+    expect(html).toContain("meant to be public");
+    expect(html).not.toContain("did not answer");
+    expect(html).not.toContain("Check your connection");
+  });
+
+  /**
+   * The third state. An instrument nobody has run yet is not an outage and
+   * not a refusal, and the page says the counts are real zeroes.
+   */
+  it("says an empty instrument is empty, not broken", async () => {
+    payload = worldAggregates({
+      counts: { participants: 0, attemptsStarted: 0, attemptsFinalized: 0 },
+      shapes: [],
+      exposure: { decksRecorded: 0, distinctItems: 0, totalExposures: 0, meanExposuresPerItem: 0, maxExposuresPerItem: 0 },
+      trend: [],
+    });
+    const html = await markup();
+    expect(html).toContain("Nobody has started a run yet");
+    expect(html).toContain("genuinely zero rather than");
+    expect(html).not.toContain("was reached and refused");
+    expect(html).not.toContain("did not answer");
   });
 });

@@ -121,7 +121,7 @@ export function ScoresOfRecord({ attemptId }: { attemptId: string }) {
     };
 
     const read = async (): Promise<void> => {
-      const res = await serviceFetch(apiPath("getAttempt", { id: attemptId }), { identified: true });
+      const res = await serviceFetch(apiPath("getAttempt", { id: attemptId }), { identity: "required" });
       if (cancelled) return;
       if (res.state === "ready") {
         const parsed = parseAttemptScores(res.data);

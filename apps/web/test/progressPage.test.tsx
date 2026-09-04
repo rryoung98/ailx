@@ -175,7 +175,7 @@ describe("when the service cannot be reached", () => {
   it("says so honestly instead of rendering an empty history", async () => {
     stubFailingFetch();
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("did not answer");
     // Crucially NOT the "nothing has been played" copy: an outage must never
     // be reported to a player as "you did nothing".
     expect(html).not.toContain("Nothing has been played in this browser");

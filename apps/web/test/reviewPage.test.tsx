@@ -162,7 +162,7 @@ describe("when the service cannot be reached", () => {
   it("says the service is unreachable — it does NOT pretend the gate refused", async () => {
     stubFailingFetch();
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("did not answer");
     expect(notFound).not.toHaveBeenCalled();
     expect(html).not.toContain("The queue is empty");
   });

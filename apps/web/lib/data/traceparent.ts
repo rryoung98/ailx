@@ -27,7 +27,7 @@
 
 import { TRACEPARENT_HEADER } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
-import { authHeaders } from "./authHeaders";
+import { authHeaders, type IdentityMode } from "./authHeaders";
 
 /**
  * The W3C header name, from the CONTRACT rather than typed out again here.
@@ -94,7 +94,14 @@ export function traceHeaders(): Record<string, string> {
  *
  * Identity wins a name collision, and cannot lose one: nothing here writes an
  * `authorization` or `x-ailx-dev-user` key.
+ *
+ * `mode` says how hard the call needs an identity, and it is the ONLY dial:
+ * a public page asks with `"optional"` and gets whatever this browser already
+ * had, never a freshly minted caller (`lib/data/authHeaders.ts`).
  */
-export async function serviceHeaders(storage: StorageLike): Promise<Record<string, string>> {
-  return { ...traceHeaders(), ...(await authHeaders(storage)) };
+export async function serviceHeaders(
+  storage: StorageLike,
+  mode: IdentityMode = "required",
+): Promise<Record<string, string>> {
+  return { ...traceHeaders(), ...(await authHeaders(storage, mode)) };
 }

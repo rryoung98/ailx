@@ -21,6 +21,7 @@ import {
 } from "@ailx/contract";
 import { ALL_SHARE_SECTIONS, sharePayloadFrom, type SharePayload } from "@ailx/report";
 import {
+  installMemoryStorage,
   renderClient,
   renderClientPending,
   stubFailingFetch,
@@ -247,21 +248,48 @@ describe("filters", () => {
     expect(seen[0]!.type).toBe("MSVD");
   });
 
-  it("hands a hostile query to the backend parser, which REFUSES it", async () => {
+  /**
+   * The page reads its own URL through the CONTRACT's parser before it asks
+   * for anything, so a query the service would refuse costs no round trip and
+   * cannot reach the wire. This is the TEN-107 fix from the browser's side:
+   * the browser can no longer hold a vocabulary the parser has not heard of.
+   */
+  it("refuses a hostile query with the contract's own parser, and asks for nothing", async () => {
     const html = await markup({ sort: "id; DROP TABLE share_links", limit: "100000", type: "<script>" });
-    expect(seen[0]!.sort).toBe("id; DROP TABLE share_links"); // untouched on the way in
-    // A 400 is a non-200, so the page says the wall is unreadable rather than
-    // rendering a listing nobody asked for.
+    expect(seen).toHaveLength(0);
+    expect(urls).toHaveLength(0);
     expect(html).not.toContain("DROP TABLE");
     expect(html).not.toContain("<script>alert");
     expect(html).toContain("That filter is not one this wall can show");
+  });
+
+  /**
+   * The exact query staging sent, and the exact 400 it got back (TEN-107).
+   * `top` is the /wall vote sort; it has never been a gallery sort and is not
+   * being added, and an absent filter is an ABSENT parameter.
+   */
+  it("never sends sort=top or site=0 — the two spellings the service refused", async () => {
+    expect(await markup({ sort: "top", site: "0" })).toContain(
+      "That filter is not one this wall can show",
+    );
+    expect(urls).toHaveLength(0);
+    // And the query it DOES send omits the absent site filter rather than
+    // spelling it as zero.
+    await markup({ type: "MSVD" });
+    expect(urls[0]).toContain("type=MSVD");
+    expect(urls[0]).not.toContain("site=");
+    expect(urls[0]).not.toContain("sort=");
   });
 
   it("pages forward and back without losing the filter", async () => {
     listing = listingOf([publicEntry(entry())], { total: 60, query: { ...defaultQuery(), offset: 24 } });
     const html = await markup({ offset: "24" });
     expect(html).toContain("offset=48");
-    expect(html).toContain("offset=0");
+    // Back to the first page is `/gallery`, not `/gallery?offset=0`: the
+    // contract's writer omits a default rather than spelling it out, so a
+    // shareable link carries only what was actually chosen.
+    expect(html).toContain('href="/gallery"');
+    expect(html).not.toContain("offset=0");
     expect(html).toContain("Showing 25–25 of 60");
   });
 });
@@ -291,10 +319,29 @@ describe("how it reads the service", () => {
     expect(urls[0]).toContain("sort=oldest");
   });
 
-  it("sends NO identity — a public wall does not depend on who is looking", async () => {
+  /**
+   * A PUBLIC read asks with `identity: "optional"`: it forwards the id this
+   * browser already has (every /v1 route is behind auth today) and MINTS
+   * none, so a first-time visitor's storage is untouched and the page cannot
+   * work only because it invented a caller (TEN-107).
+   */
+  it("mints no identity for a visitor who has none", async () => {
+    const store = installMemoryStorage();
     await markup();
     expect(identity[0]["x-ailx-dev-user"]).toBeUndefined();
     expect(identity[0].authorization).toBeUndefined();
+    expect(store.size).toBe(0);
+  });
+
+  it("forwards the identity this browser already has", async () => {
+    installMemoryStorage().set("ailx:dev-user", "web-abc123");
+    await markup();
+    expect(identity[0]["x-ailx-dev-user"]).toBe("web-abc123");
+  });
+
+  it("carries a trace on the anonymous read too", async () => {
+    await markup();
+    expect(identity[0].traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$/);
   });
 
   it("says it is loading before the call lands", async () => {
@@ -305,19 +352,40 @@ describe("how it reads the service", () => {
     expect(html).not.toContain("Nobody has published a card yet");
   });
 
-  it("says so when the call throws, and never claims the wall is empty", async () => {
+  it("says the service did not answer when the call throws, and never claims the wall is empty", async () => {
     stubFailingFetch();
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("did not answer");
     expect(html).not.toContain("Nobody has published a card yet");
     expect(html).not.toContain("gallery-grid");
   });
 
-  it("treats a 500 the same way — an outage is not an empty gallery", async () => {
+  /**
+   * The three failures are three different facts and get three different
+   * sentences (TEN-107). A 500 was REACHED, so the page may not say it was
+   * not, and it quotes what the service said rather than paraphrasing it.
+   */
+  it("says a 500 was reached and refused, and repeats the reason given", async () => {
     status = 500;
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("was reached and refused");
+    expect(html).toContain("HTTP 500");
+    expect(html).toContain("It said: no");
+    expect(html).not.toContain("did not answer");
     expect(html).not.toContain("Nobody has published a card yet");
+  });
+
+  /**
+   * The staging failure a visitor actually saw: a public page told them their
+   * connection was at fault when the service had answered 401.
+   */
+  it("names a 401 on a public wall as our fault, not the reader's connection", async () => {
+    status = 401;
+    const html = await markup();
+    expect(html).toContain("HTTP 401");
+    expect(html).toContain("meant to be public");
+    expect(html).not.toContain("did not answer");
+    expect(html).not.toContain("Check your connection");
   });
 });
 
