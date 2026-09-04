@@ -69,16 +69,6 @@ describe.each(CONFIGS)("asset URLs under the $name basePath", ({ env, prefix }) 
     }
   });
 
-  it("teaser media resolve under the basePath (lib/instrument/demoItems.ts)", async () => {
-    const { TEASER_ITEMS } = await import("../lib/instrument/demoItems");
-    const media = TEASER_ITEMS.filter((i) => i.kind === "media" && i.imgSrc);
-    expect(media.length).toBeGreaterThan(0);
-    for (const i of media) {
-      expect(i.imgSrc!.startsWith(`${prefix}/`)).toBe(true);
-      expect(i.imgSrc).not.toContain("//");
-    }
-  });
-
   it("track visuals resolve under the basePath (features/landing/TrackVisuals.tsx)", async () => {
     const { t2VisualMedia } = await import("../features/landing/TrackVisuals");
     const media = t2VisualMedia();

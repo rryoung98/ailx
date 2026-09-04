@@ -5,7 +5,7 @@
  * pages that use it bottom padding so content is never trapped beneath it.
  *
  * Clearance guard: the pill hides itself while any element marked
- * [data-pill-clear] (teaser actions, connect panel, runner controls, landing
+ * [data-pill-clear] (connect panel, runner controls, landing
  * CTAs) intersects the bottom band of the viewport, so it can never cover a
  * tappable control — at ANY width. It was mobile-only, which was arbitrary:
  * a fixed pill sits on a desktop heading exactly as hard as on a phone

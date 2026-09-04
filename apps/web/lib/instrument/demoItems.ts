@@ -1,5 +1,5 @@
 /**
- * Demo item bank for the T2 swipe deck and landing teaser.
+ * Demo item bank for the T2 swipe deck.
  * Items are content-addressed with the production itemId() — the reveal
  * shows each item's hash, because provenance is a taught skill (§T2).
  */
@@ -43,43 +43,8 @@ export const T2_ITEMS: T2Item[] = [
   msg("synthetic", "CEO urgent request", "I'm in a meeting and can't talk. Buy 4 gift cards ($200 each) for a client and send the codes. Keep this confidential.", "Authority + urgency + secrecy + unusual payment channel: four flags in two sentences."),
 ];
 
-/**
- * Landing-page teaser data: three REAL items pulled from the committed
- * RELEASED practice tier (instruments/demo-2026.1/snapshot.json) — one real-media
- * photo-pair member, one AI-vs-human text passage, one hostile message —
- * so the landing demo exercises the actual instrument, not toy content.
- * Items are pinned by content-addressed id; a test asserts they exist.
- */
 import { DAILY_IMAGE_STEM, dailyPoolFromPractice, type DailyCard } from "@ailx/report";
 import { snapshotTrack } from "./instrument";
-import { assetUrl } from "../mode";
-
-export type TeaserKind = "media" | "text" | "message";
-
-export interface TeaserItem {
-  id: string;
-  kind: TeaserKind;
-  /** 'authentic' (real / human / legitimate) or 'synthetic' (ai / hostile) */
-  key: "authentic" | "synthetic";
-  title: string;
-  imgSrc?: string;
-  imgAlt?: string;
-  text?: string;
-  tell: string;
-}
-
-/** Content-addressed ids of the three teaser items in the snapshot bank. */
-export const TEASER_BANK_IDS = [
-  // image-provenance: AI photo-pair member, from the RELEASED practice tier.
-  // The teaser shows each item's answer and its tell on the public landing
-  // page, so every id here MUST be a released item — showing an operational
-  // one would publish an exam answer to every visitor.
-  "db482cd7e9d0d80490d73d01e022ac906029e96a7edb914461b5b8a4b7c71f94",
-  // text-authenticity: genuinely model-generated civic passage (OpenRouter, see bank provenance)
-  "08a88a7beba12c10f67ee3761db43986e72b20ff74df9d15000d3d956880a2f6",
-  // message-hostility: credential-phishing suspension lure (FTC/APWG pattern family)
-  "7d71adb8ad13bb12f54ee3f42cd346b3775196849ee4a513efd10898d03f7bb0",
-] as const;
 
 interface RawBankItem {
   id: string;
@@ -102,51 +67,6 @@ interface RawBankItem {
     body?: string;
   };
 }
-
-const SYNTHETIC_KEYS = new Set(["ai", "hostile", "synthetic"]);
-
-function toTeaserItem(raw: RawBankItem): TeaserItem {
-  const key = SYNTHETIC_KEYS.has(raw.key) ? "synthetic" : "authentic";
-  const m = raw.material;
-  if (raw.type === "image-provenance" && typeof m.src === "string") {
-    return {
-      id: raw.id, kind: "media", key,
-      title: m.alt ?? "Photograph",
-      imgSrc: assetUrl(`/${m.src.replace(/^\/+/, "")}`),
-      imgAlt: m.alt ?? "photo",
-      tell: raw.rationale,
-    };
-  }
-  if (raw.type === "message-hostility") {
-    const header = [m.from_display, m.subject].filter(Boolean).join(" — ");
-    return {
-      id: raw.id, kind: "message", key,
-      title: header || "Message",
-      text: m.body ?? "",
-      tell: raw.rationale,
-    };
-  }
-  return {
-    id: raw.id, kind: "text", key,
-    title: "Passage",
-    text: m.text ?? "",
-    tell: raw.rationale,
-  };
-}
-
-function teaserFromSnapshot(): TeaserItem[] {
-  const bank = snapshotTrack("t2").bank;
-  if (!bank) throw new Error("snapshot t2 bank missing");
-  const byId = new Map((bank.items as unknown as RawBankItem[]).map((i) => [i.id, i]));
-  return TEASER_BANK_IDS.map((id) => {
-    const raw = byId.get(id);
-    if (!raw) throw new Error(`teaser item ${id} not in snapshot bank`);
-    return toTeaserItem(raw);
-  });
-}
-
-/** The three-item deck used by the landing-page teaser — real bank items. */
-export const TEASER_ITEMS: TeaserItem[] = teaserFromSnapshot();
 
 // ---------------------------------------------------------------------------
 // The daily challenge's released half
