@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { makeReq, makeRes } from "./helpers.js";
 
 const PROD = "https://rryoung98.github.io";
-const blob = vi.hoisted(() => ({ put: vi.fn() }));
+const blob = vi.hoisted(() => ({ put: vi.fn(), list: vi.fn() }));
 vi.mock("@vercel/blob", () => blob);
 
 let handler;
 beforeEach(async () => {
   vi.resetModules();
   blob.put.mockReset().mockResolvedValue({ url: "u" });
+  blob.list.mockReset().mockResolvedValue({ blobs: [], hasMore: false });
   ({ default: handler } = await import("../api/gallery/vote.js"));
 });
 
@@ -46,7 +47,9 @@ describe("vote handler", () => {
     const res = makeRes();
     await handler(post({ id: "abc-123" }), res);
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ ok: true });
+    // The count is part of the acknowledgement (TEN-131), so the page never
+    // has to guess whether its vote changed anything.
+    expect(res.body).toEqual({ ok: true, votes: 1 });
     const [path, payload, opts] = blob.put.mock.calls[0];
     expect(path).toMatch(/^gallery\/votes\/abc-123-vote-[0-9a-f]{12}\.json$/);
     expect(payload).toBe("1");
@@ -64,6 +67,17 @@ describe("vote handler", () => {
     await handler(post({ id: "abc-123" }, "6.6.6.6"), makeRes());
     expect(blob.put.mock.calls[0][0]).not.toBe(blob.put.mock.calls[1][0]);
     expect(blob.put.mock.calls[0][0]).not.toContain("5.5.5.5");
+  });
+
+  it("counts only the voters for this submission", async () => {
+    blob.list.mockImplementation(async ({ prefix }) => ({
+      blobs: [`${prefix}aaaaaaaaaaaa.json`, `${prefix}bbbbbbbbbbbb.json`].map((pathname) => ({ pathname })),
+      hasMore: false,
+    }));
+    const res = makeRes();
+    await handler(post({ id: "abc-123" }), res);
+    expect(blob.list).toHaveBeenCalledWith(expect.objectContaining({ prefix: "gallery/votes/abc-123-vote-" }));
+    expect(res.body.votes).toBe(3); // two others, plus the vote just written
   });
 
   it("handles a missing body", async () => {
