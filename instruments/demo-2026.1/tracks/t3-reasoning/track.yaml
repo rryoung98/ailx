@@ -11,10 +11,23 @@ config:
   # the form the browser deals at instrument load: a declaration the form does
   # not satisfy refuses the package (it used to say 4 against a form of 8, and
   # every sitting quietly raised `errorCatchRate.underpowered`).
+  #
+  # FOUR is what the instrument deals, not what the evidence supports (TEN-91).
+  # The published design this construct comes from ran 8 incorrect + 8 correct
+  # items per condition (Schemmer, Kuhl, Benz & Satzger 2022, arXiv:2204.06916),
+  # and the scorer's reporting floor ERROR_CATCH_MIN_SURFACED stays at 8 for
+  # that reason. Both tiers' T3 forms plant four today, so declaring eight made
+  # the operational tier unopenable (TEN-91) and would have required authoring
+  # operational item content to fix. Four is dealt, four is declared, and every
+  # sitting is flagged `errorCatchRate.underpowered` and reported as
+  # provisional, which is the true statement about a rate from four events:
+  # 2 of 4 is 0.50 (95% CI 0.15 to 0.85) against 3 of 4 at 0.75 (0.30 to 0.95),
+  # so 12.5 of the 50 points ride on one event.
   seeded_errors:                      # known-incorrect outputs at predetermined points
     kinds: [misattributed-figure, false-causal-claim, fabricated-citation, wrong-calculation]
-    count_per_form: 8                 # two instances of each of the four kinds; the
-                                      # scorer's floor (ERROR_CATCH_MIN_SURFACED) is 8
+    count_per_form: 4                 # one instance of each of the four kinds; the
+                                      # scorer's floor (ERROR_CATCH_MIN_SURFACED) is 8,
+                                      # so a sitting on this form reports as underpowered
   reliance_constructs: [over-reliance, under-reliance]   # objective, model-free
   jury:
     kind: heterogeneous-three-model   # three models from three families
