@@ -141,9 +141,9 @@ export const TRACK_VIZ = { T1: T1Viz, T2: T2Viz, T3: T3Viz, T4: T4Viz } as const
 const CARDS = [
   { id: "T1", name: "Creative Build", caption: "Direct a build, watch it render, ship it.", Viz: T1Viz },
   { id: "T2", name: "Synthetic-Media Discrimination", caption: "Can you spot the fakes?", Viz: T2Viz },
-  // Same names and counts as TRACK_META in @ailx/report: eight planted
-  // errors, and a deliverable quota of three images plus one video.
-  { id: "T3", name: "Calibrated Reliance", caption: "The assistant plants eight errors. Catch them.", Viz: T3Viz },
+  // Same names and counts as TRACK_META in @ailx/report: four planted
+  // errors (TEN-91), and a deliverable quota of three images plus one video.
+  { id: "T3", name: "Calibrated Reliance", caption: "The assistant plants four errors. Catch them.", Viz: T3Viz },
   { id: "T4", name: "Generative Direction", caption: "Three images, one video. Make them count.", Viz: T4Viz },
 ];
 

@@ -54,7 +54,7 @@ describe("track visual cards", () => {
     const h = render();
     expect(h.querySelectorAll(".tviz")).toHaveLength(4);
     expect(h.textContent).toContain("Can you spot the fakes?");
-    expect(h.textContent).toContain("The assistant plants eight errors. Catch them.");
+    expect(h.textContent).toContain("The assistant plants four errors. Catch them.");
     expect(h.textContent).toContain("Three images, one video. Make them count.");
   });
 

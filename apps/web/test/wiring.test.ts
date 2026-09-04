@@ -90,31 +90,32 @@ describe("instrument wiring (snapshot-derived, F3/F16)", () => {
 
   it("t3 scenario validates and matches its pinned content hash (F16)", () => {
     const cfg = validateT3Config(trackConfig("t3"));
-    // Eight, not three: the over-reliance component carries 50 of T3's 160
-    // points and its item count IS the number of plants that surface. The
-    // scorer declares the same floor and flags any sitting under it.
-    expect(cfg.plantedErrors.length).toBe(8);
-    expect(cfg.plantedErrors.length).toBeGreaterThanOrEqual(ERROR_CATCH_MIN_SURFACED);
+    // FOUR (TEN-91), and the form is deliberately BELOW the scorer's reporting
+    // floor: the evidence supports eight (Schemmer et al. 2022, 8 incorrect +
+    // 8 correct per condition) and the forms that exist plant four, so every
+    // sitting on this form is flagged underpowered rather than reported as a
+    // precise rate. Raising it is content work in both tiers, not a code edit.
+    expect(cfg.plantedErrors.length).toBe(4);
+    expect(cfg.plantedErrors.length).toBeLessThan(ERROR_CATCH_MIN_SURFACED);
     expect(cfg.correctAdvice.length).toBe(4);
     expect(sha256Hex(canonicalJson(T3_SCENARIO))).toBe(T3_SCENARIO_SHA256);
     // Trilateral-memorandum content upgrade kept the contract-pinned claim
     // ids and numeric traps (61→38 months etc.) intact.
     expect(cfg.sourceTitle).toContain("Trilateral AI Workforce Readiness Memorandum");
     expect(cfg.plantedErrors.map((e) => e.id)).toEqual([
-      "pe-figure", "pe-figure-assessors", "pe-causal", "pe-causal-evaluation",
-      "pe-citation", "pe-citation-recognition", "pe-arithmetic-cost",
-      "pe-arithmetic-backlog",
+      "pe-figure", "pe-causal", "pe-citation", "pe-arithmetic-backlog",
     ]);
     expect(cfg.correctAdvice.map((a) => a.id)).toEqual([
       "ca-cluster", "ca-equity", "ca-capacity", "ca-sequencing",
     ]);
-    // Two instances of each of the four stable error FAMILIES — that is what
-    // makes re-versioning cheap (new instances, not new families).
+    // One instance of each of the four stable error FAMILIES — the families
+    // are what makes re-versioning cheap (new instances, not new families),
+    // and keeping all four present is what the four plants buy.
     for (const family of ["figure", "causal", "citation", "arithmetic"]) {
       expect(
         cfg.plantedErrors.filter((e) => e.id.startsWith(`pe-${family}`)).length,
         family,
-      ).toBe(2);
+      ).toBe(1);
     }
     // Every plant must be anchored in the source a candidate can actually
     // read, or it is unfalsifiable rather than checkable.

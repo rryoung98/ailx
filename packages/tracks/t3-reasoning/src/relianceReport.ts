@@ -6,13 +6,20 @@
  * lines a candidate is allowed to see: each rate with its interval, the band,
  * and the two warnings that must travel with the numbers.
  *
- * WHY IT EXISTS. `reliance.over` and `reliance.under` are estimated from at
- * most 8 planted errors and the correct-advice claims beside them. On 8 events
- * a rate near 0.5 carries a 95% interval about 0.57 wide, so 5 of 8 (0.31 to
- * 0.86) and 7 of 8 (0.53 to 0.98) sit inside each other's noise while 12.5 of
- * the 50 planted-error points ride on the difference. A two-decimal rate on its own reads as a measurement it is not.
- * Every rate below therefore carries its interval, and the report says how
- * many events it rests on.
+ * WHY IT EXISTS. `reliance.over` and `reliance.under` are estimated from the
+ * planted errors a form surfaces and the correct-advice claims beside them,
+ * and the released form plants FOUR (TEN-91). On 4 events a rate near 0.5
+ * carries a 95% interval about 0.70 wide: 2 of 4 is 0.50 (0.15 to 0.85) and
+ * 3 of 4 is 0.75 (0.30 to 0.95), so two candidates 12.5 of the 50
+ * planted-error points apart sit well inside each other's noise, decided by
+ * one event. Eight is the number the evidence supports (Schemmer, Kuhl, Benz
+ * & Satzger 2022 ran 8 incorrect + 8 correct per condition, arXiv:2204.06916)
+ * and `ERROR_CATCH_MIN_SURFACED` still says so, so a four-plant sitting
+ * reports as underpowered. A two-decimal rate on its own reads as a
+ * measurement it is not. Every rate below therefore carries its interval, the
+ * report says how many events it rests on, and the worked example in
+ * `precisionNote` is computed from that count rather than written into the
+ * sentence.
  *
  * Evidence, in short: no Cronbach α, ICC, split-half or test-retest figure
  * has been published for any behavioural reliance measure; the one direct
@@ -87,6 +94,31 @@ const count = (raw: Record<string, number>, k: string, max = Number.POSITIVE_INF
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
 const UNDEFINED_DETAIL = "nothing of this kind surfaced, so there is no rate to report";
+
+/**
+ * The worked example that shows how little a rate from `n` events pins down,
+ * computed from the events the sitting actually had rather than from a number
+ * written into the sentence (TEN-91: the form dropped from 8 plants to 4 and
+ * this paragraph still said "eight events"). It compares the two adjacent
+ * outcomes either side of the middle, because ONE event is the smallest thing
+ * that can move the rate and the reader can check the arithmetic.
+ *
+ * Below two events there is no adjacent pair to show, so it says the plain
+ * thing instead of inventing an illustration.
+ */
+function precisionIllustration(n: number): string {
+  if (n < 2) {
+    return "A rate from fewer than two events is not an estimate; read the interval, not the number.";
+  }
+  const lo = Math.floor(n / 2);
+  const hi = lo + 1;
+  return (
+    `${n} ${n === 1 ? "event" : "events"} cannot pin a rate: ${lo} of ${n} is ` +
+    `${formatRate(lo / n)}, ${formatInterval(wilsonInterval(lo, n))}, and ${hi} of ${n} is ` +
+    `${formatRate(hi / n)}, ${formatInterval(wilsonInterval(hi, n))}. The two overlap, so one ` +
+    "event moves the rate more than the second decimal means."
+  );
+}
 
 /**
  * Build the reliance lines from a stored T3 raw record. Pure.
@@ -168,10 +200,7 @@ export function relianceReportFromRaw(raw: Record<string, number>): RelianceRepo
     precisionNote:
       `The rates come from ${plural(plantedSurfaced, "planted error", "planted errors")} and ` +
       `${plural(adviceSurfaced, "correct suggestion", "correct suggestions")}. ` +
-      "Eight events cannot pin a rate: 5 of 8 is 0.63, " +
-      `${formatInterval(wilsonInterval(5, 8))}, and 7 of 8 is 0.88, ` +
-      `${formatInterval(wilsonInterval(7, 8))}. The two overlap, so treat the second decimal ` +
-      "as noise.",
+      precisionIllustration(plantedSurfaced),
     independenceNote:
       "The intervals assume the events are independent. People tend to form one policy about " +
       "trusting the assistant rather than judging each claim on its own (Buçinca, Malaya & " +
