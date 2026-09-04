@@ -28,7 +28,7 @@ import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { ShareTargets } from "../../components/ShareTargets";
 import { TrackRadar } from "../../components/TrackRadar";
-import { useService } from "../../lib/data/serviceFetch";
+import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
 
 export interface SharedView {
   status: string;
@@ -40,16 +40,22 @@ export interface SharedView {
 export function ShareView() {
   const params = useParams<{ token: string }>();
   const token = typeof params?.token === "string" ? params.token : null;
+  // A CAPABILITY read: the token is the whole claim, and a card opens the
+  // same way for everyone who holds one. Anonymous, said out loud.
   const result = useService<{ share: SharedView }>(
     token === null ? null : apiPath("shareView", { token }),
+    { identity: "anonymous" },
   );
   if (result.state === "loading") return <PageLoading title="Opening this card" />;
-  if (result.state === "error") return <PageError title="Opening this card" />;
-  // A withdrawn capability really is gone; anything else is an outage, and a
-  // reader must not be told a live card was revoked because a request failed.
+  if (result.state === "error") return <PageError title="Opening this card" message={result.message} />;
+  // A withdrawn capability really is gone; anything else was REACHED and
+  // refused, and a reader must not be told a live card was revoked — nor that
+  // their connection failed when it did not (TEN-107).
   if (result.state === "missing") {
     if (result.status === 404) notFound();
-    return <PageError title="Opening this card" />;
+    return (
+      <PageError title="Opening this card" message={serviceRefusedCopy(result.status, result.reason)} />
+    );
   }
 
   const share = result.data.share;

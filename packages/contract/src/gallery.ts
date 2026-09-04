@@ -144,6 +144,32 @@ export const gallerySearchSchema = z
     offset: raw.offset ?? 0,
   }));
 
+/**
+ * A `GalleryQuery` written back as a query STRING, canonically.
+ *
+ * The other half of `parseGalleryQuery`, and it exists because the browser
+ * had grown a second, private vocabulary: `/gallery` forwarded its own URL to
+ * the service verbatim, so `?sort=top&site=0` — a spelling no parser here has
+ * ever accepted — went out on the wire and came back 400 (TEN-107). One
+ * writer means the only queries the browser can send are the ones this file
+ * can read, and `test/shapes.test.ts` round-trips them to keep it that way.
+ *
+ * A DEFAULT IS OMITTED, never spelled out. `sort=recent`, `offset=0` and the
+ * page-size limit are what the parser fills in, so writing them adds noise to
+ * every shareable link. An absent filter is an ABSENT PARAMETER: there is no
+ * `site=0` and never was — `site` is the literal `"1"` or it is not there.
+ */
+export function galleryQueryString(query: GalleryQuery): string {
+  const params = new URLSearchParams();
+  if (query.type !== null) params.set("type", query.type);
+  if (query.sort !== "recent") params.set("sort", query.sort);
+  if (query.withSite) params.set("site", "1");
+  if (query.limit !== GALLERY_PAGE_SIZE) params.set("limit", String(query.limit));
+  if (query.offset > 0) params.set("offset", String(query.offset));
+  const qs = params.toString();
+  return qs === "" ? "" : `?${qs}`;
+}
+
 /** A query that was refused, and the reason, in one value a caller must open. */
 export type QueryParseResult<T> =
   | { readonly ok: true; readonly query: T }

@@ -194,6 +194,47 @@ describe("no call site opts out", () => {
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * WHY `/world` ESCAPED (TEN-107). The two checks above prove a request goes
+   * THROUGH the seam; neither can see WHICH identity a call site asked the
+   * seam for, because that was an optional boolean and its default was "send
+   * none". `/world` simply never passed it, so a public page asked a route
+   * that is entirely behind auth with no identity at all, and got a 401 that
+   * the page then reported as a network outage.
+   *
+   * So the third check is on the DECISION, not the transport: every module
+   * that reads the service names the identity it wants. "anonymous" is a fine
+   * answer — an unsaid one is not.
+   */
+  it("every service read NAMES the identity it wants", () => {
+    const readers = sourceFiles(APP_ROOT)
+      .filter((f) => !f.includes("/test/"))
+      .filter((f) => !f.endsWith("lib/data/serviceFetch.ts"))
+      .filter((f) => /\b(useService|serviceFetch)\s*[<(]/.test(codeOf(f)));
+    // Seven views and one panel read the service today. A collapse here means
+    // the pattern stopped matching and the check is lying, not the code.
+    expect(readers.length).toBeGreaterThanOrEqual(7);
+    const offenders = readers
+      .filter((f) => !/identity:\s*"(anonymous|optional|required)"/.test(codeOf(f)))
+      .map((f) => f.slice(APP_ROOT.length + 1));
+    expect(offenders).toEqual([]);
+  });
+
+  /**
+   * And the two PUBLIC pages ask with `optional`: they forward the identity
+   * the browser already has, so they work while every /v1 route is behind
+   * auth, and they mint none, so they cannot pass by inventing a caller a
+   * real first-time visitor will not have.
+   */
+  it("the public pages ask with an OPTIONAL identity, never a minted one", () => {
+    for (const page of ["features/world/WorldView.tsx", "features/gallery/GalleryView.tsx"]) {
+      expect([page, /identity:\s*"optional"/.test(readFileSync(join(APP_ROOT, page), "utf8"))]).toEqual([
+        page,
+        true,
+      ]);
+    }
+  });
+
   it("ships no OpenTelemetry SDK — propagation is a header, not a library", () => {
     // Every workspace package the app can reach, not just its own manifest:
     // a dependency added to `@ailx/session` would ship in the bundle exactly

@@ -13,7 +13,9 @@ import { apiPath, DEV_USER_HEADER, type ApiPath } from "@ailx/contract";
 import {
   SERVICE_ERROR_COPY,
   firstValueQuery,
+  firstValues,
   serviceFetch,
+  serviceRefusedCopy,
   useService,
   type ServiceState,
 } from "../lib/data/serviceFetch";
@@ -86,16 +88,51 @@ describe("identity", () => {
 
   it("sends the asserted dev id as a HEADER — the Lax cookie cannot cross an origin", async () => {
     stub(200);
-    await serviceFetch(apiPath("progress"), { identified: true });
+    await serviceFetch(apiPath("progress"), { identity: "required" });
     expect(seen[0].headers[DEV_USER_HEADER]).toBe("player-9");
   });
 
   it("prefers a proven token, and never sends both", async () => {
     stub(200);
     setAuthTokenSource(async () => "jwt-7");
-    await serviceFetch(apiPath("progress"), { identified: true });
+    await serviceFetch(apiPath("progress"), { identity: "required" });
     expect(seen[0].headers.authorization).toBe("Bearer jwt-7");
     expect(seen[0].headers[DEV_USER_HEADER]).toBeUndefined();
+  });
+
+  /**
+   * The third mode, and the reason it exists: `/gallery` and `/world` are
+   * public pages behind routes that are all authenticated today (TEN-107).
+   * They send what the browser HAS and never make one up, so the page works
+   * for a returning reader under the current policy and fails honestly for a
+   * first-time visitor instead of inventing a caller.
+   */
+  it("optional identity forwards an id the browser already has", async () => {
+    stub(200);
+    await serviceFetch(apiPath("gallery"), { identity: "optional" });
+    expect(seen[0].headers[DEV_USER_HEADER]).toBe("player-9");
+  });
+
+  it("optional identity MINTS nothing, and leaves storage untouched", async () => {
+    stub(200);
+    window.localStorage.removeItem("ailx:dev-user");
+    await serviceFetch(apiPath("gallery"), { identity: "optional" });
+    expect(seen[0].headers[DEV_USER_HEADER]).toBeUndefined();
+    expect(window.localStorage.getItem("ailx:dev-user")).toBeNull();
+  });
+
+  it("required identity DOES mint one — the question is meaningless without it", async () => {
+    stub(200);
+    window.localStorage.removeItem("ailx:dev-user");
+    await serviceFetch(apiPath("progress"), { identity: "required" });
+    expect(seen[0].headers[DEV_USER_HEADER]).toMatch(/^web-/);
+  });
+
+  it("optional identity still prefers a proven token", async () => {
+    stub(200);
+    setAuthTokenSource(async () => "jwt-7");
+    await serviceFetch(apiPath("gallery"), { identity: "optional" });
+    expect(seen[0].headers.authorization).toBe("Bearer jwt-7");
   });
 });
 
@@ -112,6 +149,64 @@ describe("what a page is told", () => {
       stub(status, {});
       expect(await serviceFetch(apiPath("aggregates"))).toEqual({ state: "missing", status });
     }
+  });
+
+  /**
+   * A refusal is an ANSWER, and the page has to be able to repeat it. Only
+   * the frozen envelope is quoted: a proxy's HTML page is not a sentence we
+   * put in front of a reader as the service's own (TEN-107).
+   */
+  it("carries the reason the service gave, collapsed onto one line", async () => {
+    stub(400, { error: { code: "bad_request", message: "Invalid option\n  → at sort" } });
+    expect(await serviceFetch(apiPath("gallery"))).toEqual({
+      state: "missing",
+      status: 400,
+      reason: "Invalid option → at sort",
+    });
+  });
+
+  it("quotes NO reason when the body is not the refusal envelope", async () => {
+    vi.stubGlobal("fetch", async () => new Response("<html>502 upstream</html>", { status: 502 }));
+    expect(await serviceFetch(apiPath("gallery"))).toEqual({ state: "missing", status: 502 });
+  });
+
+  it("truncates a refusal that is a document rather than a message", async () => {
+    stub(400, { error: { code: "bad_request", message: "x".repeat(1000) } });
+    const state = await serviceFetch(apiPath("gallery"));
+    expect(state.state === "missing" && state.reason!.length).toBe(200);
+  });
+});
+
+/**
+ * Three failures, three sentences. "We could not reach the service" for a
+ * status the service itself sent is false, and a public page saying it to a
+ * visitor blames their connection for our policy (TEN-107).
+ */
+describe("what a failure is CALLED", () => {
+  it("says nothing was reached only when nothing was reached", () => {
+    expect(SERVICE_ERROR_COPY).toContain("did not answer");
+    expect(SERVICE_ERROR_COPY).not.toMatch(/refused|HTTP/);
+  });
+
+  it("says a refusal was reached, and repeats what it said", () => {
+    const copy = serviceRefusedCopy(500, "no such lane");
+    expect(copy).toContain("was reached and refused");
+    expect(copy).toContain("HTTP 500");
+    expect(copy).toContain("It said: no such lane");
+    expect(copy).not.toContain("did not answer");
+  });
+
+  it("names 401 and 403 on a public page as ours, not the reader's", () => {
+    for (const status of [401, 403]) {
+      const copy = serviceRefusedCopy(status);
+      expect(copy).toContain(`HTTP ${status}`);
+      expect(copy).toContain("meant to be public");
+      expect(copy).not.toContain("Check your connection");
+    }
+  });
+
+  it("says nothing about a reason when there was none", () => {
+    expect(serviceRefusedCopy(404)).not.toContain("It said");
   });
 
   it("turns a thrown fetch into an honest sentence, never an empty success", async () => {
@@ -152,11 +247,24 @@ describe("firstValueQuery", () => {
   it("re-encodes rather than passing a raw value through", () => {
     expect(firstValueQuery(new URLSearchParams([["type", "a b&c"]]))).toBe("?type=a+b%26c");
   });
+
+  /**
+   * The same rule as a record, which is what the contract's parsers take.
+   * `Object.fromEntries` keeps the LAST value of a repeated key — the
+   * opposite rule from the rest of this seam.
+   */
+  it("firstValues keeps the FIRST value, not the last", () => {
+    expect(firstValues(new URLSearchParams("lane=decided&lane=pending"))).toEqual({
+      lane: "decided",
+    });
+    expect(firstValues(null)).toEqual({});
+    expect(firstValues(undefined)).toEqual({});
+  });
 });
 
 describe("useService", () => {
   function Probe({ path }: { path: ApiPath | null }) {
-    const state: ServiceState<{ ok: boolean }> = useService(path, { identified: true });
+    const state: ServiceState<{ ok: boolean }> = useService(path, { identity: "required" });
     return createElement("p", null, JSON.stringify(state));
   }
 
