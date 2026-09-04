@@ -69,6 +69,19 @@ export function accessCopy(): string {
 }
 
 /**
+ * The exam page's own access line, and it is a SEPARATE promise from the
+ * landing hero's.
+ *
+ * "no accounts — just play" was printed beside the start gate in every build.
+ * On a deployment that mounts Clerk it is false at the exact moment it matters
+ * most — the candidate is standing at the gate they cannot pass — and it was
+ * still on screen after `AILX_AUTH=clerk` went live on staging (TEN-125).
+ */
+export function examAccessCopy(): string {
+  return isClerkEnabled() ? "sign in to sit a scored run" : "no accounts — just play";
+}
+
+/**
  * The build's basePath — the ONLY place NEXT_PUBLIC_BASE_PATH is read.
  *
  * `next.config.mjs` always bakes the variable ("/ailx" for the Pages export,

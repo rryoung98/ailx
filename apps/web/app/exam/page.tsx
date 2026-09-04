@@ -33,7 +33,7 @@ import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
 import { PillCTA } from "../../components/ui/PillCTA";
 import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
-import { eventLogCopy } from "../../lib/mode";
+import { eventLogCopy, examAccessCopy } from "../../lib/mode";
 import { funnel } from "../../lib/data/funnel";
 import { completionSummary, SERVICE_SCORES_THIS_TRACK } from "../../lib/instrument/scoreSources";
 
@@ -628,7 +628,7 @@ export default function ExamPage() {
             T1 to T4 in order, each on its own clock. Pause between moves, never
             mid-swipe. {eventLogCopy()}
           </p>
-          <div style={{ textAlign: "right" }}><Annotation side="left">no accounts — just play</Annotation></div>
+          <div style={{ textAlign: "right" }}><Annotation side="left">{examAccessCopy()}</Annotation></div>
           {/* AI connection FIRST — users must see it before the Start pill
               (it was previously buried below the fold). */}
           <ConnectPanel attention={connectAttention} />

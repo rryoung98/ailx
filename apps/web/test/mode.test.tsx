@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { accessCopy, assetUrl, eventLogCopy, footerModeCopy, isServerMode } from "../lib/mode";
+import { accessCopy, assetUrl, eventLogCopy, examAccessCopy, footerModeCopy, isServerMode } from "../lib/mode";
 import RootLayout from "../app/layout";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -81,6 +81,26 @@ describe("accessCopy", () => {
     expect(copy).not.toMatch(/no account/i);
     expect(copy).toContain("free to play");
     expect(copy).toContain("needs an account");
+  });
+});
+
+describe("examAccessCopy", () => {
+  /**
+   * A SECOND promise, and the one made where it matters most: this line sits
+   * beside the start gate. After staging switched to Clerk it still read "no
+   * accounts — just play" to a candidate standing at a gate they could not
+   * pass (TEN-125). The hero's line is separate and says something else.
+   */
+  it("asks for a sign-in where a sitting needs one", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    expect(examAccessCopy()).toBe("sign in to sit a scored run");
+  });
+
+  it("still says no accounts where there are none", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    expect(examAccessCopy()).toBe("no accounts — just play");
   });
 });
 
