@@ -18,6 +18,7 @@
  * result, so a malformed record must read as "we cannot say" and never as a
  * number.
  */
+import { parseAttemptComposite, type AttemptComposite } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 
 /** Why a sat track carries no score of record. Never a zero. */
@@ -67,6 +68,14 @@ export interface AttemptScores {
   /** Milliseconds to wait before reading again, or null when nothing is owed. */
   pollAfterMs: number | null;
   tracks: TrackScoreRecord[];
+  /**
+   * The composite of record, issued or withheld with its reason (TEN-92).
+   *
+   * Null when the service sent nothing this build can read, which is its own
+   * fact and never a zero. The wire shape and its parser live in
+   * `@ailx/contract` because the private repo spells the same union.
+   */
+  composite: AttemptComposite | null;
 }
 
 /**
@@ -181,6 +190,7 @@ export function parseAttemptScores(body: unknown): AttemptScores | null {
     pollAfterMs:
       typeof s.pollAfterMs === "number" && Number.isFinite(s.pollAfterMs) ? s.pollAfterMs : null,
     tracks,
+    composite: parseAttemptComposite(s.composite),
   };
 }
 

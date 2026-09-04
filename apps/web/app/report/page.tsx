@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  append, loadAttempt, project, SCORED_TRACKS, TRACK_IDS,
+  append, loadAttempt, project, TRACK_IDS,
   type SequencedEntry,
 } from "@ailx/session";
-import { TOTAL_POINTS } from "@ailx/core";
 import { buildSampleAttemptLog } from "../../lib/instrument/sampleAttempt";
 import { replayTrackScore, scoreTrack, trackScoredEntry } from "../../lib/instrument/registry";
 import type { TrackId } from "@ailx/session";
@@ -65,9 +64,11 @@ import { WithheldItems } from "../../features/report/WithheldItems";
 import { downloadBlob } from "../../features/report/siteExport";
 import { ShareLink } from "../../features/report/ShareLink";
 import { ScoresOfRecordView } from "../../features/report/ScoresOfRecordPanel";
+import { CompositeCard } from "../../features/report/CompositeCard";
+import { localCompositeView, serviceCompositeView } from "../../features/report/compositeView";
+import { HostedComposite } from "../../features/report/HostedComposite";
 import { useScoresOfRecord } from "../../features/report/useScoresOfRecord";
 import { reportGate } from "../../features/report/reportGate";
-import { TrackRadar } from "../../components/TrackRadar";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 
@@ -155,65 +156,9 @@ function download(filename: string, data: unknown) {
   downloadBlob(filename, new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
 }
 
-/** rAF count-up — the score reveal is the reward (§13). */
-function useCountUp(target: number, ms = 1400): number {
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    if (target === 0) return;
-    let raf = 0;
-    const t0 = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - t0) / ms);
-      const eased = 1 - (1 - p) ** 3;
-      setV(target * eased);
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, ms]);
-  return v;
-}
-
-/**
- * The dots are a SYNTHETIC calibration cohort shipped with the demo, not
- * people. The page used to say so in a small pill next to a percentile-shaped
- * number, which is exactly the part that survives a screenshot; the strip now
- * carries the qualification itself, in the same words the diagnosis below
- * uses (@ailx/report `diagnosis.ts`).
- */
-const COHORT_CAPTION =
-  "Every dot is a synthetic demo run generated for this fixture, not a person. " +
-  "Where you sit among them is not a percentile and not a rank against real " +
-  "players — the judging pipeline is not built yet.";
-
-function DistStrip({ cohort, mine }: { cohort: number[]; mine: number }) {
-  return (
-    <figure className="dist-figure" data-testid="dist-strip">
-      <svg viewBox="0 0 400 56" className="dist-strip" role="img" aria-label={`Position among ${cohort.length} synthetic demo runs. ${COHORT_CAPTION}`}>
-        <line x1="10" y1="40" x2="390" y2="40" stroke="var(--border-strong)" strokeWidth="1" />
-        {[0, 25, 50, 75, 100].map((x) => (
-          <text key={x} x={10 + x * 3.8} y="53" fontSize="9" fill="var(--faint)" textAnchor="middle" fontFamily="var(--mono)">{x}</text>
-        ))}
-        {cohort.map((c, i) => (
-          <circle key={i} cx={10 + c * 3.8} cy={40 - 6 - (i % 5) * 4} r="2.6"
-            fill={Math.abs(c - mine) < 0.01 ? "var(--accent)" : "var(--faint)"}
-            opacity={Math.abs(c - mine) < 0.01 ? 1 : 0.45} />
-        ))}
-        <line x1={10 + mine * 3.8} y1="6" x2={10 + mine * 3.8} y2="42" stroke="var(--accent)" strokeWidth="2" />
-        <text x={10 + mine * 3.8} y="4" fontSize="9" fill="var(--accent)" textAnchor="middle" fontFamily="var(--mono)" dominantBaseline="hanging">you</text>
-      </svg>
-      <figcaption className="dist-caption small">
-        <strong>Synthetic demo cohort — {cohort.length} generated runs.</strong> {COHORT_CAPTION}
-      </figcaption>
-    </figure>
-  );
-}
-
 export default function ReportPage() {
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [showBand, setShowBand] = useState(false);
-  const [copied, setCopied] = useState(false);
   // Sample mode: the bundled deterministic fixture rendered read-only —
   // nothing is written to storage, a banner marks it clearly.
   const [sample, setSampleState] = useState(false);
@@ -242,8 +187,6 @@ export default function ReportPage() {
   useEffect(() => {
     setLog(loadAttempt(window.localStorage));
     setHydrated(true);
-    const id = window.setTimeout(() => setShowBand(true), 1100);
-    return () => window.clearTimeout(id);
   }, []);
 
   const state = useMemo(() => (log ? project(log) : null), [log]);
@@ -297,7 +240,6 @@ export default function ReportPage() {
       { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(review?.keys ?? {}) },
     );
   }, [state, review]);
-  const counted = useCountUp(summary?.composite ?? 0);
 
   if (!hydrated) {
     return <main className="page"><div className="container"><p className="muted">Loading…</p></div></main>;
@@ -335,21 +277,20 @@ export default function ReportPage() {
               the full report: the composite needs four local scores and the
               judged one is the service's. So the panel that says what the
               service holds must be on this screen too, or the candidate is
-              told to "finish the run" they already finished (TEN-69). */}
+              told to "finish the run" they already finished (TEN-69).
+
+              The composite for such a sitting is the SERVICE's too, and it
+              goes above the track scores because it is what the candidate
+              came for (TEN-92). It is the same card the local report draws,
+              marked as the service's and claiming no local replay. */}
+          {state?.attemptId ? (
+            <HostedComposite attemptId={state.attemptId} scores={scoresView.scores} />
+          ) : null}
           {state?.attemptId ? <ScoresOfRecordView view={scoresView} /> : null}
         </div>
       </main>
     );
   }
-
-  // The copied line is the part that travels furthest with no page around it,
-  // so it carries no percentile-shaped number at all: "P78.9 of 45" reads as a
-  // real-world rank the moment it is pasted anywhere.
-  const shareText =
-    `AILX 2026.1 (demo) — composite ${summary.composite.toFixed(1)}/100, ${summary.band}, ` +
-    `standardized on a synthetic demo cohort of ${summary.cohortSize} generated runs ` +
-    `(no percentile, no judged result). ` +
-    `Tracks ${TRACK_IDS.map((t) => `${t.toUpperCase()} ${summary.trackRaw[t].toFixed(0)}`).join(" · ")}.`;
 
   return (
     <main className="page">
@@ -362,64 +303,7 @@ export default function ReportPage() {
             <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setSample(false)}>Exit sample</button>
           </div>
         ) : null}
-        <div className="share-card" style={{ marginBottom: "2rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", alignItems: "center" }}>
-            <div>
-              <div className="eyebrow">run {state.attemptId} · synthetic demo cohort n = {summary.cohortSize}</div>
-              {/* The rAF count-up is decorative for AT: hide the animated
-                  number and expose the final value + band once, politely. */}
-              <div aria-hidden="true" className="composite-number" style={{ fontSize: "3.4rem", fontWeight: 800, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-                {counted.toFixed(1)}
-              </div>
-              <span className="sr-only" role="status">
-                {showBand
-                  ? `Composite score ${summary.composite.toFixed(1)} out of 100. Band: ${summary.band}.`
-                  : ""}
-              </span>
-              <div className="muted small">composite · standardized on the synthetic demo cohort · mean 50 · SD 15</div>
-              <div className="muted small">
-                raw {SCORED_TRACKS.reduce((a, t) => a + summary.trackRaw[t], 0).toFixed(1)} / {TOTAL_POINTS}
-              </div>
-              {summary.percentile <= 0.5 / summary.cohortSize + 1e-9 ? (
-                <div className="faint small" style={{ maxWidth: "34ch" }}>
-                  Floor of this demo cohort: every run below all {summary.cohortSize - 1} synthetic
-                  peers lands on the same standardized value. The raw points above still move.
-                </div>
-              ) : null}
-              {showBand ? (
-                <div aria-hidden="true" className={`reveal-band pop-in band-${summary.band}`}>{summary.band}</div>
-              ) : (
-                <div aria-hidden="true" className="reveal-band" style={{ opacity: 0.15 }}>····</div>
-              )}
-            </div>
-            <TrackRadar values={summary.trackRaw} />
-          </div>
-          <DistStrip cohort={summary.cohortComposites} mine={summary.composite} />
-          <div className="share-track-bars" data-testid="share-track-bars">
-            {TRACK_IDS.map((t) => (
-              <div className="row" key={t}>
-                <span className="mono" style={{ color: "var(--accent)" }}>{t.toUpperCase()}</span>
-                <div className="meter"><div style={{ width: `${Math.max(0, Math.min(100, summary.trackRaw[t]))}%` }} /></div>
-                <span className="mono" style={{ textAlign: "right" }}>{summary.trackRaw[t].toFixed(1)}</span>
-              </div>
-            ))}
-          </div>
-          <p className="faint small mono" style={{ margin: "0.4rem 0 0" }}>
-            quota-derived band cutlines (this synthetic cohort):{" "}
-            {(["Distinction", "Merit", "Pass"] as const)
-              .map((b) => `${b} ≥ ${summary.bandCutlines[b]?.toFixed(1) ?? "—"}`)
-              .join(" · ")}{" "}
-            — bands are quota-authoritative (spec §04), not fixed thresholds.
-          </p>
-          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", marginTop: "0.6rem" }}>
-            <button className="btn small-btn" onClick={() => {
-              navigator.clipboard?.writeText(shareText).then(() => {
-                setCopied(true); window.setTimeout(() => setCopied(false), 1500);
-              });
-            }}>{copied ? "copied ✓" : "copy summary"}</button>
-            <span className="badge demo">demo cohort</span>
-          </div>
-        </div>
+        <CompositeCard view={localCompositeView(state.attemptId, summary)} />
 
         {/* ONE identity: the type, then the evidence each axis was decided
             from, then the coaching. There used to be a SECOND four-letter
