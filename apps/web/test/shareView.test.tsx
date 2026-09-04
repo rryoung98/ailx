@@ -177,7 +177,7 @@ describe("reading the share", () => {
   it("does NOT claim the link was revoked when the service is unreachable", async () => {
     stubFailingFetch();
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("did not answer");
     expect(notFound).not.toHaveBeenCalled();
   });
 

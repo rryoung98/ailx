@@ -140,7 +140,7 @@ describe("the case gate", () => {
     expect(await renderClientPending(createElement(ModerationCaseView))).toContain("Loading");
     stubFailingFetch();
     const html = await markup();
-    expect(html).toContain("could not reach the AILX service");
+    expect(html).toContain("did not answer");
     // An outage is NOT a refusal: a moderator must not think access was lost.
     expect(notFound).not.toHaveBeenCalled();
   });

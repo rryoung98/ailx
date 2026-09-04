@@ -5,7 +5,7 @@
  * would see it, the decision on the record, and the whole trail around it.
  *
  * A CLIENT component reading `GET /moderation/<id>` through `apiBase()`
- * (docs/ARCHITECTURE.md §10.1), with `identified: true` so the reviewer's
+ * (docs/ARCHITECTURE.md §10.1), with `identity: "required"` so the reviewer's
  * header travels — the `ailx_dev_user` cookie is `SameSite=Lax` and never
  * reaches the exam service's origin.
  *
@@ -31,7 +31,7 @@ export function ModerationCaseView() {
   const id = typeof params?.id === "string" ? params.id : null;
   const result = useService<{ case: ModerationCaseDetail }>(
     id === null ? null : apiPath("moderationCase", { id }),
-    { identified: true },
+    { identity: "required" },
   );
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title="Moderation case" />;
   if (result.state === "error") return <PageError eyebrow={EYEBROW} title="Moderation case" />;

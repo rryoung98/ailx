@@ -22,41 +22,59 @@
  */
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { API_RESPONSE_SCHEMAS, apiPath, type GalleryQuery } from "@ailx/contract";
+import {
+  API_RESPONSE_SCHEMAS,
+  apiPath,
+  galleryQueryString,
+  parseGalleryQuery,
+  type GalleryQuery,
+} from "@ailx/contract";
 import { GalleryCard } from "../../components/GalleryCard";
 import { PageError, PageLoading } from "../../components/PageNotice";
-import { firstValueQuery, useService, type ServiceState } from "../../lib/data/serviceFetch";
+import {
+  firstValues,
+  serviceRefusedCopy,
+  useService,
+  type ServiceState,
+} from "../../lib/data/serviceFetch";
 
 const EYEBROW = "PUBLIC GALLERY · PUBLISHED BY THEIR OWNERS";
 const TITLE = "What people can actually do with AI.";
 
-/** A gallery URL with some of the query changed; empty values drop out. */
-function href(query: GalleryQuery, over: Partial<Record<"type" | "sort" | "site" | "offset", string | null>> = {}): string {
-  const params = new URLSearchParams();
-  const merged = {
-    type: query.type,
-    sort: query.sort === "recent" ? null : query.sort,
-    site: query.withSite ? "1" : null,
-    offset: query.offset > 0 ? String(query.offset) : null,
-    ...over,
-  };
-  for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
-  const qs = params.toString();
-  return qs === "" ? "/gallery" : `/gallery?${qs}`;
+/**
+ * A gallery URL with some of the query changed.
+ *
+ * The string is written by the CONTRACT (`galleryQueryString`), not here.
+ * This function used to spell the parameters itself, which is how the browser
+ * came to hold a second vocabulary the parser had never heard of — the page
+ * also forwarded its own URL to the service verbatim, so `?sort=top&site=0`
+ * reached the wire and came back 400 (TEN-107).
+ */
+function href(query: GalleryQuery, over: Partial<GalleryQuery> = {}): string {
+  return `/gallery${galleryQueryString({ ...query, ...over })}`;
 }
 
 /**
- * The service refuses a filter it will not act on rather than quietly serving
- * a different one (docs/ADR-zod-tanstack.md §4), so a 400 here means the URL
- * asked for something this wall does not have. It is not an outage and must
- * not be reported as one.
+ * The URL asked for a filter this wall does not have — `?sort=top`, a made-up
+ * player type, a limit past the cap. Read HERE now, from the same parser the
+ * service uses, so the request is never made: a query the contract refuses is
+ * not one the browser should spend a round trip finding out about.
+ *
+ * It is not an outage and must not be reported as one.
  */
-const BAD_QUERY_COPY =
+export const BAD_QUERY_COPY =
   "That filter is not one this wall can show. Open the gallery without it to see every published card.";
 
+/**
+ * The sentence for a failed read. Three different facts, three different
+ * sentences: the call never landed, the call landed and was refused, or the
+ * body could not be read (TEN-107).
+ */
 function notice(result: ServiceState<unknown>): string | undefined {
   if (result.state === "error") return result.message;
-  if (result.state === "missing" && result.status === 400) return BAD_QUERY_COPY;
+  if (result.state === "missing") {
+    return result.status === 400 ? BAD_QUERY_COPY : serviceRefusedCopy(result.status, result.reason);
+  }
   return undefined;
 }
 
@@ -68,16 +86,31 @@ const SORTS: { key: GalleryQuery["sort"]; label: string }[] = [
 
 export function GalleryView() {
   const search = useSearchParams();
+  // The page's own URL, read by the CONTRACT's parser before anything is
+  // asked for. It used to be forwarded verbatim, so any spelling a visitor
+  // was handed became a request; now the only queries that reach the wire are
+  // the ones this repo and the service both agree exist, written back
+  // canonically by the one writer (TEN-107).
+  const parsed = parseGalleryQuery(firstValues(search));
   // The schema comes from the manifest, keyed by the same route key the path
   // is built from, so the body this page believes is the body the route
   // declares. A response that is not that shape renders the error notice.
-  const result = useService(apiPath("gallery", {}, firstValueQuery(search)), {
-    schema: API_RESPONSE_SCHEMAS.gallery,
-  });
+  const result = useService(
+    parsed.ok ? apiPath("gallery", {}, galleryQueryString(parsed.query)) : null,
+    {
+      schema: API_RESPONSE_SCHEMAS.gallery,
+      // PUBLIC read: send the identity this browser already has, mint none.
+      // Every /v1 route is behind auth today, so a returning browser keeps
+      // working and a first-time visitor is told the truth about the refusal
+      // rather than shown a page that invented a caller.
+      identity: "optional",
+    },
+  );
+  if (!parsed.ok) return <PageError eyebrow={EYEBROW} title={TITLE} message={BAD_QUERY_COPY} />;
   if (result.state === "loading") return <PageLoading eyebrow={EYEBROW} title={TITLE} />;
-  // The wall is public and unauthenticated, so a non-200 is an outage, not a
-  // state with a story. Saying "nobody has published a card yet" because the
-  // service was down would be a lie about other people's work.
+  // Never "nobody has published a card yet" for a failed read: that would be
+  // a lie about other people's work. What the reader gets instead is which
+  // failure it was.
   if (result.state !== "ready") {
     return <PageError eyebrow={EYEBROW} title={TITLE} message={notice(result)} />;
   }
@@ -111,7 +144,7 @@ export function GalleryView() {
           <div className="filter-row" role="group" aria-label="Player type">
             <Link
               className={`chip${query.type === null ? " on" : ""}`}
-              href={href(query, { type: null, offset: null })}
+              href={href(query, { type: null, offset: 0 })}
               aria-current={query.type === null ? "true" : undefined}
             >
               All types <span className="faint">{listed}</span>
@@ -120,7 +153,7 @@ export function GalleryView() {
               <Link
                 key={f.code}
                 className={`chip${query.type === f.code ? " on" : ""}`}
-                href={href(query, { type: f.code, offset: null })}
+                href={href(query, { type: f.code, offset: 0 })}
                 aria-current={query.type === f.code ? "true" : undefined}
                 title={f.name}
               >
@@ -133,7 +166,7 @@ export function GalleryView() {
               <Link
                 key={s.key}
                 className={`chip${query.sort === s.key ? " on" : ""}`}
-                href={href(query, { sort: s.key === "recent" ? null : s.key, offset: null })}
+                href={href(query, { sort: s.key, offset: 0 })}
                 aria-current={query.sort === s.key ? "true" : undefined}
               >
                 {s.label}
@@ -141,7 +174,7 @@ export function GalleryView() {
             ))}
             <Link
               className={`chip${query.withSite ? " on" : ""}`}
-              href={href(query, { site: query.withSite ? null : "1", offset: null })}
+              href={href(query, { withSite: !query.withSite, offset: 0 })}
               aria-current={query.withSite ? "true" : undefined}
             >
               With a built site
@@ -184,12 +217,12 @@ export function GalleryView() {
 
         <nav className="gallery-pager" aria-label="Gallery pages">
           {query.offset > 0 ? (
-            <Link className="btn" href={href(query, { offset: String(Math.max(0, query.offset - query.limit)) })}>
+            <Link className="btn" href={href(query, { offset: Math.max(0, query.offset - query.limit) })}>
               ← Newer
             </Link>
           ) : null}
           {shown < total ? (
-            <Link className="btn" href={href(query, { offset: String(query.offset + query.limit) })}>
+            <Link className="btn" href={href(query, { offset: query.offset + query.limit })}>
               Older →
             </Link>
           ) : null}

@@ -612,6 +612,54 @@ FILE LIST rather than a directory, because the private copy legitimately keeps j
 dealt `form.json` files beside the shared ones and a directory-wide rule would have pushed those
 the wrong way.
 
+### 10.4 Public pages, and the identity a visitor does not have (2026-09-04, TEN-107)
+
+`/gallery` and `/world` are public surfaces: a reader with no account is meant to
+read them. On staging they were both broken, and the browser's half of that is
+fixed here.
+
+**What went wrong.** `/world` asked `GET /v1/aggregates` with no identity and got
+401. Every `/v1` route sits behind `apiRoute` in the private repo, so an
+unauthenticated caller is refused before a body is read; the page only ever
+looked fine because a developer's browser had asserted a dev id in
+localStorage. The trace seam's test (`apps/web/test/traceparent.test.ts`) could
+not catch it: it proves a call goes THROUGH `serviceHeaders`, and this one did
+— it just asked for no identity, which was an unspoken default. The seam now
+requires every service read to NAME its identity (`"anonymous"`, `"optional"`
+or `"required"`), because a decision nobody wrote down is a decision nobody
+reviews.
+
+**The frontend is correct under BOTH policies.** The two public pages ask with
+`identity: "optional"`: they send the id this browser already has, and they
+MINT none. Under today's policy a returning browser keeps working; under an
+anonymous-read policy nothing changes; and a first-time visitor is never shown
+a page that worked only because it invented a caller.
+
+**The recommendation, which belongs in the private repo.** `GET /v1/gallery`,
+`GET /v1/aggregates` and `GET /v1/share/:token` should be served anonymously.
+All three are already public by construction — the gallery response drops
+`approvedBy`, aggregates publish nothing below `MIN_COHORT_SIZE` and a share
+token is itself the capability — so authentication on them protects nothing and
+costs the audience the gallery exists to reach. Every write and every
+candidate-scoped read stays authenticated. Not done here: this repo has no
+handlers.
+
+**The gallery query is one contract.** The page used to forward its own URL to
+the service verbatim, so `?sort=top&site=0` reached the wire and came back 400.
+`top` is `/wall`'s vote sort and has never been a gallery sort — it is not being
+added — and an absent filter is an ABSENT parameter, never `site=0`. The browser
+now reads its URL with `parseGalleryQuery` and writes the service's query with
+`galleryQueryString`, both from `@ailx/contract`, so a spelling the parser
+refuses cannot leave the browser. `galleryQueryString` and `parseApiError` are
+NEW exports of `@ailx/contract`: the private repo vendors that package byte for
+byte and needs a re-vendor.
+
+**Three failures, three sentences.** "We could not reach the AILX service" was
+false for both defects: the service was reached and refused. A failed read is
+now one of three facts, each with its own copy — the call never landed
+(`SERVICE_ERROR_COPY`), the call landed and was refused with a status and the
+service's own reason (`serviceRefusedCopy`), or the answer is real and empty.
+
 ## 11. What I would not do
 
 - **Do not split the repository.** §6.
