@@ -236,8 +236,12 @@ export default function Home() {
                 {/* The drill is tappable end to end, so the fixed bottom pill
                     must clear it: on a 390x844 phone the pill printed straight
                     across the two answer buttons. */}
+                {/* `taster`: the card is dealt in the BROWSER until somebody
+                    calls one. A landing view is not a round, and it must not
+                    open a practice session or spend recorded corpus exposure
+                    on a visitor who scrolled past (TEN-156). */}
                 <div className="hero-fade hero-play" data-pill-clear="">
-                  <PracticeDrill />
+                  <PracticeDrill taster />
                 </div>
                 <p className="hero-cta hero-fade" data-pill-clear="">
                   <Link className="btn primary" href="/practice">Play a full round</Link>

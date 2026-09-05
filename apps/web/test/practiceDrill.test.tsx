@@ -60,6 +60,10 @@ function installFetch(): void {
     if (String(url).endsWith("/api/practice")) {
       return new Response(JSON.stringify({ session: { id: SESSION_ID, itemIds: dealt } }), { status: 201 });
     }
+    if (String(url).endsWith("/api/practice/claim")) {
+      const days = (body as { days?: Array<{ day: string }> } | undefined)?.days ?? [];
+      return new Response(JSON.stringify({ claimed: days.map((d) => d.day) }), { status: 200 });
+    }
     // Exactly what a browser with no network throws: a TypeError whose
     // message is the string "Failed to fetch".
     if (submitOffline) throw new TypeError("Failed to fetch");
@@ -76,7 +80,7 @@ function installFetch(): void {
 let root: Root | null = null;
 let host: HTMLElement;
 
-async function mount(serverMode: boolean, clerk = false): Promise<void> {
+async function mount(serverMode: boolean, clerk = false, props: { taster?: boolean } = {}): Promise<void> {
   vi.resetModules();
   process.env.NEXT_PUBLIC_AILX_BACKEND = serverMode ? "1" : "";
   // Clerk is mounted iff a publishable key is present (lib/mode.ts). Without
@@ -88,7 +92,7 @@ async function mount(serverMode: boolean, clerk = false): Promise<void> {
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
-    root!.render(createElement(PracticeDrill));
+    root!.render(createElement(PracticeDrill, props));
   });
 }
 
@@ -618,8 +622,87 @@ describe("hosted build, nobody signed in", () => {
       await click(/AI-generated/);
       await click(/Next card|Finish the round/);
     }
-    expect(posted.filter((p) => p.url.includes("/api/practice/"))).toEqual([]);
+    // Not submitted as a session — a browser-dealt round has no server
+    // session id. The day itself is not stranded either: it is CLAIMED onto
+    // the account that just arrived, which is the same path the taster uses
+    // (TEN-156) and the same one a sign-in has always used, only sooner.
+    const sessionPosts = posted.filter(
+      (p) => p.url.includes("/api/practice/") && !p.url.endsWith("/claim"),
+    );
+    expect(sessionPosts).toEqual([]);
+    expect(posted.map((p) => p.url)).toContain("/api/practice/claim");
     expect(host.textContent).toContain("1day streak");
+  });
+});
+
+describe("the landing taster (TEN-156)", () => {
+  /**
+   * The bug: the drill mounts in the landing hero, so a SIGNED-IN visitor who
+   * loaded the home page and scrolled past opened a `practice_sessions` row
+   * and spent a recorded deal on nothing. Three rows for one round played.
+   */
+  it("records NOTHING for a signed-in visitor who touches nothing", async () => {
+    await mount(true, false, { taster: true });
+    // The hero still shows a real card — the feature is "one card, right now".
+    expect(host.querySelectorAll("img")).toHaveLength(1);
+    // ...and the service has not been told anything at all.
+    expect(posted).toEqual([]);
+  });
+
+  it("records nothing for a signed-in visitor on a Clerk build either", async () => {
+    await mount(true, true, { taster: true });
+    await signedIn("user_abc");
+    expect(posted).toEqual([]);
+    expect(host.querySelectorAll("img")).toHaveLength(1);
+  });
+
+  it("deals the taster in the browser, so its round is never posted", async () => {
+    await mount(true, false, { taster: true });
+    await playSlowly();
+    // No deal and no submit: the round was browser-dealt, and the service
+    // grades only decks it dealt.
+    expect(posted.map((p) => p.url)).not.toContain("/api/practice");
+    expect(posted.filter((p) => /\/api\/practice\/[^/]+$/.test(p.url) && !p.url.endsWith("/claim"))).toEqual([]);
+    // The day is in this browser's ledger, and the copy says where it is.
+    expect(host.textContent).toContain("1day streak");
+  });
+
+  it("hands the taster day to the account it was played on", async () => {
+    // The taster is dealt here, so the claim is how the day reaches the
+    // account at all — it must not wait for the next sign-in.
+    await mount(true, false, { taster: true });
+    await playSlowly();
+    const claim = posted.find((p) => p.url.endsWith("/api/practice/claim"));
+    expect(claim, "a claim POST").toBeTruthy();
+    expect((claim!.body as { days: Array<{ answered: number }> }).days[0].answered).toBe(PRACTICE_DECK_SIZE);
+  });
+
+  it("claims nothing for a visitor with no identity to claim onto", async () => {
+    await mount(true, true, { taster: true });
+    await signedOut();
+    await playSlowly();
+    expect(posted.map((p) => p.url)).toEqual([]);
+  });
+
+  it("deals a RECORDED round once the visitor has actually played one", async () => {
+    // First answer is the engagement. The round in hand finishes where it
+    // started; the next one is server-dealt and recorded.
+    await mount(true, false, { taster: true });
+    await playSlowly();
+    expect(posted.map((p) => p.url)).not.toContain("/api/practice");
+    await click(/Another round/);
+    expect(posted.map((p) => p.url)).toContain("/api/practice");
+  });
+
+  it("leaves /practice alone: that page IS the engagement", async () => {
+    await mount(true);
+    expect(posted[0].url).toMatch(/\/api\/practice$/);
+  });
+
+  it("is how the landing page mounts the drill", () => {
+    // The prop is the whole fix, and it lives on one line of one page.
+    const page = readFileSync(repoFile("app/page.tsx"), "utf8");
+    expect(page).toMatch(/<PracticeDrill taster \/>/);
   });
 });
 
