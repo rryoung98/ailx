@@ -182,7 +182,7 @@ describe("a genuine credential", () => {
   it("says Verified, and names the issuer", async () => {
     const html = await markup();
     expect(dom(html).querySelector(".verify-status")!.textContent).toBe("Verified");
-    expect(html).toContain("issued by AILX");
+    expect(html).toContain("issued by Foray");
     expect(dom(html).querySelector(".verify-valid")).not.toBeNull();
   });
 

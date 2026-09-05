@@ -111,12 +111,12 @@ describe("anything that is not our document", () => {
     }
   });
 
-  it("refuses a subject with no ailx block, and an ailx block with no player type", () => {
+  it("refuses a subject with no facts block, and a facts block with no player type", () => {
     const noAilx = doc();
-    (noAilx.credentialSubject as Record<string, unknown>).ailx = undefined;
+    (noAilx.credentialSubject as Record<string, unknown>).foray = undefined;
     expect(credentialViewFrom(noAilx)).toBeNull();
     const noType = doc();
-    ((noType.credentialSubject as Record<string, unknown>).ailx as Record<string, unknown>).playerType = null;
+    ((noType.credentialSubject as Record<string, unknown>).foray as Record<string, unknown>).playerType = null;
     expect(credentialViewFrom(noType)).toBeNull();
   });
 
@@ -128,7 +128,7 @@ describe("anything that is not our document", () => {
 
   it("drops an artifact that does not belong to the issuer that signed it", () => {
     const d = doc();
-    ((d.credentialSubject as Record<string, unknown>).ailx as Record<string, unknown>).artifact =
+    ((d.credentialSubject as Record<string, unknown>).foray as Record<string, unknown>).artifact =
       "https://evil.example/api/site/sha256:abc/index.html";
     expect(credentialViewFrom(d)!.artifactPath).toBeNull();
   });
@@ -141,11 +141,49 @@ describe("anything that is not our document", () => {
 
   it("drops non-string entries from tracksAttempted rather than rendering them", () => {
     const d = doc();
-    ((d.credentialSubject as Record<string, unknown>).ailx as Record<string, unknown>).tracksAttempted = [
+    ((d.credentialSubject as Record<string, unknown>).foray as Record<string, unknown>).tracksAttempted = [
       "T1",
       7,
       null,
     ];
     expect(credentialViewFrom(d)!.tracksAttempted).toEqual(["T1"]);
+  });
+});
+
+/**
+ * The vendor key was renamed `ailx` → `foray` (docs/RENAME.md §3.6), but the
+ * exam service serves the document and deploys on its own cadence. So the
+ * page reads BOTH keys and the parser is tested against both shapes, in both
+ * states — a live document that still says `ailx` must not be answered
+ * "cannot be confirmed", which is the report reserved for a forgery.
+ */
+describe("the legacy vendor key still parses", () => {
+  const legacy = (over: Partial<CredentialState> = {}): Record<string, unknown> => {
+    const d = doc(over);
+    const subject = d.credentialSubject as Record<string, unknown>;
+    subject.ailx = subject.foray;
+    delete subject.foray;
+    return d;
+  };
+
+  it("recovers the same view from an `ailx` document as from a `foray` one", () => {
+    expect(credentialViewFrom(legacy())).toEqual(credentialViewFrom(doc()));
+  });
+
+  it("still reports a revocation carried under the legacy key", () => {
+    const view = credentialViewFrom(
+      legacy({ status: "revoked", revokedAt: "2026-03-01T00:00:00.000Z", revokeReason: "withdrawn sitting" }),
+    )!;
+    expect(view.status).toBe("revoked");
+    expect(view.revokedAt).toBe("2026-03-01T00:00:00.000Z");
+    expect(view.revokeReason).toBe("withdrawn sitting");
+    expect(view.code).toBe(CODE);
+  });
+
+  it("prefers the new key when a document somehow carries both", () => {
+    const d = doc();
+    const subject = d.credentialSubject as Record<string, unknown>;
+    subject.ailx = { ...(subject.foray as Record<string, unknown>), instrument: "stale 0.0" };
+    expect(credentialViewFrom(d)!.instrument).toBe("ailx 2026.1");
   });
 });

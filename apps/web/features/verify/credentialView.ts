@@ -65,16 +65,21 @@ export function credentialViewFrom(document: unknown): CredentialView | null {
   const doc = obj(document);
   if (doc === null) return null;
   const subject = obj(doc.credentialSubject);
-  const ailx = subject === null ? null : obj(subject.ailx);
+  // The vendor key is `foray` (docs/RENAME.md §3.6). `ailx` is still read
+  // because the exam service picks up the renamed `@ailx/report` on its own
+  // deploy cadence, and a page that stopped reading the old key would answer
+  // "cannot be confirmed" for a real credential in the gap. Read both, emit
+  // one: the document builder writes `foray` only.
+  const facts = subject === null ? null : (obj(subject.foray) ?? obj(subject.ailx));
   const state = obj(doc.credentialStatus);
-  const playerType = ailx === null ? null : obj(ailx.playerType);
-  if (ailx === null || state === null || playerType === null) return null;
+  const playerType = facts === null ? null : obj(facts.playerType);
+  if (facts === null || state === null || playerType === null) return null;
 
   const statusId = str(state.id);
   const name = str(doc.name);
   const issuedAt = str(doc.validFrom);
-  const instrument = str(ailx.instrument);
-  const completedOn = str(ailx.completedOn);
+  const instrument = str(facts.instrument);
+  const completedOn = str(facts.completedOn);
   const typeCode = str(playerType.code);
   const typeName = str(playerType.name);
   if (statusId === null || name === null || issuedAt === null) return null;
@@ -97,11 +102,11 @@ export function credentialViewFrom(document: unknown): CredentialView | null {
     revokeReason: str(state.revokeReason),
     instrument,
     completedOn,
-    tracksAttempted: Array.isArray(ailx.tracksAttempted)
-      ? ailx.tracksAttempted.filter((t): t is string => typeof t === "string")
+    tracksAttempted: Array.isArray(facts.tracksAttempted)
+      ? facts.tracksAttempted.filter((t): t is string => typeof t === "string")
       : [],
     playerType: { code: typeCode, name: typeName },
-    artifactPath: artifactPathFrom(ailx.artifact, issuer === null ? null : str(issuer.id)),
+    artifactPath: artifactPathFrom(facts.artifact, issuer === null ? null : str(issuer.id)),
     documentUrl: statusId,
   };
 }
