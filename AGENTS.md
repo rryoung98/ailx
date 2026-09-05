@@ -1,5 +1,19 @@
 # AGENTS.md — Foray (resilience)
 
+This file is the index. It keeps the layout, the repository split, the
+commands and the core invariants; the detail lives with the directory that owns
+it, and root LINKS rather than duplicates.
+
+| file | what is in it |
+|---|---|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | branch and PR flow, the three gate job names, why there is no `type-check` script, local hooks |
+| [`apps/web/AGENTS.md`](apps/web/AGENTS.md) | the two build modes, `AILX_BACKEND=1`, never `next dev` during tests, bundle secrecy, Playwright and `AILX_E2E_API_BASE` |
+| [`packages/core/AGENTS.md`](packages/core/AGENTS.md) | `score()` purity, `runPure` and its blind spots, content addressing |
+| [`packages/contract/AGENTS.md`](packages/contract/AGENTS.md) | frozen URL spellings, `BROWSER_REQUEST_HEADERS` and CORS, no `node:` |
+| [`packages/content-tools/AGENTS.md`](packages/content-tools/AGENTS.md) | the demo snapshot, the public-tree test, the regenerate command, the audit digest |
+| [`services/openrouter-proxy/AGENTS.md`](services/openrouter-proxy/AGENTS.md) | why the demo proxy stays in the public repo, `AILX_ALLOWED_ORIGINS` |
+| [`FRONTEND.md`](FRONTEND.md) | module boundaries, security, clean-code, testing and migration rules |
+
 This monorepo contains Foray, the AI Literacy Examination. The spec is `Foray-Spec-2026.1.md`. The plan is `docs/PLAN.md`. Positioning is in `docs/POSITIONING.md`. The progression/streaks loop is in `docs/PROGRESSION.md`.
 
 ## Layout
@@ -19,7 +33,7 @@ browser called a route the deployed service did not have. Do not bring either ba
 - `instruments/demo-2026.1/` — the ONLY instrument in this repo. PUBLIC released-practice tier for the static demo: 20 T2 items whose keys/rationales are published on purpose, no score of record. Self-contained and REDACTED — `manifest.yaml` sets `redacted: true`, and the content-tools loader refuses the package if a rubric `description`, a `band_anchors` block or a `prompts/` directory ever appears. Regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1`
 - The OPERATIONAL tier (`instruments/2026.1`: 84 keyed T2 items, T1/T3/T4 judge prompts, rubric marking detail, the T1/T3/T4 `form.json` files) lives in the PRIVATE backend repo and must never be added here. `packages/content-tools/test/public-tree.test.ts` fails the build if it comes back
 - `instruments/characters/2026.1/` — the sixteen player-type characters (art direction, prompts, vetting ledger); assets ship in `apps/web/public/characters/`
-- `services/` — openrouter-proxy (the shared demo MODEL proxy; it holds no exam content and answers no exam route). TEN-62 moved the proxy INTO the exam service and put auth in front of it, and it STAYS HERE ANYWAY: every `/v1/model/*` route is mounted through `apiRoute`, so an anonymous caller gets 401 before a body is read, and the GitHub Pages export has no service and no identity to offer. Deleting it would leave the static demo with no way to call a model at all. See "The shared demo has no anonymous path" below
+- `services/` — openrouter-proxy (the shared demo MODEL proxy; it holds no exam content and answers no exam route). It stays here even though TEN-62 moved the proxy into the exam service, because the GitHub Pages export has no service and no identity to offer. See [`services/openrouter-proxy/AGENTS.md`](services/openrouter-proxy/AGENTS.md)
 - `infra/` — GCP infrastructure
 
 ## The repository split
@@ -66,11 +80,7 @@ commands and the invariants stay here.
 - `pnpm test` runs ONE vitest for the whole monorepo (`vitest-workspace.ts`). Its worker pool is capped at 4 forks because memory, not CPU, sets the ceiling. Raise it with `AILX_TEST_FORKS=8 pnpm test` on a big machine. `pnpm -r test` still works and runs the same tests. It starts a vitest per package, so it costs more RAM and more time.
 - Run `vitest run` inside a package to debug that package.
 - `pnpm test:reap` — kill vitest workers orphaned by an interrupted run (reparented to pid 1, each still holding its heap). The capped pool and the per-file PGlite close make this rare rather than routine.
-- `pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). This command is deliberately outside `pnpm test`. It boots the frontend but needs a RUNNING EXAM SERVICE. Set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). It has no default, on purpose. Guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
-- Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page". Also run `rm -rf apps/web/.next` between the builds. A build over the OTHER mode's leftover output failed twice on 2026-09-01. One failure reported a prerender "Cannot read properties of undefined (reading 'call')". The other reported a missing `next-font-manifest.json`. Neither error names the real cause.
-- A green `next build` is NOT a green deploy. Vercel traces server files AFTER the build prints "Done", and that step is where every Production deployment failed until 2026-09-03 (docs/DEPLOY.md §6.1). Prove a deploy locally with `cd apps/web && rm -rf .next .vercel/output && AILX_BACKEND=1 npx vercel build --prod`. `.github/workflows/deploy-status.yml` fails a run when Vercel reports a failed Production deployment, so a dead staging site is visible without anyone looking.
-- Never run `next dev` in `apps/web` while anyone is testing. It leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps that exact directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
-- The e2e suite always boots its own server. `AILX_E2E_REUSE_SERVER=1` reuses whatever is already on the port for a fast inner loop — and then YOU own what is on that port. It is opt-in because a next-server orphaned by a dead agent once held 3210 for a day and the suite silently tested it, green.
+- The two build modes, `next dev`, bundle secrecy and Playwright are in [`apps/web/AGENTS.md`](apps/web/AGENTS.md).
 
 ## Credential and diagnosis
 - `docs/CREDENTIAL.md` — what a Foray credential asserts (a completed sitting,
@@ -189,43 +199,13 @@ commands and the invariants stay here.
 
 ## Frontend environment (`apps/web`)
 
-This app is a frontend. The exam service owns the database, the auth mode, the
-snapshot store, the reviewer allowlist, the connection pool and the GitHub export.
-See the PRIVATE repo's README §3. If you want to set `DATABASE_URL` here, run
-`services/api` instead.
+Every variable this app reads, what happens when each is unset, and the two
+build modes: [`apps/web/AGENTS.md`](apps/web/AGENTS.md). The app is a frontend —
+the exam service owns the database, the auth mode, the snapshot store, the
+reviewer allowlist, the connection pool and the GitHub export. There is
+deliberately no `CLERK_SECRET_KEY` and no `DATABASE_URL` here.
 
-- `AILX_BACKEND=1` — add `page.api.tsx` / `route.api.ts` to `pageExtensions`, i.e. build the
-  seven database-reading PAGES and the one Open Graph card route. Unset = the static Pages
-  export, which has none of them. It no longer compiles any API route, because there are none.
-- `NEXT_PUBLIC_AILX_API_BASE` — the exam service's absolute origin (Cloud Run). Read in exactly
-  ONE place, `apps/web/lib/mode.ts` (`apiBase()`, `siteApiRoot()`, `siteHref()`); a test fails
-  the build if a second module reads it. Unset, the app has no backend and the pages that need
-  one say so honestly. Cross-origin the `ailx_dev_user` cookie is NOT sent — identity rides the
-  header from `apps/web/lib/data/authHeaders.ts`. See docs/ARCHITECTURE.md §10.1.
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — Clerk's publishable key. Publishable BY DESIGN (it is
-  baked into the client bundle) but it still goes in env, not the tree: see `apps/web/.env.example`.
-  Read in exactly ONE place, `apps/web/lib/mode.ts` (`isClerkEnabled()`), and by Clerk's own SDK.
-  Mounting needs BOTH this key and `AILX_BACKEND=1`, so a hosted deploy without it keeps working on
-  the asserted dev identity — every page that only READS an identity does — and the static export
-  never mounts a provider at all: `next.config.mjs` even resolves `@clerk/nextjs` to a stub there,
-  so the Pages bundle carries no auth SDK. That sentence used to stop one clause too early. Nothing
-  removes the ROUTES, so `/sign-in` and `/sign-up` compile whenever `AILX_BACKEND=1`, and they
-  render Clerk components that call `useSession` and throw without a provider: a keyless deploy
-  worked everywhere except the two screens that exist to serve the missing thing (TEN-155). So both
-  routes now 404 unless `isClerkEnabled()`, the nav link is gated on the same predicate, and
-  `test/clerkMount.test.tsx` pins the pair — a deploy that forgets the key must degrade, never
-  crash.
-  There is deliberately no `CLERK_SECRET_KEY` here: this app verifies no token. It sends the JWT to
-  the exam service, which is the only thing that checks it. See docs/ARCHITECTURE.md §10.2.
-- `NEXT_PUBLIC_BASE_PATH` — GitHub Pages subpath prefix.
-- `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`. Used by
-  `generateMetadata` for absolute Open Graph URLs. Must be a bare absolute http(s) origin.
-- `AILX_TRUST_PROXY=1` — fall back to `x-forwarded-proto`/`x-forwarded-host` when
-  `AILX_PUBLIC_ORIGIN` is unset. Only when a trusted proxy always overwrites those headers;
-  otherwise they are attacker-controlled (host-header injection).
-- `AILX_E2E_API_BASE` — Playwright only: the exam service the suite drives. No default, and no
-  staging (every spec appends rows). `AILX_E2E_BASE_URL` / `AILX_E2E_PORT` pick the frontend
-  under test.
+Workspace-level variables and where the rest live: [`.env.example`](.env.example).
 
 ## The model gateway, and why the browser holds no key
 
@@ -252,28 +232,16 @@ one: `ailx:openrouter-key` is gone, and no request builder in
 
 ### The shared demo has no anonymous path
 
-Checked against the deployed service, not assumed: all six `/v1/model/*` routes
-go through `apiRoute`, which refuses an unauthenticated caller with 401 before
-reading a body, and `handleChatCompletion` needs a `ProxyContext` that cannot
-exist without an `authRef`. There is no anonymous cap and no anonymous route.
-So the GitHub Pages export — no service, no identity — keeps
-`services/openrouter-proxy`, and it has NO personal-key affordance at all: no
-sign-in, no paste box. The static tier issues no score of record, so it does
-not need a credential.
-
-## Shared-demo proxy environment (`services/openrouter-proxy`)
-- `AILX_ALLOWED_ORIGINS` — optional comma/whitespace separated list of extra allowed CORS
-  origins, e.g. a staging or ngrok deployment. Each entry must be a bare absolute http(s)
-  origin with no path or trailing slash; the prod and localhost origins stay allowed and
-  `*` / `null` are never accepted. Without it, only GitHub Pages and localhost can call the
-  shared demo model.
+All six `/v1/model/*` routes need an identity, so the GitHub Pages export —
+no service, no identity — keeps `services/openrouter-proxy`. Why, and its
+`AILX_ALLOWED_ORIGINS`: [`services/openrouter-proxy/AGENTS.md`](services/openrouter-proxy/AGENTS.md).
 
 ## Core invariants (never violate)
 - Any score ever issued is byte-identically recomputable from stored inputs. **A judge's output IS a stored input** — an LLM judge is not reproducible even at temperature 0, so T3/T4 judging is an evidence-COLLECTION step whose result is persisted and content-addressed (`judgmentId`, `packages/core`), and `score()` replays it. Say both halves: **re-scoring is reproducible, re-judging is not.** Never put a model call on the recompute path.
 - That invariant is ENFORCED, not asserted, and it was asserted-only until 2026-09-01. Every `track_scored` entry carries `judgmentIds` (the claimed content address of each stored row) and `scoredBy`, and `append()` refuses a score whose evidence is missing, mutated, unordered or duplicated (`packages/session/src/machine.ts`, `assertJudgmentsAttested`); `loadAttemptValidated` re-checks a stored log and truncates a tampered one. Stored rows go into ONE canonical total order and every aggregation over them is order-invariant by construction (`packages/core/src/judgments.ts`), because a store read without `ORDER BY` used to change a T3 score by a rounding step. `replayTrackScore` (`apps/web/lib/instrument/registry.ts`) is the auditor's recompute in production code, shown per track on the report. **A score the browser did not issue is marked `scoredBy: "server"` and claims no local replay** — the exam service holds the evidence and the key, and saying so is the narrow truth.
-- `score()` is pure — no I/O, clock, or randomness. `runPure` (`packages/core/src/purity.ts`) enforces this in CI by TRAPPING GLOBALS: clock, randomness, network, deferred scheduling, a promise return and a newly created global all throw. It is not a sandbox and does not claim to be — it cannot see a reference captured before the call, a `node:fs` imported at module load, or a `process.env` read. The blind spots are listed in that module and each one has a test asserting the harness stays quiet, so the list cannot rot. Byte-identical replay is verified ON THE PINNED RUNTIME; cross-runtime-version identity is NOT proven (no runtime version is stored in provenance, and unicode case folding moves with ICU).
+- `score()` is pure — no I/O, clock, or randomness. `runPure` (`packages/core/src/purity.ts`) enforces it in CI by trapping globals, and it is a trap, not a sandbox: the blind spots and the pinned-runtime caveat are in [`packages/core/AGENTS.md`](packages/core/AGENTS.md).
 - Item banks are content-addressed. Edits create new items, never mutations.
-- The audit digest content-addresses `score()` SOURCE at build time (`instruments/demo-2026.1/snapshot.json` `scorers[]`); regenerate with `pnpm --filter @ailx/content-tools run snapshot:demo-2026.1` (build first — the CLI runs from `dist/`). The digests are tier-independent — they hash `score()` source, which is the same in both repos. **What it covers, plainly:** every file in the track's `score()` import closure BY ITS BYTES, and — since 2026-09-01 — the `@ailx/core` modules that closure actually imports, also by their bytes, recorded under a package-qualified path (`@ailx/core/src/rounding.ts`). So editing the score allocation, the canonical judgment order, the order-invariant mean/median or `round3` moves every affected track's digest with NO version bump. What it still does not cover: a REGISTRY dependency (pinned at `name@range`), core modules no scorer imports (`zip.ts`, `ui.ts`, `purity.ts` are deliberately out), and the toolchain — TypeScript, the runtime and ICU are not in the hash. Bump `packages/core/package.json` when core's public behaviour changes, but the digest no longer DEPENDS on you remembering. See `packages/content-tools/src/scorers.ts`.
+- The audit digest content-addresses `score()` SOURCE at build time (`instruments/demo-2026.1/snapshot.json` `scorers[]`). What it covers, what it does not, and the regenerate command: [`packages/content-tools/AGENTS.md`](packages/content-tools/AGENTS.md).
 - `responses` and `transcripts` are append-only; re-scores are inserts linked by `superseded_by`.
 
 ## Code quality and engineering philosophy
