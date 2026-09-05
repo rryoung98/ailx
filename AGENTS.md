@@ -80,6 +80,16 @@ handler requires a decision in front of a reviewer.
   why no stored row is rewritten, and what breaks if the rename stops
   half-way. Nothing is renamed. Parent issue TEN-134.
 
+## What the product is
+- `docs/SHAPE.md` — which of the three costumes (free daily game, scored sitting,
+  credential) is the product and which are surfaces: the daily is the product, the
+  sitting is the instrument behind it, and the credential is a bet on a gate that does
+  not exist. Carries the twelve-line "never traded for engagement" list a future
+  decision gets checked against, the finding that 145 of the instrument's 375 points are
+  unimplemented on a run nobody can start (TEN-149), the evidence that no payer has been
+  approached, and a nine-step sequence marking every step that needs the founder rather
+  than an engineer.
+
 ## Comparative judgement (T1)
 - `docs/COMPARATIVE-JUDGEMENT.md` — what T1's pairwise judging costs at N = 100 to 10,000,
   which quantity is flat in N and which is not, who judges and what that costs in bias, and
