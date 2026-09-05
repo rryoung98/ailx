@@ -20,6 +20,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ConnectPanel, connectedCopy } from "../features/exam/ConnectPanel";
 import { resetClaimedCallbacks } from "../lib/data/modelGateway";
+import { publishIdentity, resetIdentity } from "../lib/auth/identityState";
 import { QueryProvider } from "../lib/QueryProvider";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -123,6 +124,7 @@ function setInput(aria: string, value: string) {
 beforeEach(() => {
   window.localStorage.clear();
   resetClaimedCallbacks();
+  resetIdentity();
   calls = [];
   replies = {};
   navigated = null;
@@ -518,5 +520,68 @@ describe("defects a codex review found, pinned so they cannot come back", () => 
     await mount();
     expect(host.textContent).toContain("blocked local storage");
     Object.defineProperty(window, "localStorage", { configurable: true, value: shim });
+  });
+});
+
+/**
+ * Reproduced on staging, signed in: the panel's status GET raced the Clerk
+ * bridge's own effect, went out with no `Authorization` header, was refused
+ * 401, and told a SIGNED-IN candidate the service did not know who they were.
+ * It cleared only when the tab was refocused, and until then the start gate
+ * stayed shut on a candidate who HAD connected a key.
+ */
+describe("the hosted build waits for an identity before it asks", () => {
+  /** A build that really does mount Clerk, so `pending` is a state it can be in. */
+  beforeEach(() => {
+    setHosted(true);
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    replies = {
+      "/model/key": { status: 200, body: { connected: true, provider: "openrouter", fingerprint: "0f0f0f0f0f0f" } },
+    };
+  });
+
+  it("asks nothing while the identity is PENDING, so nobody is told they are a stranger", async () => {
+    // What the service says to a caller with no header yet.
+    replies["/model/key"] = { status: 401, body: { error: { code: "unauthorized" } } };
+    await mount();
+    expect(calls.filter((c) => c.url.endsWith("/model/key"))).toHaveLength(0);
+    expect(host.textContent).not.toContain("does not know who you are");
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("claims no callback code while PENDING: a code spent unauthenticated is gone", async () => {
+    land("?code=c-1&state=st-1");
+    await mount();
+    expect(calls).toEqual([]);
+    expect(window.location.search).toContain("code=c-1");
+  });
+
+  it("PENDING then SIGNED-IN reads the status EXACTLY once, and shows what it holds", async () => {
+    await mount();
+    // Nothing yet: the read that used to happen here is the 401 the candidate
+    // was shown. The transition below is what pays for it.
+    expect(calls).toEqual([]);
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    expect(calls.filter((c) => c.url.endsWith("/model/key"))).toHaveLength(1);
+    expect(host.textContent).toContain("0f0f0f0f0f0f");
+    expect(window.localStorage.getItem(ENDPOINT_SLOT)).toBe("https://exam.example/v1/model");
+  });
+
+  it("a RESOLVED anonymous visitor is still told to sign in — pending is not anonymous", async () => {
+    replies["/model/key"] = { status: 401, body: { error: { code: "unauthorized" } } };
+    await mount();
+    await act(async () => {
+      publishIdentity({ status: "anonymous", userId: null });
+    });
+    expect(calls.filter((c) => c.url.endsWith("/model/key"))).toHaveLength(1);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("does not know who you are");
+  });
+
+  it("a build with NO Clerk never waits: the static export and the dev id ask immediately", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    await mount();
+    expect(calls.filter((c) => c.url.endsWith("/model/key"))).toHaveLength(1);
   });
 });
