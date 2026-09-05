@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiPath } from "@ailx/contract";
 import type { TrackId } from "@ailx/session";
+import { useIdentity } from "../../lib/auth/identityState";
 import { serviceFetch } from "../../lib/data/serviceFetch";
 import { isServerMode } from "../../lib/mode";
 import {
@@ -63,9 +64,17 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
   const wasPending = useRef<Set<TrackId>>(new Set());
   const serverMode = isServerMode();
   const live = serverMode && attemptId !== null;
+  /**
+   * The one `serviceFetch` outside `useService`, so it needs the same guard:
+   * a read fired before `ClerkTokenBridge` registers carries no token, the
+   * service refuses it, and this hook STOPS on a 401 because a 401 "will not
+   * fix itself on a retry". `reading` stays true meanwhile, so the page says
+   * it is still reading rather than claiming there is nothing of record.
+   */
+  const identityStatus = useIdentity().status;
 
   useEffect(() => {
-    if (!live) return;
+    if (!live || identityStatus === "pending") return;
     let cancelled = false;
     let timer = 0;
     const startedAt = Date.now();
@@ -118,7 +127,7 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [attemptId, round, live]);
+  }, [attemptId, round, live, identityStatus]);
 
   const checkAgain = useCallback(() => {
     setBounded(false);

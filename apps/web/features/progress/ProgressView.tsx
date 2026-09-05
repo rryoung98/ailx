@@ -32,7 +32,9 @@
  *    403 can only come from a provider that actually VERIFIES, so it is the
  *    honest signal that accounts exist; `hasAuthTokenSource()` is the same
  *    question asked on the happy path, where a mounted provider means the
- *    "forget this browser" control would be meaningless.
+ *    "forget this browser" control would be meaningless. It is only read
+ *    after `useService` has an identity, which is what stops it answering
+ *    "no accounts" for somebody who is signed in.
  *
  * Charts are hand-rolled SVG (FRONTEND.md §7: no chart library).
  */
@@ -338,6 +340,13 @@ export function ProgressView() {
   // auth there are no accounts and no sign-in to send anyone to, and identity
   // is just this browser: telling a visitor to "sign in" was advice they
   // could not follow, on the one page the practice loop points at.
+  //
+  // A module global, and safe to read HERE because of the order `useService`
+  // now keeps: nothing is asked until the identity has resolved, and the
+  // Clerk bridge registers the source in the same effect that resolves it. It
+  // used to be read in the first render, before the bridge had run, so a
+  // signed-in candidate got the copy written for a deployment with no
+  // accounts at all.
   const accounts = hasAuthTokenSource();
   if (result.state === "missing") {
     return (

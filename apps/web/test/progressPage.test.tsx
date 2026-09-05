@@ -15,7 +15,8 @@
  * and must say something honest when the read fails outright.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createElement } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import {
   CLAIMED_DAYS_BASIS,
   CLAIM_PROMISE,
@@ -28,8 +29,10 @@ import {
 import type { TrackRawScores } from "@ailx/session";
 import { DEV_USER_HEADER } from "@ailx/contract";
 import {
+  flushAsync,
   installMemoryStorage,
   renderClient,
+  withQueryClient,
   renderClientPending,
   stubFailingFetch,
   stubHangingFetch,
@@ -37,6 +40,7 @@ import {
   type StubbedCall,
 } from "./helpers/clientPage";
 import { setAuthTokenSource } from "../lib/data/authHeaders";
+import { publishIdentity, resetIdentity } from "../lib/auth/identityState";
 import { ProgressView } from "../features/progress/ProgressView";
 import { metadata } from "../app/progress/page.api";
 
@@ -341,5 +345,59 @@ describe("claimed practice days", () => {
     status = 401;
     const html = await markup();
     expect(html).toContain(CLAIM_PROMISE);
+  });
+});
+
+/**
+ * Reproduced on staging: signed in with Clerk, with a participant row and two
+ * practice sessions in the store, this page rendered "We do not know who you
+ * are" and STAYED there — through 8 s, a reload and a focus event. The read
+ * went out before `ClerkTokenBridge` registered the token source, so it was
+ * made as a freshly MINTED dev id and answered for that stranger.
+ */
+describe("a signed-in candidate is never told they are a stranger", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    // A browser that has never been given a dev id, which is what a
+    // Clerk-only candidate is. Minting one here is half the defect.
+    window.localStorage.removeItem("foray:dev-user");
+    resetIdentity();
+  });
+  afterEach(() => {
+    resetIdentity();
+    vi.unstubAllEnvs();
+  });
+
+  it("reads nothing while the identity is PENDING, and mints no dev id", async () => {
+    status = 401;
+    const html = await renderClient(createElement(ProgressView));
+    expect(calls).toHaveLength(0);
+    expect(window.localStorage.getItem("foray:dev-user")).toBeNull();
+    expect(html).not.toContain("We do not know who you are");
+    expect(html).toContain("Loading");
+  });
+
+  it("PENDING then SIGNED-IN reads once with the Bearer token and shows the history", async () => {
+    setAuthTokenSource(async () => "jwt-123");
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => {
+      root.render(withQueryClient(createElement(ProgressView)));
+    });
+    await flushAsync();
+    expect(calls).toHaveLength(0);
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    await flushAsync();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].headers.authorization).toBe("Bearer jwt-123");
+    expect(calls[0].headers[DEV_USER_HEADER]).toBeUndefined();
+    expect(host.innerHTML).not.toContain("We do not know who you are");
+    expect(host.innerHTML).toContain("day streak");
+    await act(async () => root.unmount());
+    host.remove();
   });
 });
