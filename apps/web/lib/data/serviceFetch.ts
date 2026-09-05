@@ -34,6 +34,7 @@ import { parseApiError, type ApiPath, type ResponseSchema } from "@ailx/contract
 import type { StorageLike } from "@ailx/session";
 import { serviceHeaders, traceHeaders } from "./traceparent";
 import type { IdentityMode } from "./authHeaders";
+import { useIdentity } from "../auth/identityState";
 import { apiBase } from "../mode";
 
 /**
@@ -243,17 +244,30 @@ export function firstValues(params: URLSearchParams | null | undefined): Record<
  *
  * `path` may be null when there is nothing to ask for yet; the state then
  * stays `loading` and no request is made.
+ *
+ * IT ALSO WAITS FOR AN IDENTITY, and that is a seam rather than a page's
+ * problem. `ClerkTokenBridge` registers the token source in an effect, so a
+ * read fired on mount ran BEFORE it: `authHeaders()` saw no source, an
+ * `identity: "required"` call MINTED a dev id for somebody who has a real
+ * account, and the service answered for that stranger. TanStack cached the
+ * answer and nothing re-asked, so /progress told a signed-in candidate "We do
+ * not know who you are" and stayed that way through a reload. Waiting here
+ * fixes every call site at once — the alternative was the same guard copied
+ * into seven pages. Builds with no Clerk are never `pending`
+ * (`lib/auth/identityState.ts` resolves them by construction), so the static
+ * export asks exactly as promptly as it did before.
  */
 export function useService<T>(path: ApiPath | null, opts: ServiceOptions<T> = {}): ServiceState<T> {
   const identity = opts.identity ?? "anonymous";
   const { schema } = opts;
+  const identityStatus = useIdentity().status;
   const query = useQuery({
     // The key says HOW the read was identified, not who it was — the id is
     // resolved inside `authHeaders()`, one layer down. `QueryProvider` clears
     // the cache when the account changes, which is what stops one person's
     // rows being served to the next.
     queryKey: ["service", path, identity],
-    enabled: path !== null,
+    enabled: path !== null && identityStatus !== "pending",
     queryFn: ({ signal }) => serviceFetch<T>(path!, { identity, signal, schema }),
   });
   // `serviceFetch` resolves every EXPECTED failure into a state and throws

@@ -25,6 +25,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { readMigratedItem, removeMigratedItem } from "@ailx/core";
 import { useCallback, useEffect, useState } from "react";
+import { useIdentity } from "../../lib/auth/identityState";
 import {
   clearLlmConnection,
   hasModelEndpoint,
@@ -97,6 +98,15 @@ export const STATIC_NO_KEY_COPY =
 
 export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const hosted = modelGatewayAvailable();
+  /**
+   * WHO the browser is, as something this panel re-renders on.
+   *
+   * Read here rather than asked of `authHeaders` at fetch time, because the
+   * question is not "what header do I send" but "is there an answer yet".
+   * Builds with no Clerk are never `pending` (identityState resolves them by
+   * construction), so the static export is unchanged by this.
+   */
+  const identityStatus = useIdentity().status;
   const [baseUrl, setBaseUrl] = useState("");
   const [status, setStatus] = useState<KeyStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -196,9 +206,17 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
    * cheapest honest answer to a sign-out: the tab that signed out is not
    * necessarily this one, and a stale "Connected" here would open the Start
    * gate on a sitting whose model calls all 401.
+   *
+   * It also waits for an IDENTITY, which is the same race one layer up. The
+   * Clerk bridge registers the token source in its own effect, so a mount
+   * that asked the service straight away sent no `Authorization` header, was
+   * refused 401, and told a signed-in candidate the service does not know who
+   * they are — until a focus event happened to re-read. `pending` is not
+   * "anonymous": nothing is claimed and nothing is asked until Clerk has
+   * answered, and this effect re-runs with one read when it does.
    */
   useEffect(() => {
-    if (!hosted) return;
+    if (!hosted || identityStatus === "pending") return;
     const claimed = claimModelCallback();
     if (claimed !== null) {
       claim(claimed);
@@ -218,7 +236,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       window.removeEventListener("focus", read);
       window.removeEventListener("storage", read);
     };
-  }, [hosted, claim, applyResult]);
+  }, [hosted, identityStatus, claim, applyResult]);
 
   const updateBaseUrl = (value: string) => {
     setBaseUrl(value);

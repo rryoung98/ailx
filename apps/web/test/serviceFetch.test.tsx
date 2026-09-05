@@ -8,7 +8,8 @@
  * from "not you", and a thrown fetch becomes a sentence rather than a blank.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createElement } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { apiPath, DEV_USER_HEADER, type ApiPath } from "@ailx/contract";
 import {
   SERVICE_ERROR_COPY,
@@ -20,7 +21,14 @@ import {
   type ServiceState,
 } from "../lib/data/serviceFetch";
 import { setAuthTokenSource } from "../lib/data/authHeaders";
-import { installMemoryStorage, renderClient, renderClientPending } from "./helpers/clientPage";
+import { publishIdentity, resetIdentity } from "../lib/auth/identityState";
+import {
+  flushAsync,
+  installMemoryStorage,
+  renderClient,
+  renderClientPending,
+  withQueryClient,
+} from "./helpers/clientPage";
 
 installMemoryStorage();
 
@@ -280,5 +288,89 @@ describe("useService", () => {
     const html = await renderClient(createElement(Probe, { path: null }));
     expect(html).toContain('"loading"');
     expect(seen).toHaveLength(0);
+  });
+});
+
+/**
+ * The staging defect this guard exists for: /progress rendered "We do not
+ * know who you are" to a signed-in candidate, and STAYED there through a
+ * reload. `ClerkTokenBridge` registers the token source in an effect, so a
+ * read fired on mount found none, `identity: "required"` MINTED a dev id, and
+ * the service answered for that stranger — which TanStack then cached.
+ */
+describe("useService waits for an identity", () => {
+  function Probe({ path }: { path: ApiPath | null }) {
+    const state: ServiceState<{ ok: boolean }> = useService(path, { identity: "required" });
+    return createElement("p", null, JSON.stringify(state));
+  }
+
+  /** Mount and KEEP mounted, so an identity can resolve under a live tree. */
+  async function mountProbe(path: ApiPath): Promise<{ html: () => string; unmount: () => void }> {
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => {
+      root.render(withQueryClient(createElement(Probe, { path })));
+    });
+    await flushAsync();
+    return {
+      html: () => host.innerHTML,
+      unmount: () => {
+        act(() => root.unmount());
+        host.remove();
+      },
+    };
+  }
+
+  /** A build that really mounts Clerk, which is the only one that can be pending. */
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    window.localStorage.removeItem("foray:dev-user");
+    resetIdentity();
+    stub(200, { ok: true });
+  });
+  afterEach(() => resetIdentity());
+
+  it("asks NOTHING while the identity is pending, and mints no dev id for somebody who has an account", async () => {
+    const mounted = await mountProbe(apiPath("progress"));
+    expect(seen).toHaveLength(0);
+    expect(window.localStorage.getItem("foray:dev-user")).toBeNull();
+    expect(mounted.html()).toContain('"loading"');
+    mounted.unmount();
+  });
+
+  it("PENDING then SIGNED-IN asks once, carrying the Bearer token", async () => {
+    setAuthTokenSource(async () => "jwt-7");
+    const mounted = await mountProbe(apiPath("progress"));
+    expect(seen).toHaveLength(0);
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    await flushAsync();
+    expect(seen).toHaveLength(1);
+    expect(seen[0].headers.authorization).toBe("Bearer jwt-7");
+    expect(seen[0].headers[DEV_USER_HEADER]).toBeUndefined();
+    expect(mounted.html()).toContain('"ready"');
+    mounted.unmount();
+  });
+
+  it("a RESOLVED anonymous visitor is asked for as before — pending is not anonymous", async () => {
+    const mounted = await mountProbe(apiPath("progress"));
+    await act(async () => {
+      publishIdentity({ status: "anonymous", userId: null });
+    });
+    await flushAsync();
+    expect(seen).toHaveLength(1);
+    expect(seen[0].headers[DEV_USER_HEADER]).toBeTruthy();
+    mounted.unmount();
+  });
+
+  it("a build with NO Clerk never waits: the static export asks as promptly as before", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    const mounted = await mountProbe(apiPath("progress"));
+    expect(seen).toHaveLength(1);
+    mounted.unmount();
   });
 });

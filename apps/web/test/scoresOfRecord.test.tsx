@@ -17,6 +17,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { ScoresOfRecordView } from "../features/report/ScoresOfRecordPanel";
 import { useScoresOfRecord } from "../features/report/useScoresOfRecord";
 import { installMemoryStorage } from "./helpers/clientPage";
+import { setAuthTokenSource } from "../lib/data/authHeaders";
+import { publishIdentity, resetIdentity } from "../lib/auth/identityState";
 import {
   BOUND_COPY,
   NO_SCORES_COPY,
@@ -379,5 +381,47 @@ describe("what the wire is allowed to say", () => {
     ];
     expect(new Set(copies).size).toBe(copies.length);
     for (const c of copies) expect(c.length).toBeGreaterThan(20);
+  });
+});
+
+/**
+ * The same identity race as /progress, on the report's own read: this hook
+ * STOPS on a 401 ("will not fix itself on a retry"), so a read fired before
+ * `ClerkTokenBridge` registers would leave a signed-in candidate looking at a
+ * report that never shows the scores the service issued.
+ */
+describe("it waits for an identity before the first read", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    window.localStorage.removeItem("foray:dev-user");
+    resetIdentity();
+  });
+  afterEach(() => resetIdentity());
+
+  it("reads nothing while PENDING, mints no dev id, and still says it is reading", async () => {
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount();
+    expect(calls).toHaveLength(0);
+    expect(window.localStorage.getItem("foray:dev-user")).toBeNull();
+    expect(m.html()).not.toContain(NO_SCORES_COPY);
+    await m.unmount();
+  });
+
+  it("PENDING then SIGNED-IN reads exactly once, carrying the Bearer token", async () => {
+    setAuthTokenSource(async () => "jwt-9");
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount();
+    expect(calls).toHaveLength(0);
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].headers.authorization).toBe("Bearer jwt-9");
+    expect(calls[0].headers["x-ailx-dev-user"]).toBeUndefined();
+    setAuthTokenSource(null);
+    await m.unmount();
   });
 });
