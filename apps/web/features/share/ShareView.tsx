@@ -27,6 +27,7 @@ import { FunnelStep } from "../../components/FunnelStep";
 import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { ShareTargets } from "../../components/ShareTargets";
+import { ShareViewCount } from "../../components/ShareViewCount";
 import { TrackRadar } from "../../components/TrackRadar";
 import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
 
@@ -73,6 +74,11 @@ export function ShareView() {
           resolved. A 404 or an outage above is not a click-through. No token
           travels with it, so this counts opens, never whose link. */}
       <FunnelStep step="share_opened" />
+      {/* And the per-link count, which is the other half of that sentence:
+          the funnel cannot say WHICH link travelled, because it carries no
+          token by design, so `share_views` does — anonymously, once per
+          browsing session, and only because the card above resolved. */}
+      <ShareViewCount token={token!} />
       <div className="container" style={{ maxWidth: 820 }}>
         <section className="card ptype-card" style={{ marginBottom: "1.6rem" }}>
           <p className="eyebrow" style={{ margin: 0 }}>{p.instrument.toUpperCase()} · PLAYER TYPE</p>

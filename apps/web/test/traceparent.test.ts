@@ -168,10 +168,19 @@ describe("no call site opts out", () => {
   it("every module that builds a service URL sends a trace with it", () => {
     // The stronger half of the same claim, from the other direction: find the
     // modules that spell `apiBase()` into a request, and require each one to
-    // reach the trace seam. `funnel.ts` is the ONE deliberate exception —
-    // it posts with `credentials: "omit"` and no identity header, and a
-    // one-span trace with nothing else in it buys nothing (docs/KPI.md).
-    const TRACE_EXEMPT = ["lib/data/funnel.ts", "lib/mode.ts", "lib/server/page.ts"];
+    // reach the trace seam. TWO measurement emitters are deliberate
+    // exceptions, for one reason: both post with `credentials: "omit"` and no
+    // identity header, read no response, and a one-span trace with nothing
+    // else in it buys nothing (docs/KPI.md). `funnel.ts` is the funnel sink;
+    // `shareViews.ts` is the per-link view counter (TEN-146), where a custom
+    // header would also cost a CORS preflight per card on a request that is
+    // otherwise simple — for a span nobody correlates.
+    const TRACE_EXEMPT = [
+      "lib/data/funnel.ts",
+      "lib/data/shareViews.ts",
+      "lib/mode.ts",
+      "lib/server/page.ts",
+    ];
     const callers = sourceFiles(APP_ROOT)
       .filter((f) => !f.includes("/test/"))
       .filter((f) => !TRACE_EXEMPT.some((exempt) => f.endsWith(exempt)))
