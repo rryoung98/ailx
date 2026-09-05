@@ -303,6 +303,27 @@ describe("shared layout tokens and shell rules", () => {
     expect(css).toContain('.nav-links[data-scroll-end="1"] { mask-image: none; }');
   });
 
+  it("draws the skip link's focus ring fully on screen", () => {
+    // `top: 0` with a 2px OUTSET ring put the ring's top edge above y=0
+    // (measured rect top: -17), so the first thing a keyboard user saw was a
+    // focus ring open on one side.
+    expect(css).toMatch(/\.skip-link:focus-visible \{[^}]*top: 3px;[^}]*outline-offset: 2px;/);
+  });
+
+  it("caps the footer's measure so the smallest type is not the widest", () => {
+    // Measured on the deployed site: 108-135 characters per line from 1024px
+    // up, against ~70 for the prose above it.
+    expect(css).toContain(".site-footer p { max-width: 78ch; }");
+  });
+
+  it("gives text printed over the campus photograph its own backing", () => {
+    // Sampled from a screenshot: glyphs rgb(111,112,97) on rgb(160,168,130)
+    // = 2.02:1. The photograph pans, so no single text colour can fix it.
+    const at = css.indexOf(".campus-progress > span {");
+    expect(at).toBeGreaterThan(-1);
+    expect(css.slice(at, css.indexOf("}", at))).toContain("background: rgba(247, 244, 242, 0.92)");
+  });
+
   it("pushes the footer to the bottom of a short page", () => {
     expect(css).toMatch(/body \{[^}]*min-height: 100dvh/);
     expect(css).toMatch(/#main \{[^}]*flex: 1 0 auto/);

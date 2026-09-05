@@ -44,7 +44,11 @@
   background: var(--accent); color: #ffffff; font-weight: 700;
   padding: 0.6rem 1rem; border-radius: 0 0 8px 0; text-decoration: none;
 }
-.skip-link:focus-visible { left: 0; outline: 2px solid var(--fg); outline-offset: 2px; }
+/* `top: 0` plus a 2px OUTSET ring drew the ring's top edge above y=0, so
+   the first thing a keyboard user sees was a focus ring open on one side
+   (measured rect top: -17). The link drops far enough for the whole ring
+   to be on screen. */
+.skip-link:focus-visible { left: 0; top: 3px; outline: 2px solid var(--fg); outline-offset: 2px; }
 html { scroll-behavior: smooth; background: var(--bg); }
 html, body {
   margin: 0; padding: 0; color: var(--fg);
@@ -127,6 +131,11 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   border-top: 1px solid var(--border); margin-top: 5rem;
   padding: 2rem 0 3rem; color: var(--faint); font-size: 0.85rem;
 }
+/* The prose above is held to ~70 characters; the footer inherited the full
+   960px container and ran to 108-135 characters at 1024px and wider, which
+   made the smallest type on the page the hardest to read. Capped in `ch`,
+   so it tracks the font rather than a pixel guess. */
+.site-footer p { max-width: 78ch; }
 main.page { padding-top: 3rem; }
 
 /*
@@ -1190,10 +1199,17 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
     .campus-card-line { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.98rem; }
     .campus-card-viz { border-radius: 12px; overflow: hidden; background: rgba(247, 244, 242, 0.6); }
     .campus-card-viz .track-scene { aspect-ratio: 16 / 10; }
+    /* Printed straight onto the aerial photograph, this measured 2.02:1
+       against the foliage — and the photograph pans, so no single colour
+       could fix it. Text over an image carries its own backing. */
     .campus-progress {
       position: absolute; z-index: 2; inset-inline: 0; bottom: 4.4rem; /* clear of the pill CTA */
-      margin: 0; text-align: center; font-size: 0.75rem; color: var(--muted);
+      margin: 0; text-align: center; font-size: 0.75rem; color: var(--fg);
       pointer-events: none;
+    }
+    .campus-progress > span {
+      display: inline-block; background: rgba(247, 244, 242, 0.92);
+      border-radius: 999px; padding: 0.2rem 0.75rem;
     }
   }
 }
@@ -1479,6 +1495,27 @@ main .card {
   main button:not(.t1-tab):not(.t4-tab) {
     min-height: 44px;
   }
+}
+/* 5. A table's minimum width is the sum of its columns, and no wrapping can
+      make it smaller. /methodology's Bias/Magnitude/Mitigation table was
+      316px wide inside a 320px viewport with no scroll container, which
+      dragged a horizontal scrollbar onto the WHOLE document (scrollWidth
+      332) and cut words in half ("Randomised position withi"). Every table
+      in main carries its own scroller on a phone, so a wide table scrolls
+      and the page does not. */
+@media (max-width: 700px) {
+  main table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+/* 6. The pill CTA is `position: fixed`, so it takes no layout space and the
+      last screenful of a page ends underneath it — on /exam at 1440x900 the
+      T3 row read "T3 — t[pill]h them." Pages that show a pill reserve its
+      height, so no line comes to rest behind it. */
+body:has(.pill-cta) main.page {
+  padding-bottom: 6rem;
 }
 
 

@@ -65,6 +65,32 @@ describe("globals.css shared mobile containment layer", () => {
    * (minmax(10rem, 1fr) 2fr 6.5rem) gave a 320px viewport a 331px
    * scrollWidth, clipped the max score mid-number and left a 2px meter.
    */
+  /**
+   * /methodology's Bias/Magnitude/Mitigation table was 316px wide in a 320px
+   * viewport with no scroll container: the DOCUMENT scrolled sideways
+   * (scrollWidth 332) and words were cut in half ("Randomised position
+   * withi"). A table's min-content width is the sum of its columns, so no
+   * wrapping rule can save it — it needs its own scroller.
+   */
+  it("a wide table scrolls itself on a phone instead of scrolling the page", () => {
+    const at = css.indexOf("main table {");
+    expect(at).toBeGreaterThan(-1);
+    const rule = css.slice(at, css.indexOf("}", at));
+    expect(rule).toContain("display: block;");
+    expect(rule).toContain("overflow-x: auto;");
+    expect(css.slice(css.lastIndexOf("@media", at), at)).toContain("max-width: 700px");
+  });
+
+  /**
+   * The pill CTA is fixed, so it reserves no space and the end of a page came
+   * to rest under it: /exam at 1440x900 read "T3 — t[pill]h them." at scroll
+   * top, and / at 390x844 read "Scor[pill]ment." for "Scored like an
+   * instrument."
+   */
+  it("a page that shows the floating pill reserves room for it", () => {
+    expect(css).toMatch(/body:has\(\.pill-cta\) main\.page \{\s*padding-bottom: 6rem;/);
+  });
+
   it("every inline grid inside main collapses to one column on phones", () => {
     expect(css).toContain('main [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }');
     // Scoped to the phone query, not global.
