@@ -143,6 +143,25 @@ export interface Funnel {
   playStarted: (mode: FunnelPlayMode) => void;
   /** That round finished. Closes the open play, so the next one is new. */
   playCompleted: (mode: FunnelPlayMode, answered: number) => void;
+  /**
+   * Claim `key` for this browsing session: true the FIRST time only, false
+   * for every later call in the same session, in another mount of the same
+   * component, and after a reload.
+   *
+   * The session-scoped dedupe this file already runs on every step, offered
+   * to the ONE thing outside the funnel that must also happen once per
+   * session: the per-link share view counter (`lib/data/shareViews.ts`).
+   * That counter carries a token and so may never be a funnel event, but a
+   * second dedupe store would be a second thing to get wrong — the keys live
+   * in the same session record, in the same sessionStorage slot, under the
+   * same "a reload is not a new session" rule.
+   *
+   * False when this build has no backend, so a caller gated on it makes no
+   * request in the static export, and false when anything throws. Fail
+   * CLOSED: an uncounted view is a slightly low number, a double-counted one
+   * is a wrong number.
+   */
+  once: (key: string) => boolean;
   /** Send whatever is queued, now. */
   flush: () => void;
   /** Queue length. Tests read it; nothing else should. */
@@ -434,6 +453,20 @@ export function createFunnel(deps: FunnelDeps): Funnel {
         });
       } catch {
         // See `step`.
+      }
+    },
+
+    once(key) {
+      try {
+        const ctx = context();
+        if (ctx === null) return false;
+        if (ctx.sess.sent.includes(key)) return false;
+        ctx.sess.sent.push(key);
+        writeJson(sessionStore, FUNNEL_SESSION_KEY, ctx.sess);
+        return true;
+      } catch {
+        // See `step`. A claim that could not be recorded is not a claim.
+        return false;
       }
     },
 

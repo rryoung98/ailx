@@ -21,8 +21,9 @@
  * service does not mount yet and which says so on its own entry (TEN-133). Neither direction reads a response body, so `response` is a
  * name a reader can check, not a type a compiler enforces (docs/ADR-orpc.md
  * §8, TEN-43) — unless the route also has a schema in `API_RESPONSE_SCHEMAS`,
- * which the browser validates the body against (docs/ADR-zod-tanstack.md). `getAttempt` and `countShareView` have no caller in `apps/web`;
- * they stay listed because that second check is an equality.
+ * which the browser validates the body against (docs/ADR-zod-tanstack.md). `getAttempt` has no caller in `apps/web`; it stays
+ * listed because that second check is an equality. `countShareView` had none
+ * until TEN-146 and now has one (`apps/web/lib/data/shareViews.ts`).
  *
  * Order is not declared. `/practice/claim` must still be mounted before
  * `/practice/:id`, and nothing here says so.

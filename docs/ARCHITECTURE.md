@@ -603,6 +603,21 @@ would have counted every Open Graph crawler and link checker as a person opening
 is now `POST /v1/share/:token/views`: same capability rule, same 404 for a revoked or unknown token
 so a counter cannot confirm a link ever existed, and the read stays safe.
 
+The route was mounted with no caller for a while, so `share_views` stayed empty and every surface
+that reads it showed a zero it had no way to earn. The browser posts it now (TEN-146,
+`apps/web/lib/data/shareViews.ts`): anonymous — no identity header, no cookie, no body, so the
+request is CORS-simple — fired only from the RESOLVED branch of the share view, once per token per
+browsing session through the funnel's own dedupe, and silent in a build with no API base. It is
+fire and forget: the response is never read, a refusal is an uncounted view, and nothing is retried.
+
+**It does not duplicate `funnel_events.share_opened`, and the two will not agree.** The funnel
+carries no share token on purpose — a capability in a metrics table is a leak with a retention
+policy — so it can only say opens-over-creates in aggregate; `share_views` is per-link and is the
+only thing that can say WHICH link travelled. They also count different populations: the funnel
+step is deduped per browsing session across ALL cards, a browser with storage denied drops funnel
+rows it still counts here, and a `keepalive` POST refused by the anonymous limiter shows up in one
+and not the other. Each number is honest about its own question; neither is a check on the other.
+
 **The released-practice tier is now SHARED, with this repo as the source of truth.** It is public
 by design and both repos serve it, and for one afternoon they served two different versions of it:
 redacting the rubrics here moved all four `rubricVersion` values, while the private copy still

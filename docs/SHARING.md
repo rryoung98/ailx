@@ -219,6 +219,19 @@ That is enough to answer "does the loop work" and structurally incapable of
 tracking a person. Metadata fetches (scrapers) do not count a view; rendering
 the page for a human does.
 
+The row is written by `POST /v1/share/:token/views`, and the browser is what
+posts it (`apps/web/lib/data/shareViews.ts`, TEN-146) — from the resolved
+branch of the share view only, anonymously (no identity header, no cookie, no
+body), once per token per browsing session, fire and forget, and not at all in
+a build with no API base. A revoked token 404s here exactly as the read does,
+so the counter cannot confirm that a link ever existed.
+
+This is the only place a share token reaches a counter. `funnel_events`
+deliberately carries none (docs/KPI.md), so the funnel's `share_opened` says
+how many opens happened and this says which link they opened. The two numbers
+answer different questions and will differ; docs/ARCHITECTURE.md §10.3 says
+why that is expected rather than a bug.
+
 ## 7. The public gallery
 
 Shipped, additive on the state model above — no rewrite, no new share state.
