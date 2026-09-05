@@ -102,7 +102,7 @@ function StepVizReport() {
 function MiniScoreCard() {
   return (
     <span className="mini-card mini-card-score showcase-float-1">
-      <span className="mini-card-eyebrow mono">AILX 2026.1</span>
+      <span className="mini-card-eyebrow mono">Foray 2026.1</span>
       <span className="mini-card-band">your score</span>
       <span className="mini-card-num mono">?<span className="mini-card-denom">/{TOTAL_POINTS}</span></span>
     </span>
@@ -306,7 +306,7 @@ export default function Home() {
           and it stays one click away from the hero for anyone who came to
           certify. Nothing here claims a judged score or a norm: there is no
           judging pipeline yet, so a number implying one would be a lie. */}
-      <section className="container wyg" aria-label="How AILX works">
+      <section className="container wyg" aria-label="How Foray works">
         {/* The floating pill is fixed to the bottom of the viewport; without
             this it parks on top of these headings for the whole section. */}
         <ol className="wyg-steps" data-pill-clear="">
@@ -385,7 +385,7 @@ export default function Home() {
           cta="Run the checks"
           cards={<><MiniChecksCard /><MiniScoreCard /></>}
         />
-        <p className="showcase-caption faint small">This is the demo build of the AILX 2026.1 spec.</p>
+        <p className="showcase-caption faint small">This is the demo build of the Foray 2026.1 spec.</p>
       </section>
       <PillCTA href="/practice">Play a round</PillCTA>
     </main>

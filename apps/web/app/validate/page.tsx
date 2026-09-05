@@ -36,7 +36,7 @@ export default function ValidatePage() {
             <div className="page-hero-scrim" />
           </div>
           <div className="page-hero-copy">
-            <div className="eyebrow">Dogfood · validate AILX quickly</div>
+            <div className="eyebrow">Dogfood · validate Foray quickly</div>
             <h1>Live validation of the <span className="script-accent">scoring</span> path</h1>
             <Annotation>runs in your browser</Annotation>
           </div>

@@ -112,9 +112,9 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
         Put this sitting on your profile
       </h2>
       <p className="muted small" style={{ maxWidth: "62ch" }}>
-        A credential states that you sat and completed AILX on a date, on a stated instrument
-        version, and gives a link anyone can check. It carries no score: AILX has no judging
-        pipeline yet, so no AILX credential claims one. When scoring exists, this same credential
+        A credential states that you sat and completed Foray on a date, on a stated instrument
+        version, and gives a link anyone can check. It carries no score: Foray has no judging
+        pipeline yet, so no Foray credential claims one. When scoring exists, this same credential
         id gains the result, with no reissue.
       </p>
       <ul className="verify-list verify-limits small">

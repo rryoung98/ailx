@@ -22,7 +22,7 @@ import { DAILY_POOL } from "../../lib/instrument/demoItems";
  */
 
 export const metadata: Metadata = {
-  title: "AILX Daily — five calls, one minute",
+  title: "Foray Daily — five calls, one minute",
   description:
     "One set of cards a day, the same for everyone: photograph or AI-generated, person or model, "
     + "genuine message or not. Published practice material. No score, no account. "

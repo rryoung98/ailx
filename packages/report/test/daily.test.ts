@@ -408,7 +408,7 @@ describe("the share text carries no card and no claim", () => {
       expect(text).toContain("#37");
       expect(text).toContain("4 of 5");
     }
-    expect(dailyShareTitle(share)).toBe("AILX Daily #37");
+    expect(dailyShareTitle(share)).toBe("Foray Daily #37");
   });
 
   it("names a streak only once it is one, and never calls it a result", () => {

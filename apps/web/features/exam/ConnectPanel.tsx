@@ -79,7 +79,7 @@ export const SHARED_DEMO_BASE_URL = "https://ailx-shared-demo.vercel.app/api/v1"
  */
 export function connectedCopy(fingerprint: string | undefined): string {
   const print = fingerprint === undefined ? "" : ` · ${fingerprint}`;
-  return `● Connected${print} — this browser never received your key. The AILX service holds it against your account and only ever shows the fingerprint. Disconnect asks the service to delete it.`;
+  return `● Connected${print} — this browser never received your key. The Foray service holds it against your account and only ever shows the fingerprint. Disconnect asks the service to delete it.`;
 }
 
 /** What the static export is told instead of being offered a key box. */
@@ -92,7 +92,7 @@ export const STORAGE_BLOCKED_COPY =
   "This browser blocked local storage, so the run cannot see the connection this panel is showing. Allow storage for this site, or the Start button stays shut.";
 
 export const STATIC_NO_KEY_COPY =
-  "This is the static demo on GitHub Pages. No AILX service, so nothing to sign in to and no key to paste. Use the capped shared demo model, or point this build at a model on your own machine.";
+  "This is the static demo on GitHub Pages. No Foray service, so nothing to sign in to and no key to paste. Use the capped shared demo model, or point this build at a model on your own machine.";
 
 export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const hosted = modelGatewayAvailable();
@@ -178,7 +178,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
         setError(result.message);
       }
     },
-    onError: () => setError("The AILX service could not be reached to finish the connection."),
+    onError: () => setError("The Foray service could not be reached to finish the connection."),
   });
   const claim = exchange.mutate;
 
@@ -248,13 +248,13 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       // travels. It never learns the challenge and never sees the key.
       window.location.href = result.start.authorizeUrl;
     },
-    onError: () => setError("The AILX service could not be reached to start a connection."),
+    onError: () => setError("The Foray service could not be reached to start a connection."),
   });
 
   const forget = useMutation({
     mutationFn: () => disconnectKey(),
     onSuccess: applyResult,
-    onError: () => setError("The AILX service could not be reached to disconnect."),
+    onError: () => setError("The Foray service could not be reached to disconnect."),
   });
 
   const busy = connect.isPending || exchange.isPending || forget.isPending;
@@ -345,7 +345,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       </div>
       {hosted ? (
         <p className="small faint" style={{ margin: 0 }}>
-          Signing in sends you to OpenRouter and back. The AILX service does the exchange, so your key never reaches this browser. This page sees only a fingerprint.
+          Signing in sends you to OpenRouter and back. The Foray service does the exchange, so your key never reaches this browser. This page sees only a fingerprint.
         </p>
       ) : (
         <p className="small faint" style={{ margin: 0 }} data-testid="static-no-key">

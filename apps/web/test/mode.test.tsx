@@ -46,7 +46,7 @@ describe("footerModeCopy", () => {
     expect(copy).not.toMatch(/no network calls/i);
     expect(copy).not.toMatch(/everything runs in your browser/i);
     expect(copy).not.toMatch(/nothing leaves your browser/i);
-    expect(copy).toContain("AILX backend");
+    expect(copy).toContain("Foray backend");
   });
 
   it("promises no simulator for a model call the service will not make", () => {
@@ -138,7 +138,7 @@ describe("eventLogCopy", () => {
     expect(eventLogCopy()).toContain("stays in this browser");
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     expect(eventLogCopy()).not.toMatch(/stays in this browser/i);
-    expect(eventLogCopy()).toContain("AILX backend");
+    expect(eventLogCopy()).toContain("Foray backend");
   });
 });
 

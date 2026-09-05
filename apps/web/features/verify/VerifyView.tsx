@@ -40,7 +40,7 @@ import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
 
-const EYEBROW = "AILX · CREDENTIAL VERIFICATION";
+const EYEBROW = "Foray · CREDENTIAL VERIFICATION";
 
 /** A fact too long for a 140px auto-fit column: give it the whole row. */
 const WIDE_FACT = { gridColumn: "1 / -1" } as const;
@@ -58,7 +58,7 @@ function CannotConfirm() {
       <section className="card verify-card verify-unknown" aria-live="polite">
         <h1 className="verify-status">Cannot be confirmed</h1>
         <p style={{ marginBottom: 0 }}>
-          AILX has no credential with this id. Nothing on this page vouches for it. An image,
+          Foray has no credential with this id. Nothing on this page vouches for it. An image,
           PDF or screenshot claiming otherwise is not evidence.
         </p>
       </section>
@@ -67,7 +67,7 @@ function CannotConfirm() {
         a typo, then ask the holder for the credential URL itself.
       </p>
       <p className="small">
-        <Link href="/methodology">What AILX measures</Link>
+        <Link href="/methodology">What Foray measures</Link>
       </p>
     </div>
   </main>
@@ -131,7 +131,7 @@ export function VerifyView() {
               </>
             ) : (
               <>
-                This credential was issued by {CREDENTIAL_ISSUER} and is current. AILX serves
+                This credential was issued by {CREDENTIAL_ISSUER} and is current. Foray serves
                 this page and reads the record live, so only this page can confirm the credential.
                 Never an image of it.
               </>
@@ -202,7 +202,7 @@ export function VerifyView() {
             ))}
           </ul>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            AILX has no judging pipeline yet, so no AILX credential reports a score today. When
+            Foray has no judging pipeline yet, so no Foray credential reports a score today. When
             scoring exists, this same credential id carries the result. The id, the URL and the
             holder&rsquo;s profile entry keep working, and this page will say so.
           </p>

@@ -54,8 +54,8 @@ export function isClerkEnabled(): boolean {
  */
 export function footerModeCopy(): string {
   return isServerMode()
-    ? "AILX 2026.1 · hosted build. Your event log, answers and any site you published are saved on the AILX backend. Your model key is held there too, never in this browser."
-    : "AILX 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs. Nothing leaves your browser.";
+    ? "Foray 2026.1 · hosted build. Your event log, answers and any site you published are saved on the Foray backend. Your model key is held there too, never in this browser."
+    : "Foray 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs. Nothing leaves your browser.";
 }
 
 /**
@@ -71,8 +71,8 @@ export function footerModeCopy(): string {
  */
 export function accessCopy(): string {
   return isClerkEnabled()
-    ? "AILX 2026.1 · free to play · a scored sitting needs an account"
-    : "AILX 2026.1 · free to play · no account";
+    ? "Foray 2026.1 · free to play · a scored sitting needs an account"
+    : "Foray 2026.1 · free to play · no account";
 }
 
 /**
@@ -178,6 +178,6 @@ export function siteHref(sitePath: string | null | undefined): string | null {
 /** Where the event log lives, for the run-intro lede. */
 export function eventLogCopy(): string {
   return isServerMode()
-    ? "Your event log is saved on the AILX backend as you play, so you can pick the run back up."
+    ? "Your event log is saved on the Foray backend as you play, so you can pick the run back up."
     : "The event log stays in this browser.";
 }

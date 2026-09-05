@@ -39,7 +39,7 @@ import { PageError, PageLoading } from "../../components/PageNotice";
 import { ReviewActions } from "./ReviewActions";
 import { firstValueQuery, useService } from "../../lib/data/serviceFetch";
 
-const EYEBROW = "AILX MODERATION · STAFF ONLY";
+const EYEBROW = "Foray MODERATION · STAFF ONLY";
 const TITLE = "What is waiting, and what we decided.";
 
 const LANE_COPY: Record<CaseLane, { label: string; blurb: string; empty: string }> = {

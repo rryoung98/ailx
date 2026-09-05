@@ -132,7 +132,7 @@ export function WorldView() {
           plays, what shape their runs take, and how much of the instrument has been shown.
         </p>
         <p className="small faint" style={{ maxWidth: "58ch" }}>
-          Everyone here found AILX and chose to run it. That is a self-selected cohort, not a
+          Everyone here found Foray and chose to run it. That is a self-selected cohort, not a
           sample of any country, so no figure on this page describes a population. A bought
           probability panel could do that. It has not been fielded yet
           (<code>docs/SAMPLING.md</code>).

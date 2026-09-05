@@ -27,7 +27,7 @@ import { isServerMode } from "../../lib/mode";
  */
 
 export const metadata: Metadata = {
-  title: "AILX — practice the tells",
+  title: "Foray — practice the tells",
   description:
     "A short, unscored round on the durable artefact families: real photograph or AI-generated image, with the tell on every card. Practice never draws on the scored item bank. "
     + PRACTICE_EFFICACY_NOTE_SHORT,

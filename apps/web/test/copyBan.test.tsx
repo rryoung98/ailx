@@ -100,7 +100,7 @@ describe("game vocabulary on product surfaces", () => {
       if (props?.children !== undefined) walk(props.children);
     };
     walk(RootLayout({ children: null }) as ReactElement);
-    expect(texts.join(" ")).toContain("AILX plays like a game and is built like an instrument.");
+    expect(texts.join(" ")).toContain("Foray plays like a game and is built like an instrument.");
   });
 
   it("nav pill plays the free drill, and the graded run keeps its own slot", () => {

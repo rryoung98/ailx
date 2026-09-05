@@ -303,7 +303,7 @@ describe("the daily plays for a stranger", () => {
     act(() => root.unmount());
     root = createRoot(container);
     mount();
-    expect(text()).toContain(`AILX Daily #${dailyNumber(DAY)}`);
+    expect(text()).toContain(`Foray Daily #${dailyNumber(DAY)}`);
     expect(text()).not.toContain("Card 1 of");
   });
 

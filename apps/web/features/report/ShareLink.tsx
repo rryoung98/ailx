@@ -385,7 +385,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
         </p>
       ) : null}
       <p className="faint small" style={{ marginBottom: 0 }}>
-        Anyone with the link can open it, no account needed. AILX serves the page and its preview
+        Anyone with the link can open it, no account needed. Foray serves the page and its preview
         image from {assetUrl("/s/…")}, so a reader can see where the card came from.
       </p>
     </section>

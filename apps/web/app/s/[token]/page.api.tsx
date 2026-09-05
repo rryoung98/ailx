@@ -42,12 +42,12 @@ export async function generateMetadata({ params }: ShareParams): Promise<Metadat
   const { token } = await params;
   const share = await readShare(token);
   if (share === null) {
-    return { title: "AILX — link not found", robots: { index: false, follow: false } };
+    return { title: "Foray — link not found", robots: { index: false, follow: false } };
   }
   const p: SharePayload = share.payload;
   const origin = await pageOrigin();
-  const title = `${p.playerType.code} · ${p.playerType.name} — AILX player type`;
-  const description = `${p.playerType.tagline} Band: ${p.band}. Find your own type on AILX.`;
+  const title = `${p.playerType.code} · ${p.playerType.name} — Foray player type`;
+  const description = `${p.playerType.tagline} Band: ${p.band}. Find your own type on Foray.`;
   const url = `${origin}${shareUrlPath(token)}`;
   const image = `${origin}${shareCardPath(token)}`;
   return {
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: ShareParams): Promise<Metadat
     alternates: { canonical: url },
     openGraph: {
       type: "profile",
-      siteName: "AILX",
+      siteName: "Foray",
       title,
       description,
       url,

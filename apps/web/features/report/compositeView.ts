@@ -101,7 +101,7 @@ export function localCompositeView(
     // no percentile-shaped number at all: "P78.9 of 45" reads as a real-world
     // rank the moment it is pasted anywhere.
     shareText:
-      `AILX 2026.1 (demo) — composite ${summary.composite.toFixed(1)}/100, ${summary.band}, ` +
+      `Foray 2026.1 (demo) — composite ${summary.composite.toFixed(1)}/100, ${summary.band}, ` +
       `${cohortClause(summary.cohortSize)}. ` +
       `Tracks ${TRACK_IDS.map((t) => `${t.toUpperCase()} ${summary.trackRaw[t].toFixed(0)}`).join(" · ")}.`,
   };
@@ -137,7 +137,7 @@ export function serviceCompositeView(
     rawTotal: bars.reduce((a, b) => a + b.value, 0),
     origin: { kind: "server", sources: issued.sources },
     shareText:
-      `AILX 2026.1 (demo) — composite ${issued.composite.toFixed(1)}/100, ${issued.band}, ` +
+      `Foray 2026.1 (demo) — composite ${issued.composite.toFixed(1)}/100, ${issued.band}, ` +
       `${cohortClause(n)}. Issued by the exam service, not by this browser. ` +
       `Tracks ${bars.map((b) => `${b.trackId.toUpperCase()} ${b.value.toFixed(0)}`).join(" · ")}.`,
   };

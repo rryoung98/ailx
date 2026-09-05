@@ -53,7 +53,7 @@ export const X_TEXT_MAX = 240;
 /** The one-line title the OS share sheet and the page metadata both use. */
 export function shareTitle(payload: SharePayload): string {
   const { code, name } = payload.playerType;
-  return `${name} (${code}) — AILX player type`;
+  return `${name} (${code}) — Foray player type`;
 }
 
 /** The parts every variant is built from. One derivation, four voices. */
@@ -114,8 +114,8 @@ function identityLine(p: ShareCopyParts, perspective: SharePerspective): string 
   const who = `${p.name} (${p.code})`;
   const face = p.character === null ? "" : `, ${p.character}`;
   return perspective === "mine"
-    ? `My AILX player type: ${who}${face}.`
-    : `An AILX player type: ${who}${face}.`;
+    ? `My Foray player type: ${who}${face}.`
+    : `An Foray player type: ${who}${face}.`;
 }
 
 /** The artifact clause, only when a site really rode along with the card. */
@@ -151,11 +151,11 @@ export function shareText(
       // Professional, and careful: a completed run is the claim, never a rank.
       return [
         mine
-          ? "I finished a full AILX run: four rounds of working with AI. Build with it, tell real media from synthetic, hold a line against an assistant that is wrong on purpose, direct a generation to a brief."
-          : "AILX is four rounds of working with AI: build with it, tell real media from synthetic, hold a line against an assistant that is wrong on purpose, direct a generation to a brief.",
+          ? "I finished a full Foray run: four rounds of working with AI. Build with it, tell real media from synthetic, hold a line against an assistant that is wrong on purpose, direct a generation to a brief."
+          : "Foray is four rounds of working with AI: build with it, tell real media from synthetic, hold a line against an assistant that is wrong on purpose, direct a generation to a brief.",
         `${id} ${p.tagline}`,
         built,
-        "AILX reports a player type and the work behind it — no ranking, no number.",
+        "Foray reports a player type and the work behind it — no ranking, no number.",
       ]
         .filter((s) => s !== null)
         .join("\n\n");
@@ -163,8 +163,8 @@ export function shareText(
       // Casual, one person to one person.
       return [
         mine
-          ? `I did the AILX run — apparently I am ${p.character === null ? withArticle(p.name) : `${p.character}: ${withArticle(p.name)}`}.`
-          : `Have a look at this AILX card — ${p.character === null ? withArticle(p.name) : `${p.character}, ${withArticle(p.name)}`}.`,
+          ? `I did the Foray run — apparently I am ${p.character === null ? withArticle(p.name) : `${p.character}: ${withArticle(p.name)}`}.`
+          : `Have a look at this Foray card — ${p.character === null ? withArticle(p.name) : `${p.character}, ${withArticle(p.name)}`}.`,
         p.tagline,
         built,
         mine ? "See which one you get:" : "You can play a run yourself:",
@@ -296,7 +296,7 @@ function streakClause(streak: number): string | null {
 
 /** The title the OS share sheet and the page metadata both use. */
 export function dailyShareTitle(share: DailyShare): string {
-  return `AILX Daily #${share.number}`;
+  return `Foray Daily #${share.number}`;
 }
 
 export function dailyShareText(share: DailyShare, channel: ShareChannel): string {
@@ -315,10 +315,10 @@ export function dailyShareText(share: DailyShare, channel: ShareChannel): string
       return [
         `${head} — ${tally}`,
         grid,
-        "The AILX daily is five calls: photograph or generated image, person or model, genuine "
+        "The Foray daily is five calls: photograph or generated image, person or model, genuine "
           + "message or not. Everyone gets the same five, and it takes about a minute.",
         DAILY_STREAK_MEANING,
-        "It is a game on published practice material. It is not an AILX sitting and reaches no result.",
+        "It is a game on published practice material. It is not an Foray sitting and reaches no result.",
       ].join("\n\n");
     case "whatsapp":
       return `${head} — ${tally}\n${grid}\n${DAILY_PITCH} Have a go:`;

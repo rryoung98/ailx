@@ -128,7 +128,7 @@ const OFFLINE: ExportError = {
 
 const NOT_MIRRORED: ExportError = {
   kind: "unsupported",
-  message: "This run is not saved on the AILX backend, so there is nothing to export.",
+  message: "This run is not saved on the Foray backend, so there is nothing to export.",
 };
 
 /** The server attempt id, or null when this run was never mirrored. */

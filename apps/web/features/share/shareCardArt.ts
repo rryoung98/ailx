@@ -191,7 +191,7 @@ export function shareCardElement(payload: SharePayload, portrait: string | null 
           // box). `overflow: hidden` is the guard for anything wider still.
           { key: "cta", fontSize: 22, color: SHARE_CARD_COLORS.faint, marginTop: 14, gap: 14, flexWrap: "nowrap", overflow: "hidden" },
           [
-            box({ key: "t" }, "AILX — the AI-literacy exam you can play. Find your type."),
+            box({ key: "t" }, "Foray — the AI-literacy exam you can play. Find your type."),
             ...lines.footnotes.map((f, i) =>
               box({ key: `f${i}`, gap: 14 }, [box({ key: "d" }, "·"), box({ key: "v" }, f)]),
             ),

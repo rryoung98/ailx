@@ -20,9 +20,9 @@ import { PageLoading } from "../../components/PageNotice";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "AILX gallery — how people are actually doing with AI",
+  title: "Foray gallery — how people are actually doing with AI",
   description:
-    "Player-type cards people chose to publish from real AILX runs: what they built, how their four tracks came out, and the type it adds up to.",
+    "Player-type cards people chose to publish from real Foray runs: what they built, how their four tracks came out, and the type it adds up to.",
 };
 
 export default function GalleryPage() {

@@ -15,7 +15,7 @@ import { ModerationCaseView } from "../../../features/review/ModerationCaseView"
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "AILX — moderation case",
+  title: "Foray — moderation case",
   robots: { index: false, follow: false },
 };
 

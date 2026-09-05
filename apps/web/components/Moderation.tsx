@@ -31,7 +31,7 @@ import { serviceHeaders } from "../lib/data/traceparent";
 import { browserApiOptions, getServerAttemptId } from "../lib/data/persistence";
 
 const AUTHOR_LABEL: Record<string, string> = {
-  reviewer: "AILX moderator",
+  reviewer: "Foray moderator",
   candidate: "The candidate",
 };
 
@@ -279,7 +279,7 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
         Your conversation with the moderators
       </h3>
       <p className="small muted" style={{ maxWidth: "62ch" }}>
-        Moderators appear as &ldquo;AILX moderator&rdquo;. You are told what was decided and why,
+        Moderators appear as &ldquo;Foray moderator&rdquo;. You are told what was decided and why,
         never who decided it. Everything here is kept on the record.
       </p>
       {thread.comments.length === 0 ? null : (

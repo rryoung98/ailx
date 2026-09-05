@@ -121,8 +121,8 @@ export function SiteExportPanel({ attemptId }: { attemptId: string }) {
         Take this site with you
       </h3>
       <p className="muted small" style={{ maxWidth: "62ch" }}>
-        AILX is an exam, not a website builder. The site you built is yours: export it and keep
-        going somewhere built for it. Exporting changes nothing here. The snapshot AILX scored
+        Foray is an exam, not a website builder. The site you built is yours: export it and keep
+        going somewhere built for it. Exporting changes nothing here. The snapshot Foray scored
         stays as it was.
       </p>
 
@@ -151,7 +151,7 @@ export function SiteExportPanel({ attemptId }: { attemptId: string }) {
           {phase === "consent" ? (
             <>
               <p className="small" style={{ maxWidth: "62ch" }}>
-                AILX asks GitHub for one permission, <code>public_repo</code>, and uses it once:
+                Foray asks GitHub for one permission, <code>public_repo</code>, and uses it once:
                 to create a single PUBLIC repository in your account and push this site into it,
                 with a README. It cannot see your private repositories, and cannot touch any
                 repository it did not just create. The permission is never stored.

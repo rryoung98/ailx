@@ -151,7 +151,7 @@ export function DailyChallenge() {
     return (
       <div className={styles.stage}>
         <h2 ref={headingRef} tabIndex={-1} className={styles.tally}>
-          AILX Daily #{number}
+          Foray Daily #{number}
         </h2>
         <Grid results={results} />
         {streak.current > 1 ? (
@@ -282,7 +282,7 @@ export function DailyChallenge() {
 
       <p className="small faint" style={{ maxWidth: "58ch" }}>
         {DAILY_PITCH} Nothing here is scored: the daily uses published practice material and
-        reaches no AILX result.
+        reaches no Foray result.
       </p>
     </div>
   );

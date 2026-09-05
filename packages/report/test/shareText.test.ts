@@ -80,7 +80,7 @@ describe("the identity hook", () => {
 
   it("titles the OS sheet with the type, never with a bare URL", () => {
     const p = payload();
-    expect(shareTitle(p)).toBe(`${p.playerType.name} (${p.playerType.code}) — AILX player type`);
+    expect(shareTitle(p)).toBe(`${p.playerType.name} (${p.playerType.code}) — Foray player type`);
   });
 });
 

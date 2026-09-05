@@ -19,9 +19,9 @@ import { WorldView } from "../../features/world/WorldView";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "AILX — how the world is doing at keeping up with AI",
+  title: "Foray — how the world is doing at keeping up with AI",
   description:
-    "Honest distributions from real AILX runs: participation, player types, track shapes, item exposure and the trend over time. No percentiles, no judged scores.",
+    "Honest distributions from real Foray runs: participation, player types, track shapes, item exposure and the trend over time. No percentiles, no judged scores.",
 };
 
 export default function WorldPage() {

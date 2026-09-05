@@ -13,7 +13,7 @@
  */
 import { SignIn } from "@clerk/nextjs";
 
-export const metadata = { title: "Sign in — AILX" };
+export const metadata = { title: "Sign in — Foray" };
 
 export default function SignInPage() {
   return (

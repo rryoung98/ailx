@@ -624,7 +624,7 @@ export default function ExamPage() {
       <PersistWarning warning={persistWarning} />
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
-          <div className="eyebrow">Demo run · AILX 2026.1</div>
+          <div className="eyebrow">Demo run · Foray 2026.1</div>
           <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
           <p className="lede">
             T1 to T4 in order, each on its own clock. Pause between moves, never

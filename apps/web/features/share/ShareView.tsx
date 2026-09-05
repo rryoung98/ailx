@@ -248,7 +248,7 @@ export function ShareView() {
         <section className="card" style={{ marginBottom: "1.6rem" }}>
           <h2 style={{ marginTop: 0 }}>Find your own type</h2>
           <p className="muted">
-            AILX is an AI-literacy exam you can play. Build with a model, spot what is synthetic,
+            Foray is an AI-literacy exam you can play. Build with a model, spot what is synthetic,
             hold a line against an assistant that is wrong on purpose, and direct a generation to
             a brief.
           </p>
@@ -259,7 +259,7 @@ export function ShareView() {
         </section>
 
         <p className="faint small" style={{ marginBottom: 0 }}>
-          Issued by AILX on {issued} from a completed run, and served from this origin, which is
+          Issued by Foray on {issued} from a completed run, and served from this origin, which is
           what makes it checkable. It shows a player type, a four-track shape, a band and the
           sections its owner switched on. Never an exam item, an answer, a per-question result or a
           personal identifier. The instrument&rsquo;s own scorers derive the band from the run&rsquo;s
