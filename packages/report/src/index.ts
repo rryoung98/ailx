@@ -6,6 +6,17 @@
  * app. No module in this package may touch `fetch`, `Date.now`, `Math.random`,
  * `window`, `localStorage` or `process.env`; impure capability is injected.
  */
+/**
+ * The one-shot legacy storage read of docs/RENAME.md §5 step 7, re-exported
+ * from `@ailx/core`. The daily and practice browser shells own storage keys
+ * this package NAMES (`DAILY_LEDGER_KEY`, `LOCAL_PRACTICE_KEY`), and their
+ * isolation guards ban an `@ailx/core` import by name because core is where a
+ * sitting is scored (apps/web/test/dailyChallenge.test.ts). The guard stays
+ * strict; the rename read arrives through the package those shells already
+ * depend on for their rules. It touches no score and no identity.
+ */
+export { legacyStorageKey, readMigratedItem, removeMigratedItem } from "@ailx/core";
+
 export * from "./aggregates.js";
 export * from "./calibration.js";
 export * from "./character.js";

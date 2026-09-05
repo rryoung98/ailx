@@ -1,4 +1,4 @@
-# AILX — The AI Literacy Examination
+# Foray — The AI Literacy Examination
 
 [![ci](https://github.com/rryoung98/ailx/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rryoung98/ailx/actions/workflows/ci.yml)
 [![pages](https://github.com/rryoung98/ailx/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/rryoung98/ailx/actions/workflows/pages.yml)
@@ -13,7 +13,7 @@ A performance-based benchmark that measures what a person can actually do **with
 | T3 | AI-Assisted Reasoning | Directing a model through an instrumented assistant |
 | T4 | Generative Direction | Steering generative models toward a specified outcome |
 
-Full specification: [`AILX-Spec-2026.1.md`](./AILX-Spec-2026.1.md). Build plan: [`docs/PLAN.md`](./docs/PLAN.md).
+Full specification: [`Foray-Spec-2026.1.md`](./Foray-Spec-2026.1.md). Build plan: [`docs/PLAN.md`](./docs/PLAN.md).
 
 ## Repository layout
 

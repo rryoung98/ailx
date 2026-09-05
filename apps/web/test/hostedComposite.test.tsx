@@ -146,7 +146,7 @@ beforeEach(() => {
   Object.defineProperty(window, "localStorage", { value: memoryStorage(), configurable: true });
   vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
   vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
-  window.localStorage.setItem("ailx:dev-user", "player-9");
+  window.localStorage.setItem("foray:dev-user", "player-9");
   saveAttempt(window.localStorage, hostedLog());
 });
 

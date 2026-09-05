@@ -52,7 +52,7 @@ OpenAlex, Crossref and GOV.UK instead. Bot-blocked, and therefore unread: `gre.a
   published.
 - **Why he is first.** His result is the sharpest thing anyone has said against our practice loop.
   Gamified scored 65.7% (p_adj = .310) and feedback 60.0% (p_adj = 1.000) against a control of
-  61.3%. At two weeks no arm beat control. AILX practice is gamified drilling with immediate
+  61.3%. At two weeks no arm beat control. Foray practice is gamified drilling with immediate
   feedback, assembled from the two arms that failed. `docs/TRANSFER-STUDY.md` §1 says so in those
   words.
 
@@ -68,7 +68,7 @@ OpenAlex, Crossref and GOV.UK instead. Bot-blocked, and therefore unread: `gre.a
 - **Caveat worth saying out loud.** Her wider portfolio is face processing, autism and
   prosopagnosia. The deepfake-training strand is largely this one paper. Do not write to her as if
   detection training is her field.
-- **Why she matters.** AILX modelled its artefact families on her five-minute training. In her data,
+- **Why she matters.** Foray modelled its artefact families on her five-minute training. In her data,
   trained typical-ability adults reached 51% accuracy at d' = -0.066, not different from chance
   (t69 = 1.092, p = .279). Training moved the criterion, not sensitivity.
 
@@ -117,7 +117,7 @@ OpenAlex, Crossref and GOV.UK instead. Bot-blocked, and therefore unread: `gre.a
   AI literacy assessment test", *Computers and Education: Artificial Intelligence* (2025),
   doi:10.1016/j.caeai.2025.100436. A 20-item GenAI-literacy instrument with CTT and 2PL IRT, alpha
   0.80, omega 0.81, RMSEA 0.03, CFI 0.97. That is an AI-literacy instrument with a published
-  validity argument, which is the thing AILX does not have.
+  validity argument, which is the thing Foray does not have.
 - **Contact:** faculty office `edfac@hku.hk` and a JS-obfuscated personal mailto on the staff page,
   which a human browser will show.
 
@@ -151,7 +151,7 @@ OpenAlex, Crossref and GOV.UK instead. Bot-blocked, and therefore unread: `gre.a
 - **Contact: COULD NOT VERIFY.** Neither Duolingo research page publishes personal emails. Routes
   are the DET research site and LinkedIn.
 - **Why she is the closest analogue.** The Duolingo English Test is a consumer-shaped product whose
-  score institutions accept. That is exactly the split `docs/TRACK-REVIEW.md` §1 says AILX has not
+  score institutions accept. That is exactly the split `docs/TRACK-REVIEW.md` §1 says Foray has not
   resolved.
 
 ### 2.8 Geoff LaFlair, Duolingo
@@ -244,7 +244,7 @@ for the Future of Intelligence, and Research Professor at Cambridge; Professor o
 Universitat Politecnica de Valencia. https://josephorallo.webs.upv.es/ lists both emails,
 `jh2135@cam.ac.uk` and `jorallo@upv.es`. "Evaluating General-Purpose AI with Psychometrics",
 *Communications of the ACM* (2026), doi:10.1145/3769688. He does capability measurement from the
-machine side. AILX measures humans working with machines, and the two arguments meet at whether a
+machine side. Foray measures humans working with machines, and the two arguments meet at whether a
 capability scale means anything.
 
 **Ronny Scherer, University of Oslo.** Professor and Director, Centre for Educational Measurement.
@@ -258,7 +258,7 @@ competence, which is the DIF-across-languages-and-devices problem in `docs/SAMPL
 from 2025-03-01, per ORCID 0000-0001-5753-5493; earlier work carries Fribourg and Lausanne. Her BFH
 profile page could not be read, so the role is self-reported. First author with Groh on the police
 deepfake-detection study. She runs an operational assessment tool for super-recogniser selection,
-so she has priced the thing AILX wants to price. No email seen, none invented.
+so she has priced the thing Foray wants to price. No email seen, none invented.
 
 **Sophie Nightingale, Lancaster University.** Senior Lecturer in Psychology.
 https://www.lancaster.ac.uk/people-profiles/sophie-nightingale. Nightingale and Farid,
@@ -351,7 +351,7 @@ money and advisors do not.
 
 ## 5. The drafts
 
-One per person. Every one is under 200 words. Every one names one specific thing in AILX that this
+One per person. Every one is under 200 words. Every one names one specific thing in Foray that this
 person is placed to attack, and asks for exactly one thing.
 
 **The rule behind all of them.** Approach with the disconfirming evidence in hand. Being the people
@@ -369,7 +369,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 > Geissler, Robertson and Feuerriegel (CHI 2026) is the strongest argument against the product I am
 > building, so I would rather ask you about it than wait to be told.
 >
-> AILX is an AI literacy examination. Its practice loop is gamified drilling with immediate
+> Foray is an AI literacy examination. Its practice loop is gamified drilling with immediate
 > feedback, which is the two arms in your study that did not beat control: 65.7% at p_adj = .310 and
 > 60.0% at p_adj = 1.000, against 61.3%. At two weeks no arm beat control. We have stopped claiming
 > a training effect and written a study that could catch a null instead of hiding one: three arms,
@@ -413,7 +413,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 > Your 2025 result that the super-recogniser advantage extends to digitally manipulated faces is a
 > problem for us, and I would like your read on it.
 >
-> AILX scores adults on telling AI-generated images from camera-captured ones, and reports that
+> Foray scores adults on telling AI-generated images from camera-captured ones, and reports that
 > score as literacy. If a meaningful share of the variance is a stable perceptual aptitude, then
 > part of what we publish is a trait measure with a skill label on it. Diel and colleagues' 2024
 > meta-analysis (k = 137, N = 86,155) puts pooled sensitivity at chance, which suggests the
@@ -436,7 +436,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 > got d-prime = -0.066 in trained adults. Diel et al. (2024) pooled to chance. Your 2026 preprint on
 > intelligence analysts is the clearest counter-example I have found.
 >
-> AILX runs a practice loop and an exam on the same task. We are designing a transfer study rather
+> Foray runs a practice loop and an exam on the same task. We are designing a transfer study rather
 > than asserting an effect: held-out generators, d-prime and criterion reported apart, an active
 > control that gets the same time as plain instruction, follow-ups at 14 and 56 days. Design at
 > [link], section 2.
@@ -458,7 +458,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 > have found with a published validity argument: 2PL IRT, alpha 0.80, omega 0.81, RMSEA 0.03, CFI
 > 0.97.
 >
-> AILX has none of that. It weights four tracks at .40, .40 and .20 with no factor structure behind
+> Foray has none of that. It weights four tracks at .40, .40 and .20 with no factor structure behind
 > the weights, and its main reasoning track carries 160 points on a construct with no external
 > validity evidence and no published reliability figure. We have written that down in public rather
 > than waiting to be asked: [link].
@@ -503,7 +503,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 > The Duolingo English Test is the only example I know of a consumer-shaped assessment whose score
 > institutions accept. I am building something with the same tension and losing it.
 >
-> AILX wants to be a game people choose to play and a statistic a ministry would cite. Our own track
+> Foray wants to be a game people choose to play and a statistic a ministry would cite. Our own track
 > review says those two goals pull apart, and the evidence is unkind to the game half: the one
 > controlled study of gamified deepfake training found the gamified arm indistinguishable from
 > control (p_adj = .310), and no arm survived two weeks. Meanwhile the panel short form that could
@@ -525,7 +525,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 >
 > A practical question from someone with your problem and none of your experience.
 >
-> AILX has a public practice mode and a scored sitting on the same task family. The practice corpus
+> Foray has a public practice mode and a scored sitting on the same task family. The practice corpus
 > is published on purpose. The scored bank is private and rotated. Hausknecht and colleagues put
 > retest and practice effects at d = 0.26, larger with identical forms plus coaching, so keeping the
 > two disjoint is load bearing and we have no evidence it is enough.
@@ -546,7 +546,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 >
 > Dr Elliott,
 >
-> The OECD AI Capability Indicators measure what AI systems can do. AILX is trying to measure
+> The OECD AI Capability Indicators measure what AI systems can do. Foray is trying to measure
 > something adjacent and unmeasured: whether adults keep their judgement while using those systems.
 > EU AI Act Article 4 mandates AI literacy and attaches no measure to it, and every current index I
 > can find is self-report.
@@ -571,7 +571,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 >
 > ICILS 2023 is the benchmark I keep measuring our work against and finding it short.
 >
-> AILX is building an AI literacy measure for adults. The gap we are trying to fill is narrow: ICILS
+> Foray is building an AI literacy measure for adults. The gap we are trying to fill is narrow: ICILS
 > covers grade 8 students in participating systems, and the adult population statistic for AI-era
 > judgement does not exist. But our panel form is 53 minutes, it drops two of four tracks, and it
 > can support two rates and no composite. Beside a full ICILS cycle that is a small claim, and I
@@ -594,7 +594,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 > Your paper on 20 years of IEA exclusion rates is the review I expect our first wave to get, so
 > here is the design before the data exists.
 >
-> AILX plans a bought probability panel of 1,500 to 2,000 realised completes in the US and UK, kept
+> Foray plans a bought probability panel of 1,500 to 2,000 realised completes in the US and UK, kept
 > behind a schema-level firewall from a self-selected web cohort so the two can never be averaged.
 > We publish a non-response bias analysis unprompted, and we hedge the convenience-sample findings
 > in fixed language. The whole thing is public at [link], including the parts that do not work: no
@@ -637,7 +637,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 > Your booster-shot paper is the only work I have found that treats fade as the main event rather
 > than a limitation paragraph.
 >
-> AILX is an annual AI literacy sitting with a practice loop between sittings. That business model
+> Foray is an annual AI literacy sitting with a practice loop between sittings. That business model
 > is a durability claim, and the evidence for it is nothing. The nearest study (Geissler, Robertson
 > and Feuerriegel, CHI 2026) found no arm beating control at two weeks. Our own transfer design
 > stops at 56 days, which we picked because nobody in this literature has gone further, not because
@@ -657,7 +657,7 @@ Fill in the bracketed link before sending. Send from a person, not a role accoun
 >
 > Professor Hernandez-Orallo,
 >
-> Your work argues that AI capability needs measurement theory rather than benchmark scores. AILX is
+> Your work argues that AI capability needs measurement theory rather than benchmark scores. Foray is
 > the mirror problem: measuring a person whose performance depends on a model that changes
 > quarterly.
 >
@@ -681,7 +681,7 @@ Every number quoted in §5 traces to a document, not to memory.
 - **Practice does not obviously work.** `docs/TRANSFER-STUDY.md` §1 and §2, on branch `w/ten-36`.
   Geissler, Robertson and Feuerriegel (CHI 2026); Gray et al. (*R. Soc. Open Sci.* 12(11):250921);
   Diel et al. (2024) meta-analysis, k = 137, N = 86,155.
-- **The reliance construct has no external validity evidence.** `AILX-Spec-2026.1.md` T3, and
+- **The reliance construct has no external validity evidence.** `Foray-Spec-2026.1.md` T3, and
   `docs/TRANSFER-STUDY.md` §3. The test-retest problem is in the private repo's
   `docs/EVIDENCE-RELIABILITY-AND-TIME-PRESSURE.md`: Karvelis et al. (*PLoS ONE* 19(11):e0312255,
   2024) report ICC below 0.5 for advice taking over 153 trials.

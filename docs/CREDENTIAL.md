@@ -1,4 +1,4 @@
-# The AILX credential — what it claims, and how a stranger checks it
+# The Foray credential — what it claims, and how a stranger checks it
 
 Recorded 2026-08-29, alongside the skill diagnosis on `/report`. Code:
 `packages/report/src/credential.ts` (the claim and the document),
@@ -7,17 +7,17 @@ Recorded 2026-08-29, alongside the skill diagnosis on `/report`. Code:
 
 ## 1. The assumption this design rests on — correct it if it is wrong
 
-**AILX has no judging pipeline (spec Phase 4), and the `scores` table is
+**Foray has no judging pipeline (spec Phase 4), and the `scores` table is
 empty.** So a credential cannot honestly report a score, a band, a percentile
 or a pass mark, and this one does not. It asserts exactly:
 
-> *This person sat AILX `<version>` and completed it on `<date>`; they
+> *This person sat Foray `<version>` and completed it on `<date>`; they
 > attempted these tracks; their run produced this player type; here is the
 > artifact they built.*
 
 Everything it refuses to say is printed **on the credential itself**
-(`CREDENTIAL_LIMITS`), including the one most people will assume: AILX does
-not verify the holder's identity. AILX certifies the SITTING. The person
+(`CREDENTIAL_LIMITS`), including the one most people will assume: Foray does
+not verify the holder's identity. Foray certifies the SITTING. The person
 publishing the credential is asserting the sitting is theirs, exactly as a
 LinkedIn certification entry is a self-published claim pointing at an
 issuer-hosted record.
@@ -55,8 +55,18 @@ What we deliberately did NOT take on:
   addition (`proof`) on the same document when there is a key-management story
   worth having.
 
-The AILX-specific facts live under one key, `credentialSubject.ailx`, so a
+The Foray-specific facts live under one key, `credentialSubject.foray`, so a
 strict Open Badges reader can ignore them and still get a valid object.
+
+**The rename left two seams here, both deliberate** (`docs/RENAME.md` §3.6).
+The document builder emits `foray` only, but `/verify` READS `foray` and then
+`ailx`, because the exam service picks up the renamed package on its own
+deploy cadence and a page that stopped reading the old key would answer
+"cannot be confirmed" for a real credential in the gap. And the code prefix
+was WIDENED, not switched: new codes are minted `FORAY-<version>-…`, the three
+`AILX-<version>-…` codes already issued still validate, and no stored row was
+rewritten. A code that fails the regex gets the answer reserved for a forgery,
+so dropping the old prefix would have made a live credential look fake.
 
 ## 4. A credential is NOT a share link
 

@@ -233,7 +233,7 @@ describe("the endpoint (the exam gateway, the demo proxy, a local server)", () =
     expect(modelsUrl("http://localhost:8000/v1/")).toBe("http://localhost:8000/v1/models");
   });
   it("the storage slot is declared", () => {
-    expect(LLM_BASE_URL_STORAGE).toBe("ailx:llm-base-url");
+    expect(LLM_BASE_URL_STORAGE).toBe("foray:llm-base-url");
   });
   it("requestVibeCompletion targets the given base and sends no credential", async () => {
     const payload = buildVibeRequest({ model: "kimi-k3", brief: "b", currentHtml: "<p/>", userPrompt: "p" });
@@ -295,9 +295,9 @@ describe("clearLlmConnection", () => {
   it("leaves unrelated slots alone", () => {
     const store = new Map([
       [LLM_BASE_URL_STORAGE, "http://localhost:11434/v1"],
-      ["ailx:attempt", "keep-me"],
+      ["foray:attempt", "keep-me"],
     ]);
     clearLlmConnection({ removeItem: (k: string) => void store.delete(k) });
-    expect([...store.keys()]).toEqual(["ailx:attempt"]);
+    expect([...store.keys()]).toEqual(["foray:attempt"]);
   });
 });

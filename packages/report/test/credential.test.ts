@@ -10,6 +10,7 @@ import {
   CREDENTIAL_ASSERTS,
   CREDENTIAL_CLAIM_KEYS,
   CREDENTIAL_CLAIM_VERSION,
+  CREDENTIAL_CODE_PREFIXES,
   CREDENTIAL_CODE_RE,
   CREDENTIAL_CONTEXT,
   CREDENTIAL_ISSUER,
@@ -25,6 +26,7 @@ import {
   parseCredentialClaim,
   verifyUrlPath,
   type CredentialState,
+  type CredentialStatus,
 } from "../src/credential.js";
 import { playerTypeFor } from "../src/playerType.js";
 
@@ -70,9 +72,10 @@ describe("credential code", () => {
     const bytes = new Uint8Array(16).map((_, i) => i);
     const code = formatCredentialCode("2026.1", bytes);
     expect(code).toMatch(CREDENTIAL_CODE_RE);
-    expect(code.startsWith("AILX-2026.1-")).toBe(true);
+    // NEW codes are minted FORAY-; the legacy prefix is read, never written.
+    expect(code.startsWith("FORAY-2026.1-")).toBe(true);
     // The random body avoids I, L, O and U so it survives being read aloud.
-    expect(code.slice("AILX-2026.1-".length)).not.toMatch(/[ILOU]/);
+    expect(code.slice("FORAY-2026.1-".length)).not.toMatch(/[ILOU]/);
   });
 
   it("is deterministic in its bytes and ignores anything beyond what it needs", () => {
@@ -93,6 +96,9 @@ describe("credential code", () => {
       "AILX-2026.1-AB12-CD34-EF56-GH789",
       "AILX-2026.1-AB1I-CD34-EF56-GH78",
       "OTHER-2026.1-AB12-CD34-EF56-GH78",
+      "FORAYX-2026.1-AB12-CD34-EF56-GH78",
+      "FORAY-2026.1-AB12-CD34-EF56",
+      "FORAY-2026.1-ab12-cd34-ef56-gh78",
       "AILX-2026.1-ab12-cd34-ef56-gh78",
       "AILX-2026.1-AB12-CD34-EF56-GH78 ",
     ]) {
@@ -210,21 +216,21 @@ describe("credentialDocument", () => {
     expect(doc.id).toBe(`${ORIGIN}/verify/${VALID.code}`);
     expect(doc.issuer).toEqual({ id: ORIGIN, type: ["Profile"], name: CREDENTIAL_ISSUER });
     expect(doc.validFrom).toBe(VALID.issuedAt);
-    expect(doc.name).toBe("AILX 2026.1 — Sitting Completed");
+    expect(doc.name).toBe("Foray 2026.1 — Sitting Completed");
     expect(doc.credentialSubject.type).toEqual(["AchievementSubject"]);
-    expect(doc.credentialSubject.ailx.artifact).toBe(`${ORIGIN}/api/site/abc/index.html`);
+    expect(doc.credentialSubject.foray.artifact).toBe(`${ORIGIN}/api/site/abc/index.html`);
     expect(doc.credentialStatus).toEqual({
       id: `${ORIGIN}/api/credentials/${VALID.code}`,
-      type: "AilxHostedStatus",
+      type: "ForayHostedStatus",
       status: "valid",
     });
   });
 
   it("says what it does NOT assert, inside the document itself", () => {
     const doc = credentialDocument(claim, VALID, ORIGIN) as Record<string, any>;
-    expect(doc.credentialSubject.ailx.doesNotAssert).toEqual([...CREDENTIAL_LIMITS]);
+    expect(doc.credentialSubject.foray.doesNotAssert).toEqual([...CREDENTIAL_LIMITS]);
     expect(doc.description).toBe(CREDENTIAL_ASSERTS.join(" "));
-    expect(doc.credentialSubject.ailx.claims).toEqual(["sitting-completed"]);
+    expect(doc.credentialSubject.foray.claims).toEqual(["sitting-completed"]);
   });
 
   it("shows revocation, with its date and reason — never a silent 404", () => {
@@ -240,7 +246,7 @@ describe("credentialDocument", () => {
     const doc = credentialDocument(claim, VALID, ORIGIN) as Record<string, any>;
     delete doc.description;
     delete doc.credentialSubject.achievement;
-    delete doc.credentialSubject.ailx.doesNotAssert;
+    delete doc.credentialSubject.foray.doesNotAssert;
     const json = JSON.stringify(doc);
     for (const forbidden of [
       "band", "Distinction", "Merit", "composite", "percentile", "cohort", "score",
@@ -255,13 +261,13 @@ describe("credentialDocument", () => {
   it("keeps null out of the artifact link when there is no artifact", () => {
     const noSite = { ...claim, artifact: null };
     const doc = credentialDocument(noSite, VALID, ORIGIN) as Record<string, any>;
-    expect(doc.credentialSubject.ailx.artifact).toBeNull();
+    expect(doc.credentialSubject.foray.artifact).toBeNull();
   });
 
   it("is a copy, never a reference into the stored claim", () => {
     const doc = credentialDocument(claim, VALID, ORIGIN) as Record<string, any>;
-    doc.credentialSubject.ailx.tracksAttempted.push("T9");
-    doc.credentialSubject.ailx.claims.push("scored");
+    doc.credentialSubject.foray.tracksAttempted.push("T9");
+    doc.credentialSubject.foray.claims.push("scored");
     expect(claim.tracksAttempted).toEqual(["T1", "T2", "T3", "T4"]);
     expect(claim.claims).toEqual(["sitting-completed"]);
   });
@@ -272,8 +278,8 @@ describe("LinkedIn metadata", () => {
 
   it("fills the five fields LinkedIn's certification form asks for", () => {
     expect(linkedInCertification(claim, VALID, ORIGIN)).toEqual({
-      name: "AILX 2026.1 — Sitting Completed",
-      organizationName: "AILX",
+      name: "Foray 2026.1 — Sitting Completed",
+      organizationName: "Foray",
       issueYear: 2026,
       issueMonth: 2,
       credentialId: VALID.code,
@@ -293,8 +299,8 @@ describe("LinkedIn metadata", () => {
     expect(url.origin + url.pathname).toBe("https://www.linkedin.com/profile/add");
     expect(Object.fromEntries(url.searchParams)).toEqual({
       startTask: "CERTIFICATION_NAME",
-      name: "AILX 2026.1 — Sitting Completed",
-      organizationName: "AILX",
+      name: "Foray 2026.1 — Sitting Completed",
+      organizationName: "Foray",
       issueYear: "2026",
       issueMonth: "2",
       certId: VALID.code,
@@ -308,5 +314,77 @@ describe("LinkedIn metadata", () => {
     expect(name.toLowerCase()).not.toContain("pass");
     expect(name.toLowerCase()).not.toContain("certified");
     expect(name.toLowerCase()).not.toContain("score");
+  });
+});
+
+/**
+ * The rename widens the code prefix; it never switches it (docs/RENAME.md
+ * §3.6, §4). Three credentials were issued as `AILX-…` — one live, two
+ * revoked — and no stored row is rewritten, so the gate is a matrix: each
+ * prefix in each state, through the regex and through the served document.
+ */
+describe("a legacy AILX- code keeps resolving after the rename", () => {
+  const claim = buildCredentialClaim(completedState(), RAW, { artifact: "/api/site/abc/index.html" })!;
+  const LEGACY = "AILX-2026.1-AB12-CD34-EF56-GH78";
+  const CURRENT = "FORAY-2026.1-AB12-CD34-EF56-GH78";
+
+  const stateFor = (code: string, status: CredentialStatus): CredentialState =>
+    status === "valid"
+      ? { code, status, issuedAt: "2026-02-04T09:30:00.000Z", revokedAt: null, revokeReason: null }
+      : {
+          code,
+          status,
+          issuedAt: "2026-02-04T09:30:00.000Z",
+          revokedAt: "2026-03-01T00:00:00.000Z",
+          revokeReason: "issued against a withdrawn sitting",
+        };
+
+  const matrix: ReadonlyArray<[string, string, CredentialStatus]> = [
+    ["legacy", LEGACY, "valid"],
+    ["legacy", LEGACY, "revoked"],
+    ["current", CURRENT, "valid"],
+    ["current", CURRENT, "revoked"],
+  ];
+
+  for (const [era, code, status] of matrix) {
+    it(`accepts a ${era} ${status} code and serves it verbatim`, () => {
+      expect(CREDENTIAL_CODE_RE.test(code)).toBe(true);
+      const state = stateFor(code, status);
+      const doc = credentialDocument(claim, state, ORIGIN) as Record<string, any>;
+
+      // The code is never rewritten: every id a holder published still points
+      // at the row, and the two dereferences of docs/CREDENTIAL.md §3 resolve.
+      expect(doc.id).toBe(`${ORIGIN}/verify/${code}`);
+      expect(doc.credentialStatus.id).toBe(`${ORIGIN}/api/credentials/${code}`);
+      expect(verifyUrlPath(code)).toBe(`/verify/${code}`);
+      expect(credentialApiPath(code)).toBe(`/api/credentials/${code}`);
+
+      // The document is derived, so both eras carry today's issuer identity.
+      expect(doc.issuer.name).toBe("Foray");
+      expect(doc.name).toBe("Foray 2026.1 — Sitting Completed");
+      expect(doc.credentialStatus.type).toBe("ForayHostedStatus");
+      expect(doc.credentialSubject.foray).toBeDefined();
+      expect(doc.credentialSubject.ailx).toBeUndefined();
+
+      // A revoked credential RESOLVES and says revoked — it never 404s and it
+      // is never silently rendered as current (docs/CREDENTIAL.md §4).
+      expect(doc.credentialStatus.status).toBe(status);
+      if (status === "revoked") {
+        expect(doc.credentialStatus.revokedAt).toBe("2026-03-01T00:00:00.000Z");
+        expect(doc.credentialStatus.revokeReason).toBe("issued against a withdrawn sitting");
+      }
+
+      // LinkedIn's entry keeps the published code, under the new org name.
+      const cert = linkedInCertification(claim, state, ORIGIN);
+      expect(cert.credentialId).toBe(code);
+      expect(cert.credentialUrl).toBe(`${ORIGIN}/verify/${code}`);
+      expect(cert.organizationName).toBe("Foray");
+    });
+  }
+
+  it("mints only the new prefix, and never a legacy one", () => {
+    const bytes = new Uint8Array(16).map((_, i) => i * 3);
+    expect(formatCredentialCode("2026.1", bytes).startsWith("FORAY-")).toBe(true);
+    expect(CREDENTIAL_CODE_PREFIXES).toEqual(["FORAY", "AILX"]);
   });
 });

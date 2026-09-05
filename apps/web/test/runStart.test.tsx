@@ -87,7 +87,7 @@ describe("run start screen", () => {
     // Clicking the gated pill must NOT start a run — it nudges the panel.
     await act(async () => { pill.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
     expect(host.textContent).toContain("Connect a model to start"); // still on start screen
-    expect(window.localStorage.getItem("ailx:attempt:v1")).toBeNull();
+    expect(window.localStorage.getItem("foray:attempt:v1")).toBeNull();
     const connect = host.querySelector('section[aria-label="AI connection"]')!;
     expect(connect.className).toContain("connect-attention");
   });
@@ -95,7 +95,7 @@ describe("run start screen", () => {
   it("enables the start once an endpoint is stored (and after ConnectPanel announces a change)", async () => {
     // The gate reads the ENDPOINT slot and nothing else: the key slot it also
     // used to read no longer exists in either build.
-    window.localStorage.setItem("ailx:llm-base-url", "https://exam.example/v1/model");
+    window.localStorage.setItem("foray:llm-base-url", "https://exam.example/v1/model");
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
@@ -111,7 +111,7 @@ describe("run start screen", () => {
   });
 
   it("a local endpoint also opens the gate", async () => {
-    window.localStorage.setItem("ailx:llm-base-url", "http://localhost:11434/v1");
+    window.localStorage.setItem("foray:llm-base-url", "http://localhost:11434/v1");
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);

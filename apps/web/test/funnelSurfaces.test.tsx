@@ -233,7 +233,7 @@ describe("the daily", () => {
 describe("the scored sitting", () => {
   it("counts the start, and emits nothing else while the run is under way", async () => {
     // A connection is an ENDPOINT now, never a key in this browser (TEN-62).
-    window.localStorage.setItem("ailx:llm-base-url", "https://exam.example/v1/model");
+    window.localStorage.setItem("foray:llm-base-url", "https://exam.example/v1/model");
     const ExamPage = (await import("../app/exam/page")).default;
     await render(ExamPage);
     await click(/Start your run/);
@@ -296,7 +296,7 @@ describe("the share path", () => {
   it("counts a share link the moment one exists, and sends no token with it", async () => {
     const TOKEN_A = "a".repeat(43);
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
-    window.localStorage.setItem("ailx:dev-user", "tester");
+    window.localStorage.setItem("foray:dev-user", "tester");
     const { sharePayloadFrom } = await import("@ailx/report");
     const share = {
       status: "unlisted",

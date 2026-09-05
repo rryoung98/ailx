@@ -75,7 +75,7 @@ describe("t4 imagegen — model catalog & shared storage slots", () => {
   });
 
   it("reuses the exact endpoint slot T1 uses, and declares no key slot", async () => {
-    expect(LLM_BASE_URL_STORAGE).toBe("ailx:llm-base-url");
+    expect(LLM_BASE_URL_STORAGE).toBe("foray:llm-base-url");
     const mod: Record<string, unknown> = await import("../src/imagegen.js");
     for (const [name, value] of Object.entries(mod)) {
       if (typeof value !== "string") continue;

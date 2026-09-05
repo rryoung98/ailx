@@ -18,7 +18,7 @@
  */
 
 /** Persisted OpenAI-compatible API base (the gateway, the demo proxy, Ollama). */
-export const LLM_BASE_URL_STORAGE = "ailx:llm-base-url";
+export const LLM_BASE_URL_STORAGE = "foray:llm-base-url";
 
 /** Every browser-local slot that makes up "a connected model". */
 export const LLM_CONNECTION_KEYS: ReadonlyArray<string> = [LLM_BASE_URL_STORAGE];

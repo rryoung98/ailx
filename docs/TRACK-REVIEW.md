@@ -5,7 +5,7 @@ Scope: the user's question — *"Are T1 through T4 the exact kind of material we
 and the most engaging?"* — judged against two goals that pull in opposite directions: a game people
 choose to play, and a statistic a ministry would cite.
 
-Sources: `AILX-Spec-2026.1.md` (§03, §04, T1–T4, §09), `docs/FUTURE-TRACKS.md`,
+Sources: `Foray-Spec-2026.1.md` (§03, §04, T1–T4, §09), `docs/FUTURE-TRACKS.md`,
 `docs/SAMPLING.md`, `packages/tracks/*/src`, and the research evidence base at
 `/tmp/ailx-research-01a04bca/` (sections 1, 2 and 4).
 
@@ -47,7 +47,7 @@ item* is a track whose scored bank is a consumable. That is T2, and it is the ce
 about T2.
 
 They conflict again on **effort**. Wise & DeMars put the motivated-vs-unmotivated gap at ~0.58 SD —
-larger than any cross-national difference AILX would want to report. A viral surface recruits
+larger than any cross-national difference Foray would want to report. A viral surface recruits
 motivated people; a probability panel recruits paid ones. If effort is not measured and modelled,
 the published number is a motivation artefact wearing a literacy label.
 
@@ -88,7 +88,7 @@ Put together: **a T2 sensitivity score is a mixture of a stable perceptual aptit
 with the specific generators in this year's form, and how much the person happens to use AI at
 work.** None of those three is "applied AI literacy" as §03 defines it. The one component that
 *does* move with instruction — the criterion, c — is explicitly excluded from the point total by
-design ("c is reported as a diagnostic and does not enter the point total"). AILX has therefore
+design ("c is reported as a diagnostic and does not enter the point total"). Foray has therefore
 built a track that scores the part that does not move and discards the part that does.
 
 There is a second, mechanical consequence that has not been noticed. `scoring.ts` clamps
@@ -98,14 +98,14 @@ So in a general-population panel a large fraction of respondents will land at or
 all of them receive **exactly 0 of 60 points**. That is a floor pile-up: a spike of identical scores
 at the bottom of the distribution. A floor pile-up cannot be IRT-scaled, cannot yield plausible
 values, and makes a national mean move with the size of the spike rather than with ability. The
-single most-quoted AILX output — "the country scores X on synthetic-media discrimination" — would
+single most-quoted Foray output — "the country scores X on synthetic-media discrimination" — would
 be, in large part, a measure of how many people the clamp swallowed.
 
 ### 2.2 Engagement
 
 T2 is the most engaging thing in the instrument and it is not close. Swipe, instant feedback,
 "I got 14 of 20", an image you can screenshot. Every viral AI-literacy artefact of the last three
-years has this shape. If AILX travels, it travels on T2.
+years has this shape. If Foray travels, it travels on T2.
 
 It is also the surface the evidence warns hardest about. Geissler et al. (N = 1,200, five arms,
 pre-registered, two-week follow-up) found the **gamified and feedback arms did not beat control even
@@ -215,7 +215,7 @@ highest-value cheap fix in this document.
 T1 is the track that travels. Not because it is fun in the moment — 48 hours of building is work —
 but because it produces **an artefact with the candidate's name on it, hosted at a URL, that they
 would send to someone anyway.** The offboarding ramp already built (`docs/FUTURE-TRACKS.md`:
-download, GitHub, Vercel) makes the output leave the platform intact. Nothing else in AILX creates a
+download, GitHub, Vercel) makes the output leave the platform intact. Nothing else in Foray creates a
 thing a person wants to keep. T2 produces a score screenshot; T1 produces a portfolio piece.
 
 The peer-judging session is also, quietly, the most engaging 40 minutes in the design: people like
@@ -320,7 +320,7 @@ score is whether the candidate caught them. That is a direct measurement with no
 > and `rair` to `errorCatchRate` (50 pts) and `adviceUptakeRate` (30 pts), in TEN-38 and then in
 > TEN-72. RSR and RAIR are Schemmer et al.'s published statistics and T3 does not compute them; the
 > names TEN-38 chose then read as the failure while the value held the credit for avoiding it. Every
-> "RSR"/"RAIR" below that names an AILX component means those two. The allocation table in
+> "RSR"/"RAIR" below that names a Foray component means those two. The allocation table in
 > `packages/core/src/allocation.ts` is the live source.
 
 The implementation is more careful than the spec. RAIR requires *deliberation before acceptance*: a
@@ -336,7 +336,7 @@ less critical thinking. Nothing in T2's evidence base is this aligned.
 
 The reliance half is weaker than this section said before (corrected 2026-09-02, TEN-32). RSR and
 RAIR are real names with a real source — Schemmer et al., IUI '23, doi:10.1145/3581641.3584066 —
-but **AILX does not compute either statistic.** Both are defined on a two-stage judge–advisor
+but **Foray does not compute either statistic.** Both are defined on a two-stage judge–advisor
 design where the human answers first and the model advises second, and T3 collects no first-stage
 answer. What T3 measures is over- and under-reliance as Passi & Vorvoreanu define them
 (MSR-TR-2022-12): agreement with incorrect advice, and refusal of correct advice. Those rates are
@@ -465,7 +465,7 @@ objective thing in T4 is scored by the kind of judge the spec spent a page argui
 ### 5.2 Engagement
 
 Genuinely high in the moment, and the public gallery is a real asset. Making images is fun. But the
-engagement does not convert into what AILX needs: the output is a picture that looks like every other
+engagement does not convert into what Foray needs: the output is a picture that looks like every other
 AI picture, the brief is someone else's, and the sharing value decays as generated images become
 ambient. Compare T1, where the output is *the candidate's own site*.
 
@@ -483,7 +483,7 @@ Estimates from spec §T4 model pricing. The generation cost is survivable. The *
 not**: the spec commits to "a human approves every asset before it becomes publicly visible", which
 at 20 seconds per asset is ~1,100 person-hours at N = 50,000. Reviewing every asset is affordable
 for a pilot cohort. It does not survive scale, and the alternatives (sampled approval, takedown-based moderation) are exactly the
-weaker posture the spec refused. **T4 is the track whose governance model contradicts AILX's growth
+weaker posture the spec refused. **T4 is the track whose governance model contradicts Foray's growth
 plan.** That is a structural fact, not a cost line.
 
 ### 5.4 Burn rate
@@ -630,7 +630,7 @@ this document.
 ### 7.3 Knowing when NOT to use AI — the strongest missing construct, and the hardest to score
 
 *The claim first:* this is the highest-value unmeasured construct in the field. Every existing
-instrument, AILX included, measures competence *conditional on using AI*. None measures whether the
+instrument, Foray included, measures competence *conditional on using AI*. None measures whether the
 person should have opened the model at all. The failure mode it detects is the most economically
 consequential one in real organisations — reflexive delegation of judgement — and the Deloitte
 Australia case in `docs/FUTURE-TRACKS.md` is precisely that failure, not a prompting failure.
@@ -660,7 +660,7 @@ This is measurable **and it is nearly free**, because T3's seeded assistant alre
 asymmetry: on planted-error claims, using the assistant is actively harmful. RSR is, read this way,
 already a partial measure of appropriate non-reliance. What is missing is the *positive* half —
 tasks where the assistant is right and faster, so over-abstention is penalised — and RAIR is exactly
-that. **AILX has accidentally built two-thirds of the best available measure of knowing when not to
+that. **Foray has accidentally built two-thirds of the best available measure of knowing when not to
 use AI, and calls it "appropriate reliance" worth 10 points.**
 
 *Verdict:* adopt, by promoting RSR/RAIR from 35 points inside T3 to the **named construct of the
@@ -752,14 +752,14 @@ treatment of reliance in the literature, and no evidence on verification behavio
 pressure or cost.** §7.2 and §7.3 above read as though that evidence exists. It does not, in this
 base. The two-tailed index shipped anyway, because the design argument stands on its own — it is
 behavioural, keyless, symmetric and immune to demand characteristics — but it ships **marked as
-AILX's own construction with no external validity evidence**, in the scorer's module comment and
+Foray's own construction with no external validity evidence**, in the scorer's module comment and
 in spec §T3. The same check found no corroboration for the QWK 0.708–0.712 figure the spec quotes
 for a calibrated jury; what the base contains is one small study (n = 67) with a low,
 non-significant result. A follow-up spike (2026-09-02, TEN-32) then traced the figure itself to one
 unreviewed preprint, arXiv:2601.08654 — one model family, one dataset — and measured human–human
 QWK on ASAP at 0.63–0.85, median 0.76, which puts 0.71 below the median human pair. The same spike
 reached the wider literature this base had missed: RSR and RAIR **are** defined, by Schemmer et al.
-(IUI '23), and AILX computes neither of them. See §4.1. Those 45 points are marked unimplemented for more reasons than one.
+(IUI '23), and Foray computes neither of them. See §4.1. Those 45 points are marked unimplemented for more reasons than one.
 
 Two other citation corrections: Verhavert's bands are SSR .70 at ~13 comparisons, .80 at 19–20,
 .90 at **26–37** — so r = 30 is inside the .90 band, as §3.3 says. Diel et al. is k = 137 across
@@ -767,8 +767,8 @@ Two other citation corrections: Verhavert's bands are SSR .70 at ~13 comparisons
 
 **(d) The evidence cuts against cutting T4 in one place, and it is worth naming.** PISA 2029's
 Media & AI Literacy framework gives roughly half its test time to *create* alongside analyse and
-evaluate. Cutting a generative track moves AILX away from that balance. The answer is that T1 is a
-create track, it is now the flagship, and it has an external criterion — AILX did not stop
+evaluate. Cutting a generative track moves Foray away from that balance. The answer is that T1 is a
+create track, it is now the flagship, and it has an external criterion — Foray did not stop
 measuring creation, it stopped measuring it twice — but the tension is real and the spec states it.
 Similarly, §2.1's case for demoting d′ is partly contradicted by Diel's own reading that *accuracy*
 is confounded with criterion, which is the original argument for scoring d′ at all. d′ keeps 25

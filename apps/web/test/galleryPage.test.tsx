@@ -334,7 +334,7 @@ describe("how it reads the service", () => {
   });
 
   it("forwards the identity this browser already has", async () => {
-    installMemoryStorage().set("ailx:dev-user", "web-abc123");
+    installMemoryStorage().set("foray:dev-user", "web-abc123");
     await markup();
     expect(identity[0]["x-ailx-dev-user"]).toBe("web-abc123");
   });

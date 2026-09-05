@@ -4,12 +4,12 @@ Recorded 2026-08-29. Standing direction for UI/UX work.
 
 ## The goal
 
-Make AILX as fun and attention-holding as possible. Duolingo is the reference: people
+Make Foray as fun and attention-holding as possible. Duolingo is the reference: people
 return daily, feel themselves improving, and share what they got.
 
 ## The tension, stated honestly
 
-`AILX-Spec-2026.1.md` says the opposite in one place: "No cosmetic unlocks or currency.
+`Foray-Spec-2026.1.md` says the opposite in one place: "No cosmetic unlocks or currency.
 The audience is adult professionals; the tone should be closer to a well-made instrument
 than to a mobile game."
 

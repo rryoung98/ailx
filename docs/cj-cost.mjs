@@ -31,7 +31,7 @@ const num = (name, fallback) => {
 };
 
 export const DEFAULTS = {
-  /** Comparisons per artefact. Spec AILX-Spec-2026.1.md: r = 30. */
+  /** Comparisons per artefact. Spec Foray-Spec-2026.1.md: r = 30. */
   r: 30,
   /** Seconds per forced-choice pair. Spec estimate, ~75 s. A guess. */
   seconds: 75,

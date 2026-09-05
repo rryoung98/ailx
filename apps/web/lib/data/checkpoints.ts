@@ -2,7 +2,7 @@
  * Per-track runner checkpoints (F2). Kept OUT of the session log to keep
  * the log lean, under a dedicated localStorage key per attempt+track:
  *
- *   ailx:checkpoint:<attemptId>:<trackId>
+ *   foray:checkpoint:<attemptId>:<trackId>
  *
  * The exam page saves every onCheckpoint(state) here, rehydrates the
  * Runner from it on mount/reload, and — on timeout — scores the partial
@@ -15,11 +15,12 @@
  * attempt's work. Legacy v1 payloads (no binding) are also rejected —
  * fail closed: an absent checkpoint scores as a legitimate missing response.
  */
+import { readMigratedItem, removeMigratedItem } from "@ailx/core";
 import type { StorageLike, TrackId } from "@ailx/session";
 import { TRACK_IDS } from "@ailx/session";
 
 export function checkpointKey(attemptId: string, trackId: TrackId): string {
-  return `ailx:checkpoint:${attemptId}:${trackId}`;
+  return `foray:checkpoint:${attemptId}:${trackId}`;
 }
 
 interface CheckpointShape {
@@ -50,7 +51,7 @@ export function loadCheckpoint(
   attemptId: string,
   trackId: TrackId,
 ): unknown {
-  const raw = storage.getItem(checkpointKey(attemptId, trackId));
+  const raw = readMigratedItem(storage, checkpointKey(attemptId, trackId));
   if (raw === null) return undefined;
   let parsed: unknown;
   try {
@@ -75,7 +76,7 @@ export function clearCheckpoint(
   attemptId: string,
   trackId: TrackId,
 ): void {
-  storage.removeItem(checkpointKey(attemptId, trackId));
+  removeMigratedItem(storage, checkpointKey(attemptId, trackId));
 }
 
 export function clearAllCheckpoints(storage: StorageLike, attemptId: string): void {

@@ -5,7 +5,7 @@
  * The PROOF of an identity is a server duty and stays there (`@ailx/backend`
  * `auth.ts`: `DevAuthProvider`, Clerk, `authProviderFromEnv`). What is here
  * is only the spelling: the browser writes `ailx_dev_user` next to
- * `localStorage["ailx:dev-user"]` and sends `x-ailx-dev-user`, and the server
+ * `localStorage["foray:dev-user"]` and sends `x-ailx-dev-user`, and the server
  * reads exactly those two names. Two spellings would be an identity nobody
  * receives.
  */

@@ -1,4 +1,4 @@
-# AILX Positioning — From Calibration Cohort to Industry Default
+# Foray Positioning — From Calibration Cohort to Industry Default
 
 Status: working memo, August 2026. Sources: competitive research in this session
 (certification landscape, gamified-assessment precedents, demand evidence, and
@@ -6,7 +6,7 @@ formation histories of CFA / CompTIA / CNCF / ETS).
 
 ## The claim
 
-**AILX is the first cross-nationally normed, annually re-versioned, task-performance-based
+**Foray is the first cross-nationally normed, annually re-versioned, task-performance-based
 AI-literacy examination for adults.** Every qualifier is load-bearing (see spec §01).
 
 **What the norm covers at first release.** The exam runs in three languages. The first
@@ -31,7 +31,7 @@ false as a market claim and true at the measurement layer:
   exam of human AI fluency, normed across countries, re-cut annually. Academic
   instruments (GLAT, AICOS, SAIL4ALL) use objectively keyed MCQ, not task performance.
 
-Incumbents certify *familiarity*. AILX examines *capability*. They are different categories.
+Incumbents certify *familiarity*. Foray examines *capability*. They are different categories.
 
 **Which qualifier is the moat.** It is not "performance-based, not multiple choice".
 The first draft of OECD's PISA 2029 Media & AI Literacy (MAIL) framework recommends
@@ -64,7 +64,7 @@ hiring market with no credential:
   version includes a measure. The Commission's AI literacy Q&A says Art. 4 "does not entail
   an obligation to measure the knowledge of AI of employees". See docs/POLICY-BRIEF.md §2.
 
-AILX addresses this through authentic task scoring, which cramming cannot fake,
+Foray addresses this through authentic task scoring, which cramming cannot fake,
 and annual re-versioning, which keeps the item bank aligned with frontier practice.
 
 ## The examiner seat is empty
@@ -73,11 +73,11 @@ Every serious incumbent is vendor-captive. A lab cannot credibly grade fluency o
 own product. Its certification distributes that product, which limits the certification's
 value as a measure. Labs benefit from an examiner that sells no model, as rival vendors
 benefited from CompTIA, CNCF, and ETS. Anthropic's published "AI Fluency" 4D framework
-maps nearly one-to-one onto AILX's four tracks. This is an observation about a public
+maps nearly one-to-one onto Foray's four tracks. This is an observation about a public
 document. It is not a relationship or an endorsement. OpenAI's certification push
 legitimises the category and cannot fill the seat itself.
 
-AILX does not claim to be neutral. The next section says what it claims instead.
+Foray does not claim to be neutral. The next section says what it claims instead.
 
 ## What we can claim today
 
@@ -155,8 +155,8 @@ OECD cannot take our users because it has none. It has resources we lack and can
 
 1. **ETS** — psychometric infrastructure, Futurenav Adapt AI (June 2025), already
    OpenAI's psychometrics partner. Mitigant: ETS was already disrupted by the exact
-   playbook AILX runs (Duolingo English Test vs TOEFL: $65, 1 hour, gamified funnel).
-   Its item cycle takes years. AILX's must take months.
+   playbook Foray runs (Duolingo English Test vs TOEFL: $65, 1 hour, gamified funnel).
+   Its item cycle takes years. Foray's must take months.
 3. **CodeSignal** — simulation-based AI assessments, 13M+ evaluations, but B2B hiring
    tool with no public credential or norming.
 4. **Workera** — enterprise AI-readiness scores (Andrew Ng), quiz-leaning, B2B only.
@@ -165,7 +165,7 @@ Several products show that the components work. HackTheBox CPTS sells consumer-p
 hands-on exams at 4.3M-member scale. Duolingo English Test is a cheap normed exam accepted
 by every Ivy. Lakera Gandalf has one authentic AI task and 1M+ players. Linux Foundation
 CKA shows that performance exams can scale commercially. Immersive Labs / Secure Code Warrior
-show that enterprises pay for benchmarked org-level scores. AILX combines established
+show that enterprises pay for benchmarked org-level scores. Foray combines established
 components. It does not depend on an unproven mechanism.
 
 ## Formation playbook (how cross-vendor examiners actually got built)
@@ -191,7 +191,7 @@ Load-bearing details:
 
 ## Go-big sequence
 
-AILX fits a **CNCF-consortium + CFA-eminent-cohort hybrid**. Follow this order:
+Foray fits a **CNCF-consortium + CFA-eminent-cohort hybrid**. Follow this order:
 
 1. **Founding cohorts as the "class of 1963."** Seed early sittings with named,
    credible frontier practitioners who run persistent, thousand-agent
@@ -200,10 +200,10 @@ AILX fits a **CNCF-consortium + CFA-eminent-cohort hybrid**. Follow this order:
    Create an exam board whose decisions dues cannot buy. The pitch to each lab is direct.
    Its own certification is a sales funnel. An examiner that none of the labs owns grows
    the whole market.
-3. **Org-level "AILX-Assessed Team" badge at launch.** Individual certs follow org
+3. **Org-level "Foray-Assessed Team" badge at launch.** Individual certs follow org
    mandates, not the reverse (KCSP, CompTIA ASC). This is the enterprise product:
    benchmarked org capability scores, sold into the 95%-pilot-failure problem.
-4. **One anchor mandate.** Secure one employer requiring AILX in hiring or one
+4. **One anchor mandate.** Secure one employer requiring Foray in hiring or one
    ministry/procurement pilot. The exam has no value until someone requires it.
    Its value compounds quickly afterward. EU AI Act Art. 4 is a weaker hook than it looks.
    It requires no measurement and carries no EU-level fine. It carries only the national
@@ -230,7 +230,7 @@ it into a measurable instrument every quarter.
 
 This research needs knowledge from people working at the frontier. That supports advisory
 relationships with frontier startups and labs. Both sides receive something concrete.
-AILX gets expertise it cannot buy. Advisors gain visibility and credibility by being
+Foray gets expertise it cannot buy. Advisors gain visibility and credibility by being
 named in the methodology behind the instrument that defines AI fluency.
 
 Historical precedent supports this structure. CompTIA was founded by competing vendors.

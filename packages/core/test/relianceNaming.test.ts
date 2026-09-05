@@ -117,7 +117,7 @@ describe("the T3 reliance component names cannot drift back", () => {
   });
 
   it("quotes a dead spelling in the spec only where the rename is recorded", () => {
-    const spec = readFileSync(join(ROOT, "AILX-Spec-2026.1.md"), "utf8");
+    const spec = readFileSync(join(ROOT, "Foray-Spec-2026.1.md"), "utf8");
     const hits = spec
       .split("\n")
       .map((line, n) => ({ line, n: n + 1 }))

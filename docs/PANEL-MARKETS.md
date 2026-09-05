@@ -1,12 +1,12 @@
 # PANEL-MARKETS.md — what a probability sample costs in Japan and Korea, and what it does not
 
-Status: evidence review, September 2026. AILX cannot buy a national population statistic in Japan
+Status: evidence review, September 2026. Foray cannot buy a national population statistic in Japan
 and Korea on the same terms as in the US and the UK. This document describes what it can buy
 instead, at what price, and the conditions that must be met before the trilingual exam can produce
 a trilingual statistic.
 
 Companion documents: `docs/SAMPLING.md` (the two-track design and the release rules),
-`docs/POSITIONING.md` (why a population statistic is the ambition), `AILX-Spec-2026.1.md` §01–02.
+`docs/POSITIONING.md` (why a population statistic is the ambition), `Foray-Spec-2026.1.md` §01–02.
 
 Labels follow `docs/SAMPLING.md`. **VERIFIED** means a primary source was read and is cited.
 **ESTIMATE** means our arithmetic or judgement. The assumption appears beside it. **UNKNOWN**
@@ -27,7 +27,7 @@ questionnaire. **VERIFIED.** Korea sells ad-hoc mobile RDD by the project. **VER
 **Neither can carry a 45–60 minute assessment.** A Track B wave needs that much time
 (`docs/SAMPLING.md` §5). An omnibus sells questions, not testing time.
 
-**The AILX position is: the exam is trilingual, the first population statistic is not.** The
+**The Foray position is: the exam is trilingual, the first population statistic is not.** The
 first wave covers the US and the UK, whose frames are rentable. Japan and Korea field when
 commissioned fieldwork is funded and a local partner is contracted.
 
@@ -50,7 +50,7 @@ Sources: vendor methods pages (macromill, intage, insight.rakuten, cross-m, free
 monitor.nikkei-r, nikkei-r pollsurvey, videor, crs.or.jp/survey/omhh.html, nrc.co.jp/solution/nos).
 
 Basic Resident Register access is granted only for surveys whose results will be published.
-**VERIFIED** (CRS). A commercial-only AILX wave may not qualify for the best frame in the country.
+**VERIFIED** (CRS). A commercial-only Foray wave may not qualify for the best frame in the country.
 
 ## 3. Korea — the vendors
 
@@ -174,7 +174,7 @@ quotes should replace the whole table before any money is committed.**
    produced a realised response rate and a non-response bias analysis. The realised n clears the
    1,000 floor in `docs/SAMPLING.md` §4.5. If any condition is missing, the country is suppressed
    and we publish the reason.
-4. **Until then, no AILX output describes a Japanese or Korean population.** ja/ko convenience data
+4. **Until then, no Foray output describes a Japanese or Korean population.** ja/ko convenience data
    serves three purposes: item calibration, DIF screening across en/ja/ko, and individual
    credentials. The `docs/SAMPLING.md` §11 rules apply unchanged. The word "national" is not
    available for this data.
@@ -191,7 +191,7 @@ quotes should replace the whole table before any money is committed.**
    surveys, and on what terms.
 4. AmeriSpeak's and Pew ATP's actual recruitment rates. Both pages make a claim and publish no
    number.
-5. Whether AILX qualifies for Basic Resident Register access at all, given the publication condition
+5. Whether Foray qualifies for Basic Resident Register access at all, given the publication condition
    on that frame.
 6. What happens to PbOPSS-23 when its grant ends in March 2027.
 7. Whether Video Research's ACR/ex meets a strict known-selection-probability standard; the

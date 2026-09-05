@@ -44,7 +44,7 @@ import type { PracticeDayCounts } from "./progress.js";
  * try to read v1's bytes: an unreadable ledger is a lost streak, and a
  * silently mis-parsed one is a wrong streak, which is worse.
  */
-export const LOCAL_PRACTICE_KEY = "ailx:practice:v1";
+export const LOCAL_PRACTICE_KEY = "foray:practice:v1";
 
 /**
  * How many days a browser keeps, and how many it may hand over in one claim.

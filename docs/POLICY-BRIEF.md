@@ -17,7 +17,7 @@ travels with the pack rather than behind it. Section 7 has two openers.
 
 **Verification marks.** VERIFIED means a primary source was read on 2026-09-02 and is cited.
 COULD NOT VERIFY means the site refused the fetch or the source was not reached. OURS marks a
-claim about AILX that is checkable in this repository and has no outside source behind it.
+claim about Foray that is checkable in this repository and has no outside source behind it.
 
 Four sites blocked automated fetching. `eur-lex.europa.eu` was read in a browser. `coe.int`,
 `unesdoc.unesco.org` and `oecd.org` were read through official-text mirrors, flagged at each use.
@@ -291,7 +291,7 @@ have produced cross-level AI competency instruments.
 - **What attention buys:** a citation in implementation guidance, a convening of member states, or
   a low-resource pilot.
 - **What they will ask for and we do not have:** whether the instrument works offline, on low-end
-  devices and in non-dominant languages, plus learner-data safeguards. AILX is currently a browser
+  devices and in non-dominant languages, plus learner-data safeguards. Foray is currently a browser
   exam that assumes a modern device.
 
 ### 4.6 IEA, Amsterdam

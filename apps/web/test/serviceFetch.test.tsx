@@ -48,7 +48,7 @@ function stub(status: number, body: unknown = { ok: true }): void {
 beforeEach(() => {
   seen = [];
   vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
-  window.localStorage.setItem("ailx:dev-user", "player-9");
+  window.localStorage.setItem("foray:dev-user", "player-9");
 });
 afterEach(() => {
   setAuthTokenSource(null);
@@ -115,15 +115,15 @@ describe("identity", () => {
 
   it("optional identity MINTS nothing, and leaves storage untouched", async () => {
     stub(200);
-    window.localStorage.removeItem("ailx:dev-user");
+    window.localStorage.removeItem("foray:dev-user");
     await serviceFetch(apiPath("gallery"), { identity: "optional" });
     expect(seen[0].headers[DEV_USER_HEADER]).toBeUndefined();
-    expect(window.localStorage.getItem("ailx:dev-user")).toBeNull();
+    expect(window.localStorage.getItem("foray:dev-user")).toBeNull();
   });
 
   it("required identity DOES mint one — the question is meaningless without it", async () => {
     stub(200);
-    window.localStorage.removeItem("ailx:dev-user");
+    window.localStorage.removeItem("foray:dev-user");
     await serviceFetch(apiPath("progress"), { identity: "required" });
     expect(seen[0].headers[DEV_USER_HEADER]).toMatch(/^web-/);
   });

@@ -113,7 +113,7 @@ Competence Scale (doi:10.1177/02666669251336455) is self-report and not relevant
 
 1. **AI literacy moved to knowledge tests taken before the task, not to scored process.** GLAT (Jin
    et al., arXiv:2411.00283) predicted AI-assisted task performance at **β = 0.220, p = .040**,
-   while a self-report ChatGPT-literacy scale did not (β = −0.159, n.s.). This supports AILX being a
+   while a self-report ChatGPT-literacy scale did not (β = −0.159, n.s.). This supports Foray being a
    performance exam. It says nothing for `processSignal`.
 2. **The two log studies that *did* separate competent from incompetent users did it structurally.**
    Chen & Jia (2026, arXiv:2606.00040, ENA) found the high-literacy signature was *refinement
@@ -231,7 +231,7 @@ labelled reliably enough for a model-free scorer, and the trained version re-lea
 - **Afrin & Litman (2023), Findings of EACL**, pp. 2550–2561: with **expert** coders plus context
   plus feedback, κ rises to 0.72–0.83, and gold desirable-revision counts correlate r = 0.20–0.45
   with improvement while **undesirable revisions are n.s.** The relationship measure works — under
-  conditions AILX cannot meet in a pure scorer.
+  conditions Foray cannot meet in a pure scorer.
 
 **The one evidence-backed, model-free move** is a *coupling link*, not a quality judgement: "the
 prompt was followed by a change to the artefact within a bounded window", deterministic from the
@@ -452,7 +452,7 @@ process observation.
 association between prompt volume and graded outcome in unincentivised settings; Zhang & Litman's raw
 revision count reached r = 0.516. That is the whole case, and both are confounded with quality.
 
-**Evidence it still needs, and it is expensive:** (1) a within-AILX study showing the score is
+**Evidence it still needs, and it is expensive:** (1) a within-Foray study showing the score is
 associated with judged artefact quality **at fixed candidate**; (2) the volume-invariance test TEN-80
 already demands — two transcripts, same outcome, very different spend, scores equal within tolerance
 — which **this formula will fail by construction**; (3) a DIF screen on prompt count by first

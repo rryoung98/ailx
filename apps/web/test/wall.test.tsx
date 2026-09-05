@@ -67,7 +67,7 @@ describe("gallery wall", () => {
     expect(btn.textContent).toContain("3");
     await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(btn.textContent).toContain("3"); // no double vote
-    expect(JSON.parse(store.get("ailx:gallery-voted")!)).toContain("abc123");
+    expect(JSON.parse(store.get("foray:gallery-voted")!)).toContain("abc123");
   });
 
   it("labels the upvote, so its accessible name is not the string \"▲ 2\"", async () => {
@@ -142,7 +142,7 @@ describe("gallery wall", () => {
     expect(btn.textContent).toContain("2");
     expect(btn.getAttribute("aria-pressed")).toBe("false");
     // and it is not remembered, so a reload does not claim a vote that failed
-    expect(JSON.parse(store.get("ailx:gallery-voted") ?? "[]")).not.toContain("abc123");
+    expect(JSON.parse(store.get("foray:gallery-voted") ?? "[]")).not.toContain("abc123");
   });
 
   it("takes the vote back when the network drops it", async () => {
@@ -153,17 +153,17 @@ describe("gallery wall", () => {
     await act(async () => { await Promise.resolve(); });
     expect(btn.textContent).toContain("2");
     expect(btn.getAttribute("aria-pressed")).toBe("false");
-    expect(JSON.parse(store.get("ailx:gallery-voted") ?? "[]")).not.toContain("abc123");
+    expect(JSON.parse(store.get("foray:gallery-voted") ?? "[]")).not.toContain("abc123");
   });
 
   it("keeps an older vote remembered when a new one fails", async () => {
-    store.set("ailx:gallery-voted", JSON.stringify(["other-set"]));
+    store.set("foray:gallery-voted", JSON.stringify(["other-set"]));
     voteReply = () => { throw new Error("network"); };
     await mount();
     const btn = [...host.querySelectorAll("button")].find((b) => b.textContent!.includes("▲"))!;
     await act(async () => btn.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     await act(async () => { await Promise.resolve(); });
-    expect(JSON.parse(store.get("ailx:gallery-voted")!)).toEqual(["other-set"]);
+    expect(JSON.parse(store.get("foray:gallery-voted")!)).toEqual(["other-set"]);
   });
 
   it("keeps its own count when the service answers without one", async () => {

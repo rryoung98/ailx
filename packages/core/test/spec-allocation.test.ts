@@ -2,7 +2,7 @@
  * The spec is checked against the code, not the other way round.
  *
  * §04's design principle is a claim about how many of the 400 points one
- * scoring MECHANISM can damage. That claim was typed into `AILX-Spec-2026.1.md`
+ * scoring MECHANISM can damage. That claim was typed into `Foray-Spec-2026.1.md`
  * as prose and it went wrong by a factor of five: the spec said 40-45 points
  * were exposed to LLM-judge methodology while the built system resolved 241
  * of 400 through stored judge values. Nothing failed, because nothing was
@@ -26,7 +26,7 @@ import {
 } from "../src/allocation.js";
 
 const SPEC = readFileSync(
-  fileURLToPath(new URL("../../../AILX-Spec-2026.1.md", import.meta.url)),
+  fileURLToPath(new URL("../../../Foray-Spec-2026.1.md", import.meta.url)),
   "utf8",
 );
 
@@ -63,7 +63,7 @@ function specMechanismTable(): Record<Resolution, { designed: number; implemente
   return out;
 }
 
-describe("AILX-Spec-2026.1 §04 agrees with the allocation table", () => {
+describe("Foray-Spec-2026.1 §04 agrees with the allocation table", () => {
   it("states the same designed exposure per mechanism that the code allocates", () => {
     const spec = specMechanismTable();
     const code = pointsByResolution();

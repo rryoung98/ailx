@@ -33,7 +33,7 @@ can query today.** It becomes real when the service mounts the route.
 **The exam surface emits one funnel step: `sitting_started`.** Nothing inside
 a sitting is instrumented. (The session's own `visit_started` still goes out
 when the sitting is the first thing a browser does; it says a browser opened
-AILX, not anything about the run.) Responses, per-item
+Foray, not anything about the run.) Responses, per-item
 timings, judgments and scores are exam evidence. They live in the append-only
 store, are content-addressed and are replayable (AGENTS.md, core invariants).
 They are not funnel metrics and must never be copied into one.
@@ -42,7 +42,7 @@ They are not funnel metrics and must never be copied into one.
 
 | # | Step | Event | Fired from | Means |
 |---|---|---|---|---|
-| 1 | Session | `visit_started` | the emitter, on the first event of a browsing session | a browser opened AILX. Carries `newClient`. |
+| 1 | Session | `visit_started` | the emitter, on the first event of a browsing session | a browser opened Foray. Carries `newClient`. |
 | 2 | Landing | `landing_viewed` | `app/page.tsx` | somebody was on the front page. |
 | 3 | Play started | `play_started` | `features/practice/PracticeDrill.tsx`, `features/daily/DailyChallenge.tsx` | a person called their FIRST card of a round. |
 | 4 | Play completed | `play_completed` | the same two components | the last card of that round was called. Carries `answered`. |

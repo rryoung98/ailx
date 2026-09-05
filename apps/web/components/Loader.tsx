@@ -7,7 +7,7 @@
  *
  * Skip rules:
  *  - prefers-reduced-motion: never shown (CSS hides it pre-hydration too);
- *  - sessionStorage "ailx:loaded": already shown this tab — skip (the
+ *  - sessionStorage "foray:loaded": already shown this tab — skip (the
  *    inline script hides the cover before hydration, no flash);
  *  - after the first show the flag is set, so client navs and quick
  *    reloads skip.
@@ -17,11 +17,12 @@
  * CLS), and ALWAYS unmounts — animationend on the wipe OR a setTimeout
  * fallback, whichever fires first. Scroll is never locked.
  */
+import { readMigratedItem, legacyStorageKey } from "@ailx/core";
 import { useEffect, useState } from "react";
 import { assetUrl } from "../lib/mode";
 import { prefersReducedMotion } from "../lib/reducedMotion";
 
-const KEY = "ailx:loaded";
+const KEY = "foray:loaded";
 /** Two-tone wordmark asset (public/), shares its traced paths with logo.svg. */
 export const LOADER_MARK = "/media/loader-mark.svg";
 /** Wipe keyframe name — the unmount listens for exactly this animation. */
@@ -30,11 +31,11 @@ export const WIPE_ANIMATION = "loaderWipe";
 export const LOADER_FALLBACK_MS = 1500;
 
 /** Runs before hydration: hide the cover for repeat/reduced-motion loads. */
-const PREHYDRATE = `try{if(sessionStorage.getItem("${KEY}")||matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.dataset.ailxLoaded="1"}}catch(e){}`;
+const PREHYDRATE = `try{if(sessionStorage.getItem("${KEY}")||sessionStorage.getItem("${legacyStorageKey(KEY)}")||matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.dataset.ailxLoaded="1"}}catch(e){}`;
 
 function shouldSkip(): boolean {
   try {
-    if (window.sessionStorage.getItem(KEY)) return true;
+    if (readMigratedItem(window.sessionStorage, KEY)) return true;
   } catch {
     /* storage unavailable -> show once per load, still fine */
   }

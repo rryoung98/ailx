@@ -1,4 +1,4 @@
-# AILX Build Plan
+# Foray Build Plan
 
 Derived from spec §18 (Roadmap) and §11 (Architecture). Status legend: [ ] todo, [~] in progress, [x] done.
 

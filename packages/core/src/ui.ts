@@ -57,7 +57,7 @@ export interface TrackUIProps {
    * endpoint is a capped proxy or a local server, and every bare unit test.
    *
    * WHICH endpoint is not passed here: the runner reads the one shared
-   * browser slot (`ailx:llm-base-url`), which the run-start panel owns.
+   * browser slot (`foray:llm-base-url`), which the run-start panel owns.
    */
   modelFetch?: (url: string, init?: RequestInit) => Promise<Response>;
   /**

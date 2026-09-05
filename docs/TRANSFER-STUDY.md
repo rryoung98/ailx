@@ -7,7 +7,7 @@ observe. The fix is not only quieter copy (`docs/PROGRESSION.md`
 catch the effect if it is there. That experiment could show a null that means
 something.
 
-Read `AILX-Spec-2026.1.md` §13 for what practice is, and `docs/PROGRESSION.md`
+Read `Foray-Spec-2026.1.md` §13 for what practice is, and `docs/PROGRESSION.md`
 for the loop this would measure.
 
 Two studies live here. **§2 is the T2 study**: does practice move sensitivity on
@@ -31,10 +31,10 @@ Three results, and they point the same way.
    Immediately: textual +7.5 pts, visual +13 pts. But **gamified 65.7%
    (p_adj = .310)** and **feedback 60.0% (p_adj = 1.000)** were
    indistinguishable from control at 61.3%. At two weeks **no arm** beat
-   control. AILX's practice loop is gamified drilling with immediate feedback.
+   control. Foray's practice loop is gamified drilling with immediate feedback.
    It is assembled from the two arms that failed.
 2. **Gray, Davis, Bunce, Noyes & Ritchie**, *R. Soc. Open Sci.* 12(11):250921
-   (2025). The five-minute artefact training AILX modelled its families on.
+   (2025). The five-minute artefact training Foray modelled its families on.
    Trained typical-ability adults reached 51% accuracy. Their **d′ = −0.066,
    not different from chance** (t₆₉ = 1.092, p = .279). Untrained controls were
    *below* chance. Training removed a bias. It did not create discrimination.
@@ -119,7 +119,7 @@ benchmarks. A generator set fixed in 2026 is measuring 2026.
 14 days** with no practice in between → **`t3` at 56 days**.
 
 `t2` matches Geissler's follow-up so the results are comparable. `t3` exists
-because nobody in this literature has measured beyond two weeks. AILX's whole
+because nobody in this literature has measured beyond two weeks. Foray's whole
 annual-re-sitting story is a durability claim.
 
 ### 2.5 Trial counts and power
@@ -211,19 +211,19 @@ The block fixes that for the study only:
   correlation in the next point.
 - From that block, compute **RAIR and RSR to the published definitions**, and the
   Appropriateness-of-Reliance tuple. Report the tuple, never a difference.
-- Compute AILX's `reliance.over`, `reliance.under` and `reliance.index` on the
+- Compute Foray's `reliance.over`, `reliance.under` and `reliance.index` on the
   **same** candidate from the ordinary block. Publish the correlations between
   the two sets, with confidence intervals. **Publish them whatever they
   are.** A low correlation is the finding, not a failure of the study.
 - Pre-register the direction: `reliance.over` should track 1 − RSR, and
   `reliance.under` should track 1 − RAIR. That is the mapping asserted in the
   private repo's `docs/EVIDENCE-CALIBRATED-RELIANCE.md` §6. It has never been
-  measured. If the correlations are low, the spec drops the claim that AILX's
+  measured. If the correlations are low, the spec drops the claim that Foray's
   rates are comparable in direction to the published ones.
 
 The block costs the candidate time and changes the task. That is why it is a
 study instrument and not a shipped form. It is the only design found that lets
-AILX say its numbers behave like the literature's.
+Foray say its numbers behave like the literature's.
 
 ### 3.2 Test–retest on parallel forms
 
@@ -437,7 +437,7 @@ should use to estimate `rho_event`.
 
 The two-stage block (§3.1) gives RAIR and RSR on the same candidate. Both sides
 of that correlation are unreliable, so the observable correlation is the true
-one attenuated: `r_obs = r_true · sqrt(rel_AILX · rel_RAIR)`.
+one attenuated: `r_obs = r_true · sqrt(rel_Foray · rel_RAIR)`.
 
 | true construct r | reliability of each | observable r | n for CI half-width ≤ 0.15 | n for CI lower bound > 0.20 |
 |---|---|---|---|---|
@@ -519,7 +519,7 @@ interval claim is small. The reliability claim is the real one.
 
 Hedge, Powell & Sumner (2018) and Enkavi et al. (2019) remain the right prior.
 Their difference scores subtract positively correlated conditions of one task.
-But **AILX's two rates are measured on disjoint events and may correlate
+But **Foray's two rates are measured on disjoint events and may correlate
 negatively**: a trusting candidate accepts wrong advice and rejects little
 correct advice. Nobody has measured the sign of either correlation. Until
 someone does, "the index is expected to be the worst of the three" in §3.2 is a
@@ -603,7 +603,7 @@ measure would be the error this whole section exists to prevent.
 
 Not a decision this document makes. The case, so it can be decided:
 
-**For.** AILX's positioning rests on checkable facts about the method rather
+**For.** Foray's positioning rests on checkable facts about the method rather
 than on an adjective about ourselves (`docs/POSITIONING.md`, "What we can claim
 today"). The cheapest way to be believed is to publish a result against our own
 product. If the drill turns out not to transfer and we say so first, we become
@@ -622,7 +622,7 @@ surface does not do the thing people assume it does. A competitor will quote it
 without the design section. It invites the question of why we ship the drill at
 all. The answer is that engagement is a legitimate goal on its own terms, and
 the drill is the front door. That answer is true. It is also a harder sentence
-to place in a headline than "AILX admits practice does not work".
+to place in a headline than "Foray admits practice does not work".
 
 **Middle path if the full study is too much.** Pre-register and publish the
 *design*, then the result whenever it lands. Publishing the protocol costs
