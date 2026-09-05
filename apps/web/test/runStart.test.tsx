@@ -120,11 +120,19 @@ describe("run start screen", () => {
     expect(pill.textContent).toContain("Start your run");
   });
 
-  it("keeps the fixed Start pill above the footer stacking context (#main z-index)", () => {
+  it("keeps the fixed Start pill above the footer", () => {
     const css = readFileSync(join(__dirname, "..", "app", "globals.css"), "utf8");
-    // body > * puts #main and the footer at z-index 1; the later-DOM footer
-    // then paints OVER the fixed pill trapped inside #main. The #main
-    // override must stay.
-    expect(css).toMatch(/#main \{ z-index: 2; \}/);
+    // Original bug: the later-DOM footer painted OVER the fixed pill and
+    // swallowed its clicks near the page bottom. That happened because
+    // #main and the footer both sat at z-index 1, which trapped the pill at
+    // #main's level. The fix is that neither is given a z-index at all: the
+    // pill is then a positioned descendant of the ROOT stacking context at
+    // z-index 30, and the footer is an in-flow box with no z-index, so the
+    // pill paints later by the normal painting order. See
+    // test/stackingContext.test.ts for the rest of the layer contract.
+    expect(css).toMatch(/\.pill-cta \{[^}]*z-index: 30;/);
+    const footer = css.slice(css.indexOf(".site-footer {"));
+    expect(footer.slice(0, footer.indexOf("}"))).not.toContain("z-index");
+    expect(css).not.toMatch(/#main \{[^}]*z-index/);
   });
 });
