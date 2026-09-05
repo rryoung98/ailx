@@ -80,19 +80,7 @@ A new workspace package is picked up automatically: `pnpm-workspace.yaml` and
 
 ## Contributing
 
-Branch → PR → green CI → merge → auto-deploy. `main` is protected; push it through a PR.
-
-1. Branch off `main` and commit small, conventional commits.
-2. Open a PR. The `ci` workflow gates it with two jobs, and their names are the branch
-   protection contract: **`verify`** (install, `pnpm -r build` — which typechecks every
-   package — `pnpm test:coverage`, the coverage report on the PR, and the `AILX_BACKEND=1`
-   server build) and **`e2e`** (Playwright against a running exam service). Both must be green
-   to merge. A further gate is added as a new job with `needs: verify`, alongside `e2e`,
-   never chained behind it.
-   Two more workflows run outside the merge gate: `codeql` (static analysis, on merge to
-   `main` and weekly) and Dependabot (`.github/dependabot.yml`), which opens one grouped
-   minor/patch PR per ecosystem per week and keeps every major on its own so it gets read.
-3. On merge, `pages` runs only after `ci` succeeds on that commit: it rebuilds the static
-   export, stamps `/version.json` with the deployed commit, deploys to GitHub Pages, and tags
-   the commit `build-<UTC date>-<short sha>`. That tag plus `version.json` is the whole
-   versioning story — no changesets, nothing is published.
+Branch `w/<topic>` off `main`, PR to `main`, green CI, merge, auto-deploy. `main` is
+protected. The gate is three jobs whose names are the branch protection contract —
+`lint`, `verify`, `e2e` — and `pnpm -r build` is the typecheck. Full flow, local hooks and
+the frontend-only rules: [`CONTRIBUTING.md`](./CONTRIBUTING.md).

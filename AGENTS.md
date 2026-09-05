@@ -55,7 +55,13 @@ It touches no store and decides no policy. The guard allows it BY NAME, so addin
 handler requires a decision in front of a reviewer.
 
 ## Commands
+
+Process — branch naming, the three gate job names, why there is no `type-check`
+script, and the local hooks — is in [`CONTRIBUTING.md`](./CONTRIBUTING.md). The
+commands and the invariants stay here.
+
 - `pnpm install` · `pnpm test` · `pnpm -r build` (both must pass before any commit)
+- `lefthook.yml` runs Biome on staged files pre-commit and `pnpm test` pre-push, once you have run `pnpm exec lefthook install`. `LEFTHOOK=0 git push` skips the test hook on a draft.
 - `pnpm lint` — Biome. An error fails the run and the CI `lint` job; a warning is carried debt, and every carried rule has a reason in `docs/DEBT.md`.
 - `pnpm test` runs ONE vitest for the whole monorepo (`vitest-workspace.ts`). Its worker pool is capped at 4 forks because memory, not CPU, sets the ceiling. Raise it with `AILX_TEST_FORKS=8 pnpm test` on a big machine. `pnpm -r test` still works and runs the same tests. It starts a vitest per package, so it costs more RAM and more time.
 - Run `vitest run` inside a package to debug that package.
