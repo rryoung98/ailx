@@ -5,5 +5,6 @@ export * from "./judgments.js";
 export * from "./rounding.js";
 export * from "./content-address.js";
 export * from "./purity.js";
+export * from "./storageKeys.js";
 export * from "./ui.js";
 export * from "./zip.js";

@@ -109,7 +109,7 @@ beforeEach(() => {
   notFound.mockClear();
   urls.length = 0;
   seenHeaders.length = 0;
-  window.localStorage.setItem("ailx:dev-user", "reviewer-1");
+  window.localStorage.setItem("foray:dev-user", "reviewer-1");
   result = { status: 200, body: { case: detail() } };
   stubCaseService();
 });
@@ -242,7 +242,7 @@ describe("what the candidate sees", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
     window.localStorage.clear();
-    window.localStorage.setItem("ailx:dev-user", "tester");
+    window.localStorage.setItem("foray:dev-user", "tester");
     container = document.createElement("div");
     document.body.append(container);
     fetchMock = vi.fn(async () => new Response(JSON.stringify(thread()), { status: 200 }));

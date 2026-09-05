@@ -88,7 +88,7 @@ beforeEach(() => {
       { attemptId: "b", startedOn: "2026-02-20", scores: shape(60) },
     ],
   });
-  window.localStorage.setItem("ailx:dev-user", "player-1");
+  window.localStorage.setItem("foray:dev-user", "player-1");
   claimedDays = [];
   calls = stubJsonFetch(() => ({
     status,

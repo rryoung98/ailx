@@ -26,6 +26,7 @@ import { createRoot, type Root } from "react-dom/client";
 import {
   DAILY_DECK_SIZE,
   DAILY_LEDGER_KEY,
+  legacyStorageKey,
   dailyDay,
   dailyDeck,
   dailyGrid,
@@ -519,8 +520,13 @@ describe("the daily never touches the credential", () => {
       [ATTEMPT_KEY, DAILY_LEDGER_KEY, LOCAL_PRACTICE_KEY].sort(),
     );
     // Equal bytes at the end would also hold for a read, or for a write and a
-    // restore, so every storage CALL is recorded and only one key was named.
-    expect([...new Set(touched)]).toEqual([DAILY_LEDGER_KEY]);
+    // restore, so every storage CALL is recorded and only one key was named —
+    // plus that key's pre-rename twin, which the one-shot legacy read looks
+    // for and which is the daily's own store either way (docs/RENAME.md §5
+    // step 7). Nothing else may be named.
+    expect([...new Set(touched)].sort()).toEqual(
+      [DAILY_LEDGER_KEY, legacyStorageKey(DAILY_LEDGER_KEY)].sort(),
+    );
   });
 
   it("imports nothing from the exam, scoring or credential path", () => {

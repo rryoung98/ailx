@@ -363,7 +363,7 @@ is marked as one.
 **The cheapest Redis is not $35.77, and this document will not win an argument
 by pricing only the expensive one.** Upstash's free tier is 256 MB and 500K
 commands a month — about 11.6 commands a minute sustained, which at two commands
-per request covers roughly 250K requests a month. AILX is nowhere near that.
+per request covers roughly 250K requests a month. Foray is nowhere near that.
 **On today's traffic a Redis for an aggregates key and a rate-limit counter
 would cost $0, or $10 a month on the fixed plan.** So the money is not the
 objection at small scale, and §5's honest form is: the money becomes an
@@ -376,7 +376,7 @@ cheapest tier not covered by the SLA at all).
 traffic level we can foresee — "The bill is idle." Those are different
 denominators from a monthly instance and this document is not going to pretend
 $35.77/month and $10/cohort are one ratio. The comparison that survives is
-simpler: **AILX has no recurring infrastructure bill today, and the reason to
+simpler: **Foray has no recurring infrastructure bill today, and the reason to
 start one should be a measurement, not a preference.**
 
 **The costs that are not money, which are the ones that actually decide it:**
@@ -565,7 +565,7 @@ and it is closer than the earlier draft admitted. The limiter's stated job is
 runaway loop. After TEN-62 the model key is sealed per identity, so a candidate
 burning 240 calls an hour burns their own credits, not ours. What is missing is
 evidence that anyone has tried: no abuse has been observed, and staging has no
-real users. The moment AILX funds a shared key pool (`docs/BUDGET.md` path 1:
+real users. The moment Foray funds a shared key pool (`docs/BUDGET.md` path 1:
 provisioned keys with a $0.25 hard limit), the 4× becomes real overspend and
 this section becomes the reason to adopt — with no cheaper option to try first,
 because the Postgres one inverts the property it is meant to defend.
@@ -628,7 +628,7 @@ not after.
   after step 2 and after the Neon floor is set, adopt an always-warm shared
   cache** — it is the only listed option that survives both a cold Cloud Run
   process and an idle Neon compute. §3.4 measured 1213 ms once.
-- **F4 — rate limiting becomes a control that matters.** **Adopt when AILX funds
+- **F4 — rate limiting becomes a control that matters.** **Adopt when Foray funds
   a shared model-credit pool, or when any abuse is observed on
   `/v1/model/connect`.** No cheaper option needs to be tried first: §7 shows the
   Postgres limiter would force a pool lease on requests it is rejecting, which

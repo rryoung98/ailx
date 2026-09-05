@@ -1,6 +1,6 @@
 # @ailx/content-tools
 
-Tooling for AILX instrument packages (`instruments/<version>/`, spec §14).
+Tooling for Foray instrument packages (`instruments/<version>/`, spec §14).
 
 - **Loader** — `loadInstrument(dir)` parses and validates `manifest.yaml`,
   per-track `track.yaml` / `rubric.yaml` / `prompts/*.md` / `items/bank.jsonl`

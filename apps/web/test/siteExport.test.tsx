@@ -38,7 +38,7 @@ function fakeStorage() {
 function mirrored() {
   const storage = fakeStorage();
   storage.setItem(
-    `ailx:sync:v1:${ATTEMPT}`,
+    `foray:sync:v1:${ATTEMPT}`,
     JSON.stringify({ serverAttemptId: SERVER_ID, syncedThrough: 1, finalized: false }),
   );
   return storage;

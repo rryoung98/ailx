@@ -1,5 +1,5 @@
 /**
- * The AILX credential — what a person can put on LinkedIn, and what a
+ * The Foray credential — what a person can put on LinkedIn, and what a
  * stranger can check.
  *
  * WHAT IT CLAIMS, AND WHY IT IS SO NARROW. The judging pipeline (spec Phase
@@ -8,7 +8,7 @@
  * credential body (docs/POSITIONING.md: what we can claim today is a fact
  * about the method, and an overclaimed credential destroys it). So today
  * the credential asserts exactly one thing —
- * THIS PERSON SAT AND COMPLETED AILX <version> ON <date> — plus the plain
+ * THIS PERSON SAT AND COMPLETED Foray <version> ON <date> — plus the plain
  * facts of that sitting: which tracks they attempted, the playful player type
  * their run produced, and a link to the artifact they built. Everything it
  * does NOT assert is stated on the credential itself (`CREDENTIAL_LIMITS`),
@@ -56,11 +56,11 @@ export const CREDENTIAL_CLAIMS = ["sitting-completed", "scored"] as const;
 export type CredentialClaimKind = (typeof CREDENTIAL_CLAIMS)[number];
 
 /** Issuing organisation, spelled once — LinkedIn, the page and the JSON. */
-export const CREDENTIAL_ISSUER = "AILX";
+export const CREDENTIAL_ISSUER = "Foray";
 
 /** Human name of the credential. Says "completed", never "passed". */
 export function credentialName(instrument: string): string {
-  return `AILX ${instrument} — Sitting Completed`;
+  return `Foray ${instrument} — Sitting Completed`;
 }
 
 /**
@@ -71,8 +71,22 @@ export function credentialName(instrument: string): string {
 export const CREDENTIAL_CODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 export const CREDENTIAL_CODE_GROUPS = 4;
 export const CREDENTIAL_CODE_GROUP_LEN = 4;
-export const CREDENTIAL_CODE_RE =
-  /^AILX-[0-9A-Za-z][0-9A-Za-z.\-]{0,15}-(?:[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}-){3}[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}$/;
+/**
+ * The prefix NEW codes are minted with, and the prefixes a code may CARRY.
+ *
+ * The rename (docs/RENAME.md §3.6, §4) widens this and never switches it.
+ * Three credentials were issued as `AILX-…`; two of them are revoked, and a
+ * revoked credential is exactly the one a sceptical reader checks. A code
+ * that fails this regex is answered "cannot be confirmed", which is the
+ * report reserved for a forgery — so dropping the legacy prefix would make a
+ * real credential look fake. Stored codes are never rewritten.
+ */
+export const CREDENTIAL_CODE_PREFIX = "FORAY";
+export const CREDENTIAL_CODE_PREFIXES = ["FORAY", "AILX"] as const;
+export const CREDENTIAL_CODE_RE = new RegExp(
+  `^(?:${CREDENTIAL_CODE_PREFIXES.join("|")})-[0-9A-Za-z][0-9A-Za-z.\\-]{0,15}-` +
+    "(?:[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}-){3}[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}$",
+);
 
 /**
  * Format a code from raw random bytes. Separated from generation so it is
@@ -86,7 +100,7 @@ export function formatCredentialCode(instrumentVersion: string, bytes: Uint8Arra
   for (let i = 0; i < need; i += CREDENTIAL_CODE_GROUP_LEN) {
     groups.push(chars.slice(i, i + CREDENTIAL_CODE_GROUP_LEN).join(""));
   }
-  return `AILX-${instrumentVersion}-${groups.join("-")}`;
+  return `${CREDENTIAL_CODE_PREFIX}-${instrumentVersion}-${groups.join("-")}`;
 }
 
 /** Canonical path of the public verification view. */
@@ -113,7 +127,7 @@ export function credentialApiPath(code: string, apiRoot = "/api"): string {
  *  - no item id, item text, answer, per-item correctness, confidence or
  *    latency, and no deck or event counts — the same item-integrity boundary
  *    the share payload holds (see share.ts), for the same reason;
- *  - no holder name and no participant reference — AILX cannot verify a name,
+ *  - no holder name and no participant reference — Foray cannot verify a name,
  *    and publishing an unverified one would be the credential asserting
  *    something it did not check.
  */
@@ -149,7 +163,7 @@ export const CREDENTIAL_CLAIM_KEYS = [
 
 /** Plain-language statement of what the credential says. Shown on /verify. */
 export const CREDENTIAL_ASSERTS = [
-  "This person sat the AILX examination and completed it on the date shown.",
+  "This person sat the Foray examination and completed it on the date shown.",
   "The instrument version and the tracks they attempted are as listed.",
   "The player type is a descriptive read of how that run was played.",
 ] as const;
@@ -159,7 +173,7 @@ export const CREDENTIAL_LIMITS = [
   "It does NOT report a score, a grade, a band or a percentile.",
   "It does NOT certify that any standard was met, or that the holder passed.",
   "It does NOT compare this person to any cohort or population.",
-  "It does NOT verify the holder's identity: AILX certifies the sitting, and the person publishing this credential is asserting that the sitting is theirs.",
+  "It does NOT verify the holder's identity: Foray certifies the sitting, and the person publishing this credential is asserting that the sitting is theirs.",
 ] as const;
 
 /** Which tracks the run actually reached. Counts only — never item data. */
@@ -311,7 +325,7 @@ export function credentialDocument(
       },
       // The sitting's own plain facts, under one key so an interoperable
       // reader can ignore them and still get a valid OB 3.0 object.
-      ailx: {
+      foray: {
         instrument: claim.instrument,
         completedOn: claim.completedOn,
         tracksAttempted: [...claim.tracksAttempted],
@@ -323,7 +337,7 @@ export function credentialDocument(
     },
     credentialStatus: {
       id: `${origin}${credentialApiPath(state.code)}`,
-      type: "AilxHostedStatus",
+      type: "ForayHostedStatus",
       status: state.status,
       ...(state.revokedAt === null ? {} : { revokedAt: state.revokedAt }),
       ...(state.revokeReason === null ? {} : { revokeReason: state.revokeReason }),

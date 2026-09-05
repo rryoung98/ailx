@@ -28,17 +28,17 @@ candidates, `raters = N`, the N cancels, and each rater does `r / 2 = 15` pairs 
 size. If raters are a fixed expert panel, `raters = P` is constant. Per-expert burden then grows
 linearly: 750 comparisons each at N = 500, 15,000 each at N = 10,000.
 
-**AILX assumes candidates are the raters.** That assumption is written down in three places:
+**Foray assumes candidates are the raters.** That assumption is written down in three places:
 
-- `AILX-Spec-2026.1.md`, timetable row D+1: "Peer comparative judgement session (T1, T4) | 40 min |
+- `Foray-Spec-2026.1.md`, timetable row D+1: "Peer comparative judgement session (T1, T4) | 40 min |
   Blinded, randomised pairs | **Participants as raters**".
-- `AILX-Spec-2026.1.md`, T1 score allocation: "60 pts — Comparative visual merit … Blinded
+- `Foray-Spec-2026.1.md`, T1 score allocation: "60 pts — Comparative visual merit … Blinded
   forced-choice pairwise comparison **by the full cohort**".
-- `AILX-Spec-2026.1.md`, "The comparative judgement design": "one artefact per candidate, and
+- `Foray-Spec-2026.1.md`, "The comparative judgement design": "one artefact per candidate, and
   every candidate judges … a rater makes r ÷ 2 = **15 comparisons** … the same in a cohort of 40
   and a cohort of 40,000".
 
-The issue's fear is real for a panel design. It does not apply to the design AILX specifies. What
+The issue's fear is real for a panel design. It does not apply to the design Foray specifies. What
 does not cancel is **rater turnout**: the flat per-rater number assumes every candidate comes back
 and judges. That is the exposure, and §2 prices it.
 
@@ -55,7 +55,7 @@ Assumptions, each beside the number it produces:
 - `r = 30` comparisons per artefact. **Sourced**: Verhavert et al. (2019) put reliability .90 at
   26–37 comparisons per representation (§6). The spec's earlier r = 24 sat below that band.
 - **75 s per forced-choice pair.** A **guess**, carried over from the spec. Nobody has timed an
-  AILX rater. It is the single assumption most worth measuring in the first live sitting.
+  Foray rater. It is the single assumption most worth measuring in the first live sitting.
 - **Expert panel of 10, at $60/hour loaded.** Both **guesses**, and the rate is a placeholder for
   a contracted subject-matter marker.
 - **$0.02 per model-jury comparison.** A **guess**: two screenshots plus a prompt to a frontier
@@ -226,7 +226,7 @@ bought. Until that is decided, read every candidate-rater number in §2 as **T1 
 ## 6. The citations, verified at source
 
 Both were fetched in-session, 2026-09-01, not quoted from memory. This project has already shipped
-a figure that did not survive being traced (`AILX-Spec-2026.1.md` §04), so the retrieval is
+a figure that did not survive being traced (`Foray-Spec-2026.1.md` §04), so the retrieval is
 recorded.
 
 **Verhavert, S., Bouwer, R., Donche, V., & De Maeyer, S. (2019). A meta-analysis on the
@@ -258,7 +258,7 @@ Five things the band comes with, all from the same paper, and all matter to us.
   uncertainty.
 - **Novices need more.** Expert and peer assessors reach the reliability asymptote inside the
   26–37 band; "assessments with novices need more comparisons per representation and
-  representations per assessor". AILX raters are peers, which is the band's better case. But
+  representations per assessor". Foray raters are peers, which is the band's better case. But
   candidates judging web design are closer to novices than to the D-PAC peer raters. **r = 30 is
   the floor, not a margin.**
 - **Assessor count and expertise do not move the reliability level**: "only N_CR influences the

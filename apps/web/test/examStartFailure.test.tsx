@@ -37,7 +37,7 @@ let host: HTMLElement | null = null;
 beforeEach(() => {
   Object.defineProperty(window, "localStorage", { value: memoryStorage(), configurable: true });
   // The start gate needs a connected model endpoint before it will start.
-  window.localStorage.setItem("ailx:llm-base-url", "https://exam.example/v1/model");
+  window.localStorage.setItem("foray:llm-base-url", "https://exam.example/v1/model");
 });
 
 afterEach(() => {

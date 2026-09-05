@@ -1,4 +1,4 @@
-# SAMPLING.md — how AILX gets a number it is allowed to publish
+# SAMPLING.md — how Foray gets a number it is allowed to publish
 
 Status: design document, first draft. Public on purpose. A sampling method that nobody can read is
 worth nothing as a credibility asset. There is no secret in here. The item bank is the private part
@@ -6,7 +6,7 @@ worth nothing as a credibility asset. There is no secret in here. The item bank 
 
 Companion documents: `docs/POSITIONING.md` (why a population statistic is the ambition),
 `docs/PANEL-MARKETS.md` (what can and cannot be bought in Japan and Korea, and the decision that
-follows), `AILX-Spec-2026.1.md` §01 and §09 (the claim and the psychometrics),
+follows), `Foray-Spec-2026.1.md` §01 and §09 (the claim and the psychometrics),
 `docs/TRANSFER-STUDY.md`.
 
 Every number below is marked. **VERIFIED** means a primary source was read and is cited.
@@ -17,7 +17,7 @@ know and have not pretended to.
 
 ## 0. The one-paragraph version
 
-AILX runs two samples that never mix. **Track A** is everyone who plays or sits on the web: large,
+Foray runs two samples that never mix. **Track A** is everyone who plays or sits on the web: large,
 self-selected, and biased toward the AI-curious. It calibrates items, estimates difficulty, powers
 engagement research and issues individual credentials. It is never a national number. **Track B** is
 a bought probability panel, 1,500–3,000 adults per country per wave, weighted to published
@@ -30,7 +30,7 @@ note. Policy notes do not survive a downstream analyst with a `GROUP BY`.
 
 ## 1. Why volume cannot fix this
 
-The temptation needs killing in writing. If 200,000 people sit AILX on the web, the sampling error
+The temptation needs killing in writing. If 200,000 people sit Foray on the web, the sampling error
 on their mean is tiny and the **bias is untouched**. Standard error shrinks with `1/sqrt(n)`.
 Self-selection bias does not shrink at all. A large biased sample is more dangerous than a small
 one. The confidence interval gets narrow enough to look authoritative while the point estimate stays
@@ -47,13 +47,13 @@ The size of the gap is not hypothetical:
   register or address frame behind it. A playful web product with streaks and share cards will not
   beat it on representativeness at any volume.
 
-The failure mode is well documented, and it is the one AILX will be accused of by default. **"a
+The failure mode is well documented, and it is the one Foray will be accused of by default. **"a
 convenience or self-selected sample dressed as a national number"** is the top item on the list of
 things that get an index dismissed. Every existing "AI skills index" is already in that bucket.
 Stanford HAI's AI Index skill-penetration measure is computed from LinkedIn profiles. Microsoft's
 Work Trend Index is a 31,000-respondent online panel of knowledge workers. The Coursera Global
 Skills Report ranks countries partly on its own learners' percentiles. **VERIFIED** (methodology
-appendices; see the evidence base). None of them measures proficiency, and all of them are what AILX
+appendices; see the evidence base). None of them measures proficiency, and all of them are what Foray
 would become by accident.
 
 ---
@@ -87,7 +87,7 @@ lookup against a published table, not an aggregation of Track A.
 
 **Forbidden in both directions: person-level scores entering a population estimator.** No Track A
 score may be averaged, weighted, percentiled or trended as a statement about any population larger
-than "people who chose to sit AILX".
+than "people who chose to sit Foray".
 
 ---
 
@@ -151,7 +151,7 @@ components, and that is an **UNKNOWN** until wave 1.
 Reference points. PISA standard 1.7/1.8 requires **4,500 assessed students from 150 schools** per
 participant (1,500 from 50 schools for an adjudicated sub-entity). ICILS 2023 realised ~3,900
 students per system. PIAAC Cycle 2 realised ~160,000 adults across 31 systems, ~5,200 per system.
-The US realised 4,574 assessed from 16,414 sampled households. **VERIFIED.** AILX at 1,500–3,000 is
+The US realised 4,574 assessed from 16,414 sampled households. **VERIFIED.** Foray at 1,500–3,000 is
 below all of them. That is a fact to state rather than hide: we buy less precision than PIAAC, and
 we say so in the same sentence as the estimate.
 
@@ -187,7 +187,7 @@ is published, and both are larger than people expect:
    replicate weights (Fay factor 0.3)**. It states outright that standard errors for PV-based
    estimates "must account for both the sampling variance and the variance due to imputation".
    **VERIFIED.** ESTIMATE for us: **expect a 10–30% inflation** of the standard error in the table
-   above. Expect proportionally more than PIAAC gets, because a short AILX panel form has fewer
+   above. Expect proportionally more than PIAAC gets, because a short Foray panel form has fewer
    items per person than PIAAC does. Two rules follow. **Quote the total SE, never the sampling SE
    alone.** And **every background variable used for a subgroup breakdown must be in the
    conditioning model**. If it is not, the PVs bias that contrast toward the null. That is the
@@ -263,7 +263,7 @@ whole risk.
 
 This design constraint changes the plan most. It is easy to miss because it is not a sampling fact.
 
-The AILX sitting is **4h 20m across two sessions plus an untimed T1 build window** (spec §01). No
+The Foray sitting is **4h 20m across two sessions plus an untimed T1 build window** (spec §01). No
 probability panel will field that. PIAAC's in-home session is roughly two hours with an interviewer
 present and a paid incentive, and it still lost half its sample at the screener. A four-hour
 unsupervised web task, on a panel, at any realistic incentive, produces a completion rate so low
@@ -315,7 +315,7 @@ fallback. **Cycle 2 moved to exclusive use of study-supplied tablets** in the Un
 with an interviewer present in the home. NCES lists that device change as one of four reasons Cycle
 1 and Cycle 2 results "need to be made with caution" when compared. **VERIFIED.** PISA and ICILS run
 on school computers. **Every rigorous adult and youth assessment controls the device, and none of
-them is BYOD.** If AILX lets a respondent bring their own screen, it is doing something neither
+them is BYOD.** If Foray lets a respondent bring their own screen, it is doing something neither
 programme was willing to do. There is no established adjustment method to copy. We must say so
 rather than assume it away.
 
@@ -336,7 +336,7 @@ and therefore with income, is construct-irrelevant variance aimed squarely at po
 
 **Two design consequences follow immediately, and they cost nothing to adopt now:**
 
-- **No AILX population score may depend on response latency.** If speed enters a score, device is a
+- **No Foray population score may depend on response latency.** If speed enters a score, device is a
   confound with a known magnitude and a known socioeconomic gradient. Timing data stays diagnostic.
 - **Carry an untimed, device-insensitive anchor block.** This is the trick Passell et al. used. An
   untimed anchor separates "this person is less able" from "this device is slower". It is the only
@@ -349,7 +349,7 @@ and therefore with income, is construct-irrelevant variance aimed squarely at po
    probability panel — **VERIFIED as a design; its effect sizes are UNVERIFIED here because the full
    text was not accessible**). Randomised device *assignment* is stronger still, but it requires
    supplying the hardware. That is PIAAC's model and not ours. **The crossover is the realistic gold
-   standard for AILX**: it costs one substudy inside the panel wave, a few hundred cases. It is the
+   standard for Foray**: it costs one substudy inside the panel wave, a few hundred cases. It is the
    single most valuable methodological add-on in this document. **Recommendation: build it into wave
    1, not wave 2.**
 2. **Item-level DIF by device.** Fit the IRT model with device as a grouping variable and test
@@ -380,7 +380,7 @@ here so nobody discovers it independently later.
   on desktop/laptop only, with the panel vendor providing equipment where needed. Mobile-only
   households become a documented coverage gap with an estimated size (see §7).
 - If it is **above 0.3 SD**, or if it is item-specific in a way that does not scale away, we declare
-  it a **construct/administration limit**. AILX measures AI fluency *as exercised on a full-size
+  it a **construct/administration limit**. Foray measures AI fluency *as exercised on a full-size
   computing device*, that is written into the construct definition (spec §03), and every published
   figure carries it. Declaring a limit is cheap. Discovering it after publication is not.
 
@@ -491,9 +491,9 @@ measurement.
 If the detection above finds a real effect, the published statistic carries this sentence, with the
 numbers filled in and nothing softened:
 
-> AILX was sat on each respondent's own device. A device effect of **X SD** (95% CI a to b) was
+> Foray was sat on each respondent's own device. A device effect of **X SD** (95% CI a to b) was
 > estimated between phone and desktop sittings, against a sampling half-width of **±0.064 SD**
-> at n = 1,500 (deff 1.6). The effect is reported and not adjusted away: no AILX weight uses device, and
+> at n = 1,500 (deff 1.6). The effect is reported and not adjusted away: no Foray weight uses device, and
 > the figure above is a measurement of AI fluency as exercised on the respondent's own device.
 
 The ±0.064 SD is OUR arithmetic — `1.96 · sqrt(deff / n)` with the planning deff of 1.6 (§4.2), not
@@ -510,8 +510,8 @@ should measure and publish about it.
 
 ## 7. Coverage: the offline population, said plainly
 
-**AILX is delivered on the web. Adults who do not use the internet cannot sit it. Therefore no AILX
-figure describes them, and every AILX population figure is an estimate for the online adult
+**Foray is delivered on the web. Adults who do not use the internet cannot sit it. Therefore no Foray
+figure describes them, and every Foray population figure is an estimate for the online adult
 population of a country, not for its adult population.**
 
 That sentence, or one like it, goes in the release, above the fold, not in a technical annex. It is
@@ -543,7 +543,7 @@ first costs nothing.
 - **Global context:** ITU reports **2.2 billion people remain offline**. **VERIFIED** (*Facts and
   Figures 2025*).
 
-**Read the US block twice, because it reframes the problem.** For AILX, "no internet" is a ~4% issue
+**Read the US block twice, because it reframes the problem.** For Foray, "no internet" is a ~4% issue
 and **"no real computer" is a ~16% issue**, concentrated in the low-income, low-education groups
 whose AI literacy is the policy question. **Non-coverage and the device effect of §6 are the same
 problem wearing two hats.** A desktop-locked population form converts part of the device problem
@@ -561,7 +561,7 @@ Mitigations, from strongest to weakest:
    from households without internet access, explicitly to keep a single mode and avoid mode effects.
    **VERIFIED.** NORC AmeriSpeak reports that **13% of recruited households are non-internet** and
    serves them **by telephone**. That is a second *mode*, not a device. **VERIFIED.** For a survey
-   that is a fine answer. **For a performance assessment it is not one at all, because AILX cannot
+   that is a fine answer. **For a performance assessment it is not one at all, because Foray cannot
    be administered over the phone.** This makes device provision a hard vendor-selection criterion,
    not a preference. Typically 1–5% of a fielded sample arrives through provided equipment or a
    non-web mode. That share is small for a national mean, and decisive for the bottom of a
@@ -578,7 +578,7 @@ Mitigations, from strongest to weakest:
    population that includes people who could never have been sampled is coverage error laundered as
    a weight. It produces a number that looks national and is not.
 
-**Declared limit:** AILX 2026 reports on **adults aged 18–65 who use the internet**. The target
+**Declared limit:** Foray 2026 reports on **adults aged 18–65 who use the internet**. The target
 population is written that way in every release. The exclusion rate against the full adult
 population is published per country. Any drift toward describing it as "adults" is a
 correction-worthy error, not a rounding of language.
@@ -601,7 +601,7 @@ the product.
 | **Japan** | **No probability online panel is sold.** Macromill, Intage, Rakuten Insight, Cross Marketing and Freeasy are opt-in; Nikkei Research closed its access panel in December 2025. Probability *fieldwork* is on sale: Central Research Services runs a quarterly omnibus drawn from the Basic Resident Register, in person, ~1,100 completes | The route to a fresh web sample is **ABS push-to-web mail**. Ome City, fielded Oct–Nov 2023, reports **RR3 = 19.2%**; the first national Japanese ABS push-to-web (Asahi Shimbun, 2023) got **22%**. **VERIFIED** — see `docs/PANEL-MARKETS.md` §2, §5 |
 | **Korea** | **No probability online panel is sold.** Gallup Panel, Embrain Panel Power and Kantar's mobile panel are self-signup; Hankook Research's Master Sample is opt-in with a proportional quota draw. The probability route is **ad-hoc mobile RDD** (Gallup Korea, Realmeter, Hankook), sold by the project | Korean telephone response has collapsed: Gallup Korea **13.8%** (Jul 2023) → **9.7%** (Aug 2026), Realmeter ARS **3.7%** (May 2026). The one probability web attempt is the KPOP pilot, ~21% of 570 households (N = 112). **VERIFIED** — see `docs/PANEL-MARKETS.md` §3, §5 |
 
-**Consequence for AILX's trilateral (en/ja/ko) framing:** the US and UK can be bought off the shelf.
+**Consequence for Foray's trilateral (en/ja/ko) framing:** the US and UK can be bought off the shelf.
 **Japan and Korea require commissioning a fresh probability sample, not renting panel time** — ABS
 push-to-web in Japan, RDD phone-to-web recruitment in Korea. That is more expensive, slower, and
 needs a local fieldwork partner. It is also the difference between a cross-national norm and three
@@ -611,7 +611,7 @@ legal, politically fatal sampling frame) in miniature.
 Say it precisely, because "nothing exists in Japan" is not true and a reviewer will know it. Japan
 sells probability fieldwork by the omnibus question. Korea sells probability telephone fieldwork by
 the project. **What neither sells is a probability sample you can send a 45–60 minute assessment
-to.** That is the gap AILX has to buy its way across. The decision that follows — first wave US +
+to.** That is the gap Foray has to buy its way across. The decision that follows — first wave US +
 UK, Japan and Korea as a funded phase with a named condition — is in `docs/PANEL-MARKETS.md` §7.
 
 **Why pay for probability at all.** Pew's 2023 methods study compared sample types against 28
@@ -627,7 +627,7 @@ plus a **$2,000 handling fee**. About a third of that is respondent incentive. P
 $20 per 30 minutes. **VERIFIED** (UAS brochure, 2024). Their own worked example: 1,000 respondents ×
 15 minutes = $43,250.
 
-Applying that published rate to AILX-shaped lengths gives the table below. The arithmetic runs on a
+Applying that published rate to Foray-shaped lengths gives the table below. The arithmetic runs on a
 verified rate, so it is **VERIFIED-derived**. But UAS states the basic rate assumes a "relatively
 straightforward" survey and quotes complex instrument programming separately. An assessment is
 complex, so treat these as **floors**:
@@ -741,7 +741,7 @@ it must be reported rather than trimmed away silently. The §4 precision table's
 1.6 is therefore conservative relative to observed panel practice. That is the right direction to be
 wrong in.
 
-### 9.3 The AILX weighting scheme
+### 9.3 The Foray weighting scheme
 
 **Pipeline (copy the standard, do not invent):** design weight → response-propensity cell adjustment
 (classification tree or logistic propensity on frame and profile covariates) → **raking to national
@@ -757,11 +757,11 @@ replicates, whole chain re-run per replicate).
 | Educational attainment | same | required — the strongest correlate of the construct |
 | Region (× metropolitan status) | same | required |
 | Race / ethnicity / nativity | where the country collects it (US yes; JP/KR effectively not) | country-dependent, stated per country |
-| **Frequency of internet use / device access** | a reference survey that covers non-users: NPORS (US), Ofcom (UK), MIC Communications Usage Trend Survey (JP), NIA digital-divide series (KR), Eurostat ICT household survey (EU) | **required for AILX specifically** |
+| **Frequency of internet use / device access** | a reference survey that covers non-users: NPORS (US), Ofcom (UK), MIC Communications Usage Trend Survey (JP), NIA digital-divide series (KR), Eurostat ICT household survey (EU) | **required for Foray specifically** |
 | Household income | CPS-style source | optional; it costs weight variance and PIAAC does not use it |
 
 The internet-use margin is the one departure from PIAAC's list, and it is deliberate. PIAAC does not
-need it because PIAAC is administered in person, and AILX is not. Weighting on internet-use
+need it because PIAAC is administered in person, and Foray is not. Weighting on internet-use
 frequency **within the covered (online) population** is legitimate and useful. Weighting to a total
 that includes people who could never have been sampled is not (§7).
 
@@ -799,7 +799,7 @@ The bias was real but survivable. The *appearance of concealment* was not. It co
 limitation into a story about hiding. It is the reason "unpublished non-response analysis" sits
 third on the list of things that get an index dismissed, above the bias itself.
 
-**AILX's commitment: the NRBA is published in the same release as the estimate, on the same day, in
+**Foray's commitment: the NRBA is published in the same release as the estimate, on the same day, in
 the same bundle, before anyone asks for it.** Not on request, not in an appendix issued later, not
 "available to researchers". §3's rule S7 makes this structural: the release artefact does not build
 without the NRBA file present.
@@ -812,7 +812,7 @@ because the honest comparison is the argument.
 ### 10.2 When it is triggered
 
 - **Always.** OECD's PIAAC Technical Standards require a non-response bias analysis for every
-  country and an *extended* NRBA below a 70% response rate. **VERIFIED.** AILX will never be above
+  country and an *extended* NRBA below a 70% response rate. **VERIFIED.** Foray will never be above
   70%, so treat the extended form as the only form.
 - **Per country, per wave.** No pooling, no "we did this last year".
 - **Track A too, in a reduced form.** The convenience cohort gets a published *self-selection*
@@ -835,7 +835,7 @@ the before-and-after-weighting requirement. It is not optional, and it is the pa
 (R-indicators are the modern tool for 4-4-2B but are **not** named by NCES; cite Schouten, Cobben &
 Bethlehem for them, not NCES.)
 
-> **AILX Wave N Non-Response Bias Analysis — [Country]**
+> **Foray Wave N Non-Response Bias Analysis — [Country]**
 >
 > **1. Design and disposition.** Frame, sampling method, and the full AAPOR disposition table:
 >   sampled, ineligible, refused, non-contact, broke off, completed background questionnaire,
@@ -884,7 +884,7 @@ Bethlehem for them, not NCES.)
 > **9. Conclusion, stated as a direction and a magnitude, never as an all-clear.** The required form
 >   is: "the estimate is likely biased [upward/downward] by approximately X points, and the range
 >   consistent with our analyses is [a, b]". The phrase "no notable bias would result" is banned
->   from AILX releases — it is the exact sentence the PISA England analyses used, and it is what the
+>   from Foray releases — it is the exact sentence the PISA England analyses used, and it is what the
 >   FOI was needed to check.
 >
 > **9a. Explained Variation in Outcomes (EVO), the number that answers "your response rate is
@@ -906,7 +906,7 @@ Bethlehem for them, not NCES.)
 >   reminders, days to response, device, break-off point — must be captured at field time. It is the
 >   only data we will ever have about our non-respondents.**
 >
-> **9c. Convenience-sample comparability, which is AILX-specific and has no precedent to copy.**
+> **9c. Convenience-sample comparability, which is Foray-specific and has no precedent to copy.**
 >   Standard NRBA templates assume one sample; we have two. With the panel as the reference, report
 >   (a) the raw gap between the Track A mean and the panel mean in SD units, and (b) the gap
 >   remaining after raking Track A to the same margins. **The residual is our direct estimate of the
@@ -944,7 +944,7 @@ and relationships. It may never describe a country, a population, or "adults".**
 
 Safe forms:
 
-- ✅ "Among 12,400 people who chose to take AILX, 8% correctly identified all five synthetic images."
+- ✅ "Among 12,400 people who chose to take Foray, 8% correctly identified all five synthetic images."
   — a statement about takers.
 - ✅ "Confidence was uncorrelated with accuracy (r = .04) in this cohort." — a *relationship*, which
   is far more robust to selection than a mean, and is where the good Track A findings live.
@@ -952,13 +952,13 @@ Safe forms:
 - ❌ "8% of adults can spot AI-generated images."
 - ❌ "Japanese users scored 12 points below US users." — this is two convenience samples with
   different recruitment channels, and the difference is a channel effect until proven otherwise.
-- ❌ "AILX finds AI literacy is low." — no population, no verb tense that implies one.
+- ❌ "Foray finds AI literacy is low." — no population, no verb tense that implies one.
 
 **The exact hedging block**, to be attached to any Track A publication, verbatim, above the finding
 and not below it:
 
 > **How this sample was collected, and what it cannot tell you.**
-> These results come from the AILX open cohort: N people who found AILX and chose to take it. This
+> These results come from the Foray open cohort: N people who found Foray and chose to take it. This
 > is a **self-selected convenience sample**, not a representative sample of any population. People
 > who take an AI-literacy exam voluntarily are, on average, more interested in AI, younger, more
 > educated and more online than the population they were drawn from, and everyone in this sample
@@ -968,9 +968,9 @@ and not below it:
 > channels as much as people.** For context, the OECD's PIAAC — an in-home, interviewer-administered,
 > incentive-paid probability survey — achieved a 27.8% response rate in the United States; getting a
 > population estimate is hard even when it is the whole point of the design, and it was not the
-> design here. AILX will publish population estimates only from its probability-panel track, with
+> design here. Foray will publish population estimates only from its probability-panel track, with
 > weights, replicate standard errors and a non-response bias analysis attached. Until then, treat
-> everything here as a description of AILX's users.
+> everything here as a description of Foray's users.
 
 Two words we do not use about Track A, in any language, ever: **"national"** and
 **"representative"**. And one framing we do not use: a headline number with a country flag next to
@@ -1001,7 +1001,7 @@ supports it. On a re-versioned instrument, the alternative explanation is always
 **Copy: the TIAA Institute–GFLEC Personal Finance (P-Fin) Index.** A private sponsor buys a 28-item
 knowledge test on **Ipsos KnowledgePanel** (n = 3,602), publishes it annually for a decade as an
 "index" or "barometer", and also releases an open short form anyone can take. **VERIFIED.** That is
-the AILX shape: probability panel for the statistic, open instrument for reach, and the two never
+the Foray shape: probability panel for the statistic, open instrument for reach, and the two never
 confused. It is also proof that a private organisation can buy probability panel time and publish a
 credible national knowledge statistic. The thing being proposed here is not novel.
 
@@ -1018,7 +1018,7 @@ These are here because a correct sample can still produce a wrong headline. Both
 sampling-design decisions that must be made *before* wave 1.
 
 **12.1 The basket problem — annual re-versioning is a basket change every year.** The CPI's four
-Boskin biases map onto AILX, and **new-product bias is the fatal one**. An item that discriminated
+Boskin biases map onto Foray, and **new-product bias is the fatal one**. An item that discriminated
 in 2026 (six-fingered hands, hallucinated citations) is trivial or impossible in 2027 because the
 *generators* changed. A falling national score may mean the population got worse, or that the
 generators got better. **The two are not separable without an explicit anchor design.** Mitigation,
@@ -1031,7 +1031,7 @@ contents, exposure budget, leak detection, refresh policy, equating method and a
 are worked out in `docs/TREND-FORM.md`. The short version is that the frozen line is T2 only, so it
 carries a named subscale trend and never a composite one.
 
-**12.2 The composite problem.** AILX sums three scored heterogeneous tracks to 375 points, and the
+**12.2 The composite problem.** Foray sums three scored heterogeneous tracks to 375 points, and the
 across-track weighting is a design choice, not an estimated parameter. Kreiner and Christensen
 dismantled PISA's country rankings by showing the ordering was not robust to defensible alternative
 models. A hand-weighted four-track composite is *more* exposed to that attack than PISA is. **Before
@@ -1067,7 +1067,7 @@ assertions the numbers in this section rest on.
 | Japan | commissioned ABS push-to-web, no panel to rent | 1,500 | $250 (range $150–500) | **$375k** ($225–750k) |
 | Korea | commissioned RDD phone-to-web recruitment | 1,500 | $250 (range $150–500) | **$375k** ($225–750k) |
 
-The asymmetry is the headline finding of §8: **the two countries in AILX's trilingual framing are
+The asymmetry is the headline finding of §8: **the two countries in Foray's trilingual framing are
 the two that cannot be bought off the shelf**, at a smaller n.
 
 **The 2× per-complete premium on the Japan and Korea rows is ours, and nothing supports it.** The
@@ -1154,7 +1154,7 @@ number in this section: the 2× per-complete premium on the JP and KR rows is OU
 supports it, Korea has no published per-complete price at all, and shape C's operator load is
 heavier than wave 1's because commissioned fieldwork is negotiated country by country. Wave 1 is
 **US + UK**. Japan and Korea field when the money for them is committed and a local partner is
-contracted, and AILX publishes no Japanese or Korean population figure before then.
+contracted, and Foray publishes no Japanese or Korean population figure before then.
 
 **What none of these buys.** None of them is PIAAC. PIAAC realised ~5,200 adults per country with
 in-home administration and a $100 incentive, and still reported 27.8% in the US. We are buying a
@@ -1285,7 +1285,7 @@ the comfortable one.
     so each needs commissioned fieldwork — about $1.1–1.6M on top of wave 1, our estimate. A country
     fields only when the money is committed, a local partner is contracted with a written sampling
     design, a pilot has produced a realised response rate and an NRBA, and the realised n clears the
-    §4.5 floor. Until then AILX publishes no Japanese or Korean population figure, and says so in
+    §4.5 floor. Until then Foray publishes no Japanese or Korean population figure, and says so in
     the same sentence as "the exam runs in three languages" (`docs/PANEL-MARKETS.md` §7).
 
 ---

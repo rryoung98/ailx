@@ -1,6 +1,6 @@
-# FRONTEND.md — AILX frontend standard
+# FRONTEND.md — Foray frontend standard
 
-AILX frontend code must follow this standard. `AGENTS.md` is the root contract (invariants,
+Foray frontend code must follow this standard. `AGENTS.md` is the root contract (invariants,
 commands, engineering philosophy). This file does not repeat it. Where they overlap, `AGENTS.md`
 wins.
 

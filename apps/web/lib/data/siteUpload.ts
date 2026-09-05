@@ -11,7 +11,7 @@
  * The upload is strictly additive to the local flow: the artifact lives in
  * the event log (and is scored) whether or not the upload ever succeeds.
  */
-import { writeStoredZip, type ZipFile } from "@ailx/core";
+import { readMigratedItem, removeMigratedItem, writeStoredZip, type ZipFile } from "@ailx/core";
 import { isServerMode } from "../mode";
 import type { StorageLike } from "@ailx/session";
 import { CLIENT_TS_HEADER, apiPath, canonicalSitePath, siteUrlPath } from "@ailx/contract";
@@ -73,12 +73,12 @@ export interface SiteSubmission {
 export const PLATFORM_TOO_LARGE_MESSAGE =
   "This site is too large for the hosted upload limit (about 4.5 MB per request). Your work is saved locally and still scored.";
 
-const siteKey = (clientAttemptId: string) => `ailx:site:v1:${clientAttemptId}`;
+const siteKey = (clientAttemptId: string) => `foray:site:v1:${clientAttemptId}`;
 
 /** The recorded live-site submission for an attempt, if any (report page). */
 export function loadSiteSubmission(storage: StorageLike, clientAttemptId: string): SiteSubmission | null {
   try {
-    const raw = storage.getItem(siteKey(clientAttemptId));
+    const raw = readMigratedItem(storage, siteKey(clientAttemptId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<SiteSubmission>;
     if (typeof parsed.digest === "string" && typeof parsed.url === "string") {
@@ -94,7 +94,7 @@ export function loadSiteSubmission(storage: StorageLike, clientAttemptId: string
 }
 
 export function clearSiteSubmission(storage: StorageLike, clientAttemptId: string): void {
-  storage.removeItem(siteKey(clientAttemptId));
+  removeMigratedItem(storage, siteKey(clientAttemptId));
 }
 
 /**

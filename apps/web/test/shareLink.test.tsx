@@ -74,7 +74,7 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
   vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   window.localStorage.clear();
-  window.localStorage.setItem("ailx:dev-user", "tester");
+  window.localStorage.setItem("foray:dev-user", "tester");
   container = document.createElement("div");
   document.body.append(container);
   fetchMock = vi.fn(async () => new Response("{}", { status: 404 }));
@@ -328,7 +328,7 @@ describe("ShareLink in server mode", () => {
 
   it("asks for the site as a SECOND, separate consent, defaulted off", async () => {
     window.localStorage.setItem(
-      `ailx:site:v1:${ATTEMPT}`,
+      `foray:site:v1:${ATTEMPT}`,
       JSON.stringify({ digest: "sha256:x", url: "/api/site/sha256:x/index.html" }),
     );
     const bodies: unknown[] = [];
@@ -366,7 +366,7 @@ describe("ShareLink in server mode", () => {
   it("recovers the url from the server on a browser that never created it", async () => {
     // No localStorage entry at all: the token comes back with the owner read.
     window.localStorage.clear();
-    window.localStorage.setItem("ailx:dev-user", "tester");
+    window.localStorage.setItem("foray:dev-user", "tester");
     fetchMock.mockImplementation(async () =>
       new Response(JSON.stringify({ share: serverShare() }), { status: 200 }),
     );

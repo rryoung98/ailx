@@ -17,7 +17,7 @@
  */
 
 /** Same slot as T1: the persisted OpenAI-compatible endpoint. */
-export const LLM_BASE_URL_STORAGE = "ailx:llm-base-url";
+export const LLM_BASE_URL_STORAGE = "foray:llm-base-url";
 
 /**
  * Normalize an endpoint (trim, strip trailing slashes). Empty stays EMPTY —

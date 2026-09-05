@@ -9,6 +9,7 @@ import Link from "next/link";
 import { TOTAL_POINTS } from "@ailx/core";
 import { Loader } from "../components/Loader";
 import { NavLink } from "../components/ui/NavLink";
+import { NavStrip } from "../components/ui/NavStrip";
 import { assetUrl, footerModeCopy, isClerkEnabled, isServerMode } from "../lib/mode";
 import { AuthShell } from "../lib/auth/AuthShell";
 import { QueryProvider } from "../lib/QueryProvider";
@@ -41,11 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <img src={assetUrl("/media/logo.svg")} alt="AILX" className="wordmark-img" />
               </Link>
               <nav className="site-nav" aria-label="Primary">
-                {/* One scrolling row on a phone (display:contents on desktop, so
-                    the links stay direct flex children there). It used to wrap
-                    into two rows: 130px of chrome on every page before any
-                    content. Every route below is still in it, in both builds. */}
-                <div className="nav-links">
+                {/* One scrolling row below 860px (display:contents above it,
+                    so the links stay direct flex children there). It used to
+                    wrap into two rows: 130px of chrome on every page before any
+                    content, and at 768px it broke phrases in half. Every route
+                    below is still in it, in both builds. */}
+                <NavStrip>
                   {/* The graded run keeps a plain, obvious slot. It is no longer
                       the pill: the pill is the fast, free thing, and a four-hour
                       sitting is a terrible first click. */}
@@ -77,7 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       Absent unless Clerk is mounted, because /sign-in does not
                       exist in the static export. */}
                   {isClerkEnabled() && <AuthNav />}
-                </div>
+                </NavStrip>
                 {/* Compact pill twin of the bottom .pill-cta, aligned right, and
                     outside the scrolling row so it is never scrolled off. */}
                 <NavLink href="/practice" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>

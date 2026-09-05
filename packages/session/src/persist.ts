@@ -11,6 +11,7 @@
  * `dropped`, instead of being silently folded into state.
  */
 
+import { readMigratedItem, removeMigratedItem } from "@ailx/core";
 import type { SequencedEntry, SessionLogEntry } from "./machine.js";
 import { append } from "./machine.js";
 
@@ -20,7 +21,13 @@ export interface StorageLike {
   removeItem(key: string): void;
 }
 
-export const ATTEMPT_KEY = "ailx:attempt:v1";
+/**
+ * The in-flight sitting. Renamed from `ailx:attempt:v1` (docs/RENAME.md §5
+ * step 7); every READ goes through `readMigratedItem`, so a browser holding a
+ * half-finished run under the old key adopts it on the first load after the
+ * deploy instead of losing it.
+ */
+export const ATTEMPT_KEY = "foray:attempt:v1";
 
 interface PersistedShape {
   formatVersion: 1;
@@ -48,7 +55,7 @@ export class SaveConflictError extends Error {
 
 function readStoredRev(storage: StorageLike): number {
   try {
-    const raw = storage.getItem(ATTEMPT_KEY);
+    const raw = readMigratedItem(storage, ATTEMPT_KEY);
     if (!raw) return 0;
     const shape = JSON.parse(raw) as PersistedShape;
     return typeof shape.rev === "number" ? shape.rev : 0;
@@ -114,7 +121,7 @@ export function validateStoredLog(raw: readonly unknown[]): ValidatedLog {
  * truncated (the valid prefix is still returned so no good data is lost).
  */
 export function loadAttemptValidated(storage: StorageLike): ValidatedLog | null {
-  const raw = storage.getItem(ATTEMPT_KEY);
+  const raw = readMigratedItem(storage, ATTEMPT_KEY);
   lastSeenRev.set(storage, readStoredRev(storage));
   if (raw === null) return null;
   let parsed: unknown;
@@ -142,6 +149,6 @@ export function loadAttempt(storage: StorageLike): SequencedEntry[] | null {
 }
 
 export function clearAttempt(storage: StorageLike): void {
-  storage.removeItem(ATTEMPT_KEY);
+  removeMigratedItem(storage, ATTEMPT_KEY);
   lastSeenRev.set(storage, 0);
 }

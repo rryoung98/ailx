@@ -142,7 +142,7 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
   vi.stubEnv("NEXT_PUBLIC_BASE_PATH", "");
   window.localStorage.clear();
-  window.localStorage.setItem("ailx:dev-user", "tester");
+  window.localStorage.setItem("foray:dev-user", "tester");
   container = document.createElement("div");
   document.body.append(container);
   fetchMock = vi.fn(async () => new Response("{}", { status: 404 }));

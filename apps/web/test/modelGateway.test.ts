@@ -117,7 +117,7 @@ describe("the URLs come from the manifest, never from here", () => {
 
 describe("what a call carries", () => {
   it("sends the identity header and no credential", async () => {
-    store.set("ailx:dev-user", "web-abc");
+    store.set("foray:dev-user", "web-abc");
     await readKeyStatus();
     const headers = calls[0].init?.headers as Record<string, string>;
     expect(headers["x-ailx-dev-user"]).toBe("web-abc");
@@ -125,7 +125,7 @@ describe("what a call carries", () => {
   });
 
   it("modelFetch adds identity to a runner's own request without touching its body", async () => {
-    store.set("ailx:dev-user", "web-abc");
+    store.set("foray:dev-user", "web-abc");
     await modelGatewayFetch("https://exam.example/v1/model/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -147,7 +147,7 @@ describe("what a call carries", () => {
   });
 
   it("DROPS a credential header a runner tried to set", async () => {
-    store.set("ailx:dev-user", "web-abc");
+    store.set("foray:dev-user", "web-abc");
     await modelGatewayFetch("https://exam.example/v1/model/chat/completions", {
       method: "POST",
       headers: {
@@ -176,14 +176,14 @@ describe("what a call carries", () => {
     ["the standalone demo proxy", "https://ailx-shared-demo.vercel.app/api/v1/chat/completions"],
     ["a look-alike origin", "https://exam.example.evil/v1/model/chat/completions"],
   ])("sends NO identity to %s — it is a third party", async (_what, url) => {
-    store.set("ailx:dev-user", "web-abc");
+    store.set("foray:dev-user", "web-abc");
     await modelGatewayFetch(url, { method: "POST", body: "{}" });
     expect(calls[0].init?.headers).toEqual({});
   });
 
   it("sends no identity anywhere in the static export, where every endpoint is a third party", async () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
-    store.set("ailx:dev-user", "web-abc");
+    store.set("foray:dev-user", "web-abc");
     await modelGatewayFetch("https://exam.example/v1/model/chat/completions", { method: "POST" });
     expect(calls[0].init?.headers).toEqual({});
   });

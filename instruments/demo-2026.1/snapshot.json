@@ -866,11 +866,11 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
+          "sha256": "a64971785fbb9e27e80dbe1c2364079f676dd55e0e1a86860cdd061ba5b5b0c3"
         },
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/judgments.ts",
@@ -900,7 +900,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "6b23edfc5e7d62f191afb9a2058c2febb337a385208c6fb0fb3577866647ed2e"
+      "digest": "0a3949a14379a5e5ce333a0b77cb9b1c58f16502c8f55f59f6318df2e7f0685f"
     },
     {
       "trackId": "t2",
@@ -909,11 +909,11 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
+          "sha256": "a64971785fbb9e27e80dbe1c2364079f676dd55e0e1a86860cdd061ba5b5b0c3"
         },
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/plugin.ts",
@@ -939,7 +939,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "4bbb6c371c3c4b21ce0129eb334d61bd28350e499b05450f1bdc9e9aca026ad6"
+      "digest": "4b171fd4440ac46c6f58cf00ec2a16c3aec361344697009fc61f88efb91019e3"
     },
     {
       "trackId": "t3",
@@ -948,11 +948,11 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
+          "sha256": "a64971785fbb9e27e80dbe1c2364079f676dd55e0e1a86860cdd061ba5b5b0c3"
         },
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/judgments.ts",
@@ -976,13 +976,13 @@
         },
         {
           "path": "src/types.ts",
-          "sha256": "749ed809df0d95b29f69c81798f388ea46ae32388c0d071fcda454a1eab17d53"
+          "sha256": "5ea3dfa9e79555baf8f6c9c271799cd9f733383f496d45391c0bce60bcd28a5e"
         }
       ],
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "ef807655d92183630731f3c2d6179f2f9b50d30459ed0ca82b91e56b1f78de37"
+      "digest": "83f9d6dbbaba381e2177ec9d7a3534f63e508c8c324b9234356fe4016e5c13f1"
     },
     {
       "trackId": "t4",
@@ -991,7 +991,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/judgments.ts",
@@ -1021,7 +1021,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "bed1508594b2049dea9267e9def449d1d802c2ce31ff534d43d3b7853230fcb9"
+      "digest": "e912d368329f1d33a94f23ccd04d13fc73ae9503e4f52d792abca827da7d2f64"
     }
   ]
 }

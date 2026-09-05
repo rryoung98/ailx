@@ -469,7 +469,7 @@ one — the figure it renders is still the store's, never the page's.
 Four of the seven have no `/api` twin on this host: `/progress`, `/world`, `/gallery` and
 `/review` call `/progress`, `/aggregates`, `/gallery` and `/moderation/cases`, which exist
 under `/v1` in `services/api` but were never Next route handlers. With the seam unset those
-four pages therefore render their honest "we could not reach the AILX service" state rather
+four pages therefore render their honest "we could not reach the Foray service" state rather
 than data. That is correct for the direction of travel — step 3 deletes `app/api/**`
 anyway — but it means those pages need `NEXT_PUBLIC_AILX_API_BASE` set to work at all.
 
@@ -654,7 +654,7 @@ refuses cannot leave the browser. `galleryQueryString` and `parseApiError` are
 NEW exports of `@ailx/contract`: the private repo vendors that package byte for
 byte and needs a re-vendor.
 
-**Three failures, three sentences.** "We could not reach the AILX service" was
+**Three failures, three sentences.** "We could not reach the Foray service" was
 false for both defects: the service was reached and refused. A failed read is
 now one of three facts, each with its own copy — the call never landed
 (`SERVICE_ERROR_COPY`), the call landed and was refused with a status and the

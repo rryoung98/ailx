@@ -7,7 +7,7 @@ an item, an asset, a key or a generator prompt.
 Companion documents: `docs/SAMPLING.md` §5 (the panel cannot sit the exam, which this file answers),
 §8.3 (burden) and §13 (cost); `docs/TREND-FORM.md` (the frozen anchor, which this form carries);
 `docs/TRACK-REVIEW.md` §2.6, §3.6, §4.6, §5.6 (short-form viability, track by track);
-`AILX-Spec-2026.1.md` §04 (the sitting this form replaces).
+`Foray-Spec-2026.1.md` §04 (the sitting this form replaces).
 
 Marking follows `docs/SAMPLING.md`. **VERIFIED** means a primary source was read and is cited.
 **QUALIFIED** means the source was read and says something narrower than the claim it was cited for.
@@ -28,7 +28,7 @@ need human panels a probability sample cannot supply. The T3 essay is out, becau
 1,200 defensible words in a matrix block, and the LLM judge goes with it. What is left is measured
 by arithmetic on response data with no model in the loop. So this form's statistic is **not "AI
 literacy" and not the composite**. §2.3 names it in one sentence. Plausible values are the right
-machinery for this design, and **we cannot produce them yet**: AILX has no IRT model and no
+machinery for this design, and **we cannot produce them yet**: Foray has no IRT model and no
 calibrated item parameters (§4.5). Wave 1 therefore publishes design-based weighted rates with
 replicate standard errors. Plausible values arrive when a calibration exists.
 
@@ -188,7 +188,7 @@ sensitivity contrast that §9 asks for then becomes trivial: T1 is out, and the 
 
 ### 2.3 The sentence the project turns on
 
-> **The AILX population statistic is not a measure of AI literacy and it is not the composite. It is
+> **The Foray population statistic is not a measure of AI literacy and it is not the composite. It is
 > two rates, measured without a model in the loop: the rate at which adults tell 2026-vintage
 > synthetic media and hostile messages apart from camera-captured media and legitimate mail, and the
 > rate at which they catch and act on planted errors in an AI assistant's output.**
@@ -298,7 +298,7 @@ This is NAEP's design. NCES states the reason in its own words:
 > score distributions for groups of students."
 > — https://nces.ed.gov/nationsreportcard/tdw/analysis/ (fetched 2026-09-02)
 
-**VERIFIED.** The design point that makes this necessary is the same one AILX has: "Because NAEP is
+**VERIFIED.** The design point that makes this necessary is the same one Foray has: "Because NAEP is
 a large-group assessment, each student takes only a small part of the overall assessment"
 (https://nces.ed.gov/nationsreportcard/faq.aspx, fetched 2026-09-02). **VERIFIED.** NCES's glossary
 defines matrix sampling as a "sampling plan in which different samples of respondents take different
@@ -342,7 +342,7 @@ this **conditioning**, and current NCES documentation calls it the **population-
 a latent regression. The old `scaling_cond.aspx` page is a 404 today. Both names are used below and
 they mean the same model.
 
-For AILX that means, when we have the data for it:
+For Foray that means, when we have the data for it:
 
 - **An IRT measurement model** over the item responses. T2 items are binary and 2PL/3PL-shaped. The
   T3 planted-error opportunities are binary within a scenario, with the scenario as a testlet.
@@ -351,7 +351,7 @@ For AILX that means, when we have the data for it:
   design variables (block assignment, device class, country, language of administration).
 - **Draws from the posterior**, one set per respondent.
 
-**Two AILX-specific warnings.** First, the conditioning model must contain **every variable that
+**Two Foray-specific warnings.** First, the conditioning model must contain **every variable that
 will later be crossed with the statistic**, or those crossings are biased toward zero. A "secondary
 analyst finds no gap" result is then a property of our model, not of the population. Second, T2's
 distribution has a documented lump at chance in a general population (`docs/TRACK-REVIEW.md` §2.1),
@@ -393,7 +393,7 @@ subscale are not available either, and the T2 rate stays a design-based rate.
 
 ### 4.5 What we cannot do today, said plainly
 
-**AILX has no IRT model, no calibrated item parameters, and therefore no plausible values.** Nothing
+**Foray has no IRT model, no calibrated item parameters, and therefore no plausible values.** Nothing
 in this repository or the exam service fits one. What exists is a scoring pipeline that computes
 sensitivity, criterion, calibration and reliance rates by arithmetic from stored responses.
 
@@ -468,7 +468,7 @@ on a common score scale.** The common items support three things and no more.
 2. **A calibration path.** If an IRT model is ever fitted (§4.5), the shared items are the bridge
    that puts panel and Track A item parameters in one calibration.
 3. **A sanity check on the panel's operational rate**, reported as a rate on 20 items with its
-   interval, never as "the panel's AILX score".
+   interval, never as "the panel's Foray score".
 
 **What breaks this link:** re-versioning the operational deck between the credential form and the
 panel wave, which changes the items under the common set. Or a leak of the operational deck, which
@@ -496,7 +496,7 @@ Said here, before a reviewer says it.
    the anchor core (`docs/TREND-FORM.md` §1.3: 33 items gives ±0.17 at p = 0.5 for one person). The
    panel form issues no report, no band and no certificate, and the respondent sees no result.
 2. **No composite.** T1 and T4 are absent, the T3 essay is absent, and the spec's weights are for a
-   four-track instrument (§2.3). There is no national AILX score and there will not be one from this
+   four-track instrument (§2.3). There is no national Foray score and there will not be one from this
    form.
 3. **Nothing that needs the judge.** Analysis quality, rubric bands, T4 brief compliance and every
    other judged component are outside the population statistic by construction (§2.2).

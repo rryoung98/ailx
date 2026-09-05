@@ -45,7 +45,7 @@ const SCOPE = [
   "apps/web/features",
   "apps/web/lib",
 ];
-const EXTRA_FILES = ["AILX-Spec-2026.1.md", "README.md"];
+const EXTRA_FILES = ["Foray-Spec-2026.1.md", "README.md"];
 const SKIP_DIRS = new Set(["node_modules", "dist", ".next", "fixtures"]);
 const TEXTUAL = /\.(md|mdx|ts|tsx|json)$/;
 
@@ -123,7 +123,7 @@ describe("the neutrality guard can see the public copy", () => {
     expect(files.length).toBeGreaterThan(20);
     expect(files).toContain("docs/POSITIONING.md");
     expect(files).toContain("docs/CREDENTIAL.md");
-    expect(files).toContain("AILX-Spec-2026.1.md");
+    expect(files).toContain("Foray-Spec-2026.1.md");
     expect(files).toContain("apps/web/app/methodology/page.tsx");
   });
 });

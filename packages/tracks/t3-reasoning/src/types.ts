@@ -95,7 +95,7 @@ export interface T3PresentationConfig {
    * It is a declared form parameter and not a hard-coded timer so the two
    * conditions are the SAME task, and so a sitting's record names the
    * condition it ran under. What may be concluded from a comparison is
-   * bounded: see `AILX-Spec-2026.1.md` §T3, "Verification under a declared
+   * bounded: see `Foray-Spec-2026.1.md` §T3, "Verification under a declared
    * time budget".
    */
   timeBudgetMinutes?: number;

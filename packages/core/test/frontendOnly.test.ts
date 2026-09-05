@@ -211,7 +211,9 @@ describe("no provider credential can reach a browser", () => {
   });
 
   it.each([
-    ["the deleted key slot", /ailx:openrouter-key/],
+    // Both spellings: the slot was deleted before the rename, so it must not
+    // come back under either namespace (docs/RENAME.md §5 step 7).
+    ["the deleted key slot", /(?:ailx|foray):openrouter-key/],
     ["a PKCE verifier slot", /pkce-verifier|PKCE_VERIFIER/],
     ["a browser-side code exchange", /code_verifier|code_challenge/],
   ])("names %s nowhere", (_what, pattern) => {
@@ -220,8 +222,8 @@ describe("no provider credential can reach a browser", () => {
   });
 
   it("the comment stripper does not hide a real slot behind a comment", () => {
-    expect(/ailx:openrouter-key/.test(code('const k = "ailx:openrouter-key";'))).toBe(true);
-    expect(/ailx:openrouter-key/.test(code('// the old ailx:openrouter-key slot'))).toBe(false);
+    expect(/(?:ailx|foray):openrouter-key/.test(code('const k = "foray:openrouter-key";'))).toBe(true);
+    expect(/(?:ailx|foray):openrouter-key/.test(code('// the old ailx:openrouter-key slot'))).toBe(false);
   });
 
   /**

@@ -134,7 +134,7 @@ describe("a broken token never kills the run", () => {
     mountBridge();
     const h = await authHeaders(storage);
     expect(Object.keys(h)).toEqual([DEV_USER_HEADER]);
-    expect(h[DEV_USER_HEADER]).toBe(storage.getItem("ailx:dev-user"));
+    expect(h[DEV_USER_HEADER]).toBe(storage.getItem("foray:dev-user"));
   });
 
   it("falls back on an empty token rather than sending `Bearer `", async () => {

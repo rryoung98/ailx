@@ -44,10 +44,14 @@
   background: var(--accent); color: #ffffff; font-weight: 700;
   padding: 0.6rem 1rem; border-radius: 0 0 8px 0; text-decoration: none;
 }
-.skip-link:focus-visible { left: 0; outline: 2px solid var(--fg); outline-offset: 2px; }
-html { scroll-behavior: smooth; }
+/* `top: 0` plus a 2px OUTSET ring drew the ring's top edge above y=0, so
+   the first thing a keyboard user sees was a focus ring open on one side
+   (measured rect top: -17). The link drops far enough for the whole ring
+   to be on screen. */
+.skip-link:focus-visible { left: 0; top: 3px; outline: 2px solid var(--fg); outline-offset: 2px; }
+html { scroll-behavior: smooth; background: var(--bg); }
 html, body {
-  margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+  margin: 0; padding: 0; color: var(--fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 16px; line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -86,16 +90,21 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
  * second sticky element (the track runner's clock + Pause bar) can sit
  * directly under it with `top: var(--header-h)` instead of guessing.
  *
- * It is NOMINAL, not measured: the primary nav wraps as the viewport
- * narrows, so the token steps with it. The three values are read off the
- * shipped header (66px above ~660px, 110px in the one-wrap band, 130px below
- * ~500px) and the header is deliberately NOT forced to the token — a drift
- * then costs a few pixels of gap under a sticky child, never a header that
- * clips its own nav.
+ * It is ONE value at every width, and that is the whole point. It used to
+ * step (66/110/130px) because the nav wrapped as the viewport narrowed, and
+ * every step was a number somebody had read off a screenshot. The steps went
+ * stale as soon as the phone nav became a nowrap scrolling row: measured on
+ * the deployed site, the token said 130px where the header was 64px, and —
+ * the dangerous direction — said 66px between 641px and 839px where the
+ * header really wrapped to 110-113px. A sticky child using
+ * `top: var(--header-h)` there would have been covered by the header.
+ *
+ * So the nav never wraps at any width now (see the scrolling-row rule
+ * below), the header is one row everywhere, and the token has nothing left
+ * to step with. Keep it that way: if the header is ever allowed to wrap
+ * again, this token becomes a guess again.
  */
 :root { --header-h: 66px; }
-@media (max-width: 660px) { :root { --header-h: 110px; } }
-@media (max-width: 500px) { :root { --header-h: 130px; } }
 
 .site-header {
   position: sticky; top: 0; z-index: 20;
@@ -122,6 +131,11 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
   border-top: 1px solid var(--border); margin-top: 5rem;
   padding: 2rem 0 3rem; color: var(--faint); font-size: 0.85rem;
 }
+/* The prose above is held to ~70 characters; the footer inherited the full
+   960px container and ran to 108-135 characters at 1024px and wider, which
+   made the smallest type on the page the hardest to read. Capped in `ch`,
+   so it tracks the font rather than a pixel guess. */
+.site-footer p { max-width: 78ch; }
 main.page { padding-top: 3rem; }
 
 /*
@@ -423,26 +437,44 @@ summary { cursor: pointer; }
   .site-nav a { padding: 0.35rem 0.15rem; display: inline-block; }
 }
 @media (max-width: 700px) {
-  /* Track runners ship inline two-column grids (package-owned); collapse
-     them to one column on phones from the app layer. */
+  /* Inline `grid-template-columns` is written in a component's style
+     attribute, so no media query inside that component can answer it. The
+     app layer collapses every one of them to a single column on a phone.
+     This started as a .runner-frame rule for the package-owned track grids;
+     it covers all of main since the report's per-track rubric rows
+     (minmax(10rem, 1fr) 2fr 6.5rem) pushed /report to a 331px scrollWidth in
+     a 320px viewport, clipping the max score mid-number ("33.2 / 4") and
+     squeezing the score meter to 2px. */
   .runner-frame { padding: 1rem; }
-  .runner-frame [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+  main [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
 }
 /*
- * Phone chrome: ONE scrolling row of links, with the Play pill parked
+ * Narrow chrome: ONE scrolling row of links, with the Play pill parked
  * outside it so the fast, free thing is never scrolled away. The nav used to
  * wrap into two rows (~130px of every 844px viewport, on every page) and it
  * grew a row each time a route was added. Nothing is hidden behind a menu:
  * every route is still a link, still in tab order, still carries aria-current.
+ *
+ * The cut-off is 859px, not 640px, because 641-839px was exactly the band
+ * where the header still wrapped: on a 768px tablet the nav broke mid-phrase
+ * ("Full / run", "Sign / in") and the header stood 110px tall while
+ * --header-h claimed 66px. Above 860px every link fits on one line and this
+ * block does nothing.
  */
-@media (max-width: 640px) {
+@media (max-width: 859px) {
   .site-header .inner { flex-wrap: nowrap; align-items: center; gap: 0.75rem; }
   .site-nav { flex: 1 1 auto; min-width: 0; gap: 0.75rem; }
   .nav-links {
     display: flex; flex: 1 1 auto; min-width: 0; gap: 1rem;
     overflow-x: auto; overscroll-behavior-x: contain;
     scrollbar-width: none; -ms-overflow-style: none;
+    /* The scrollbar is hidden, so the strip needs its own way of saying
+       "there is more to the right". Without this the last visible link is
+       simply sliced mid-word and reads as a rendering fault. The fade is
+       switched off once the strip is scrolled to its end. */
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
   }
+  .nav-links[data-scroll-end="1"] { mask-image: none; }
   .nav-links::-webkit-scrollbar { display: none; }
   /* 44px tap targets at 390px, and no link may wrap mid-row. */
   .nav-links a { white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; padding: 0; }
@@ -672,22 +704,47 @@ summary { cursor: pointer; }
 
 /* ==== paper editorial layer (zero.university-inspired) ================== */
 
-/* Subtle paper grain: layered radial dots, GPU-cheap, no image asset. */
+/* Subtle paper grain: layered radial dots, GPU-cheap, no image asset.
+   It sits BELOW every box in the document (z-index: -1) rather than at 0.
+   At 0 it had to be out-ranked, and the only way to out-rank it was to give
+   every direct child of <body> a z-index — which turned each of them into a
+   stacking context. See the layer note below. The page background is on
+   <html> so it paints as the canvas, underneath this pseudo-element; put a
+   background back on <body> and the grain disappears. */
 body::before {
-  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
   background-image:
     radial-gradient(rgba(26, 26, 26, 0.028) 1px, transparent 1px),
     radial-gradient(rgba(26, 26, 26, 0.018) 1px, transparent 1px);
   background-size: 7px 7px, 11px 11px;
   background-position: 0 0, 3px 5px;
 }
-body > * { position: relative; z-index: 1; }
-/* The #main wrapper must stack ABOVE the footer: fixed elements inside it
-   (e.g. the Start pill) are trapped in its stacking context, and at equal
-   z-index the later-DOM footer painted over them and swallowed their
-   clicks (run-start bug: the Start pill was unclickable near the page
-   bottom). */
-#main { z-index: 2; }
+/* LAYER NOTE — read before adding a z-index to anything.
+   <body> has exactly one stacking context: the root one. Nothing in this
+   file may create a second one on a direct child of <body>, and #main in
+   particular must NOT have a z-index.
+
+   Why: a fixed, page-covering element is only page-covering if it can reach
+   the root stacking context. Two things were broken by an ancestor that
+   could not be escaped.
+
+   1. A popover portal appended to <body> by a third party carries a huge
+      z-index of its own. `body > * { z-index: 1 }` clamped that portal into
+      a z-index:1 context, and #main at z-index:2 then painted straight
+      through it: with the account menu open on /exam, the page H1 ("Four
+      tracks. One run.") sat on top of the menu and the "Sign out" row was
+      unreadable behind the glyphs.
+   2. Any fixed overlay we render inside #main — the covering loader
+      (z-index 100) and the bottom pill (z-index 30) — was trapped at
+      #main's z-index:2, so the sticky header (z-index 20) out-ranked it.
+
+   Both stop happening once #main is a plain positioned box with no z-index:
+   its fixed descendants then compare with the header and the footer
+   directly, on the numbers written next to them.
+
+   #main stays `position: relative` because descendants position against it.
+   Relative alone does not create a stacking context; a z-index would. */
+#main { position: relative; }
 
 /* Hand-drawn script annotation with a curved arrow (SVG inline). */
 .annotation {
@@ -1142,10 +1199,17 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
     .campus-card-line { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.98rem; }
     .campus-card-viz { border-radius: 12px; overflow: hidden; background: rgba(247, 244, 242, 0.6); }
     .campus-card-viz .track-scene { aspect-ratio: 16 / 10; }
+    /* Printed straight onto the aerial photograph, this measured 2.02:1
+       against the foliage — and the photograph pans, so no single colour
+       could fix it. Text over an image carries its own backing. */
     .campus-progress {
       position: absolute; z-index: 2; inset-inline: 0; bottom: 4.4rem; /* clear of the pill CTA */
-      margin: 0; text-align: center; font-size: 0.75rem; color: var(--muted);
+      margin: 0; text-align: center; font-size: 0.75rem; color: var(--fg);
       pointer-events: none;
+    }
+    .campus-progress > span {
+      display: inline-block; background: rgba(247, 244, 242, 0.92);
+      border-radius: 999px; padding: 0.2rem 0.75rem;
     }
   }
 }
@@ -1431,6 +1495,27 @@ main .card {
   main button:not(.t1-tab):not(.t4-tab) {
     min-height: 44px;
   }
+}
+/* 5. A table's minimum width is the sum of its columns, and no wrapping can
+      make it smaller. /methodology's Bias/Magnitude/Mitigation table was
+      316px wide inside a 320px viewport with no scroll container, which
+      dragged a horizontal scrollbar onto the WHOLE document (scrollWidth
+      332) and cut words in half ("Randomised position withi"). Every table
+      in main carries its own scroller on a phone, so a wide table scrolls
+      and the page does not. */
+@media (max-width: 700px) {
+  main table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+/* 6. The pill CTA is `position: fixed`, so it takes no layout space and the
+      last screenful of a page ends underneath it — on /exam at 1440x900 the
+      T3 row read "T3 — t[pill]h them." Pages that show a pill reserve its
+      height, so no line comes to rest behind it. */
+body:has(.pill-cta) main.page {
+  padding-bottom: 6rem;
 }
 
 

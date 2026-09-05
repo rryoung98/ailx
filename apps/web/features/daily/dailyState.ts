@@ -17,6 +17,7 @@
  */
 import {
   DAILY_LEDGER_KEY,
+  readMigratedItem,
   emptyDailyLedger,
   parseDailyLedger,
   recordDailyRound,
@@ -34,7 +35,7 @@ import type { StorageLike } from "@ailx/session";
  */
 export function readDailyLedger(storage: StorageLike): DailyLedger {
   try {
-    return parseDailyLedger(storage.getItem(DAILY_LEDGER_KEY));
+    return parseDailyLedger(readMigratedItem(storage, DAILY_LEDGER_KEY));
   } catch {
     return emptyDailyLedger();
   }

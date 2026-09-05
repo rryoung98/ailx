@@ -12,6 +12,7 @@
  * scored instrument — the composite is computed from your run alone.
  */
 import { useCallback, useEffect, useState } from "react";
+import { readMigratedItem } from "@ailx/core";
 import Link from "next/link";
 import { Annotation } from "../../components/ui/Annotation";
 
@@ -24,11 +25,11 @@ interface Sub {
   doc?: { images: string[]; note: string; model: string; ts: string };
 }
 
-const VOTED_KEY = "ailx:gallery-voted";
+const VOTED_KEY = "foray:gallery-voted";
 
 function votedSet(): Set<string> {
   try {
-    return new Set(JSON.parse(window.localStorage.getItem(VOTED_KEY) ?? "[]"));
+    return new Set(JSON.parse(readMigratedItem(window.localStorage, VOTED_KEY) ?? "[]"));
   } catch {
     return new Set();
   }
