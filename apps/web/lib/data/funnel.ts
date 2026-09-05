@@ -121,6 +121,22 @@ export interface FunnelDeps {
 }
 
 export interface Funnel {
+  /**
+   * Open the browsing session, and nothing else.
+   *
+   * `visit_started` is emitted by `session()` on the first thing the emitter
+   * is asked for, so a page that asks for NOTHING used to leave no trace at
+   * all — /progress, /report, /gallery, /world, /validate and /methodology
+   * minted no client id and posted no row. That made step one of docs/KPI.md
+   * ("a browser opened Foray") a count of the browsers that also did
+   * something else, and it biased D1/D7 downwards at exactly the surface a
+   * returning player goes to first: their own progress page.
+   *
+   * So every page calls this once, through `components/FunnelVisit.tsx` in
+   * the root layout. It is still ONE row per session — the session record
+   * carries the dedupe — and it is still silent with no backend.
+   */
+  visit: () => void;
   /** One of the five bare steps. Once per browsing session. */
   step: (step: BareFunnelStep) => void;
   /** A round was dealt. Resumes the open play after a reload. */
@@ -363,6 +379,17 @@ export function createFunnel(deps: FunnelDeps): Funnel {
   }
 
   return {
+    visit() {
+      try {
+        // `context()` mints the client and the session, and the session is
+        // what emits `visit_started`. Nothing else to do, and nothing to
+        // dedupe here: a second call finds the session already open.
+        context();
+      } catch {
+        // See `step`.
+      }
+    },
+
     step(step) {
       try {
         const ctx = context();

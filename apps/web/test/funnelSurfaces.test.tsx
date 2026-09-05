@@ -369,3 +369,50 @@ describe("silence with no backend", () => {
     expect(window.localStorage.getItem("ailx.funnel.client.v1")).toBeNull();
   });
 });
+
+describe("a page that is instrumented for nothing else", () => {
+  /**
+   * THE BUG THIS BLOCK EXISTS FOR. `visit_started` rode out with the first
+   * event a page asked for, so a route that asks for none — /progress,
+   * /report, /gallery, /world, /validate, /methodology — minted no client id
+   * and posted no row. Six routes, and one of them is where a returning
+   * player goes first, so D1 was low by exactly the returns it exists to
+   * count. Driven against the deployed staging site on 2026-09-05: six page
+   * loads, zero rows.
+   */
+  it("counts the visit, and counts nothing else", async () => {
+    const { FunnelVisit } = await import("../components/FunnelVisit");
+    await render(FunnelVisit);
+    expect(await steps()).toEqual(["visit_started"]);
+  });
+
+  it("counts one visit however many times it is mounted in the same session", async () => {
+    const { FunnelVisit } = await import("../components/FunnelVisit");
+    await render(FunnelVisit);
+    funnel().flush();
+    act(() => root!.unmount());
+    host!.remove();
+    // A client-side navigation to another uninstrumented route, then a
+    // reload: same tab, same session, and still one visit.
+    await render(FunnelVisit);
+    resetFunnel();
+    await render(FunnelVisit);
+    expect((await steps()).filter((s) => s === "visit_started")).toHaveLength(1);
+  });
+
+  it("does not swallow the step a real surface still emits", async () => {
+    const { FunnelVisit } = await import("../components/FunnelVisit");
+    await render(FunnelVisit);
+    funnel().step("share_created");
+    expect(await steps()).toEqual(["visit_started", "share_created"]);
+  });
+
+  it("is silent with no backend", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_API_BASE", "");
+    const { FunnelVisit } = await import("../components/FunnelVisit");
+    await render(FunnelVisit);
+    funnel().flush();
+    expect(posts).toEqual([]);
+    expect(window.localStorage.getItem("ailx.funnel.client.v1")).toBeNull();
+  });
+});
