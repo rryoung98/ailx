@@ -214,8 +214,8 @@ function LocalStreak({ local }: { local: StreakSummary }) {
         </span>
       </p>
       <p className="muted" style={{ maxWidth: "58ch" }}>
-        You played these days signed out. Practice you do signed out never reached the exam
-        service, so it is in no server figure and on no account. {LOCAL_PRACTICE_BASIS}
+        You played these days signed out. Signed-out practice never reaches the exam service, so
+        it is in no server figure and on no account. {LOCAL_PRACTICE_BASIS}
       </p>
     </section>
   );
@@ -250,10 +250,10 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
           </p>
           <p className="muted" style={{ maxWidth: "58ch" }}>
             {streak.current === 0
-              ? `Your streak has lapsed. Your best run of ${streak.best} day${streak.best === 1 ? "" : "s"} stands — a break costs the run, never the record. One round starts a new one.`
+              ? `Your streak has lapsed. Your best of ${streak.best} day${streak.best === 1 ? "" : "s"} stands — a break costs the run, never the record. One round starts a new one.`
               : streak.practisedToday
                 ? "Today is in."
-                : "Today is still open, so the streak is still yours. One round keeps it."}
+                : "Today is still open. One round keeps the streak."}
           </p>
         </>
       ) : localHeld !== null ? (
@@ -270,9 +270,9 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
       {localHeld === null ? null : <LocalStreak local={localHeld} />}
       <p className="small faint" style={{ maxWidth: "62ch" }}>
         A day counts when you finish a whole round of {PRACTICE_MIN_ANSWERS} cards, in your own
-        local day, at a speed that means you read them. A streak survives one missed day, and can
-        do that again once {REST_WINDOW_DAYS} days have passed — it is meant to reward a habit,
-        not punish a life.{" "}
+        local day, at a speed that means you read them. A streak survives one missed day, and
+        again once {REST_WINDOW_DAYS} days have passed. It rewards a habit; it does not punish a
+        life.{" "}
         {streak.restDayAvailable ? "You have a rest day in hand right now." : null}
       </p>
     </>
@@ -295,20 +295,19 @@ function Unrecognised({ accounts, local }: { accounts: boolean; local: StreakSum
             : "Your practice is in this browser only."}
       </h1>
       <p className="lede">
-        This page is one person&rsquo;s own history, so it is shown only to the person whose
-        history it is.{" "}
+        This page is one person&rsquo;s history, so only that person is shown it.{" "}
         {accounts ? (
           <>
             Sign in and come back, or{" "}
-            <Link href="/practice">play a round of practice</Link> — the drill itself works
-            either way. {CLAIM_PROMISE}
+            <Link href="/practice">play a round of practice</Link> — the drill works either
+            way. {CLAIM_PROMISE}
           </>
         ) : (
           <>
-            This deployment has no accounts: your history belongs to the browser you played
-            in, and the first finished round of practice is what creates it.{" "}
+            This deployment has no accounts. Your history belongs to the browser you played
+            in, and the first finished round of practice creates it.{" "}
             <Link href="/practice">Play a round</Link> and this page fills in. Another
-            browser, or a private window, starts again from empty.
+            browser, or a private window, starts from empty.
           </>
         )}
       </p>
@@ -355,9 +354,8 @@ export function ProgressView() {
         <p className="eyebrow">YOUR PROGRESS · DERIVED FROM WHAT YOU DID</p>
         <h1 style={{ maxWidth: "22ch" }}>{PAGE_TITLE}</h1>
         <p className="lede">
-          Your own practice days, your own sittings, and what changed between them. Nothing here
-          compares you to anybody, and nothing here is a measure of your ability — it is a record
-          of activity.
+          Your practice days, your sittings, and what changed between them. Nothing compares you
+          to anybody. Nothing here measures ability; it is a record of what you did.
         </p>
 
         <section aria-labelledby="streak">
@@ -378,8 +376,8 @@ export function ProgressView() {
           <h2 id="accuracy">Practice accuracy</h2>
           {progress.notEnoughYet.practice || scoredDays.length < MIN_TREND_DAYS ? (
             <p className="muted" style={{ maxWidth: "58ch" }}>
-              Not enough yet. A trend line needs at least {MIN_TREND_DAYS} days of practice behind
-              it; drawing one over {scoredDays.length} would be decoration, not a measurement.
+              Not enough yet. A trend line needs {MIN_TREND_DAYS} days of practice behind it.
+              Drawn over {scoredDays.length}, it would be decoration, not a measurement.
             </p>
           ) : (
             <>
@@ -420,8 +418,8 @@ export function ProgressView() {
           )}
           {progress.practiceAccuracy === null ? null : (
             <p className="muted" style={{ maxWidth: "58ch" }}>
-              Over your first {Math.round(progress.practiceAccuracy.answered / 2)} cards you were
-              right {progress.practiceAccuracy.early}% of the time; over the most recent half,{" "}
+              Your first {Math.round(progress.practiceAccuracy.answered / 2)} cards:{" "}
+              {progress.practiceAccuracy.early}% right. The most recent half:{" "}
               {progress.practiceAccuracy.recent}%.
             </p>
           )}
@@ -438,15 +436,15 @@ export function ProgressView() {
           {progress.notEnoughYet.sittings ? (
             <p className="muted" style={{ maxWidth: "58ch" }}>
               {progress.sittings.length === 0
-                ? "You have no completed run yet. One full sitting of all four tracks puts a shape here."
-                : "One sitting so far. A second one gives this page something to compare it with."}
+                ? "You have no completed run yet. One full sitting of all four tracks draws a shape here."
+                : "One sitting so far. A second gives this page something to compare."}
             </p>
           ) : (
             <SittingsChart sittings={progress.sittings} />
           )}
           <p className="small faint" style={{ maxWidth: "62ch" }}>
-            These are each run&rsquo;s own scorers over its stored event log — a measurement of
-            the run, not a judged result, and not comparable to anyone else&rsquo;s.
+            Each run&rsquo;s own scorers over its stored event log: a measurement of the run,
+            not a judged result, and not comparable to anyone else&rsquo;s.
           </p>
         </section>
 
@@ -457,8 +455,8 @@ export function ProgressView() {
           <h2 id="moved">What moved</h2>
           {progress.improvements.length === 0 ? (
             <p className="muted" style={{ maxWidth: "58ch" }}>
-              Nothing has moved enough to report. That is a real answer, and a better one than a
-              number invented to fill the space.
+              Nothing has moved enough to report. That is a real answer, not a number invented
+              to fill the space.
             </p>
           ) : (
             <ul className={styles.moves}>

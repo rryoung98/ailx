@@ -104,7 +104,7 @@ describe("the days this browser is holding", () => {
     seedLedger([back(0)]);
     const html = await markup();
     expect(html).toMatch(/signed out/i);
-    expect(html).toMatch(/never reached the exam service|the service never saw/i);
+    expect(html).toMatch(/never reach(es|ed) the exam service|the service never saw/i);
   });
 
   it("keeps the empty copy when the browser is holding nothing", async () => {

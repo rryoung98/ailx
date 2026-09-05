@@ -62,7 +62,7 @@ export default function GalleryPage() {
       );
       setSubs(docs.filter((d) => d.doc));
     } catch {
-      setError("The wall could not be loaded — the shared demo service did not answer.");
+      setError("The shared demo service did not answer.");
     }
   }, []);
 
@@ -124,10 +124,10 @@ export default function GalleryPage() {
         <p className="eyebrow">COMMUNITY WALL · T4 GENERATIVE DIRECTION</p>
         <h1 style={{ maxWidth: "14ch" }}>Sets people chose to show.</h1>
         <p className="muted" style={{ maxWidth: "52ch" }}>
-          Final image sets shared from real runs, with the direction note that
-          steered them. Votes are a human read on the work
+          Final image sets shared from real runs, with the direction note behind
+          them. Votes are a human read on the work
           {" "}<Annotation>never part of the score</Annotation> — the instrument
-          only ever grades your own run.
+          grades only your own run.
         </p>
         <div
           role="group"
@@ -157,8 +157,8 @@ export default function GalleryPage() {
         {error ? (
           <div role="alert" style={{ display: "grid", gap: "0.7rem", justifyItems: "start" }}>
             <p className="muted" style={{ margin: 0, maxWidth: "52ch" }}>
-              {error} Nothing is lost — the sets are held by the shared demo service, not by this
-              page, so they come back when it does.
+              {error} The sets are held by that service, not by this page, so they come back
+              when it does.
             </p>
             <p style={{ display: "flex", gap: "1rem", alignItems: "center", margin: 0 }}>
               <button type="button" className="btn primary" onClick={() => void load()}>
@@ -200,8 +200,8 @@ export default function GalleryPage() {
           ))}
         </div>
         <p className="small faint" style={{ marginTop: "2rem" }}>
-          Everything on this wall is AI-generated and voluntarily shared. Sharing
-          is opt-in from your report; nothing uploads during a run.
+          Every set here is AI-generated and shared voluntarily. Sharing is opt-in
+          from your report; nothing uploads during a run.
         </p>
       </div>
     </main>

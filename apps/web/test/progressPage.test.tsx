@@ -206,7 +206,7 @@ describe("the streak", () => {
     const html = await markup();
     expect(html).toMatch(/survives one missed day/i);
     expect(html).toMatch(/your own\s*local day/i);
-    expect(html).toMatch(/reward a habit/i);
+    expect(html).toMatch(/rewards? a habit/i);
   });
 
   it("tells a player with nothing yet what one round is worth", async () => {
