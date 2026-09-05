@@ -43,9 +43,12 @@ describe("readIdentity, per build", () => {
     expect(readIdentity()).toEqual({ status: "anonymous", userId: null });
   });
 
-  it("is signed in — on the asserted dev id — in a hosted build with no Clerk", async () => {
+  it("is ASSERTED, never signed-in, in a hosted build with no Clerk", async () => {
+    // TEN-153: the dev id is an identity the API accepts and it is NOT an
+    // account. Calling it "signed-in" made a deployment with no accounts
+    // report one — the funnel counted step 6 on every page load.
     const { readIdentity } = await load("hosted");
-    expect(readIdentity()).toEqual({ status: "signed-in", userId: null });
+    expect(readIdentity()).toEqual({ status: "asserted", userId: null });
   });
 
   it("is pending in a Clerk build until the bridge publishes", async () => {
@@ -67,6 +70,19 @@ describe("readIdentity, per build", () => {
   });
 });
 
+describe("hasIdentity — the other fact (TEN-153)", () => {
+  it("is true for an account AND for the asserted dev id, false otherwise", async () => {
+    // Two facts, two words: `hasIdentity` answers "will the service accept a
+    // read from this browser?", `status === "signed-in"` answers "is there an
+    // account?". Nearly every reader wants the first one.
+    const { hasIdentity } = await load("hosted");
+    expect(hasIdentity("signed-in")).toBe(true);
+    expect(hasIdentity("asserted")).toBe(true);
+    expect(hasIdentity("anonymous")).toBe(false);
+    expect(hasIdentity("pending")).toBe(false);
+  });
+});
+
 describe("publishIdentity", () => {
   it("carries a signed-in id through", async () => {
     const { publishIdentity, readIdentity } = await load("clerk");
@@ -76,7 +92,7 @@ describe("publishIdentity", () => {
 
   it("strips an id off any state that is not signed in", async () => {
     const { publishIdentity, readIdentity } = await load("clerk");
-    for (const status of ["anonymous", "pending"] as const) {
+    for (const status of ["anonymous", "pending", "asserted"] as const) {
       publishIdentity({ status, userId: "user_a" } as never);
       expect(readIdentity()).toEqual({ status, userId: null });
     }

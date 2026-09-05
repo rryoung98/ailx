@@ -42,7 +42,7 @@ import {
   type StreakSummary,
 } from "@ailx/report";
 import { serviceHeaders } from "../../lib/data/traceparent";
-import { useIdentity } from "../../lib/auth/identityState";
+import { hasIdentity, useIdentity } from "../../lib/auth/identityState";
 import { funnel } from "../../lib/data/funnel";
 import {
   localStreakSummary,
@@ -125,14 +125,17 @@ export function PracticeDrill() {
   const server = isServerMode();
   const identity = useIdentity();
   /**
-   * Where this round goes. An account records it on the server, which is what
-   * makes the deck server-dealt and the day server-stamped; anybody else
-   * keeps it in their own browser and keeps a streak all the same.
+   * Where this round goes. ANY identity the service accepts — an account, or
+   * the asserted dev id of a hosted build with no Clerk — records it on the
+   * server, which is what makes the deck server-dealt and the day
+   * server-stamped; anybody else keeps it in their own browser and keeps a
+   * streak all the same. `hasIdentity`, not `status === "signed-in"`: the
+   * account question is a different one (`lib/auth/identityState.ts`).
    *
    * `pending` is neither: Clerk has not answered yet, and dealing a local
    * round in the meantime would quietly drop a signed-in person's day.
    */
-  const recorded = server && identity.status === "signed-in";
+  const recorded = server && hasIdentity(identity.status);
   const waitingOnIdentity = server && identity.status === "pending";
   const [phase, setPhase] = useState<Phase>("loading");
   const [sessionId, setSessionId] = useState<string | null>(null);

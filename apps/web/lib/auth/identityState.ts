@@ -21,12 +21,35 @@ import { isClerkEnabled, isServerMode } from "../mode";
  * session asynchronously, and a drill that guessed "anonymous" in the meantime
  * would deal a round the signed-in person's account never hears about.
  */
-export type IdentityStatus = "pending" | "anonymous" | "signed-in";
+export type IdentityStatus = "pending" | "anonymous" | "asserted" | "signed-in";
 
 export interface Identity {
   status: IdentityStatus;
   /** Stable per-account id, so a claim runs once per account, not per render. */
   userId: string | null;
+}
+
+/**
+ * TWO FACTS, TWO WORDS (TEN-153).
+ *
+ * "signed-in" used to cover both of them, and a deployment could not tell
+ * them apart: the asserted dev id was called signed-in, so a build with NO
+ * accounts at all reported an account. The funnel counted a `signed_in` step
+ * on every hosted page load, which docs/KPI.md defines as "an account exists
+ * and this browser holds it".
+ *
+ *  - `"signed-in"` — a real account provider answered and this browser holds
+ *    an ACCOUNT. It is the only status that ever carries a `userId`.
+ *  - `"asserted"` — the hosted build with no Clerk key. The browser asserts a
+ *    dev id the exam service accepts, and there is no account behind it.
+ *
+ * Nearly every reader wants the OTHER question — "is there an identity the
+ * service will accept?" — and that is `hasIdentity`, never a status
+ * comparison. Ask for an account only where a claim, a sign-out control or a
+ * funnel step really means an account.
+ */
+export function hasIdentity(status: IdentityStatus): boolean {
+  return status === "signed-in" || status === "asserted";
 }
 
 /**
@@ -36,11 +59,21 @@ export interface Identity {
  */
 const ANONYMOUS: Identity = { status: "anonymous", userId: null };
 const PENDING: Identity = { status: "pending", userId: null };
-/** Hosted, no Clerk: the asserted dev id IS an identity the API accepts. */
-const DEV_IDENTITY: Identity = { status: "signed-in", userId: null };
+/**
+ * Hosted, no Clerk: the asserted dev id IS an identity the API accepts, and
+ * it is NOT an account. `asserted` says both halves in one word.
+ */
+const DEV_IDENTITY: Identity = { status: "asserted", userId: null };
 
-/** By status, so a published state that carries no id is a shared constant. */
-const SNAPSHOTS = { pending: PENDING, anonymous: ANONYMOUS, "signed-in": DEV_IDENTITY } as const;
+/**
+ * By status, and only for the statuses that carry NO id: a signed-in identity
+ * is the one state with a value in it, so it is built rather than looked up.
+ */
+const SNAPSHOTS: Record<Exclude<IdentityStatus, "signed-in">, Identity> = {
+  pending: PENDING,
+  anonymous: ANONYMOUS,
+  asserted: DEV_IDENTITY,
+};
 
 let current: Identity = PENDING;
 const listeners = new Set<() => void>();
