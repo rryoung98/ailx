@@ -229,8 +229,8 @@ export default function Home() {
                   </h1>
                   <span className="hero-fade hero-annotation"><Annotation>one card, right now</Annotation></span>
                   <p className="lede hero-lede hero-fade">
-                    Start here: photograph, or generated? You get the answer and the tell the
-                    moment you call it.
+                    Photograph, or generated? You get the answer and the tell the moment you
+                    call it.
                   </p>
                 </div>
                 {/* The drill is tappable end to end, so the fixed bottom pill
@@ -327,9 +327,8 @@ export default function Home() {
                 that differs — the static export has no /progress. */}
             <h2 className="wyg-title">Come back tomorrow.</h2>
             <p className="wyg-line">
-              Finish a round and the day counts. No account: the days are kept in this browser,
-              and the streak is counted from what you actually finished, never a number you told
-              it.
+              Finish a round and the day counts. With no account the days are kept in this
+              browser. The streak counts what you finished, never a number you told it.
             </p>
             <p className="wyg-more">
               {isServerMode() ? (

@@ -165,6 +165,28 @@ export default function Methodology() {
         </section>
 
         <section className="reveal">
+        {/* No paper chip: those are numbered spec sections, and this one is
+            about the app, not the instrument. siteShowcase.test.tsx counts
+            them. */}
+        <h2 id="storage">What is stored, and who calls the model</h2>
+        <p>
+          In the hosted build the exam service stores your event log, your answers, and any
+          site you published. It also holds the key for the model you connect. The browser
+          starts the sign-in, hands back the code it is redirected with, and is told a
+          12-character fingerprint. It never receives the key.
+        </p>
+        <p>
+          Connect nothing and the service makes no model call for you. A track that can run
+          without one falls back to its own offline simulator, and says so on screen.
+        </p>
+        <p>
+          The static demo on GitHub Pages has no service at all. Every model call there is a
+          deterministic simulator seeded by SHA-256 of its inputs, and nothing leaves your
+          browser.
+        </p>
+        </section>
+
+        <section className="reveal">
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§14</span><span className="paper-chip-note">replayable</span></span>
         <h2 id="modularity">Modularity &amp; reproducibility (§14)</h2>
         <p>

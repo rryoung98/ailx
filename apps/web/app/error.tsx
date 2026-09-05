@@ -34,8 +34,8 @@ export default function ErrorScreen({
         <div role="alert" className="card" style={{ padding: "1.5rem", display: "grid", gap: "0.7rem" }}>
           <h1 style={{ margin: 0, fontSize: "1.4rem" }}>Something broke on this screen</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Your run is saved in this browser — the event log is append-only and
-            was not touched by this fault. Continuing reloads it from storage.
+            Your run is saved in this browser. This fault did not touch it, and
+            Try again reloads it from storage.
           </p>
           <p style={{ margin: 0, display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
             <button className="btn primary" onClick={() => reset()}>Try again</button>
