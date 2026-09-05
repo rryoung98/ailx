@@ -58,7 +58,7 @@ export type ServiceState<T> =
  * DNS, a blocked origin. Nothing was reached, so there is nothing to quote.
  */
 export const SERVICE_ERROR_COPY =
-  "The AILX service did not answer, so this page shows nothing rather than something invented. Check your connection and reload.";
+  "The AILX service did not answer, so this page has nothing to show. Check your connection and reload.";
 
 /**
  * What a reader is told when the call LANDED AND WAS REFUSED. A different
@@ -74,7 +74,7 @@ export const SERVICE_ERROR_COPY =
 export function serviceRefusedCopy(status: number, reason?: string): string {
   const said = reason === undefined ? "" : ` It said: ${reason}`;
   if (status === 401 || status === 403) {
-    return `The AILX service was reached and would not answer this page without an account (HTTP ${status}). This page is meant to be public, so that is a fault on our side, not yours.${said}`;
+    return `The AILX service was reached and asked for an account (HTTP ${status}). This page is meant to be public, so that is our fault, not yours.${said}`;
   }
   return `The AILX service was reached and refused this request (HTTP ${status}), so nothing from it is shown. Your connection is fine.${said}`;
 }
@@ -86,7 +86,7 @@ export function serviceRefusedCopy(status: number, reason?: string): string {
  * said could not be trusted, so nothing is rendered from it.
  */
 export const SERVICE_INVALID_COPY =
-  "The AILX service answered with something this page could not read, so nothing from it is shown. That is a bug on our side, not a problem with your connection.";
+  "The AILX service answered with something this page could not read, so nothing is shown. That is our bug, not your connection.";
 
 /**
  * The browser's own store, or null where there is none (server render, a

@@ -90,7 +90,7 @@ describe("a finalized sitting the service has scored", () => {
   it("stops telling a finished candidate to finish their run", async () => {
     serviceAnswers(FINALIZED);
     const html = await reportHtml();
-    expect(html).not.toContain("Finish the run to unlock it");
+    expect(html).not.toContain("Finish the run to see it");
     expect(html).toContain("Your sitting is finished");
   });
 
@@ -108,7 +108,7 @@ describe("a finalized sitting the service has scored", () => {
 
   it("says why there is no composite instead of leaving a hole", async () => {
     serviceAnswers(FINALIZED);
-    expect(await reportHtml()).toContain("no composite");
+    expect(await reportHtml()).toMatch(/no composite/i);
   });
 });
 
@@ -116,7 +116,7 @@ describe("a sitting the service still calls open", () => {
   it("keeps the lock and the way back into the run", async () => {
     serviceAnswers({ finalized: false, pending: false, pollAfterMs: null, tracks: [] });
     const html = await reportHtml();
-    expect(html).toContain("Finish the run to unlock it");
+    expect(html).toContain("Finish the run to see it");
     expect(html).toContain("Continue →");
   });
 });

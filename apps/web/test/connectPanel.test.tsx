@@ -233,7 +233,9 @@ describe("the hosted build connects through the service", () => {
     const text = host.textContent ?? "";
     expect(text).toContain("a1b2c3d4e5f6");
     expect(text).toContain("this browser never received your key");
-    expect(text).toContain("stores the key against your account");
+    // "holds it against your account" after the copy pass — same claim,
+    // fewer words.
+    expect(text).toContain("holds it against your account");
     expect(text).toContain("Disconnect asks the service to delete it");
     // The claim that stopped being true is gone.
     expect(text).not.toContain("key stays in this browser");
@@ -393,7 +395,9 @@ describe("both builds", () => {
   it("promise a recoverable failure, not an automatic simulator takeover", async () => {
     setHosted(false);
     await mount();
-    expect(host.textContent).toContain("you can retry it or switch to the free offline demo simulators");
+    // The promise is a RECOVERABLE failure with two ways out, not a silent
+    // simulator takeover. The copy pass dropped "you can" and "demo".
+    expect(host.textContent).toContain("retry it or switch to the free offline simulators");
   });
 });
 

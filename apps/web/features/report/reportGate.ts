@@ -70,7 +70,7 @@ export function reportGate(input: GateInput): GateView {
     return {
       headline: "Your sitting is finished",
       lede:
-        `The exam service issued the scores of record for this sitting and they are below. ` +
+        `The scores of record are below, issued by the exam service. ` +
         (pending > 0
           ? `${pending === 1 ? "One track is" : `${pending} tracks are`} still being judged, and this page checks for the score. `
           : "") +
@@ -78,7 +78,7 @@ export function reportGate(input: GateInput): GateView {
           ? "It issued the composite too: this browser did not compute it and claims no replay of it."
           : input.scores.composite?.state === "withheld"
             ? ""
-            : "There is no composite here: the composite is computed from the scores this browser issued, " +
+            : "No composite here: it is computed from the scores this browser issued, " +
               "and it did not issue these."),
       cta: null,
       scored,
@@ -86,7 +86,10 @@ export function reportGate(input: GateInput): GateView {
   }
   return {
     headline: "The report is the reward",
-    lede: `${scored.length} of 4 tracks scored. Finish the run to unlock it.`,
+    // "unlock" is game-economy language this product bans elsewhere
+    // (progressPage.test.tsx pins its absence on /progress). "see" is the
+    // plain word and one syllable shorter.
+    lede: `${scored.length} of 4 tracks scored. Finish the run to see it.`,
     cta: { href: "/exam", label: "Continue →" },
     scored,
   };
