@@ -1,0 +1,18 @@
+# Local gates, so a commit does not need a CI round-trip to find a lint error.
+#
+# Pre-commit is Biome on the staged files only, because it is fast. The full
+# monorepo build (`pnpm -r build`) is NOT here on purpose: it is CI's `verify`
+# job, and a twenty-minute hook is a hook people learn to skip.
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{ts,tsx,js,jsx,json,css}"
+      run: pnpm biome lint --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+
+# The whole test suite, once, before the branch leaves the machine. Skip it
+# while iterating on a draft with `LEFTHOOK=0 git push`.
+pre-push:
+  commands:
+    test:
+      run: pnpm test
