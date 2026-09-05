@@ -86,16 +86,21 @@ th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: u
  * second sticky element (the track runner's clock + Pause bar) can sit
  * directly under it with `top: var(--header-h)` instead of guessing.
  *
- * It is NOMINAL, not measured: the primary nav wraps as the viewport
- * narrows, so the token steps with it. The three values are read off the
- * shipped header (66px above ~660px, 110px in the one-wrap band, 130px below
- * ~500px) and the header is deliberately NOT forced to the token — a drift
- * then costs a few pixels of gap under a sticky child, never a header that
- * clips its own nav.
+ * It is ONE value at every width, and that is the whole point. It used to
+ * step (66/110/130px) because the nav wrapped as the viewport narrowed, and
+ * every step was a number somebody had read off a screenshot. The steps went
+ * stale as soon as the phone nav became a nowrap scrolling row: measured on
+ * the deployed site, the token said 130px where the header was 64px, and —
+ * the dangerous direction — said 66px between 641px and 839px where the
+ * header really wrapped to 110-113px. A sticky child using
+ * `top: var(--header-h)` there would have been covered by the header.
+ *
+ * So the nav never wraps at any width now (see the scrolling-row rule
+ * below), the header is one row everywhere, and the token has nothing left
+ * to step with. Keep it that way: if the header is ever allowed to wrap
+ * again, this token becomes a guess again.
  */
 :root { --header-h: 66px; }
-@media (max-width: 660px) { :root { --header-h: 110px; } }
-@media (max-width: 500px) { :root { --header-h: 130px; } }
 
 .site-header {
   position: sticky; top: 0; z-index: 20;
@@ -423,26 +428,44 @@ summary { cursor: pointer; }
   .site-nav a { padding: 0.35rem 0.15rem; display: inline-block; }
 }
 @media (max-width: 700px) {
-  /* Track runners ship inline two-column grids (package-owned); collapse
-     them to one column on phones from the app layer. */
+  /* Inline `grid-template-columns` is written in a component's style
+     attribute, so no media query inside that component can answer it. The
+     app layer collapses every one of them to a single column on a phone.
+     This started as a .runner-frame rule for the package-owned track grids;
+     it covers all of main since the report's per-track rubric rows
+     (minmax(10rem, 1fr) 2fr 6.5rem) pushed /report to a 331px scrollWidth in
+     a 320px viewport, clipping the max score mid-number ("33.2 / 4") and
+     squeezing the score meter to 2px. */
   .runner-frame { padding: 1rem; }
-  .runner-frame [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+  main [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
 }
 /*
- * Phone chrome: ONE scrolling row of links, with the Play pill parked
+ * Narrow chrome: ONE scrolling row of links, with the Play pill parked
  * outside it so the fast, free thing is never scrolled away. The nav used to
  * wrap into two rows (~130px of every 844px viewport, on every page) and it
  * grew a row each time a route was added. Nothing is hidden behind a menu:
  * every route is still a link, still in tab order, still carries aria-current.
+ *
+ * The cut-off is 859px, not 640px, because 641-839px was exactly the band
+ * where the header still wrapped: on a 768px tablet the nav broke mid-phrase
+ * ("Full / run", "Sign / in") and the header stood 110px tall while
+ * --header-h claimed 66px. Above 860px every link fits on one line and this
+ * block does nothing.
  */
-@media (max-width: 640px) {
+@media (max-width: 859px) {
   .site-header .inner { flex-wrap: nowrap; align-items: center; gap: 0.75rem; }
   .site-nav { flex: 1 1 auto; min-width: 0; gap: 0.75rem; }
   .nav-links {
     display: flex; flex: 1 1 auto; min-width: 0; gap: 1rem;
     overflow-x: auto; overscroll-behavior-x: contain;
     scrollbar-width: none; -ms-overflow-style: none;
+    /* The scrollbar is hidden, so the strip needs its own way of saying
+       "there is more to the right". Without this the last visible link is
+       simply sliced mid-word and reads as a rendering fault. The fade is
+       switched off once the strip is scrolled to its end. */
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
   }
+  .nav-links[data-scroll-end="1"] { mask-image: none; }
   .nav-links::-webkit-scrollbar { display: none; }
   /* 44px tap targets at 390px, and no link may wrap mid-row. */
   .nav-links a { white-space: nowrap; min-height: 44px; display: inline-flex; align-items: center; padding: 0; }

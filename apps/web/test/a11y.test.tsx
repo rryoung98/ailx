@@ -272,14 +272,35 @@ describe("the credential surfaces are legible and never colour-only", () => {
 });
 
 describe("shared layout tokens and shell rules", () => {
-  it("publishes the sticky header height as a token, at every wrap width", () => {
+  it("publishes the sticky header height as ONE token, because the header never wraps", () => {
     // A second sticky element (the track runner's clock bar) needs the
-    // header's own height to sit under it; the nav wraps as the viewport
-    // narrows, so the token steps with it.
+    // header's own height to sit under it. The token used to step 66/110/130
+    // as the nav wrapped, and every step was a hand-read number. Measured on
+    // the deployed site those steps were wrong at every width below 860px —
+    // including 66px across 641-839px where the header was really 110-113px,
+    // which would have put a sticky child UNDER the header.
+    //
+    // The nav is now a nowrap scrolling row everywhere it would have wrapped,
+    // so there is one value and nothing to keep in sync. A second declaration
+    // here means the header wraps again and the token is a guess again.
     const decls = [...css.matchAll(/--header-h:\s*(\d+)px/g)].map((m) => Number(m[1]));
-    expect(decls).toEqual([66, 110, 130]);
-    expect(css).toMatch(/@media \(max-width: 660px\) \{ :root \{ --header-h: 110px; \} \}/);
-    expect(css).toMatch(/@media \(max-width: 500px\) \{ :root \{ --header-h: 130px; \} \}/);
+    expect(decls).toEqual([66]);
+  });
+
+  it("the nav never wraps: the scrolling row covers every width below the one-line fit", () => {
+    // 768px used to break the links mid-phrase ("Full / run", "Sign / in").
+    const at = css.indexOf(".site-header .inner { flex-wrap: nowrap;");
+    expect(at).toBeGreaterThan(-1);
+    const query = css.lastIndexOf("@media", at);
+    expect(css.slice(query, at)).toContain("max-width: 859px");
+  });
+
+  it("the hidden-scrollbar nav says there is more to the right", () => {
+    // The strip hides its scrollbar, so its right edge slices a link
+    // mid-word. A fade carries the affordance, and it is cleared once the
+    // strip is scrolled to its end (components/ui/NavStrip.tsx).
+    expect(css).toMatch(/\.nav-links \{[^}]*mask-image: linear-gradient\(to right,/);
+    expect(css).toContain('.nav-links[data-scroll-end="1"] { mask-image: none; }');
   });
 
   it("pushes the footer to the bottom of a short page", () => {

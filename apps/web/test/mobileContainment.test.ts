@@ -58,7 +58,17 @@ describe("globals.css shared mobile containment layer", () => {
     expect(css).toMatch(/\.share-card \.eyebrow,\s*\.share-card h2 \{ padding-right: 3\.6rem; \}/);
   });
 
-  it("runner grids still collapse to one column on phones (app-layer override)", () => {
-    expect(css).toContain('.runner-frame [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }');
+  /**
+   * Inline grid columns cannot be answered by a media query inside the
+   * component that wrote them, so the app layer collapses ALL of them, not
+   * just the track runners'. /report's per-track rubric rows
+   * (minmax(10rem, 1fr) 2fr 6.5rem) gave a 320px viewport a 331px
+   * scrollWidth, clipped the max score mid-number and left a 2px meter.
+   */
+  it("every inline grid inside main collapses to one column on phones", () => {
+    expect(css).toContain('main [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }');
+    // Scoped to the phone query, not global.
+    const at = css.indexOf('main [style*="grid-template-columns"]');
+    expect(css.slice(css.lastIndexOf("@media", at), at)).toContain("max-width: 700px");
   });
 });
