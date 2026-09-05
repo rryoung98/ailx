@@ -370,11 +370,10 @@ export default function ReportPage() {
                 })}
               </div>
               <p className="faint small" style={{ margin: "0.6rem 0 0" }}>
-                A playful lens on this one run, read from your own stored artifacts and event log —
-                and, where the log recorded nothing, from the track&rsquo;s score against the demo
-                cohort&rsquo;s median. Not a personality claim, and the letters move no points. What
-                it says you are good at, and what to work on, is in <a href="#diagnosis-heading">the
-                diagnosis</a> below.
+                A playful lens on this one run, read from your stored artifacts and event log.
+                Where the log recorded nothing, it reads the track&rsquo;s score against the demo
+                cohort&rsquo;s median. Not a personality claim, and the letters move no points.
+                Strengths and next steps are in <a href="#diagnosis-heading">the diagnosis</a> below.
               </p>
             </Reveal>
           );
@@ -488,10 +487,9 @@ export default function ReportPage() {
 
         <h2>Event log</h2>
         <p className="faint small" style={{ marginTop: "-0.4rem" }}>
-          Persisted runner events, shown read-only (seq · verb · object · timing).
-          Scores are computed from the stored artifacts and judgment rows; these
-          events are the behavioural record that accompanies them, and the research
-          export carries the same per-track event counts.
+          Your runner events, read-only (seq · verb · object · timing). They record what
+          you did. Your score comes from the stored artifacts and judgment rows, not from
+          these.
         </p>
         {TRACK_IDS.map((t) => {
           const startTs = log.find((e) => e.type === "track_started" && e.trackId === t)?.ts;

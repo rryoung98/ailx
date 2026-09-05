@@ -179,5 +179,5 @@ export const WITHHELD_LEDE: Record<CompositeWithheldReason, string> = {
   not_finalized:
     "This sitting is still open. The exam service issues a score of record when you finish it, and the composite is issued with those scores.",
   awaiting_track:
-    "A composite needs every scored track. Over a subset it is a different number: the weights are shares of the whole instrument, and the band is a position against peers who sat all of it. So the exam service withholds it instead of reporting a smaller number under the same name.",
+    "A composite needs every scored track. The weights are shares of the whole instrument, and the band ranks you against peers who sat all of it. Over a subset both mean something else, so the service withholds the number rather than print a different one under this name.",
 };

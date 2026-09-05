@@ -33,7 +33,10 @@ describe("footerModeCopy", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
     const copy = footerModeCopy();
     expect(copy).toContain("static demo build");
-    expect(copy).toContain("No network calls");
+    // The copy pass replaced "No network calls. Everything runs in your
+    // browser." with one sentence that says the same thing.
+    expect(copy).toMatch(/nothing leaves your browser/i);
+    expect(copy).toContain("deterministic simulator");
   });
 
   it("never claims offline in the hosted build", () => {
@@ -42,6 +45,7 @@ describe("footerModeCopy", () => {
     expect(copy).toContain("hosted build");
     expect(copy).not.toMatch(/no network calls/i);
     expect(copy).not.toMatch(/everything runs in your browser/i);
+    expect(copy).not.toMatch(/nothing leaves your browser/i);
     expect(copy).toContain("AILX backend");
   });
 
@@ -49,11 +53,35 @@ describe("footerModeCopy", () => {
     // TEN-62 put the key on the exam service, which refuses an unconnected
     // caller. "without one, every model call is a deterministic simulator"
     // described a build that no longer exists.
+    //
+    // The copy pass cut the footer from 75 words to 29 and moved the two
+    // connection clauses to ConnectPanel, which is where the reader decides.
+    // So this asserts the INVARIANT — a hosted footer promises no simulator
+    // and never implies the browser holds the key — rather than sentences
+    // that a later edit would have to keep verbatim to stay green.
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     const copy = footerModeCopy();
-    expect(copy).not.toMatch(/without one, every model call is a deterministic simulator/i);
-    expect(copy).toContain("the service makes no model call for you");
-    expect(copy).toContain("this browser never receives one");
+    expect(copy).not.toMatch(/simulator/i);
+    expect(copy).toMatch(/never in this browser/i);
+  });
+
+  it("still names what the hosted build stores", () => {
+    // The enumeration is the promise. Shortening it away would leave a
+    // vaguer claim, which is the one thing this pass may not do.
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    const copy = footerModeCopy();
+    for (const part of ["event log", "answers", "site you published"]) {
+      expect(copy, part).toContain(part);
+    }
+  });
+
+  it("is shorter than the paragraph it replaced, in both builds", () => {
+    // The founder's complaint was length, so length is asserted. 40 words is
+    // generous headroom over today's 29 and well under the old 75.
+    for (const mode of ["", "1"]) {
+      vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", mode);
+      expect(footerModeCopy().split(/\s+/).length, mode).toBeLessThanOrEqual(40);
+    }
   });
 });
 
@@ -120,13 +148,13 @@ describe("footer rendering", () => {
 
   it("renders the static claim in static mode", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
-    expect(render()).toContain("No network calls");
+    expect(render()).toContain("Nothing leaves your browser");
   });
 
   it("drops the static claim in server mode", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     const html = render();
-    expect(html).not.toContain("No network calls");
+    expect(html).not.toContain("Nothing leaves your browser");
     expect(html).toContain("hosted build");
   });
 });

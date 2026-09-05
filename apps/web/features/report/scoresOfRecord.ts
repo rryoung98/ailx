@@ -224,7 +224,7 @@ export function stateCopy(record: TrackScoreRecord): string {
         case "no_deck":
           return "No score. This sitting was dealt no material for this track.";
         case "instrument_mismatch":
-          return "The score cannot be shown. It was issued under a different version of the instrument than the service now runs, so it is not a number about this instrument. The stored score and its inputs are intact.";
+          return "The score cannot be shown. It was issued under a different version of the instrument, so it says nothing about this one. The stored score and its inputs are intact.";
         case "no_score":
           return "No score. The exam service issued none for this track.";
       }
@@ -241,7 +241,7 @@ export const NO_SCORES_COPY =
 
 /** Said when the page stops waiting. It states the bound and claims no failure. */
 export const BOUND_COPY =
-  "Judging is taking longer than expected — this page has waited three minutes. The exam service issues the score when the judging pass finishes, and this page cannot see whether that pass is running or has failed. Check again, or come back later.";
+  "Judging is taking longer than expected. This page has waited three minutes and cannot see whether the judging pass is running or has failed. Check again, or come back later.";
 
 /** Said when a read did not land. The last answer stays on screen. */
 export const READ_ERROR_COPY =
