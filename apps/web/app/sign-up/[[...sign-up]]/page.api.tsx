@@ -5,7 +5,7 @@
  */
 import { SignUp } from "@clerk/nextjs";
 
-export const metadata = { title: "Create an account — AILX" };
+export const metadata = { title: "Create an account — Foray" };
 
 export default function SignUpPage() {
   return (

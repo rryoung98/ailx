@@ -21,7 +21,7 @@ import { ReviewView } from "../../features/review/ReviewView";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "AILX — moderation",
+  title: "Foray — moderation",
   robots: { index: false, follow: false },
 };
 
@@ -29,7 +29,7 @@ export default function ModerationPage() {
   return (
     <Suspense
       fallback={
-        <PageLoading eyebrow="AILX MODERATION · STAFF ONLY" title="What is waiting, and what we decided." />
+        <PageLoading eyebrow="Foray MODERATION · STAFF ONLY" title="What is waiting, and what we decided." />
       }
     >
       <ReviewView />

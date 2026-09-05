@@ -40,20 +40,20 @@ import { loadSiteSubmission } from "../../lib/data/siteUpload";
 const SECTION_COPY: Record<ShareSection, { label: string; hint: string }> = {
   profile: {
     label: "Your strengths and watch-outs",
-    hint: "The short text your type implies — derived from the same four numbers.",
+    hint: "Derived from the same four numbers as your type.",
   },
   process: {
     label: "How you worked",
-    hint: "Time on task per track, how much you iterated, how often you verified. No items, no answers.",
+    hint: "Time per track, how much you iterated, how often you verified. No items, no answers.",
   },
   completed: { label: "The day you finished", hint: "A date, to the day." },
   site: {
     label: "The site you built in T1",
-    hint: "Your own work, served live. A human reviews it before it can be listed in the gallery.",
+    hint: "Your own work, served live. A human reviews it before it can be listed.",
   },
   note: {
     label: "A line about what you built",
-    hint: "Your words, shown on the card. Reviewed by a human before it can be listed.",
+    hint: "Your words, on the card. A human reads it before it can be listed.",
   },
 };
 
@@ -110,17 +110,16 @@ function PublishControl({
   if (status === "published") {
     return (
       <p className="small muted" style={{ margin: 0 }} data-testid="publish-state">
-        Listed in the <Link href="/gallery">public gallery</Link>. Revoking the link removes it from
-        there too, immediately.
+        Listed in the <Link href="/gallery">public gallery</Link>. Revoking the link removes it
+        from there at once.
       </p>
     );
   }
   if (status === "submitted") {
     return (
       <p className="small muted" style={{ margin: 0 }} data-testid="publish-state">
-        Waiting for a human. You submitted this to the public gallery; because it carries your own
-        work — the site you built, or your own words — a person reads it before it is listed.
-        Your link works in the meantime, and revoking it withdraws the submission.
+        Waiting for a human. Your card carries your own work, so a person reads it before it is
+        listed. Your link works meanwhile, and revoking it withdraws the submission.
       </p>
     );
   }
@@ -133,12 +132,12 @@ function PublishControl({
       </div>
       <p className="faint small" style={{ margin: 0 }}>
         {needsHuman
-          ? "Your card carries your own work, so a person reads it before it is listed. It is not public until they say yes."
-          : "Your player-type card carries no words of your own, so it is listed as soon as you press this. Revoke the link and it leaves the gallery."}
+          ? "Your card carries your own work, so a person reads it before it is listed."
+          : "Your card carries no words of your own, so it is listed as soon as you press this."}
       </p>
       {failed ? (
         <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
-          That did not reach the gallery. Your link is untouched — try again in a moment.
+          That did not reach the gallery. Your link is untouched. Try again in a moment.
         </p>
       ) : null}
     </div>
@@ -267,10 +266,10 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
       <p className="eyebrow" style={{ margin: 0 }}>share · private until you say so</p>
       <h2 id="share-heading" style={{ margin: "0.2rem 0 0.4rem" }}>Send someone your player type</h2>
       <p className="muted small" style={{ maxWidth: "62ch" }}>
-        Creates an unlisted link showing your type, your four-track shape and your band, plus
-        whatever else you tick below — never your answers, the items you saw, or anything that
-        could identify you. It is not listed anywhere and it is not indexed. Revoke it and it
-        stops working immediately, everywhere.
+        Creates an unlisted link with your type, your four-track shape and your band, plus
+        whatever you tick below. Never your answers, the items you saw, or anything that could
+        identify you. It is unlisted and not indexed. Revoke it and it stops working everywhere,
+        at once.
       </p>
 
       {phase === "loading" ? <p className="faint small" role="status">Checking…</p> : null}
@@ -357,8 +356,8 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
               : `your type, shape and band, ${includedSections(share.payload)
                   .map((k) => SECTION_COPY[k].label.toLowerCase())
                   .join(", ")}`}
-            . A link&rsquo;s contents are frozen when it is made — to change them, revoke it and
-            create a new one.
+            . Contents are frozen when the link is made. To change them, revoke it and create a
+            new one.
           </p>
           <PublishControl
             status={share.status}
@@ -369,10 +368,9 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
           />
           {share.status === "rejected" ? (
             <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
-              A moderator refused this submission for the public gallery, so it is no longer
-              served. Their reason: &ldquo;{share.rejectReason}&rdquo; Revoke it and create a new
-              link without the part they objected to — or respond below if you think the decision
-              was wrong.
+              A moderator refused this for the public gallery, so it is no longer served. Their
+              reason: &ldquo;{share.rejectReason}&rdquo; Revoke it and create a new link without
+              that part, or reply below if you think they were wrong.
             </p>
           ) : null}
           {/* Their side of the moderation record: the messages exchanged about
@@ -383,12 +381,12 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
 
       {phase === "error" ? (
         <p className="small" style={{ color: "var(--bad)" }} role="alert">
-          That did not work. Your run is saved — try again in a moment.
+          That did not work. Your run is saved. Try again in a moment.
         </p>
       ) : null}
       <p className="faint small" style={{ marginBottom: 0 }}>
-        Anyone with the link can open it without an account. Preview image and page are served by
-        AILX from {assetUrl("/s/…")}, so a reader can see where the card came from.
+        Anyone with the link can open it, no account needed. Foray serves the page and its preview
+        image from {assetUrl("/s/…")}, so a reader can see where the card came from.
       </p>
     </section>
   );

@@ -41,13 +41,13 @@ export async function generateMetadata({ params }: VerifyParams): Promise<Metada
     // claiming a credential we did not read.
     credential = null;
   }
-  if (credential === null) return { title: "AILX — credential not found", robots };
+  if (credential === null) return { title: "Foray — credential not found", robots };
   return {
     title: `${credential.name} — verification`,
     description:
       credential.status === "revoked"
-        ? "This AILX credential has been revoked."
-        : "Issued by AILX. This page states exactly what the credential asserts, and what it does not.",
+        ? "This Foray credential has been revoked."
+        : "Issued by Foray. This page states exactly what the credential asserts, and what it does not.",
     robots,
   };
 }

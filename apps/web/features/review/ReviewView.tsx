@@ -39,26 +39,26 @@ import { PageError, PageLoading } from "../../components/PageNotice";
 import { ReviewActions } from "./ReviewActions";
 import { firstValueQuery, useService } from "../../lib/data/serviceFetch";
 
-const EYEBROW = "AILX MODERATION · STAFF ONLY";
+const EYEBROW = "Foray MODERATION · STAFF ONLY";
 const TITLE = "What is waiting, and what we decided.";
 
 const LANE_COPY: Record<CaseLane, { label: string; blurb: string; empty: string }> = {
   pending: {
     label: "Waiting",
     blurb:
-      "A player-type card publishes itself. A share carrying the candidate's own built site — or their own words — puts unvetted content on a public wall, so it is listed only after somebody here opens it and says yes. Both decisions stamp your identity on the row; refusing also stores your reason, which the candidate is shown.",
+      "A player-type card publishes itself. A share carrying the candidate's own site or their own words puts unvetted content on a public wall. It is listed only after somebody here opens it and says yes. Both decisions stamp your identity on the row. Refusing also stores your reason, which the candidate is shown.",
     empty: "The queue is empty. Nothing is waiting.",
   },
   appeals: {
     label: "Answered back",
     blurb:
-      "A refused candidate has responded. The refusal itself stands — it is terminal for that share — but the case is back in front of a human. Answer them, or leave an internal note saying why the decision holds.",
+      "A refused candidate has responded. The refusal itself stands and is terminal for that share, but the case is back in front of a human. Answer them, or leave an internal note saying why the decision holds.",
     empty: "Nobody is waiting on an answer.",
   },
   decided: {
     label: "History",
     blurb:
-      "Every human decision, newest first: what was decided, when, by whom, and the reason the candidate was shown. Nothing here can be edited — a change of mind is a new record.",
+      "Every human decision, newest first: what, when, by whom, and the reason the candidate was shown. Nothing here can be edited; a change of mind is a new record.",
     empty: "No decisions recorded yet.",
   },
 };
@@ -176,8 +176,8 @@ export function ReviewView() {
                 ? "Hide auto-published cards"
                 : "Include auto-published cards"}
             </Link>{" "}
-            — a derived player-type card carries no authored content and publishes itself, so it is
-            not a human decision.
+            — a derived player-type card carries no authored content and publishes itself, so no
+            human decided it.
           </p>
         ) : null}
 

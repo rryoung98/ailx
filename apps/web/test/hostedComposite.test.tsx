@@ -318,7 +318,7 @@ describe("a service that sends no composite at all", () => {
     const text = await renderReport();
     expect(host.querySelector('[data-testid="composite-card-server"]')).toBeNull();
     expect(host.querySelector('[data-testid="composite-withheld"]')).toBeNull();
-    expect(text).toContain("no composite");
+    expect(text).toMatch(/no composite/i);
   });
 
   it("refuses a malformed composite rather than drawing half a card", async () => {

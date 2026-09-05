@@ -226,9 +226,9 @@ export async function disconnectKey(): Promise<KeyStatusResult> {
 
 /** What a failed read or delete means, by status. Said once. */
 export function statusFailureCopy(httpStatus: number): string {
-  if (httpStatus === 401) return "The AILX service does not know who you are, so it will not say what it holds. Sign in.";
-  if (httpStatus === 0) return "The AILX service could not be reached, so what it holds is unknown. Nothing here was changed.";
-  return `The AILX service refused (HTTP ${httpStatus}), so what it holds is unknown. Nothing here was changed.`;
+  if (httpStatus === 401) return "The Foray service does not know who you are, so it will not say what it holds. Sign in.";
+  if (httpStatus === 0) return "The Foray service could not be reached, so what it holds is unknown. Nothing here was changed.";
+  return `The Foray service refused (HTTP ${httpStatus}), so what it holds is unknown. Nothing here was changed.`;
 }
 
 /**
@@ -241,7 +241,7 @@ export function connectFailureCopy(status: number): string {
   if (status === 401) return "Sign in before connecting a model: the service stores your key against your identity.";
   if (status === 501) return "This deployment holds no provider keys, so there is nothing to connect to yet.";
   if (status === 429) return "Too many connection attempts. Wait a minute and try again.";
-  return "The AILX service could not start an OpenRouter connection. Try again in a moment.";
+  return "The Foray service could not start an OpenRouter connection. Try again in a moment.";
 }
 
 /**
@@ -263,7 +263,7 @@ export function callbackFailureCopy(status: number): string {
   if (status === 404) return "That sign-in was already used or was never started here. Connect again.";
   if (status === 410) return "That sign-in took too long and expired. Connect again.";
   if (status === 502) return "OpenRouter did not return a key for that sign-in. Connect again.";
-  return "The AILX service could not finish the OpenRouter connection. Connect again.";
+  return "The Foray service could not finish the OpenRouter connection. Connect again.";
 }
 
 /**

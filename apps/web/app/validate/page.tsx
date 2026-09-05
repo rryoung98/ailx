@@ -36,18 +36,18 @@ export default function ValidatePage() {
             <div className="page-hero-scrim" />
           </div>
           <div className="page-hero-copy">
-            <div className="eyebrow">Dogfood · validate AILX quickly</div>
+            <div className="eyebrow">Dogfood · validate Foray quickly</div>
             <h1>Live validation of the <span className="script-accent">scoring</span> path</h1>
             <Annotation>runs in your browser</Annotation>
           </div>
         </div>
         <p className="lede">
-          These checks run in your browser, right now, against the same code that scores a run:
-          all four REAL track plugin score() functions replay pinned golden artifacts and
-          judgments inside the purity harness, and a full fixture run is scored through the same
-          registry path the live game uses. They also check content addressing, rubric-version
-          hashing and composite reproducibility. No network and no server is involved: what
-          passes here reproduces on any machine running the same JavaScript runtime.
+          These checks run in your browser, against the same code that scores a run. All four
+          REAL track plugin score() functions replay pinned golden artifacts and judgments inside
+          the purity harness. A full fixture run is scored through the same registry path the
+          live game uses. They also check content addressing, rubric-version hashing and
+          composite reproducibility. No network, no server: what passes here reproduces on any
+          machine running the same JavaScript runtime.
         </p>
 
         {results && (
@@ -76,20 +76,19 @@ export default function ValidatePage() {
         <Reveal as="section">
         <h2>What this demonstrates</h2>
         <p className="muted" style={{ maxWidth: "44rem" }}>
-          The load-bearing property of the architecture (spec §14) is that any score, once
-          issued, can be recomputed byte by byte from stored inputs. Every track&apos;s real{" "}
-          <code>score()</code> runs here under a harness where the clock, randomness, the network
-          and deferred scheduling all throw; item banks are content-addressed, so an edited item
-          becomes a new item; judge prompts hash into <code>rubric_version</code>; golden fixtures
-          fail the build on any drift. CI runs the same checks in Vitest. This page runs them in
-          your browser.
+          Any score, once issued, can be recomputed byte by byte from stored inputs (spec §14).
+          Every track&apos;s real <code>score()</code> runs here under a harness where the clock,
+          randomness, the network and deferred scheduling all throw. Item banks are
+          content-addressed, so an edited item becomes a new item. Judge prompts hash into{" "}
+          <code>rubric_version</code>. Golden fixtures fail the build on any drift. CI runs the
+          same checks in Vitest; this page runs them in your browser.
         </p>
         <p className="faint small" style={{ maxWidth: "44rem" }}>
           Two limits, so the green badges are not read for more than they say. The harness traps
-          globals; it is not a sandbox, so it cannot see a reference captured before the call or
-          a module-load import. And these checks prove replay on <em>this</em> runtime: scoring
-          is not yet proven byte-identical across JavaScript engine versions, because a score
-          record stores no runtime version. See{" "}
+          globals. It is not a sandbox, so it cannot see a reference captured before the call or
+          a module-load import. And these checks prove replay on <em>this</em> runtime only:
+          scoring is not yet proven byte-identical across JavaScript engine versions, because a
+          score record stores no runtime version. See{" "}
           <Link href="/methodology">Methodology §14</Link>.
         </p>
         <p>

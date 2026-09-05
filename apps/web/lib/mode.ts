@@ -34,21 +34,28 @@ export function isClerkEnabled(): boolean {
 }
 
 /**
- * Footer provenance line. The static showcase really is offline — the
- * hosted build is not, and claiming "no network calls" there is a lie the
+ * Footer provenance line, on EVERY page — so it says only what a reader
+ * needs on every page. The static showcase really is offline; the hosted
+ * build is not, and claiming "no network calls" there is a lie the
  * dogfooder caught on every page.
  *
- * The hosted half also stopped promising a simulator. TEN-62 moved the
- * provider key onto the exam service, which refuses an unconnected caller,
- * so "without one, every model call is a deterministic simulator" is not
- * what a hosted deployment does: the service makes no call at all, and it is
- * each RUNNER that offers a labelled offline fallback. The static build is
- * unchanged, because there the simulator really is every model call.
+ * It used to run to 75 words and four clauses. Two of them belong where the
+ * decision is made, not under every screen, and are still said there:
+ *
+ *  - "the service makes the model call, not this browser" — ConnectPanel's
+ *    own line, beside the Connect button;
+ *  - "connect nothing and a track falls back to a labelled offline
+ *    simulator" — ConnectPanel again, and /methodology §what-is-stored.
+ *
+ * What CANNOT leave: which build you are in, that the run is stored, what
+ * is stored, and that the key is never in this browser. TEN-62 moved the
+ * provider key onto the exam service, and a footer that stops saying so
+ * reads as though the browser still holds one.
  */
 export function footerModeCopy(): string {
   return isServerMode()
-    ? "AILX 2026.1 · hosted build. Your run — event log, responses and any published site snapshot — is saved on the AILX backend. Model calls go through the exam service, which holds the key for the model you connect; this browser never receives one. Connect nothing and the service makes no model call for you; a track that can carry on without one falls back to its own offline simulator and says so on screen."
-    : "AILX 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs. No network calls. Everything runs in your browser.";
+    ? "Foray 2026.1 · hosted build. Your event log, answers and any site you published are saved on the Foray backend. Your model key is held there too, never in this browser."
+    : "Foray 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs. Nothing leaves your browser.";
 }
 
 /**
@@ -64,8 +71,8 @@ export function footerModeCopy(): string {
  */
 export function accessCopy(): string {
   return isClerkEnabled()
-    ? "AILX 2026.1 · free to play · a scored sitting needs an account"
-    : "AILX 2026.1 · free to play · no account";
+    ? "Foray 2026.1 · free to play · a scored sitting needs an account"
+    : "Foray 2026.1 · free to play · no account";
 }
 
 /**
@@ -171,6 +178,6 @@ export function siteHref(sitePath: string | null | undefined): string | null {
 /** Where the event log lives, for the run-intro lede. */
 export function eventLogCopy(): string {
   return isServerMode()
-    ? "Your event log is saved on the AILX backend as you play, so you can pick the run back up."
+    ? "Your event log is saved on the Foray backend as you play, so you can pick the run back up."
     : "The event log stays in this browser.";
 }

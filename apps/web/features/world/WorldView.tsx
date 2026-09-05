@@ -84,8 +84,8 @@ function Suppressed({ have, min }: { have: number; min: number }) {
         <span className="mono">
           {have} of {min}
         </span>{" "}
-        complete runs. A breakdown is published only once {min} are behind it, so no chart on
-        this page can ever be about one identifiable person.
+        complete runs. A breakdown is published only once {min} are behind it, so no chart here
+        is ever about one identifiable person.
       </p>
     </div>
   );
@@ -127,16 +127,15 @@ export function WorldView() {
         <p className="eyebrow">{EYEBROW}</p>
         <h1 style={{ maxWidth: "20ch" }}>{TITLE}</h1>
         <p className="lede">
-          Everything below is counted from stored runs and nothing else. There are no
-          percentiles, no composites and no judged scores here: the judging pipeline is not
-          built, so a number implying one would be a lie. What we can honestly show is who is
-          playing, what shapes their runs take, and how much of the instrument has been seen.
+          Counted from stored runs, and nothing else. There are no percentiles, no composites
+          and no judged scores here: the judging pipeline is not built. What you can see is who
+          plays, what shape their runs take, and how much of the instrument has been shown.
         </p>
         <p className="small faint" style={{ maxWidth: "58ch" }}>
-          Everyone counted here found AILX and chose to run it. That is a self-selected
-          cohort, not a sample of any country, so no figure on this page describes a
-          population. The sample that could is a bought probability panel, and it has not
-          been fielded yet (<code>docs/SAMPLING.md</code>).
+          Everyone here found Foray and chose to run it. That is a self-selected cohort, not a
+          sample of any country, so no figure on this page describes a population. A bought
+          probability panel could do that. It has not been fielded yet
+          (<code>docs/SAMPLING.md</code>).
         </p>
 
         <section aria-labelledby="participation">
@@ -166,23 +165,23 @@ export function WorldView() {
                different facts, three different sentences (TEN-107). */
             <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">
               Nobody has started a run yet, so these counts are genuinely zero rather than
-              missing. The service answered; there is nothing stored to count.
+              missing. The service answered. There is nothing stored to count.
             </p>
           ) : null}
           <p className="small faint">
             Counts over every stored run, so they name nobody. {a.cohortSize} run
-            {a.cohortSize === 1 ? " has" : "s have"} all four tracks scored — that is the cohort
-            every distribution below is computed over.
+            {a.cohortSize === 1 ? " has" : "s have"} all four tracks scored — the cohort every
+            distribution below is computed over.
           </p>
         </section>
 
         <section aria-labelledby="types">
           <h2 id="types">Player types</h2>
           <p className="muted" style={{ maxWidth: "58ch" }}>
-            The MBTI-style lens: one axis per track, split at the demo cohort&rsquo;s median. This
-            page only holds four aggregate numbers per run, so every type here is that median
-            read; a candidate&rsquo;s own card also reads their event log and can land a letter
-            away. It is playful either way, and the scored composite never reads it.
+            MBTI-style: one axis per track, split at the demo cohort&rsquo;s median. This page
+            holds only four aggregate numbers per run, so every type here is that median read. A
+            candidate&rsquo;s own card also reads their event log, and can land a letter away. It
+            is playful either way, and the scored composite never reads it.
           </p>
           {a.playerTypes === null ? (
             <Suppressed have={a.cohortSize} min={a.minCohortSize} />
@@ -206,9 +205,8 @@ export function WorldView() {
         <section aria-labelledby="shapes">
           <h2 id="shapes">Track shapes</h2>
           <p className="muted" style={{ maxWidth: "58ch" }}>
-            How the four tracks come out, in deciles of their 0&ndash;100 scale. These are the
-            run&rsquo;s own scorers over its stored event log — a measurement of the run, not a
-            judged result.
+            Each track in deciles of its 0&ndash;100 scale. These come from each run&rsquo;s own
+            scorers over its stored event log: a measurement of the run, not a judged result.
           </p>
           {a.tracks === null ? (
             <Suppressed have={a.cohortSize} min={a.minCohortSize} />
@@ -239,9 +237,9 @@ export function WorldView() {
         <section aria-labelledby="exposure">
           <h2 id="exposure">Item exposure</h2>
           <p className="muted" style={{ maxWidth: "58ch" }}>
-            How much of the instrument has actually been shown, from the per-attempt deck record.
-            Which items exist is never published: the bank is the instrument, and naming its
-            contents would invalidate every future sitting.
+            How much of the instrument has been shown, from the per-attempt deck record. Which
+            items exist is never published: the bank is the instrument, and naming it would
+            invalidate every future sitting.
           </p>
           {a.exposure === null ? (
             <Suppressed have={a.cohortSize} min={a.minCohortSize} />
@@ -295,12 +293,11 @@ export function WorldView() {
         </section>
 
         <p className="small faint" style={{ maxWidth: "62ch" }}>
-          Method, in one paragraph: participation is counted from attempts and participants;
-          track shapes are projected from each run&rsquo;s mirrored event log (the same
-          projection the report uses), so a run counts only once all four tracks are scored;
-          exposure is aggregated inside the database from{" "}
-          <span className="mono">attempt_decks</span>, the record of what each attempt was shown.
-          Nothing here is derived from an unpublished share, and no row on this page describes
+          Method. Participation is counted from attempts and participants. Track shapes are
+          projected from each run&rsquo;s mirrored event log, the same projection the report
+          uses, so a run counts only once all four tracks are scored. Exposure is aggregated in
+          the database from <span className="mono">attempt_decks</span>, the record of what each
+          attempt was shown. Nothing comes from an unpublished share, and no row here describes
           one person. Tracks:{" "}
           {TRACK_IDS.map((t) => TRACK_META[t].code).join(" · ")}.{" "}
           <Link href="/methodology">How the instrument scores →</Link>

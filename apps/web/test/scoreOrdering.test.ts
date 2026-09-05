@@ -102,7 +102,7 @@ describe("the unlock gate counts a score of record wherever it was issued", () =
 
   it("says why there is no composite instead of showing none silently", () => {
     const view = reportGate({ localScored: ["t1", "t4"], scores: LIVE_RUN, reading: false });
-    expect(view.lede).toContain("no composite");
+    expect(view.lede).toMatch(/no composite/i);
     expect(view.lede).toContain("did not issue these");
   });
 
@@ -149,13 +149,13 @@ describe("the unlock gate counts a score of record wherever it was issued", () =
   it("still locks an OPEN sitting, and still offers the way back into it", () => {
     const open = attemptScores({ finalized: false });
     const view = reportGate({ localScored: ["t1"], scores: open, reading: false });
-    expect(view.lede).toBe("1 of 4 tracks scored. Finish the run to unlock it.");
+    expect(view.lede).toBe("1 of 4 tracks scored. Finish the run to see it.");
     expect(view.cta).toEqual({ href: "/exam", label: "Continue →" });
   });
 
   it("locks a static-demo run with no service at all, exactly as before", () => {
     const view = reportGate({ localScored: ["t1", "t2"], scores: null, reading: false });
-    expect(view.lede).toBe("2 of 4 tracks scored. Finish the run to unlock it.");
+    expect(view.lede).toBe("2 of 4 tracks scored. Finish the run to see it.");
   });
 });
 

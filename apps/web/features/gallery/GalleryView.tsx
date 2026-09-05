@@ -127,14 +127,14 @@ export function GalleryView() {
         <h1 style={{ maxWidth: "18ch" }}>{TITLE}</h1>
         <p className="lede">
           Every card here was published on purpose by the person who earned it, from a finished
-          run. A card is a player type, a four-track shape and a band — never an exam item, an
-          answer or anything personal. Cards that carry a built site are listed only after a
-          human has looked at the site.
+          run. A card is a player type, a four-track shape and a band. It is never an exam item,
+          an answer or anything personal. A card carrying a built site is listed only after a
+          human opens that site.
         </p>
         <p className="muted" style={{ marginTop: "-0.4rem" }}>
-          <Link href="/world">See how the whole cohort is doing →</Link>{" "}
+          <Link href="/world">See the whole cohort →</Link>{" "}
           <span className="faint">·</span>{" "}
-          <Link href="/exam">Play a run and get your own type →</Link>
+          <Link href="/exam">Play a run, get your type →</Link>
         </p>
 
         {/* Filters over nothing are chrome that implies content. They appear
@@ -196,10 +196,10 @@ export function GalleryView() {
         {entries.length === 0 ? (
           listed === 0 ? (
             <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">
-              Nobody has published a card yet, so this wall is genuinely empty rather than
-              broken. Finish a run and publish yours from the report — a player-type card
-              appears here the moment you do, one carrying the site you built waits for a
-              moderator first, and you can revoke either just as fast.
+              Nobody has published a card yet, so this wall is empty rather than broken. Finish
+              a run and publish yours from the report. A player-type card appears here at once.
+              One carrying the site you built waits for a moderator. You can revoke either just
+              as fast.
             </p>
           ) : (
             <p className="muted" style={{ maxWidth: "52ch" }} aria-live="polite">
@@ -229,10 +229,10 @@ export function GalleryView() {
         </nav>
 
         <p className="small faint" style={{ maxWidth: "62ch" }}>
-          Publishing is opt-in and reversible: the owner of any card can revoke it, and it stops
-          being served here and everywhere else immediately. Bands are quota bands over the demo
-          cohort computed by the instrument&rsquo;s own scorers — the summit judging pipeline is
-          not part of them, and no card on this wall claims a judged score.
+          Publishing is opt-in and reversible. The owner can revoke a card, and it stops being
+          served here and everywhere else at once. Bands are quota bands over the demo cohort,
+          computed by the instrument&rsquo;s own scorers. The summit judging pipeline is not part
+          of them, and no card here claims a judged score.
         </p>
       </div>
     </main>

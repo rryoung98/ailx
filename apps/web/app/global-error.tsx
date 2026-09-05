@@ -26,7 +26,7 @@ export default function GlobalError({
       <body style={{ margin: 0, background: "#f7f4f2", color: "#1a1a1a", fontFamily: "system-ui, sans-serif" }}>
         <main style={{ maxWidth: 640, margin: "0 auto", padding: "3rem 1.25rem" }}>
           <div role="alert" style={{ background: "#ffffff", border: "1px solid #e3ddd6", borderRadius: 12, padding: "1.5rem" }}>
-            <h1 style={{ marginTop: 0, fontSize: "1.4rem" }}>AILX could not render this page</h1>
+            <h1 style={{ marginTop: 0, fontSize: "1.4rem" }}>Foray could not render this page</h1>
             <p style={{ color: "#595650" }}>
               Your run is stored in this browser and was not affected. Reload to
               continue where you left off.

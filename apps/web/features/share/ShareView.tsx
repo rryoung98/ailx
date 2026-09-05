@@ -132,8 +132,7 @@ export function ShareView() {
           <section className="card" style={{ marginBottom: "1.6rem" }}>
             <h2 style={{ marginTop: 0 }}>What they chose to show</h2>
             <p className="muted small" style={{ marginTop: "-0.4rem" }}>
-              Every part below was switched on by the person who made this link. Anything they
-              left off is simply not here.
+              The owner switched on each part below. Anything they left off is not here.
             </p>
 
             {p.note !== null ? (
@@ -168,8 +167,8 @@ export function ShareView() {
             {p.process !== null ? (
               <div className="share-process">
                 <p className="small muted" style={{ margin: "0.6rem 0 0" }}>
-                  Minutes worked per track, against that track&rsquo;s budget. Speed is never
-                  rewarded with points — this is how the run was spent, not how well it went.
+                  Minutes per track, against that track&rsquo;s budget. Speed earns no points.
+                  This is how the time went, not how well the run went.
                 </p>
                 {p.process.tracks.map((t) => (
                   <div className="row" key={t.track}>
@@ -220,8 +219,8 @@ export function ShareView() {
           <section className="card" style={{ marginBottom: "1.6rem" }}>
             <h2 style={{ marginTop: 0 }}>The thing they actually built</h2>
             <p className="muted small">
-              Their T1 submission, served live and sandboxed. Shared deliberately and separately —
-              it is their own work, not a derived figure.
+              Their T1 submission, served live and sandboxed. They shared it on purpose. It is
+              their own work, not a derived figure.
             </p>
             <p style={{ marginBottom: 0 }}>
               <a className="btn" href={site} target="_blank" rel="noreferrer">
@@ -240,8 +239,8 @@ export function ShareView() {
         <section className="card" style={{ marginBottom: "1.6rem" }}>
           <h2 style={{ marginTop: 0 }}>Send this on</h2>
           <p className="muted small">
-            The same unlisted link, with a line already written for you. Its owner can revoke it
-            at any time, and it stops resolving everywhere the moment they do.
+            The same unlisted link, with a line ready to send. The owner can revoke it at any
+            time, and it then stops working everywhere.
           </p>
           <ShareTargets url={shareUrl} payload={p} perspective="theirs" />
         </section>
@@ -249,9 +248,9 @@ export function ShareView() {
         <section className="card" style={{ marginBottom: "1.6rem" }}>
           <h2 style={{ marginTop: 0 }}>Find your own type</h2>
           <p className="muted">
-            AILX is an AI-literacy exam you can play: build something with a model, spot what is
-            synthetic, reason against an assistant that is wrong on purpose, and direct a
-            generation to a brief.
+            Foray is an AI-literacy exam you can play. Build with a model, spot what is synthetic,
+            hold a line against an assistant that is wrong on purpose, and direct a generation to
+            a brief.
           </p>
           <p style={{ marginBottom: 0 }}>
             <Link className="btn primary" href="/exam">Play a run →</Link>{" "}
@@ -260,15 +259,15 @@ export function ShareView() {
         </section>
 
         <p className="faint small" style={{ marginBottom: 0 }}>
-          Issued by AILX on {issued} from a completed run, and served from this origin — that is
-          what makes the card checkable. It shows a player type, a four-track shape, a band and the
-          extra sections its owner switched on — never an exam item, an answer, a per-question
-          result or a personal identifier. Bands
-          are derived from the run's stored artifacts by the instrument's own scorers over the demo
-          cohort; the summit judging pipeline is not part of this card.{" "}
+          Issued by Foray on {issued} from a completed run, and served from this origin, which is
+          what makes it checkable. It shows a player type, a four-track shape, a band and the
+          sections its owner switched on. Never an exam item, an answer, a per-question result or a
+          personal identifier. The instrument&rsquo;s own scorers derive the band from the run&rsquo;s
+          stored artifacts over the demo cohort. The summit judging pipeline is not part of this
+          card.{" "}
           <span className="mono">{share.views} view{share.views === 1 ? "" : "s"}</span> · unlisted
-          link, not a public gallery entry — the holder can revoke it at any time, and it stops
-          resolving immediately.
+          link, not a public gallery entry. The holder can revoke it at any time, and it stops
+          resolving at once.
         </p>
       </div>
     </main>

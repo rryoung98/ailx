@@ -80,20 +80,20 @@ export const SHARED_DEMO_BASE_URL = "https://ailx-shared-demo.vercel.app/api/v1"
  */
 export function connectedCopy(fingerprint: string | undefined): string {
   const print = fingerprint === undefined ? "" : ` · ${fingerprint}`;
-  return `● Connected${print} — this browser never received your key: the AILX service exchanged the sign-in and stores the key against your account. This page only ever shows the fingerprint. Disconnect asks the service to delete it.`;
+  return `● Connected${print} — this browser never received your key. The Foray service holds it against your account and only ever shows the fingerprint. Disconnect asks the service to delete it.`;
 }
 
 /** What the static export is told instead of being offered a key box. */
 /** A typed endpoint that cannot be used, and why — never a silent drop. */
 export const UNUSABLE_ENDPOINT_COPY =
-  "That is not an endpoint this browser will use. It must be an http(s) URL with no username, password, query or fragment — a key does not belong in a URL, and this box will not carry one.";
+  "This browser will not use that endpoint. It must be an http(s) URL with no username, password, query or fragment; a key does not belong in a URL, and this box will not carry one.";
 
 /** Storage is blocked, so the panel and the Start gate disagree. Say so. */
 export const STORAGE_BLOCKED_COPY =
   "This browser blocked local storage, so the run cannot see the connection this panel is showing. Allow storage for this site, or the Start button stays shut.";
 
 export const STATIC_NO_KEY_COPY =
-  "This is the static demo on GitHub Pages. There is no AILX service here to hold a provider key against, so there is nothing to sign in to and no key to paste. Use the capped shared demo model, or point this build at a model running on your own machine.";
+  "This is the static demo on GitHub Pages. No Foray service, so nothing to sign in to and no key to paste. Use the capped shared demo model, or point this build at a model on your own machine.";
 
 export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const hosted = modelGatewayAvailable();
@@ -179,7 +179,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
         setError(result.message);
       }
     },
-    onError: () => setError("The AILX service could not be reached to finish the connection."),
+    onError: () => setError("The Foray service could not be reached to finish the connection."),
   });
   const claim = exchange.mutate;
 
@@ -249,13 +249,13 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       // travels. It never learns the challenge and never sees the key.
       window.location.href = result.start.authorizeUrl;
     },
-    onError: () => setError("The AILX service could not be reached to start a connection."),
+    onError: () => setError("The Foray service could not be reached to start a connection."),
   });
 
   const forget = useMutation({
     mutationFn: () => disconnectKey(),
     onSuccess: applyResult,
-    onError: () => setError("The AILX service could not be reached to disconnect."),
+    onError: () => setError("The Foray service could not be reached to disconnect."),
   });
 
   const busy = connect.isPending || exchange.isPending || forget.isPending;
@@ -299,7 +299,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <strong style={{ fontSize: 15 }}>Bring a real model</strong>
         <span className="small faint" style={{ flex: 1, minWidth: 220 }}>
-          Required to start: T1 vibe coding and T4 image generation run on your model. If a call fails mid-run, you can retry it or switch to the free offline demo simulators in one click.
+          Required to start: T1 (vibe coding) and T4 (image generation) run on your model. If a call fails mid-run, retry it or switch to the free offline simulators in one click.
         </span>
         {connected ? (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
@@ -346,7 +346,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       </div>
       {hosted ? (
         <p className="small faint" style={{ margin: 0 }}>
-          Signing in sends you to OpenRouter and back. The AILX service does the exchange: your key never reaches this browser, and this page never sees more of it than a fingerprint.
+          Signing in sends you to OpenRouter and back. The Foray service does the exchange, so your key never reaches this browser. This page sees only a fingerprint.
         </p>
       ) : (
         <p className="small faint" style={{ margin: 0 }} data-testid="static-no-key">

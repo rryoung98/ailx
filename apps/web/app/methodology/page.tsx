@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Annotation } from "../../components/ui/Annotation";
 import { assetUrl } from "../../lib/mode";
 
-export const metadata: Metadata = { title: "Methodology — AILX" };
+export const metadata: Metadata = { title: "Methodology — Foray" };
 
 export default function Methodology() {
   return (
@@ -21,7 +21,7 @@ export default function Methodology() {
             <div className="page-hero-scrim" />
           </div>
           <div className="page-hero-copy">
-            <div className="eyebrow">AILX 2026.1 · Methodology</div>
+            <div className="eyebrow">Foray 2026.1 · Methodology</div>
             <h1>What is measured, how it is scored, and what is <span className="script-accent">honestly</span> not yet known</h1>
             <Annotation>no black boxes</Annotation>
           </div>
@@ -35,7 +35,7 @@ export default function Methodology() {
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§03</span><span className="paper-chip-note">four tracks</span></span>
         <h2 id="construct">Construct definition (§03)</h2>
         <p>
-          AILX defines <strong>applied AI literacy</strong> as a person&rsquo;s capacity to produce
+          Foray defines <strong>applied AI literacy</strong> as a person&rsquo;s capacity to produce
           good outcomes in an information environment saturated with generative systems &mdash;
           stated tightly enough to be falsifiable. It resolves into four measurable capabilities,
           each of which is a track:
@@ -116,7 +116,7 @@ export default function Methodology() {
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§10</span><span className="paper-chip-note">jury rules</span></span>
         <h2 id="judges">Judge governance (§10)</h2>
         <p>
-          Where models do score, the protocol is the product. AILX adopts
+          Where models do score, the protocol is the product. Foray adopts
           <strong> NIST AI 800-2, Practices for Automated Benchmark Evaluations</strong>{" "}
           as its reporting spine: uncertainty quantification with variance decomposed by
           source; documentation down to exact model versions, judge prompts and
@@ -162,6 +162,28 @@ export default function Methodology() {
           Two things are published <em>before</em> the first cohort plays: an adversarial red-team assessment of the judges with a measured attack success rate, and a formatting-invariance ablation with the deltas tracked.
         </p>
 
+        </section>
+
+        <section className="reveal">
+        {/* No paper chip: those are numbered spec sections, and this one is
+            about the app, not the instrument. siteShowcase.test.tsx counts
+            them. */}
+        <h2 id="storage">What is stored, and who calls the model</h2>
+        <p>
+          In the hosted build the exam service stores your event log, your answers, and any
+          site you published. It also holds the key for the model you connect. The browser
+          starts the sign-in, hands back the code it is redirected with, and is told a
+          12-character fingerprint. It never receives the key.
+        </p>
+        <p>
+          Connect nothing and the service makes no model call for you. A track that can run
+          without one falls back to its own offline simulator, and says so on screen.
+        </p>
+        <p>
+          The static demo on GitHub Pages has no service at all. Every model call there is a
+          deterministic simulator seeded by SHA-256 of its inputs, and nothing leaves your
+          browser.
+        </p>
         </section>
 
         <section className="reveal">

@@ -31,7 +31,7 @@ import { serviceHeaders } from "../lib/data/traceparent";
 import { browserApiOptions, getServerAttemptId } from "../lib/data/persistence";
 
 const AUTHOR_LABEL: Record<string, string> = {
-  reviewer: "AILX moderator",
+  reviewer: "Foray moderator",
   candidate: "The candidate",
 };
 
@@ -193,7 +193,7 @@ export function ModeratorThread({ shareId, trail }: { shareId: string; trail: Mo
       <Composer
         id={`note-${shareId}`}
         label="Add to the record"
-        hint="every comment is an insert — nothing here can be edited away"
+        hint="every comment is an insert; nothing can be edited away"
         submitLabel={shared ? "Send to the candidate" : "Save internal note"}
         busy={busy}
         error={error}
@@ -279,8 +279,8 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
         Your conversation with the moderators
       </h3>
       <p className="small muted" style={{ maxWidth: "62ch" }}>
-        Moderators are shown as &ldquo;AILX moderator&rdquo;: you are told what was decided and
-        why, never who decided it. Everything here is kept on the record.
+        Moderators appear as &ldquo;Foray moderator&rdquo;. You are told what was decided and why,
+        never who decided it. Everything here is kept on the record.
       </p>
       {thread.comments.length === 0 ? null : (
         <ul className="mod-comments">

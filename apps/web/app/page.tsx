@@ -102,7 +102,7 @@ function StepVizReport() {
 function MiniScoreCard() {
   return (
     <span className="mini-card mini-card-score showcase-float-1">
-      <span className="mini-card-eyebrow mono">AILX 2026.1</span>
+      <span className="mini-card-eyebrow mono">Foray 2026.1</span>
       <span className="mini-card-band">your score</span>
       <span className="mini-card-num mono">?<span className="mini-card-denom">/{TOTAL_POINTS}</span></span>
     </span>
@@ -229,8 +229,8 @@ export default function Home() {
                   </h1>
                   <span className="hero-fade hero-annotation"><Annotation>one card, right now</Annotation></span>
                   <p className="lede hero-lede hero-fade">
-                    Start here: photograph, or generated? You get the answer and the tell the
-                    moment you call it.
+                    Photograph, or generated? You get the answer and the tell the moment you
+                    call it.
                   </p>
                 </div>
                 {/* The drill is tappable end to end, so the fixed bottom pill
@@ -306,7 +306,7 @@ export default function Home() {
           and it stays one click away from the hero for anyone who came to
           certify. Nothing here claims a judged score or a norm: there is no
           judging pipeline yet, so a number implying one would be a lie. */}
-      <section className="container wyg" aria-label="How AILX works">
+      <section className="container wyg" aria-label="How Foray works">
         {/* The floating pill is fixed to the bottom of the viewport; without
             this it parks on top of these headings for the whole section. */}
         <ol className="wyg-steps" data-pill-clear="">
@@ -327,9 +327,8 @@ export default function Home() {
                 that differs — the static export has no /progress. */}
             <h2 className="wyg-title">Come back tomorrow.</h2>
             <p className="wyg-line">
-              Finish a round and the day counts. No account: the days are kept in this browser,
-              and the streak is counted from what you actually finished, never a number you told
-              it.
+              Finish a round and the day counts. With no account the days are kept in this
+              browser. The streak counts what you finished, never a number you told it.
             </p>
             <p className="wyg-more">
               {isServerMode() ? (
@@ -386,7 +385,7 @@ export default function Home() {
           cta="Run the checks"
           cards={<><MiniChecksCard /><MiniScoreCard /></>}
         />
-        <p className="showcase-caption faint small">This is the demo build of the AILX 2026.1 spec.</p>
+        <p className="showcase-caption faint small">This is the demo build of the Foray 2026.1 spec.</p>
       </section>
       <PillCTA href="/practice">Play a round</PillCTA>
     </main>

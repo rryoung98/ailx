@@ -151,7 +151,7 @@ export function DailyChallenge() {
     return (
       <div className={styles.stage}>
         <h2 ref={headingRef} tabIndex={-1} className={styles.tally}>
-          AILX Daily #{number}
+          Foray Daily #{number}
         </h2>
         <Grid results={results} />
         {streak.current > 1 ? (
@@ -178,8 +178,8 @@ export function DailyChallenge() {
             the day for anybody who has not played (docs/SHARING.md §8). */}
         <DailyShareRow number={number} results={results} streak={streak.current} />
         <p className="small faint" style={{ maxWidth: "58ch" }}>
-          The next five arrive at your own midnight. Your streak is kept on this device only —
-          clearing your browser data clears it, and there is no account to lose it to.{" "}
+          The next five arrive at your own midnight. Your streak lives on this device only:
+          clear your browser data and it is gone. There is no account to lose it to.{" "}
           <Link href="/practice">Practise the tells →</Link>
         </p>
       </div>
@@ -281,8 +281,8 @@ export function DailyChallenge() {
       )}
 
       <p className="small faint" style={{ maxWidth: "58ch" }}>
-        {DAILY_PITCH} Nothing here is scored: the daily is played on published practice material
-        and reaches no AILX result.
+        {DAILY_PITCH} Nothing here is scored: the daily uses published practice material and
+        reaches no Foray result.
       </p>
     </div>
   );

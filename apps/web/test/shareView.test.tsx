@@ -254,7 +254,7 @@ describe("share view page", () => {
   it("is honest about what the band is and is not", async () => {
     const html = await markup();
     expect(html).toContain("demo\n          cohort".replace("\n          ", " "));
-    expect(html).toMatch(/never an exam item/);
+    expect(html).toMatch(/[Nn]ever an exam item/);
     expect(html).toMatch(/unlisted/);
     expect(html).toContain("7 views");
   });

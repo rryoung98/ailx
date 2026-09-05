@@ -89,17 +89,19 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 
 /**
  * What a candidate is told when the exam service will not open their run
- * (TEN-114). It names the failure, says nothing was recorded, and says why
- * the practice deck in this browser is not offered as a stand-in: its
- * answers are published, so a score from it would mean nothing.
+ * (TEN-114): the failure, that nothing was recorded, the one next action,
+ * and why the practice deck in this browser is not offered as a stand-in.
+ *
+ * The last clause stays however short this gets. It is the disclosure that
+ * stops a published-key deck being mistaken for a sitting, and
+ * test/examStartFailure.test.tsx pins it.
  */
 function startFailureCopy(err: unknown): string {
   const reason = err instanceof Error ? err.message : String(err);
   return (
     `the exam service could not open it (${reason}). Nothing was recorded and ` +
-    "no clock is running — press Start your run to try again. This browser " +
-    "holds only the practice deck, whose answers are published, so it is " +
-    "never used in place of your sitting."
+    "no clock is running. Press Start your run to try again. The practice deck " +
+    "in this browser never stands in for a sitting: its answers are published."
   );
 }
 
@@ -622,7 +624,7 @@ export default function ExamPage() {
       <PersistWarning warning={persistWarning} />
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
-          <div className="eyebrow">Demo run · AILX 2026.1</div>
+          <div className="eyebrow">Demo run · Foray 2026.1</div>
           <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
           <p className="lede">
             T1 to T4 in order, each on its own clock. Pause between moves, never
@@ -706,7 +708,7 @@ export default function ExamPage() {
           <p className="lede" data-testid="completion-summary">{completionSummary(state)}</p>
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
           <p style={{ display: "flex", gap: "0.8rem" }}>
-            <Link href="/report" className="btn primary">Open the diagnostic report →</Link>
+            <Link href="/report" className="btn primary">Open your report →</Link>
             <ResetButton onReset={resetAttempt} />
           </p>
         </div>
@@ -983,30 +985,28 @@ function TimeUpNotice({
       <div className="eyebrow">{meta.code} · {meta.name}</div>
       <h1 ref={headingRef} tabIndex={-1} style={{ outline: "none" }}>Time up</h1>
       <p className="lede">
-        The {fmt(budgetSeconds)} clock on {meta.code} ran out while you were
-        working, so the track closed itself.
+        {meta.code}&rsquo;s {fmt(budgetSeconds)} clock ran out, so the track closed itself.
       </p>
       <p className="muted">
         {/* A hosted T2/T3 is not scored in this browser at all, so the old
             sentence promised a local score that never comes (TEN-126). */}
         {serviceScored ? (
           <>
-            Your work was kept: everything you saved up to that moment was recorded,
-            and the exam service scores {meta.code} when your sitting is finalized.
-            Nothing was discarded, and the run continues.
+            Everything you saved was recorded. The exam service scores {meta.code} when
+            you finish the sitting. The run continues.
           </>
         ) : (
           <>
-            Your work was kept: {meta.code} was scored from everything saved up to
-            that moment, by the same deterministic scorer as a track you finish by
-            hand. Nothing was discarded, and the run continues.
+            {meta.code} was scored from everything you saved, by the same deterministic
+            scorer as a track you finish by hand. The run continues.
           </>
         )}
       </p>
+      {/* The three examples (T2's replay, T3's reveal, T4's delivered set) are
+          gone: they illustrated the rule stated in the same breath. */}
       <p className="muted">
-        Only working time is charged. The screens shown after you submit — T2&apos;s
-        replay, T3&apos;s reveal, T4&apos;s delivered set — hold the clock, so reading
-        them never costs you time.
+        Only working time is charged. The screens after you submit hold the clock, so
+        reading them costs you nothing.
       </p>
       <button className="btn primary" onClick={onContinue} data-testid="time-up-continue">
         Continue
@@ -1041,13 +1041,13 @@ function SiteUploadNotice({ status, onRetry }: { status: SiteStatus; onRetry: ()
         </>
       ) : status.kind === "conflict" ? (
         <span className="muted">
-          This run already has a different site submission on record — one site
-          submission per run, and the first one stands. {status.message}
+          This run already published a different site. One site per run, and the
+          first one stands. {status.message}
         </span>
       ) : status.kind === "rejected" ? (
         <span className="muted">
-          The site snapshot was rejected by the server ({status.message}). Your
-          work is saved locally and scored as normal.
+          The server rejected your site ({status.message}). Your work is saved
+          locally and scored as normal.
         </span>
       ) : (
         <>

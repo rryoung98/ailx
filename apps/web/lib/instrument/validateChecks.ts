@@ -128,7 +128,7 @@ export function runAllChecks(): CheckResult[] {
       const composite = runPure(() => scoreCohort(GOLDEN.cohort as TrackRawScores[]));
       return {
         pass: clean && impureTrapped && composite.composite.length === GOLDEN.cohort.length,
-        detail: `all four real plugin score() functions + the composite run clean under the harness; an impure score (Math.random) is trapped: ${impureTrapped}`,
+        detail: `four real plugin score() functions and the composite run clean under the harness; an impure score (Math.random) is trapped: ${impureTrapped}`,
       };
     }),
 
@@ -142,7 +142,7 @@ export function runAllChecks(): CheckResult[] {
         pass: drift.length === 0,
         detail: drift.length === 0
           ? `t1..t4 golden artifacts+judgments reproduce pinned scores (${(["t1", "t2", "t3", "t4"] as const).map((t) => `${t}:${PG[t].expected.scaled}`).join(" ")})`
-          : `drift in: ${drift.join(", ")} — regenerate deliberately via apps/web/scripts/gen-plugin-golden.mjs`,
+          : `drift in: ${drift.join(", ")} — regenerate via apps/web/scripts/gen-plugin-golden.mjs`,
       };
     }),
 

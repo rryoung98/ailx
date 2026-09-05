@@ -88,8 +88,10 @@ describe("hosted mode: the exam service cannot create the attempt", () => {
     const alert = host!.querySelector('[data-testid="persist-warning"]');
     expect(alert, "a visible start failure").not.toBeNull();
     expect(alert!.textContent).toContain("Your run did not start");
-    // And it says why the practice deck is not offered as a stand-in.
-    expect(alert!.textContent).toContain("whose answers are published");
+    // And it says why the practice deck is not offered as a stand-in. The
+    // sentence was shortened in the copy pass; the disclosure did not move.
+    expect(alert!.textContent).toContain("never stands in for a sitting");
+    expect(alert!.textContent).toContain("its answers are published");
     // The Start pill is the retry: it stays live and still says what it does.
     const pill = [...host!.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
     expect(pill.getAttribute("aria-disabled")).toBeNull();

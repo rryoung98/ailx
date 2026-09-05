@@ -272,7 +272,7 @@ describe("what the candidate sees", () => {
     await render();
     const html = container.innerHTML;
     expect(html).toContain("Remove the tracker and share again.");
-    expect(html).toContain("AILX moderator");
+    expect(html).toContain("Foray moderator");
     for (const forbidden of [REVIEWER, "reviewer-1", "internal", "author", "visibility"]) {
       expect(html, forbidden).not.toContain(forbidden);
     }

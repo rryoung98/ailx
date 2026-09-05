@@ -18,7 +18,7 @@ import { ProgressView } from "../../features/progress/ProgressView";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "AILX — your progress",
+  title: "Foray — your progress",
   description: "Your practice streak, your accuracy over time, and what actually changed between sittings.",
   robots: { index: false, follow: false },
 };

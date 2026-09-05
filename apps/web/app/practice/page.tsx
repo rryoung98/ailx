@@ -27,9 +27,9 @@ import { isServerMode } from "../../lib/mode";
  */
 
 export const metadata: Metadata = {
-  title: "AILX — practice the tells",
+  title: "Foray — practice the tells",
   description:
-    "A short, unscored round on the durable artefact families: real photograph or AI-generated image, with the tell shown on every card. Practice never draws on the scored item bank. "
+    "A short, unscored round on the durable artefact families: real photograph or AI-generated image, with the tell on every card. Practice never draws on the scored item bank. "
     + PRACTICE_EFFICACY_NOTE_SHORT,
 };
 
@@ -65,18 +65,18 @@ export default function PracticePage() {
             {PRACTICE_EFFICACY_NOTE}
           </p>
           <p className="small faint" style={{ maxWidth: "62ch" }}>
-            The detail, since we would rather you checked it than trusted us. The five-minute
-            training study this round is modelled on (Gray et al., <em>R. Soc. Open Sci.</em>{" "}
+            The detail, so you can check it rather than trust us. The five-minute training study
+            this round is modelled on (Gray et al., <em>R. Soc. Open Sci.</em>{" "}
             12:250921, 2025) separated <strong>different groups of people</strong> by twenty
-            points of accuracy on one family of AI-generated faces — and its trained
-            non-specialists showed no measurable change in sensitivity at all, so what moved was
-            willingness to call a face fake, not the ability to see that it was. The larger
-            trial (Geissler, Robertson &amp; Feuerriegel, <em>arXiv</em> 2507.23492, N = 1,200)
-            tested five ways of teaching this. Plain text and plain visual instruction worked on
-            the day. <strong>Gamified practice and immediate-feedback practice — this round —
-            did not beat doing nothing</strong>, and two weeks later nothing beat doing nothing.
-            We are keeping the round because it is a good time and the tells are real; we are
-            not going to tell you it made you sharper.
+            points of accuracy on one family of AI-generated faces. Its trained non-specialists
+            showed no measurable change in sensitivity, so what moved was willingness to call a
+            face fake, not the ability to see that it was. The larger trial (Geissler, Robertson
+            &amp; Feuerriegel, <em>arXiv</em> 2507.23492, N = 1,200) tested five ways of teaching
+            this. Plain text and plain visual instruction worked on the day.{" "}
+            <strong>Gamified practice and immediate-feedback practice, this round, did not beat
+            doing nothing</strong>, and two weeks later nothing beat doing nothing. We keep the
+            round because it is a good time and the tells are real. We will not tell you it made
+            you sharper.
           </p>
         </section>
 
@@ -96,28 +96,26 @@ export default function PracticePage() {
           <p className="muted" style={{ maxWidth: "62ch" }}>
             Practice is <strong>not the examination</strong> and never touches it. It draws on a
             separate corpus of {PRACTICE_BANK.length} images, kept apart from the scored item bank
-            on purpose: a bank item somebody has practised is a dead item, and there is no way to
-            un-teach an answer. Nothing you do here is scored, reaches a report figure, or changes
-            a result.
+            on purpose: a practised bank item is a dead item, and you cannot un-teach an answer.
+            Nothing here is scored, reaches a report figure or changes a result.
           </p>
           <p className="small faint" style={{ maxWidth: "62ch" }}>
-            Honest about the corpus. Every picture here is real and freely licensed — genuine
+            Honest about the corpus. Every picture here is real and freely licensed: genuine
             photographs and genuine model-generated images, all from Wikimedia Commons under CC0,
             CC-BY, CC-BY-SA or public domain, credited under each card. It is a{" "}
-            <strong>small</strong> set, and the three families are not equally deep: the
-            sociocultural side of the generated half is the thinnest, because a generated picture
-            has to be culturally specific before it can be culturally wrong. Three of the
-            generated pictures are a painting or a CGI render rather than a photorealistic
-            generation, so they can be called from their finish alone — they are marked as such
-            in the corpus data. So a round repeats material sooner than the scored deck would —
-            which is also why your practice percentage is not a measurement of you: past the
-            first few rounds you are partly recognising pictures whose answer you have already
-            been given.{" "}
+            <strong>small</strong> set, and the three families are not equally deep. The
+            sociocultural side of the generated half is thinnest, because a generated picture has
+            to be culturally specific before it can be culturally wrong. Three generated pictures
+            are a painting or a CGI render, not a photorealistic generation, so their finish alone
+            gives them away; the corpus data marks them. A round therefore repeats material sooner
+            than the scored deck would. That is also why your practice percentage is not a
+            measurement of you: past the first few rounds you are partly recognising pictures
+            whose answer you have been given.{" "}
             {LOCAL_PRACTICE_BASIS}{" "}
             {isServerMode() ? (
               <>
-                Signed in, the round is recorded on your account instead, and the streak is
-                worked out on the server. {CLAIM_PROMISE}{" "}
+                Signed in, your account records the round and the server works out the streak.
+                {" "}{CLAIM_PROMISE}{" "}
                 <Link href="/progress">See your progress →</Link>
               </>
             ) : null}

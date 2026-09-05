@@ -94,7 +94,7 @@ describe("funnel section", () => {
     expect(rows[0].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/methodology");
     expect(rows[1].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/validate");
     expect(showcase.querySelector(".showcase-caption")!.textContent).toContain(
-      "demo build of the AILX 2026.1 spec",
+      "demo build of the Foray 2026.1 spec",
     );
   });
 });

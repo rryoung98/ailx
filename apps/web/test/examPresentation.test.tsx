@@ -303,7 +303,7 @@ describe("the working phase is unchanged", () => {
     expect(notice!.querySelector("h1")!.textContent).toBe("Time up");
     // It says what happened to the work, and does not blame the candidate
     // for time spent on screens that are not charged.
-    expect(notice!.textContent).toContain("scored from everything saved");
+    expect(notice!.textContent).toContain("scored from everything you saved");
     expect(notice!.textContent).toContain("Only working time is charged");
     expect(host!.textContent).not.toContain("of 4 tracks complete");
 
