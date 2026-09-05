@@ -35,7 +35,7 @@ const shim = {
 };
 Object.defineProperty(window, "localStorage", { value: shim, configurable: true });
 
-const ENDPOINT_SLOT = "ailx:llm-base-url";
+const ENDPOINT_SLOT = "foray:llm-base-url";
 
 let root: Root | null = null;
 let host: HTMLElement;
@@ -203,11 +203,11 @@ describe("the static export has no key affordance at all", () => {
   });
 
   it("disconnect leaves unrelated slots alone", async () => {
-    window.localStorage.setItem("ailx:dev-user", "ui-worker-1");
+    window.localStorage.setItem("foray:dev-user", "ui-worker-1");
     await mount();
     await click("Try the shared demo model");
     await click("Disconnect");
-    expect(window.localStorage.getItem("ailx:dev-user")).toBe("ui-worker-1");
+    expect(window.localStorage.getItem("foray:dev-user")).toBe("ui-worker-1");
   });
 });
 

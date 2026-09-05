@@ -19,10 +19,17 @@
  * weaken that: this module only ever ADDS a header, and the cookie is only
  * ever overwritten from localStorage, never read back into it.
  */
+import { readMigratedItem, removeMigratedItem } from "@ailx/core";
 import { DEV_USER_COOKIE, DEV_USER_HEADER } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 
-export const DEV_USER_KEY = "ailx:dev-user";
+/**
+ * Renamed from `ailx:dev-user` (docs/RENAME.md §5 step 7). Read through
+ * `readMigratedItem`: this id is what a browser's practice streak, its
+ * attempts and its sittings all hang off, so minting a new one on the first
+ * load after the deploy would make a returning candidate a stranger.
+ */
+export const DEV_USER_KEY = "foray:dev-user";
 
 const DEV_USER_RE = /^[A-Za-z0-9_.@-]{1,64}$/;
 /** Six months: long enough that a streak survives, short enough to expire. */
@@ -52,7 +59,7 @@ function mirrorDevUserCookie(user: string): void {
 
 /** Stable per-browser dev identity (dev AuthProvider asserts, never proves). */
 export function devUser(storage: StorageLike): string {
-  let user = storage.getItem(DEV_USER_KEY);
+  let user = readMigratedItem(storage, DEV_USER_KEY);
   if (!user || !DEV_USER_RE.test(user)) {
     user = `web-${Math.random().toString(36).slice(2, 12)}`;
     storage.setItem(DEV_USER_KEY, user);
@@ -66,7 +73,7 @@ export function devUser(storage: StorageLike): string {
  * would hand the server an id the tab no longer thinks it has.
  */
 export function clearDevUser(storage: StorageLike): void {
-  storage.removeItem(DEV_USER_KEY);
+  removeMigratedItem(storage, DEV_USER_KEY);
   if (typeof document === "undefined") return;
   document.cookie = `${DEV_USER_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
@@ -119,7 +126,7 @@ export type IdentityMode = "required" | "optional";
  * no mint, no cookie mirror, no side effect a public page could leave behind.
  */
 export function existingDevUser(storage: StorageLike): string | null {
-  const user = storage.getItem(DEV_USER_KEY);
+  const user = readMigratedItem(storage, DEV_USER_KEY);
   return user !== null && DEV_USER_RE.test(user) ? user : null;
 }
 

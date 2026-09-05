@@ -250,12 +250,12 @@ describe("the whole issue → persist → reload → replay path", () => {
   it("a judgment edited in storage cannot be reloaded as a score at all", () => {
     const storage = memStorage();
     saveAttempt(storage, attempt().log);
-    const shape = JSON.parse(storage.getItem("ailx:attempt:v1")!);
+    const shape = JSON.parse(storage.getItem("foray:attempt:v1")!);
     const scored = shape.log.find(
       (e: { type: string; trackId?: string }) => e.type === "track_scored" && e.trackId === "t3",
     );
     scored.judgments[0].value = 0.999;
-    storage.setItem("ailx:attempt:v1", JSON.stringify(shape));
+    storage.setItem("foray:attempt:v1", JSON.stringify(shape));
 
     const loaded = reloadSaved(storage);
     expect(loaded.reason).toMatch(/score of record is void/);

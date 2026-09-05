@@ -30,6 +30,7 @@ import {
   type PracticeQualification,
   type StreakSummary,
 } from "@ailx/report";
+import { readMigratedItem } from "@ailx/core";
 import { apiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { serviceHeaders } from "./traceparent";
@@ -48,7 +49,7 @@ export function utcOffsetMinutes(now: Date = new Date()): number {
  */
 export function readLocalLedger(storage: StorageLike): LocalPracticeLedger {
   try {
-    return parseLocalLedger(storage.getItem(LOCAL_PRACTICE_KEY));
+    return parseLocalLedger(readMigratedItem(storage, LOCAL_PRACTICE_KEY));
   } catch {
     return emptyLocalLedger();
   }

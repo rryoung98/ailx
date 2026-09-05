@@ -244,12 +244,12 @@ describe("machine → projection → export", () => {
   it("a tampered stored log is truncated before its score can be exported", () => {
     const storage = memoryStorage();
     saveAttempt(storage, log);
-    const raw = JSON.parse(storage.getItem("ailx:attempt:v1") as string) as {
+    const raw = JSON.parse(storage.getItem("foray:attempt:v1") as string) as {
       log: Array<Record<string, unknown>>;
     };
     const scored = raw.log[raw.log.length - 1];
     (scored.judgments as JudgmentRecord[])[0].value = 0.999;
-    storage.setItem("ailx:attempt:v1", JSON.stringify(raw));
+    storage.setItem("foray:attempt:v1", JSON.stringify(raw));
 
     const validated = loadAttemptValidated(storage);
     expect(validated?.dropped).toBe(1);

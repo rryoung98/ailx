@@ -16,7 +16,7 @@ function memStorage(): StorageLike & { map: Map<string, string> } {
 
 describe("checkpoint store (F2)", () => {
   it("uses a dedicated key per attempt+track", () => {
-    expect(checkpointKey("att-1", "t2")).toBe("ailx:checkpoint:att-1:t2");
+    expect(checkpointKey("att-1", "t2")).toBe("foray:checkpoint:att-1:t2");
   });
 
   it("round-trips arbitrary JSON state", () => {

@@ -205,7 +205,7 @@ describe("how it reads the service", () => {
    */
   it("forwards the identity this browser already has", async () => {
     const store = installMemoryStorage();
-    store.set("ailx:dev-user", "web-abc123");
+    store.set("foray:dev-user", "web-abc123");
     await markup();
     expect(calls[0].headers["x-ailx-dev-user"]).toBe("web-abc123");
   });

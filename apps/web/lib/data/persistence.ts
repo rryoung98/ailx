@@ -12,6 +12,7 @@
  * and resumable: progress is persisted per attempt, retries happen on the
  * next save, and server-side seq idempotency makes re-sends safe.
  */
+import { readMigratedItem, removeMigratedItem } from "@ailx/core";
 import { apiPath, type ApiPath } from "@ailx/contract";
 import {
   clearAttempt,
@@ -56,7 +57,7 @@ export function createLocalPersistence(storage: StorageLike): AttemptPersistence
 
 /** Mirror progress key for an attempt. Exported so the E2E fixtures can seed
  *  a resumed run exactly as the app would have written it. */
-export const syncKey = (clientAttemptId: string) => `ailx:sync:v1:${clientAttemptId}`;
+export const syncKey = (clientAttemptId: string) => `foray:sync:v1:${clientAttemptId}`;
 
 interface SyncState {
   /** Server-side attempts.id (uuid) — the client attempt id stays in payloads. */
@@ -104,7 +105,7 @@ function validDecks(value: unknown): value is DeckRecord[] {
 
 function readSyncState(storage: StorageLike, clientAttemptId: string): SyncState {
   try {
-    const raw = storage.getItem(syncKey(clientAttemptId));
+    const raw = readMigratedItem(storage, syncKey(clientAttemptId));
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<SyncState>;
       if (typeof parsed.syncedThrough === "number" && parsed.syncedThrough >= 0) {
@@ -261,7 +262,7 @@ export function createApiPersistence(
       const v = local.load();
       const started = v?.log[0];
       if (started?.type === "attempt_started") {
-        storage.removeItem(syncKey(started.attemptId));
+        removeMigratedItem(storage, syncKey(started.attemptId));
       }
       local.clear();
     },

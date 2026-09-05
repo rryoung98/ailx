@@ -81,14 +81,14 @@ describe("Loader behavior", () => {
     expect(mark.getAttribute("src")).toBe(`/ailx${LOADER_MARK}`);
     expect(mark.getAttribute("alt")).toBe("");
     expect(cover.querySelector("svg")).toBeNull();
-    expect(window.sessionStorage.getItem("ailx:loaded")).toBe("1");
+    expect(window.sessionStorage.getItem("foray:loaded")).toBe("1");
     // fallback unmount: no animation events ever fire in jsdom
     act(() => { vi.advanceTimersByTime(LOADER_FALLBACK_MS + 10); });
     expect(h.querySelector('[data-testid="loader"]')).toBeNull();
   });
 
   it("skips when the sessionStorage flag is already set", () => {
-    window.sessionStorage.setItem("ailx:loaded", "1");
+    window.sessionStorage.setItem("foray:loaded", "1");
     const h = render(createElement(Loader));
     expect(h.querySelector('[data-testid="loader"]')).toBeNull();
   });
@@ -113,7 +113,7 @@ describe("Loader behavior", () => {
     const h = render(createElement(Loader));
     const script = h.querySelector("script")!;
     expect(script).not.toBeNull();
-    expect(script.innerHTML).toContain("ailx:loaded");
+    expect(script.innerHTML).toContain("foray:loaded");
     expect(script.innerHTML).toContain("prefers-reduced-motion");
     expect(script.innerHTML).toContain("ailxLoaded");
   });

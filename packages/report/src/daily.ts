@@ -445,7 +445,7 @@ export function dailyStreak(days: readonly string[], today: string): StreakSumma
  * to read v1's bytes: an unreadable streak is a lost one, and a silently
  * mis-parsed one is a WRONG one, which is worse.
  */
-export const DAILY_LEDGER_KEY = "ailx:daily:v1";
+export const DAILY_LEDGER_KEY = "foray:daily:v1";
 
 /**
  * Days kept. The same cap as the practice ledger's `MAX_LOCAL_DAYS`, imported

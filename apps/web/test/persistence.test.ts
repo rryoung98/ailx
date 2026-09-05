@@ -216,14 +216,14 @@ describe("createApiPersistence", () => {
     p.clear();
     await p.flush();
     expect(p.load()).toBeNull();
-    expect(storage._map.has("ailx:sync:v1:att-abc123")).toBe(false);
+    expect(storage._map.has("foray:sync:v1:att-abc123")).toBe(false);
     expect(server.calls).toEqual([]); // append-only server rows stay
   });
 
   it("recovers from corrupt sync bookkeeping (server idempotency absorbs re-sends)", async () => {
     p.save(startedLog());
     await p.flush();
-    storage.setItem("ailx:sync:v1:att-abc123", "{corrupt");
+    storage.setItem("foray:sync:v1:att-abc123", "{corrupt");
     server.calls.length = 0;
     const again = make();
     again.load();
@@ -276,7 +276,7 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
     // The deck contract: locale travels, decks:true commits to the server deck.
     expect(server.calls[0].body).toEqual({ locale: "ja", decks: true });
     expect(server.calls[0].headers["x-ailx-dev-user"]).toMatch(/^web-/);
-    expect(JSON.parse(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)!)).toEqual({
+    expect(JSON.parse(storage.getItem(`foray:sync:v1:${SERVER_ID}`)!)).toEqual({
       serverAttemptId: SERVER_ID,
       syncedThrough: 0,
       finalized: false,
@@ -365,7 +365,7 @@ describe("presented deck vs recorded deck", () => {
     await expect(
       createServerAttempt(storage, server(RECORDED, dealt), "en"),
     ).resolves.toBe(SERVER_ID);
-    const state = JSON.parse(storage.getItem(`ailx:sync:v1:${SERVER_ID}`)!);
+    const state = JSON.parse(storage.getItem(`foray:sync:v1:${SERVER_ID}`)!);
     expect(state.serverAttemptId).toBe(SERVER_ID);
     expect(state.deck).toEqual(RECORDED);
   });
@@ -428,7 +428,7 @@ describe("presented deck vs recorded deck", () => {
     const opts = server(RECORDED, dealt);
     const id = await createServerAttempt(storage, opts, "en");
     storage.setItem(
-      `ailx:sync:v1:${id}`,
+      `foray:sync:v1:${id}`,
       JSON.stringify({ serverAttemptId: id, syncedThrough: 0, finalized: false, deck: "junk" }),
     );
     await expect(fetchPresentedDeck(storage, opts, id)).resolves.toMatchObject({

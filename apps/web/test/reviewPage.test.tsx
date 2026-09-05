@@ -113,7 +113,7 @@ beforeEach(() => {
   seenQuery.length = 0;
   urls.length = 0;
   notFound.mockClear();
-  window.localStorage.setItem("ailx:dev-user", "reviewer-1");
+  window.localStorage.setItem("foray:dev-user", "reviewer-1");
   result = { status: 200, body: { listing: listingOf([moderationCase()]) } };
   stubModerationService();
 });

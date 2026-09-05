@@ -71,7 +71,7 @@ beforeEach(() => {
   status = 200;
   payload = report();
   window.localStorage.clear();
-  window.localStorage.setItem("ailx:dev-user", "player-1");
+  window.localStorage.setItem("foray:dev-user", "player-1");
   stubJsonFetch(() => ({
     status,
     body:

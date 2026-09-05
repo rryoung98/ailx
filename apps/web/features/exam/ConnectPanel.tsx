@@ -23,6 +23,7 @@
  *    static tier issues no score of record, so it does not need a credential.
  */
 import { useMutation } from "@tanstack/react-query";
+import { readMigratedItem, removeMigratedItem } from "@ailx/core";
 import { useCallback, useEffect, useState } from "react";
 import {
   clearLlmConnection,
@@ -47,7 +48,7 @@ import {
 
 /** Fired on every connection change so the same page (e.g. the start gate)
  *  can re-read the connection state without prop drilling. */
-export const CONNECTION_CHANGED_EVENT = "ailx:connection-changed";
+export const CONNECTION_CHANGED_EVENT = "foray:connection-changed";
 
 function announceChange() {
   try {
@@ -151,7 +152,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   useEffect(() => {
     if (hosted) return;
     try {
-      const storedBase = window.localStorage.getItem(LLM_BASE_URL_STORAGE);
+      const storedBase = readMigratedItem(window.localStorage, LLM_BASE_URL_STORAGE);
       if (storedBase) setBaseUrl(storedBase);
     } catch {
       /* storage unavailable — connection simply not persisted */
@@ -228,7 +229,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
         window.localStorage.setItem(LLM_BASE_URL_STORAGE, normalizeBaseUrl(value));
         setError(null);
       } else {
-        window.localStorage.removeItem(LLM_BASE_URL_STORAGE);
+        removeMigratedItem(window.localStorage, LLM_BASE_URL_STORAGE);
         setError(hasModelEndpoint(value) ? UNUSABLE_ENDPOINT_COPY : null);
       }
     } catch {

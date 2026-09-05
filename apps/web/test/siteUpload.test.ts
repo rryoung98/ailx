@@ -89,7 +89,7 @@ const SERVER_ID = "00000000-0000-4000-8000-0000000000aa";
 function mirroredStorage() {
   const storage = fakeStorage();
   storage.setItem(
-    `ailx:sync:v1:${ATTEMPT}`,
+    `foray:sync:v1:${ATTEMPT}`,
     JSON.stringify({ serverAttemptId: SERVER_ID, syncedThrough: 1, finalized: false }),
   );
   return storage;
@@ -139,7 +139,7 @@ describe("uploadSiteZip", () => {
   it("canonicalises a legacy trailing-slash URL recorded before the index.html fix", () => {
     const storage = mirroredStorage();
     const digest = `sha256:${"c".repeat(64)}`;
-    storage.setItem(`ailx:site:v1:${ATTEMPT}`, JSON.stringify({ digest, url: `/api/site/${digest}/` }));
+    storage.setItem(`foray:site:v1:${ATTEMPT}`, JSON.stringify({ digest, url: `/api/site/${digest}/` }));
     // The old form now redirects (Next strips the slash); the report page must
     // link straight at the served file.
     expect(loadSiteSubmission(storage, ATTEMPT)).toEqual({ digest, url: `/api/site/${digest}/index.html` });
@@ -385,14 +385,14 @@ describe("uploadSiteZip — large sites", () => {
 describe("site submission record", () => {
   it("clearSiteSubmission removes the record; corrupt records read as absent", () => {
     const storage = fakeStorage();
-    storage.setItem(`ailx:site:v1:${ATTEMPT}`, JSON.stringify({ digest: "d", url: "u" }));
+    storage.setItem(`foray:site:v1:${ATTEMPT}`, JSON.stringify({ digest: "d", url: "u" }));
     expect(loadSiteSubmission(storage, ATTEMPT)).toEqual({ digest: "d", url: "u" });
     clearSiteSubmission(storage, ATTEMPT);
     expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
 
-    storage.setItem(`ailx:site:v1:${ATTEMPT}`, "{corrupt");
+    storage.setItem(`foray:site:v1:${ATTEMPT}`, "{corrupt");
     expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
-    storage.setItem(`ailx:site:v1:${ATTEMPT}`, JSON.stringify({ digest: 1 }));
+    storage.setItem(`foray:site:v1:${ATTEMPT}`, JSON.stringify({ digest: 1 }));
     expect(loadSiteSubmission(storage, ATTEMPT)).toBeNull();
   });
 });
@@ -424,7 +424,7 @@ describe("submitT1Site", () => {
     const mem = fakeStorage();
     Object.defineProperty(window, "localStorage", { value: mem, configurable: true });
     window.localStorage.setItem(
-      `ailx:sync:v1:${ATTEMPT}`,
+      `foray:sync:v1:${ATTEMPT}`,
       JSON.stringify({ serverAttemptId: SERVER_ID, syncedThrough: 1, finalized: false }),
     );
     const server = fakeUploadServer();
@@ -443,7 +443,7 @@ describe("submitT1Site", () => {
       expect(body).toEqual(buildSiteZip([{ path: "index.html", data: utf8("<h1>site</h1>") }]));
     } finally {
       vi.unstubAllGlobals();
-      window.localStorage.removeItem(`ailx:sync:v1:${ATTEMPT}`);
+      window.localStorage.removeItem(`foray:sync:v1:${ATTEMPT}`);
     }
   });
 });

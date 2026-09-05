@@ -870,7 +870,7 @@
         },
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/judgments.ts",
@@ -900,7 +900,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "8698af9f8eee22fb05eb15c3369836d28af1a39362a81418d9b448620eec6e52"
+      "digest": "0a3949a14379a5e5ce333a0b77cb9b1c58f16502c8f55f59f6318df2e7f0685f"
     },
     {
       "trackId": "t2",
@@ -913,7 +913,7 @@
         },
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/plugin.ts",
@@ -939,7 +939,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "d47cfef63d7f019cc417c068421fd906c0e2c9430eb8a2ce552071fd5179a135"
+      "digest": "4b171fd4440ac46c6f58cf00ec2a16c3aec361344697009fc61f88efb91019e3"
     },
     {
       "trackId": "t3",
@@ -952,7 +952,7 @@
         },
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/judgments.ts",
@@ -982,7 +982,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "27cce1ed840074eed11c609869769ec88035b1282b66e1a69c058eddae7e306a"
+      "digest": "83f9d6dbbaba381e2177ec9d7a3534f63e508c8c324b9234356fe4016e5c13f1"
     },
     {
       "trackId": "t4",
@@ -991,7 +991,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/index.ts",
-          "sha256": "eb7e1669cd99b3c7101749b808b58e097ddf6f8460d2d59983cfcbd8afb9cb1b"
+          "sha256": "b9063c5d9a2070735cf36d3a0243d931d73d394e21cafab79ee503681fec507b"
         },
         {
           "path": "@ailx/core/src/judgments.ts",
@@ -1021,7 +1021,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "bed1508594b2049dea9267e9def449d1d802c2ce31ff534d43d3b7853230fcb9"
+      "digest": "e912d368329f1d33a94f23ccd04d13fc73ae9503e4f52d792abca827da7d2f64"
     }
   ]
 }

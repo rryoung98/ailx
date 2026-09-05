@@ -360,6 +360,6 @@ describe("the wording of the ask", () => {
   });
 
   it("names one storage key, versioned in the name", () => {
-    expect(LOCAL_PRACTICE_KEY).toMatch(/^ailx:practice:v\d+$/);
+    expect(LOCAL_PRACTICE_KEY).toMatch(/^foray:practice:v\d+$/);
   });
 });

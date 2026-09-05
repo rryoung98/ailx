@@ -126,3 +126,110 @@ describe("validated load (audit: multi-tab / duplicate-append protection)", () =
     expect(loadAttempt(st)).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// The rename (docs/RENAME.md §5 step 7)
+// ---------------------------------------------------------------------------
+
+/**
+ * `ailx:attempt:v1` became `foray:attempt:v1`. This key holds an append-only
+ * log of a sitting that may be IN FLIGHT, so the gate is not "the old key is
+ * read" — it is "a candidate mid-sitting reloads the page after the deploy
+ * and loses nothing, and can go on appending".
+ */
+describe("an in-flight sitting survives the storage-key rename", () => {
+  const T0 = 1_770_000_000_000;
+  const LEGACY_KEY = "ailx:attempt:v1";
+
+  /** Two tracks in, nothing completed — a run somebody is still sitting. */
+  function inFlight(): SequencedEntry[] {
+    let l = append([], {
+      type: "attempt_started",
+      attemptId: "att-inflight",
+      config: { instrument: "ailx", version: "2026.1", locale: "en", budgets: { t1: 600, t2: 600, t3: 600, t4: 600 } },
+      ts: T0,
+    });
+    l = append(l, { type: "track_started", trackId: "t1", ts: T0 + 1_000 });
+    l = append(l, {
+      type: "track_event",
+      trackId: "t1",
+      event: { verb: "prompted", object: "p:1", clientTs: new Date(T0 + 2_000).toISOString() },
+      ts: T0 + 2_000,
+    });
+    return l;
+  }
+
+  /** Exactly the bytes the pre-rename build wrote, under the pre-rename key. */
+  function browserBeforeTheDeploy(log: SequencedEntry[]) {
+    const st = memStorage();
+    st.setItem(LEGACY_KEY, JSON.stringify({ formatVersion: 1, rev: 3, log }));
+    return st;
+  }
+
+  it("loads the whole log from the legacy key, dropping nothing", () => {
+    const log = inFlight();
+    const st = browserBeforeTheDeploy(log);
+    const v = loadAttemptValidated(st)!;
+    expect(v.dropped).toBe(0);
+    expect(v.log).toEqual(log);
+  });
+
+  it("adopts it under the new key ONCE, and leaves the old key empty", () => {
+    const st = browserBeforeTheDeploy(inFlight());
+    loadAttempt(st);
+    expect(st.map.has(LEGACY_KEY)).toBe(false);
+    expect(st.map.has(ATTEMPT_KEY)).toBe(true);
+    // The second read never touches the legacy key again.
+    expect(loadAttempt(st)).toEqual(inFlight());
+  });
+
+  it("lets the candidate GO ON SITTING: the next append saves and reloads", () => {
+    const st = browserBeforeTheDeploy(inFlight());
+    const resumed = loadAttempt(st)!;
+    const next = append(resumed, {
+      type: "track_event",
+      trackId: "t1",
+      event: { verb: "prompted", object: "p:2", clientTs: new Date(T0 + 3_000).toISOString() },
+      ts: T0 + 3_000,
+    });
+    // No SaveConflictError: the compare-and-swap rev came across with the log.
+    expect(() => saveAttempt(st, next)).not.toThrow();
+    expect(loadAttempt(st)).toEqual(next);
+    expect(loadAttempt(st)).toHaveLength(4);
+  });
+
+  it("clearing an attempt clears BOTH spellings", () => {
+    const st = browserBeforeTheDeploy(inFlight());
+    st.setItem(ATTEMPT_KEY, JSON.stringify({ formatVersion: 1, rev: 1, log: inFlight() }));
+    clearAttempt(st);
+    expect(st.map.has(LEGACY_KEY)).toBe(false);
+    expect(st.map.has(ATTEMPT_KEY)).toBe(false);
+    expect(loadAttempt(st)).toBeNull();
+  });
+
+  it("prefers the new key when a browser somehow holds both", () => {
+    const st = browserBeforeTheDeploy(inFlight());
+    const current = append(inFlight(), {
+      type: "track_event",
+      trackId: "t1",
+      event: { verb: "prompted", object: "p:9", clientTs: new Date(T0 + 9_000).toISOString() },
+      ts: T0 + 9_000,
+    });
+    st.setItem(ATTEMPT_KEY, JSON.stringify({ formatVersion: 1, rev: 9, log: current }));
+    expect(loadAttempt(st)).toEqual(current);
+  });
+
+  it("still returns the sitting when the browser refuses to write (private mode)", () => {
+    const log = inFlight();
+    const inner = browserBeforeTheDeploy(log);
+    const readOnly: StorageLike = {
+      getItem: (k) => inner.getItem(k),
+      setItem: () => {
+        throw new Error("QuotaExceededError");
+      },
+      removeItem: (k) => inner.removeItem(k),
+    };
+    // Adoption fails, the run does not: the log is returned from the old key.
+    expect(loadAttempt(readOnly)).toEqual(log);
+  });
+});
