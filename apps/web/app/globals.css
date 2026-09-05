@@ -45,9 +45,9 @@
   padding: 0.6rem 1rem; border-radius: 0 0 8px 0; text-decoration: none;
 }
 .skip-link:focus-visible { left: 0; outline: 2px solid var(--fg); outline-offset: 2px; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; background: var(--bg); }
 html, body {
-  margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+  margin: 0; padding: 0; color: var(--fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 16px; line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -672,22 +672,47 @@ summary { cursor: pointer; }
 
 /* ==== paper editorial layer (zero.university-inspired) ================== */
 
-/* Subtle paper grain: layered radial dots, GPU-cheap, no image asset. */
+/* Subtle paper grain: layered radial dots, GPU-cheap, no image asset.
+   It sits BELOW every box in the document (z-index: -1) rather than at 0.
+   At 0 it had to be out-ranked, and the only way to out-rank it was to give
+   every direct child of <body> a z-index — which turned each of them into a
+   stacking context. See the layer note below. The page background is on
+   <html> so it paints as the canvas, underneath this pseudo-element; put a
+   background back on <body> and the grain disappears. */
 body::before {
-  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
   background-image:
     radial-gradient(rgba(26, 26, 26, 0.028) 1px, transparent 1px),
     radial-gradient(rgba(26, 26, 26, 0.018) 1px, transparent 1px);
   background-size: 7px 7px, 11px 11px;
   background-position: 0 0, 3px 5px;
 }
-body > * { position: relative; z-index: 1; }
-/* The #main wrapper must stack ABOVE the footer: fixed elements inside it
-   (e.g. the Start pill) are trapped in its stacking context, and at equal
-   z-index the later-DOM footer painted over them and swallowed their
-   clicks (run-start bug: the Start pill was unclickable near the page
-   bottom). */
-#main { z-index: 2; }
+/* LAYER NOTE — read before adding a z-index to anything.
+   <body> has exactly one stacking context: the root one. Nothing in this
+   file may create a second one on a direct child of <body>, and #main in
+   particular must NOT have a z-index.
+
+   Why: a fixed, page-covering element is only page-covering if it can reach
+   the root stacking context. Two things were broken by an ancestor that
+   could not be escaped.
+
+   1. A popover portal appended to <body> by a third party carries a huge
+      z-index of its own. `body > * { z-index: 1 }` clamped that portal into
+      a z-index:1 context, and #main at z-index:2 then painted straight
+      through it: with the account menu open on /exam, the page H1 ("Four
+      tracks. One run.") sat on top of the menu and the "Sign out" row was
+      unreadable behind the glyphs.
+   2. Any fixed overlay we render inside #main — the covering loader
+      (z-index 100) and the bottom pill (z-index 30) — was trapped at
+      #main's z-index:2, so the sticky header (z-index 20) out-ranked it.
+
+   Both stop happening once #main is a plain positioned box with no z-index:
+   its fixed descendants then compare with the header and the footer
+   directly, on the numbers written next to them.
+
+   #main stays `position: relative` because descendants position against it.
+   Relative alone does not create a stacking context; a z-index would. */
+#main { position: relative; }
 
 /* Hand-drawn script annotation with a curved arrow (SVG inline). */
 .annotation {
