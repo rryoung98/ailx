@@ -866,7 +866,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
+          "sha256": "a64971785fbb9e27e80dbe1c2364079f676dd55e0e1a86860cdd061ba5b5b0c3"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -900,7 +900,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "6b23edfc5e7d62f191afb9a2058c2febb337a385208c6fb0fb3577866647ed2e"
+      "digest": "8698af9f8eee22fb05eb15c3369836d28af1a39362a81418d9b448620eec6e52"
     },
     {
       "trackId": "t2",
@@ -909,7 +909,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
+          "sha256": "a64971785fbb9e27e80dbe1c2364079f676dd55e0e1a86860cdd061ba5b5b0c3"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -939,7 +939,7 @@
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "4bbb6c371c3c4b21ce0129eb334d61bd28350e499b05450f1bdc9e9aca026ad6"
+      "digest": "d47cfef63d7f019cc417c068421fd906c0e2c9430eb8a2ce552071fd5179a135"
     },
     {
       "trackId": "t3",
@@ -948,7 +948,7 @@
       "sources": [
         {
           "path": "@ailx/core/src/allocation.ts",
-          "sha256": "9d639ac83af83f409e62c0a9f4ec7d1ac3e257963fd6b6eb8d79a282ceb1033e"
+          "sha256": "a64971785fbb9e27e80dbe1c2364079f676dd55e0e1a86860cdd061ba5b5b0c3"
         },
         {
           "path": "@ailx/core/src/index.ts",
@@ -976,13 +976,13 @@
         },
         {
           "path": "src/types.ts",
-          "sha256": "749ed809df0d95b29f69c81798f388ea46ae32388c0d071fcda454a1eab17d53"
+          "sha256": "5ea3dfa9e79555baf8f6c9c271799cd9f733383f496d45391c0bce60bcd28a5e"
         }
       ],
       "externals": [
         "@ailx/core@0.5.0"
       ],
-      "digest": "ef807655d92183630731f3c2d6179f2f9b50d30459ed0ca82b91e56b1f78de37"
+      "digest": "27cce1ed840074eed11c609869769ec88035b1282b66e1a69c058eddae7e306a"
     },
     {
       "trackId": "t4",

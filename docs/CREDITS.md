@@ -104,7 +104,7 @@ Pastoral painting (`apps/web/public/media/pastoral.jpg`): AI-generated
 proof showcase and the methodology hero band, aria-hidden, never an exam
 item. Provenance: `apps/web/public/media/backdrops.provenance.json`.
 
-AILX wordmark (`apps/web/public/media/logo.svg`): original stroked SVG
+Foray wordmark (`apps/web/public/media/logo.svg`): original stroked SVG
 drawn for this project (no third-party source); used by the covering
 loader.
 
@@ -189,7 +189,7 @@ a person looked at them — are in
 # Player-type character credits
 
 The sixteen player-type characters (`apps/web/public/characters/*.jpg`) were
-generated for AILX, one per type code, and are released as CC0. They are the
+generated for Foray, one per type code, and are released as CC0. They are the
 face of the share card (`docs/UX-DIRECTION.md`: "the player-type card is our
 owl"); the name, the tagline and the four-letter code beside them are written
 by hand and live in `packages/report/src/playerType.ts`.

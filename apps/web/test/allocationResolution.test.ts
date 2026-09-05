@@ -199,7 +199,7 @@ describe("the allocation table's resolution flags match the real score() paths",
       const moved = judgeResolvedKeys(t);
       for (const c of SCORE_ALLOCATION[t].components) if (moved.has(c.key)) observed += c.points;
     }
-    // The number docs/TRACK-REVIEW.md §6 and AILX-Spec-2026.1.md §04 quote.
+    // The number docs/TRACK-REVIEW.md §6 and Foray-Spec-2026.1.md §04 quote.
     expect(observed).toBe(180);
   });
 

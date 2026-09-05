@@ -1,4 +1,4 @@
-# AILX data-logging audit (2026.1)
+# Foray data-logging audit (2026.1)
 
 This forensic audit covers the data path from Runner UI → session log → score → report → export.
 It covers `apps/web/**` and `packages/session/**`, plus read-only inspection of the

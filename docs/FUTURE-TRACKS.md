@@ -4,7 +4,7 @@ Status: captured direction, not scheduled work. Recorded 2026-08-29.
 
 ## Why this exists
 
-The founding observation for AILX's commercial wedge: forward-deployed engineers and
+The founding observation for Foray's commercial wedge: forward-deployed engineers and
 sales engineers know how to *use* AI, but they are not doing what frontier practitioners
 do — running agents persistently for hours, orchestrating many agents at once, and
 keeping long autonomous runs on the rails. Research done for `docs/POSITIONING.md`
@@ -13,7 +13,7 @@ guides name eval-harness discipline as the differentiator, and ~80% of measured 
 is shallow writing and info-seeking. No incumbent credential touches any of it.
 
 Every existing certification tests declarative knowledge about a tool, frozen at
-authoring time. Frontier practice is procedural and moves every few months. AILX's
+authoring time. Frontier practice is procedural and moves every few months. Foray's
 annual re-versioning already exists to chase that; these tracks are what it chases.
 
 ## The shape of the challenge
@@ -44,7 +44,7 @@ What it would actually measure — none of which a timed multiple-choice sitting
 3. **Scoring a trajectory, not an answer.** The artifact alone is insufficient — the
    run's shape is the evidence. That likely means rubric-scored trajectory review plus
    objective telemetry metrics, and it must stay recomputable from stored inputs like
-   every other AILX score.
+   every other Foray score.
 4. **Cost.** Long runs cost real money. Decide who pays for candidate compute, and how
    cost limits avoid becoming a wealth filter that biases the measurement.
 5. **Anti-collusion at long horizons.** Take-home style work is easier to outsource.
@@ -52,7 +52,7 @@ What it would actually measure — none of which a timed multiple-choice sitting
 
 ## Product principle to preserve
 
-T1 stays a scored build task with a hosted artifact. AILX is **not** a site builder or an
+T1 stays a scored build task with a hosted artifact. Foray is **not** a site builder or an
 agent-hosting platform: when a candidate wants to go further, offboard them (export the
 artifact, point them at real tools) rather than growing an IDE. The same discipline
 applies here — we measure the run, we do not become the runtime.
@@ -60,7 +60,7 @@ applies here — we measure the run, we do not become the runtime.
 ### The offboarding ramp — built, 2026-08-31
 
 The export half of that principle is no longer a promise. A candidate's T1 site can leave
-AILX by three routes, deliberately ordered by how certain each one is:
+Foray by three routes, deliberately ordered by how certain each one is:
 
 1. **Download** — `GET /api/attempts/:id/site/export` returns the stored snapshot as a
    deterministic ZIP. Always available in server mode, needs no third party, and adds
@@ -136,7 +136,7 @@ where a verification checkpoint belongs in a workflow. That is a rubric dimensio
 
 **3. Eval design — the leading fifth-track candidate for 2027, ahead of the long-horizon
 agentic run above.** `docs/POSITIONING.md` names eval-harness discipline as the
-differentiator, and AILX tests no version of it: writing the scenarios before the agent is
+differentiator, and Foray tests no version of it: writing the scenarios before the agent is
 useful, covering the production range and its edges, watching pass rate the way latency is
 watched, catching what broke when something else was fixed. It leads the agentic run for
 one reason — hard problem 2 (proving the agent ran as claimed) does not apply. A harness is

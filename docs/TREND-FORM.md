@@ -6,7 +6,7 @@ generator prompt.
 
 Companion documents: `docs/SAMPLING.md` §12.1 (the basket problem, which this file answers),
 `docs/TRACK-REVIEW.md` §2 and §9 (what T2 measures and what shipped),
-`AILX-Spec-2026.1.md` §09 (three-tier item pool, cross-year comparability) and §14 (re-versioning).
+`Foray-Spec-2026.1.md` §09 (three-tier item pool, cross-year comparability) and §14 (re-versioning).
 
 Marking follows `docs/SAMPLING.md`. **VERIFIED** means a primary source was read and is cited.
 **QUALIFIED** means the source was read and says something narrower than the claim it was cited for.
@@ -19,9 +19,9 @@ and have not pretended to.
 
 ## 0. The one-paragraph version
 
-AILX re-versions its operational form every year. The frontier moves faster than the form does.
+Foray re-versions its operational form every year. The frontier moves faster than the form does.
 On a re-versioned instrument a fall in the score cannot be told apart from generators getting
-better. That is the CPI's new-product bias. So AILX carries a second instrument that never changes.
+better. That is the CPI's new-product bias. So Foray carries a second instrument that never changes.
 It is a **frozen anchor form** of T2 discrimination items on pinned generator vintages. It is
 fielded in the panel wave beside the operational form. It is scored by arithmetic with no model in
 the loop. The headline **trend** is reported on the frozen line only. The operational form is
@@ -84,7 +84,7 @@ would tell us. It is not in scope here.
 
 ### 1.3 Why the anchor is bigger than the spec's secure block
 
-`AILX-Spec-2026.1.md` §09 already commits to an **anchor — secure block — 8–12 items embedded in
+`Foray-Spec-2026.1.md` §09 already commits to an **anchor — secure block — 8–12 items embedded in
 every annual form, never released, never rotated**. That block equates the *examination* year to
 year. It is too small to carry a population trend, and the arithmetic says so. A rate measured on 8
 binary opportunities at p = 0.5 has SE = 0.177 and a 95% interval of about ±0.35. About **97
@@ -138,7 +138,7 @@ A named list, kept as a dated ledger, not a role description:
 1. The psychometric lead and the two item authors who built the form.
 2. The panel vendor's field system, which serves the media and returns responses. It holds assets
    and no keys.
-3. The independent third-party deposit required by `AILX-Spec-2026.1.md` §09.
+3. The independent third-party deposit required by `Foray-Spec-2026.1.md` §09.
 
 Not on the list, and this is enforced by the repository split (`AGENTS.md`): the public repository,
 the practice tier, the static demo, any share surface, and any bundle a browser can fetch. The
@@ -167,7 +167,7 @@ thresholds so the analysis is not read backwards.
    log. So this is a screen, not a verdict.
 2. **Near-perfect clustering.** The base rate for a perfect score on this task is close to zero.
    The number the spec quotes is "In a 2,000-person study, 0.1% correctly classified every item"
-   (`AILX-Spec-2026.1.md` §09). It traces to an iProov press release of 12 February 2025: "The study
+   (`Foray-Spec-2026.1.md` §09). It traces to an iProov press release of 12 February 2025: "The study
    tested 2,000 UK and US consumers ... only 0.1% of participants could accurately distinguish real
    from fake content across all stimuli"
    (https://www.iproov.com/press/study-reveals-deepfake-blindspot-detect-ai-generated-content).
@@ -249,7 +249,7 @@ about that number.
 | A confirmed leak (§2.5) | The number stays comparable-looking after it stops being comparable. |
 | More than 20% of core items drift | An item drifts when its accuracy moves by more than **10 percentage points** against its baseline wave, in either direction. DECLARED, and re-set against wave 1 (§9). Above a fifth of the core, the form is no longer the form. |
 | Mean accuracy above 90%, or at chance for over half of respondents | A ceiling or a floor carries no trend information. `docs/TRACK-REVIEW.md` §2.1 says the floor is the likelier end. |
-| An asset must be withdrawn for legal or consent reasons | Not negotiable, and `AILX-Spec-2026.1.md` §15 makes it foreseeable. |
+| An asset must be withdrawn for legal or consent reasons | Not negotiable, and `Foray-Spec-2026.1.md` §15 makes it foreseeable. |
 | A media format stops rendering in shipped browsers | A codec deprecation is a silent form change. This is the trigger people forget. |
 | The renderer changes | See §5.3. A UI change is a form change. |
 
@@ -494,7 +494,7 @@ presented as if they were:
 
 ## 5. What the index may and may not attribute a change to
 
-The deliverable. A fall in the AILX number can mean at least seven different things. The design
+The deliverable. A fall in the Foray number can mean at least seven different things. The design
 separates some of them and not others.
 
 | Candidate explanation | Separable? | By what |
@@ -547,9 +547,9 @@ is satisfied by a term of zero, and the release must say which of the two cases 
 
 ### 5.3 The renderer is part of the instrument
 
-Freezing the items is not freezing the form. Exposure time is a measurement decision AILX
+Freezing the items is not freezing the form. Exposure time is a measurement decision Foray
 already declares: human accuracy on synthetic-image detection moves from **72% at 1 second to 82%
-at 20 seconds** (`AILX-Spec-2026.1.md` §04). The source is Kamali et al., *Characterizing
+at 20 seconds** (`Foray-Spec-2026.1.md` §04). The source is Kamali et al., *Characterizing
 Photorealism and Artifacts in Diffusion Model-Generated Images*, CHI '25, 749,828 observations from
 50,444 participants: "With just 1 second of display time, participants are 72% accurate ... While
 accuracy on real images appears to plateau by 5 seconds of display time, accuracy on AI-generated

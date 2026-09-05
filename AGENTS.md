@@ -1,6 +1,6 @@
-# AGENTS.md — AILX (resilience)
+# AGENTS.md — Foray (resilience)
 
-This monorepo contains AILX, the AI Literacy Examination. The spec is `AILX-Spec-2026.1.md`. The plan is `docs/PLAN.md`. Positioning is in `docs/POSITIONING.md`. The progression/streaks loop is in `docs/PROGRESSION.md`.
+This monorepo contains Foray, the AI Literacy Examination. The spec is `Foray-Spec-2026.1.md`. The plan is `docs/PLAN.md`. Positioning is in `docs/POSITIONING.md`. The progression/streaks loop is in `docs/PROGRESSION.md`.
 
 ## Layout
 
@@ -67,7 +67,7 @@ handler requires a decision in front of a reviewer.
 - The e2e suite always boots its own server. `AILX_E2E_REUSE_SERVER=1` reuses whatever is already on the port for a fast inner loop — and then YOU own what is on that port. It is opt-in because a next-server orphaned by a dead agent once held 3210 for a day and the suite silently tested it, green.
 
 ## Credential and diagnosis
-- `docs/CREDENTIAL.md` — what an AILX credential asserts (a completed sitting,
+- `docs/CREDENTIAL.md` — what a Foray credential asserts (a completed sitting,
   never a score), why it is Open Badges 3.0 shaped with hosted verification,
   how it upgrades to a scored claim without reissuing, and why a revoked
   credential still resolves while a revoked share token 404s.

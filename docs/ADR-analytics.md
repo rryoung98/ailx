@@ -106,7 +106,7 @@ learn that the append-only store cannot tell us".
 
 | Question | Answered today? | Verdict |
 |---|---|---|
-| How many browsers open AILX; how many reach the landing page | yes — `visit_started`, `landing_viewed` | **do not buy GA4 for this** |
+| How many browsers open Foray; how many reach the landing page | yes — `visit_started`, `landing_viewed` | **do not buy GA4 for this** |
 | Play started / completed, per mode | yes — `play_started`/`play_completed`, deduped per session | do not buy |
 | D1/D7/D30 return | yes — derived from `firstSeenDay`/`dayIndex` downstream | do not buy |
 | Sign-in, sitting started, share created, share opened | yes — steps 6-8 | do not buy |
@@ -201,7 +201,7 @@ on-point** about joining a bought survey panel to first-party web analytics; we
 reason from purpose limitation and the vendor's own consent text.
 
 Rule, stated so it can be tested: **a GA4 identifier (`_ga`, `client_id`,
-`session_id`, a Measurement Protocol `cid`) may not appear in any AILX table,
+`session_id`, a Measurement Protocol `cid`) may not appear in any Foray table,
 export, share payload or CSV**, and no panel identifier may be sent to GA4. The
 firewall is not "do not join"; it is "the two identifiers never meet in a place
 where a join is possible".

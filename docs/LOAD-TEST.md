@@ -113,7 +113,7 @@ and `score()` is pure, so server latency cannot inflate or deflate a score. That
 entry, plus one `POST /attempts` at the start and one `POST /finalize` at the end. That ratio is
 pinned by a test in `apps/web/test/persistence.test.ts` because the cost model in section 4
 depends on it. A full sitting has 120 timed T2 items and a 12-item provenance block
-(AILX-Spec-2026.1.md section on T2), plus T1, T3 and T4 activity, so **250 requests per sitting
+(Foray-Spec-2026.1.md section on T2), plus T1, T3 and T4 activity, so **250 requests per sitting
 is the working estimate**. A practice drill is roughly 25.
 
 **Needs measurement:** wall-clock p50/p95/p99 for `POST /responses` under concurrency, the same

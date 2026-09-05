@@ -1,8 +1,8 @@
 # SHARING — the growth loop
 
-How a finished AILX run becomes something a candidate wants to send, and how
+How a finished Foray run becomes something a candidate wants to send, and how
 that stays safe. Companion to `AGENTS.md` (invariants) and `FRONTEND.md`
-(module and security rules). Spec references are to `AILX-Spec-2026.1.md`.
+(module and security rules). Spec references are to `Foray-Spec-2026.1.md`.
 
 ## 1. What is shared, and what never is
 
@@ -335,7 +335,7 @@ what the last one saw, and the candidate needs somewhere to answer.
 | | Internal note (`visibility = 'internal'`) | Message (`visibility = 'shared'`) |
 |---|---|---|
 | Written by | a moderator | a moderator, or the candidate |
-| Seen by | AILX staff on `/review/<case>` | that candidate, and staff |
+| Seen by | Foray staff on `/review/<case>` | that candidate, and staff |
 | Carries the author's identity | yes, the verified `author_ref` | **never** to the candidate |
 
 A candidate cannot write an internal note at any layer: the API gives their

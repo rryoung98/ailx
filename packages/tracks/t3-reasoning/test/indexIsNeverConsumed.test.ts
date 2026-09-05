@@ -1,6 +1,6 @@
 /**
  * `reliance.index` is AILX's own construct, and the spec promises it is never
- * used alone to rank, gate or z-score a candidate (AILX-Spec-2026.1.md, T3
+ * used alone to rank, gate or z-score a candidate (Foray-Spec-2026.1.md, T3
  * "Stated against our own case"). No published work reports a signed index of
  * reliance calibration, so nothing outside this track may treat ours as a
  * score. The band already reads BOTH tails; the composite already reads the

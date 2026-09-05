@@ -1,4 +1,4 @@
-# DEPLOY.md — hosted AILX (Vercel serverless)
+# DEPLOY.md — hosted Foray (Vercel serverless)
 
 The default build has not changed. Run `pnpm -r build` without `AILX_BACKEND`
 to produce the GitHub Pages **static export** (`output: "export"`, no API
@@ -170,7 +170,7 @@ and never reads it back into localStorage. A cleared browser therefore cannot
 be silently re-identified as its previous occupant. "Forget this browser" on
 `/progress` clears both.
 
-## 5. Vercel platform limits that bite AILX
+## 5. Vercel platform limits that bite Foray
 
 - **Request/response body cap (4.5 MB).** `T1_LIMITS.maxTotalBytes` is 25 MB.
   A large T1 ZIP cannot pass through a request body. An asset over ~4.5 MB
@@ -283,7 +283,7 @@ Vercel calls lstat on every traced file, so the deployment fails.
 outputFileTracingExcludes: { "/s/[token]/card.png": ["**/*_client-reference-manifest.js"] }
 ```
 
-A route handler needs that manifest only for `use cache`. No AILX route uses
+A route handler needs that manifest only for `use cache`. No Foray route uses
 it. Do not "fix" this by renaming the handlers to `route.ts`. That name would
 include the whole API in the GitHub Pages export. Delete the exclude when Next
 matches `/route(\.[^/]+)?$/` as it already matches `/page`.
