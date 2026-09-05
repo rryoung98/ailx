@@ -72,6 +72,14 @@ handler requires a decision in front of a reviewer.
   how it upgrades to a scored claim without reissuing, and why a revoked
   credential still resolves while a revoked share token 404s.
 
+## The rename to Foray
+- `docs/RENAME.md` — the sequenced plan for renaming AILX to Foray: the
+  occurrence counts in all three repos, what is irreversible and therefore
+  first in the order, why the credential issuer is the hardest part (the
+  issuer IS the origin, so the old origin must answer forever on two routes),
+  why no stored row is rewritten, and what breaks if the rename stops
+  half-way. Nothing is renamed. Parent issue TEN-134.
+
 ## Comparative judgement (T1)
 - `docs/COMPARATIVE-JUDGEMENT.md` — what T1's pairwise judging costs at N = 100 to 10,000,
   which quantity is flat in N and which is not, who judges and what that costs in bias, and
