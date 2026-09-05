@@ -7,6 +7,7 @@ const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable",
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
 import { TOTAL_POINTS } from "@ailx/core";
+import { FunnelVisit } from "../components/FunnelVisit";
 import { Loader } from "../components/Loader";
 import { NavLink } from "../components/ui/NavLink";
 import { NavStrip } from "../components/ui/NavStrip";
@@ -32,6 +33,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* One query cache for the whole app, outside the auth shell so a
             sign-in does not throw away a page's data (lib/QueryProvider.tsx). */}
         <QueryProvider>
+        {/* Step one of the funnel, on every route and outside the auth shell:
+            a visit is a visit whether or not Clerk is configured. */}
+        <FunnelVisit />
         <AuthShell>
           <Loader />
           <a href="#main" className="skip-link">Skip to main content</a>
