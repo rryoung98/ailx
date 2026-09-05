@@ -42,9 +42,10 @@ import {
   type StreakSummary,
 } from "@ailx/report";
 import { serviceHeaders } from "../../lib/data/traceparent";
-import { useIdentity } from "../../lib/auth/identityState";
+import { hasIdentity, useIdentity } from "../../lib/auth/identityState";
 import { funnel } from "../../lib/data/funnel";
 import {
+  claimLocalPractice,
   localStreakSummary,
   readLastClaim,
   recordLocalPracticeRound,
@@ -121,18 +122,49 @@ function Pips({ deck, played }: { deck: readonly PracticeItem[]; played: readonl
   );
 }
 
-export function PracticeDrill() {
+/**
+ * `taster` is the LANDING page's copy of the drill, and the difference is
+ * only ever WHEN the server is told (TEN-156).
+ *
+ * The drill mounts in the landing hero, so `deal()` ran on every home-page
+ * view; with an identity that POSTed `startPractice`, and the service DEALS
+ * AND RECORDS a deck before anybody has touched anything. One account picked
+ * up three `practice_sessions` rows in a night for one round actually played,
+ * the two extras stamped on the moments the landing page loaded.
+ *
+ * Two costs, and the second is the serious one: the table counted landing
+ * VIEWS rather than rounds, and recorded corpus exposure — the budget that
+ * exists to stop a client walking the corpus — was being spent on people who
+ * scrolled past. That is the protection working backwards.
+ *
+ * So the taster deals in the BROWSER, from the bundled public corpus, exactly
+ * as an anonymous visitor's round is dealt: no request, no row, no exposure.
+ * The first ANSWER is the engagement, and from it the drill is recorded like
+ * any other — the round in hand finishes where it started (the service grades
+ * only decks it dealt) and its day is handed to the account by the existing
+ * claim, and the next round is server-dealt.
+ */
+export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   const server = isServerMode();
   const identity = useIdentity();
   /**
-   * Where this round goes. An account records it on the server, which is what
-   * makes the deck server-dealt and the day server-stamped; anybody else
-   * keeps it in their own browser and keeps a streak all the same.
+   * Has this visitor actually played? The first card CALLED, which is the
+   * same gesture the funnel counts as `play_started` and for the same reason:
+   * a dealt deck counts everybody who scrolled past the hero.
+   */
+  const [engaged, setEngaged] = useState(false);
+  /**
+   * Where this round goes. ANY identity the service accepts — an account, or
+   * the asserted dev id of a hosted build with no Clerk — records it on the
+   * server, which is what makes the deck server-dealt and the day
+   * server-stamped; anybody else keeps it in their own browser and keeps a
+   * streak all the same. `hasIdentity`, not `status === "signed-in"`: the
+   * account question is a different one (`lib/auth/identityState.ts`).
    *
    * `pending` is neither: Clerk has not answered yet, and dealing a local
    * round in the meantime would quietly drop a signed-in person's day.
    */
-  const recorded = server && identity.status === "signed-in";
+  const recorded = server && hasIdentity(identity.status) && (!taster || engaged);
   const waitingOnIdentity = server && identity.status === "pending";
   const [phase, setPhase] = useState<Phase>("loading");
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -291,6 +323,10 @@ export function PracticeDrill() {
     // resumes the same play, so the step is not counted twice.
     if (!roundBegun.current) funnel().playStarted("practice");
     roundBegun.current = true;
+    // The taster's engagement, and it changes nothing about the round in
+    // hand: `roundRecorded` was fixed when this deck was dealt, so this round
+    // is played and kept exactly where it started. The NEXT one is recorded.
+    setEngaged(true);
     setPlayed([
       ...played,
       {
@@ -346,6 +382,12 @@ export function PracticeDrill() {
     });
     setQualification(earned);
     setStreak(localStreakSummary(window.localStorage, now, utcOffsetMinutes()));
+    // A browser the service will accept does not have to WAIT for the next
+    // sign-in to hand this day over: the taster round is dealt here, so the
+    // claim is how it reaches the account at all. Idempotent by design — the
+    // server takes the larger of each count — and quiet on failure, which
+    // leaves the day unclaimed in this browser for the next attempt.
+    if (server && hasIdentity(identity.status)) void claimLocalPractice(window.localStorage);
   }
 
   async function submit(round: readonly Played[]): Promise<void> {
@@ -459,8 +501,13 @@ export function PracticeDrill() {
         ) : null}
         {/* Where the days are, said plainly, on the screen that shows them.
             A streak nobody explained is a streak somebody can lose without
-            ever being told how. */}
-        {recorded ? null : <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>}
+            ever being told how.
+
+            The ROUND's own truth, not the next round's: a taster round is
+            dealt in this browser and the answer to "where is this day?" was
+            settled when it was dealt, even though the drill is recorded from
+            the moment it was engaged. */}
+        {roundRecorded.current ? null : <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>}
         {/* The ask, and only here: after a round, never in front of one. It
             names what an account is for and what happens to these days, and
             it is absent from the static export, which has no sign-in page to

@@ -30,12 +30,23 @@ let session = {
   getToken: (async () => null) as () => Promise<string | null>,
 };
 
+/** The real `notFound()` throws a Next-internal error; this is the same shape. */
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND");
+  },
+}));
+
 vi.mock("@clerk/nextjs", () => ({
   useAuth: () => session,
   ClerkProvider: ({ children }: { children?: ReactNode }) => children ?? null,
   SignedIn: () => null,
   SignedOut: () => null,
   UserButton: () => null,
+  // The two the routes render; the real ones call `useSession` and throw
+  // without a provider, which is the whole point of the gate below.
+  SignIn: () => null,
+  SignUp: () => null,
 }));
 
 const { ClerkTokenBridge } = await import("../lib/auth/ClerkTokenBridge");
@@ -293,10 +304,51 @@ describe("one place imports the SDK, one place reads the key", () => {
     expect(removed, `removed in Core 3: ${removed.join(", ")}`).toEqual([]);
   });
 
+  it("the nav link is gated on the KEY, not on the build (TEN-155)", () => {
+    // The link must not point at a route this deployment cannot render. Read
+    // from the source because `app/layout.tsx` is a server component that
+    // pulls fonts and global CSS; the guard is one line and this pins it.
+    const layout = readFileSync(join(webDir, "app", "layout.tsx"), "utf8");
+    expect(layout).toMatch(/isClerkEnabled\(\)\s*&&\s*<AuthNav\s*\/>/);
+  });
+
   it("the sign-in surface exists only in the hosted build, by name", () => {
     for (const route of ["sign-in/[[...sign-in]]", "sign-up/[[...sign-up]]"]) {
       const dir = join(webDir, "app", route);
       expect(readdirSync(dir), route).toEqual(["page.api.tsx"]);
     }
+  });
+});
+
+// ---- the two routes that only exist to serve an account -----------------
+
+describe("the sign-in routes, on a hosted build with no key (TEN-155)", () => {
+  /**
+   * The trap this pins: `AILX_BACKEND=1` with no publishable key compiles
+   * BOTH routes, `isClerkEnabled()` is false so no provider is mounted, and
+   * `<SignIn>` calls `useSession`, which throws. The screen that exists to
+   * tell you the key is missing was the screen that crashed, and AGENTS.md
+   * claimed such a deploy "keeps working".
+   */
+  async function pages() {
+    const signIn = (await import("../app/sign-in/[[...sign-in]]/page.api")).default;
+    const signUp = (await import("../app/sign-up/[[...sign-up]]/page.api")).default;
+    return { signIn, signUp };
+  }
+
+  it("404 rather than render a Clerk component with no provider", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    const { signIn, signUp } = await pages();
+    expect(() => signIn()).toThrow(/NEXT_NOT_FOUND/);
+    expect(() => signUp()).toThrow(/NEXT_NOT_FOUND/);
+  });
+
+  it("still render where Clerk really is mounted", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_x");
+    const { signIn, signUp } = await pages();
+    expect(isValidElement(signIn())).toBe(true);
+    expect(isValidElement(signUp())).toBe(true);
   });
 });

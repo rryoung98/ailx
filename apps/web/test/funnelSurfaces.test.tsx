@@ -263,6 +263,20 @@ describe("identity", () => {
     expect(JSON.stringify(seen)).not.toContain("user_1");
     resetIdentity();
   });
+
+  it("counts NOTHING for the asserted dev id of a hosted build with no Clerk", async () => {
+    // TEN-153. Step 6 is "an account exists and this browser holds it"
+    // (docs/KPI.md). A dev-auth deployment has no accounts, so every page
+    // load on it was counting an account that does not exist.
+    const { FunnelIdentity } = await import("../lib/auth/FunnelIdentity");
+    const { resetIdentity } = await import("../lib/auth/identityState");
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+    resetIdentity();
+    await render(FunnelIdentity);
+    expect(await steps()).not.toContain("signed_in");
+    resetIdentity();
+  });
 });
 
 describe("the share path", () => {

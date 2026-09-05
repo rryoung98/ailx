@@ -200,8 +200,15 @@ See the PRIVATE repo's README §3. If you want to set `DATABASE_URL` here, run
   baked into the client bundle) but it still goes in env, not the tree: see `apps/web/.env.example`.
   Read in exactly ONE place, `apps/web/lib/mode.ts` (`isClerkEnabled()`), and by Clerk's own SDK.
   Mounting needs BOTH this key and `AILX_BACKEND=1`, so a hosted deploy without it keeps working on
-  the asserted dev identity, and the static export never mounts a provider at all — `next.config.mjs`
-  even resolves `@clerk/nextjs` to a stub there, so the Pages bundle carries no auth SDK.
+  the asserted dev identity — every page that only READS an identity does — and the static export
+  never mounts a provider at all: `next.config.mjs` even resolves `@clerk/nextjs` to a stub there,
+  so the Pages bundle carries no auth SDK. That sentence used to stop one clause too early. Nothing
+  removes the ROUTES, so `/sign-in` and `/sign-up` compile whenever `AILX_BACKEND=1`, and they
+  render Clerk components that call `useSession` and throw without a provider: a keyless deploy
+  worked everywhere except the two screens that exist to serve the missing thing (TEN-155). So both
+  routes now 404 unless `isClerkEnabled()`, the nav link is gated on the same predicate, and
+  `test/clerkMount.test.tsx` pins the pair — a deploy that forgets the key must degrade, never
+  crash.
   There is deliberately no `CLERK_SECRET_KEY` here: this app verifies no token. It sends the JWT to
   the exam service, which is the only thing that checks it. See docs/ARCHITECTURE.md §10.2.
 - `NEXT_PUBLIC_BASE_PATH` — GitHub Pages subpath prefix.
