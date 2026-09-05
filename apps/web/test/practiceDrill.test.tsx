@@ -420,7 +420,7 @@ describe("when the network fails under it", () => {
     expect(host.textContent).not.toContain("Failed to fetch");
     const alert = host.querySelector('[role="alert"]')!;
     expect(alert).toBeTruthy();
-    expect(alert.textContent).toMatch(/could not be sent/i);
+    expect(alert.textContent).toMatch(/was not sent/i);
     expect(alert.textContent).toMatch(/not recorded yet/i);
     // The round itself survives the failure.
     expect(host.textContent).toMatch(/\d+ right, \d+ missed/);

@@ -206,7 +206,7 @@ describe("ShareLink in server mode", () => {
     await render();
     const copy = container.textContent ?? "";
     expect(copy).toContain("four-track shape");
-    expect(copy).toContain("never");
+    expect(copy).toMatch(/never/i);
     expect(copy).toMatch(/not indexed/);
     expect(copy).toMatch(/revoke/i);
   });

@@ -58,8 +58,8 @@ function CannotConfirm() {
       <section className="card verify-card verify-unknown" aria-live="polite">
         <h1 className="verify-status">Cannot be confirmed</h1>
         <p style={{ marginBottom: 0 }}>
-          AILX has no credential with this id. Nothing on this page vouches for it — an
-          image, a PDF or a screenshot claiming otherwise is not evidence.
+          AILX has no credential with this id. Nothing on this page vouches for it. An image,
+          PDF or screenshot claiming otherwise is not evidence.
         </p>
       </section>
       <p className="small muted">
@@ -131,9 +131,9 @@ export function VerifyView() {
               </>
             ) : (
               <>
-                This credential was issued by {CREDENTIAL_ISSUER} and is current. This page is
-                served by AILX and reads the record live, so it is the only thing that can confirm
-                the credential — never an image of it.
+                This credential was issued by {CREDENTIAL_ISSUER} and is current. AILX serves
+                this page and reads the record live, so only this page can confirm the credential.
+                Never an image of it.
               </>
             )}
           </p>
@@ -202,9 +202,9 @@ export function VerifyView() {
             ))}
           </ul>
           <p className="small muted" style={{ marginBottom: 0 }}>
-            AILX does not yet operate a judging pipeline, so no AILX credential reports a score
-            today. When scoring exists, this same credential id will carry the result — the id, the
-            URL and the entry on the holder&rsquo;s profile keep working, and this page will say so.
+            AILX has no judging pipeline yet, so no AILX credential reports a score today. When
+            scoring exists, this same credential id carries the result. The id, the URL and the
+            holder&rsquo;s profile entry keep working, and this page will say so.
           </p>
         </section>
 

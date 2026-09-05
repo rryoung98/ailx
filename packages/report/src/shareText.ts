@@ -151,8 +151,8 @@ export function shareText(
       // Professional, and careful: a completed run is the claim, never a rank.
       return [
         mine
-          ? "I finished a full AILX run — four rounds of working with AI: building something with it, telling real media from synthetic, holding a line against an assistant that is wrong on purpose, and directing a generation to a brief."
-          : "AILX is four rounds of working with AI: building something with it, telling real media from synthetic, holding a line against an assistant that is wrong on purpose, and directing a generation to a brief.",
+          ? "I finished a full AILX run: four rounds of working with AI. Build with it, tell real media from synthetic, hold a line against an assistant that is wrong on purpose, direct a generation to a brief."
+          : "AILX is four rounds of working with AI: build with it, tell real media from synthetic, hold a line against an assistant that is wrong on purpose, direct a generation to a brief.",
         `${id} ${p.tagline}`,
         built,
         "AILX reports a player type and the work behind it — no ranking, no number.",
@@ -274,8 +274,8 @@ export interface DailyShare {
  * between them is how an unevidenced claim gets back in.
  */
 export const DAILY_STREAK_MEANING =
-  "A streak counts the days you came back. It is not evidence that your eye got better — "
-  + "we have no result that says this kind of practice does that.";
+  "A streak counts the days you came back. It is not evidence your eye got better; "
+  + "no result says this kind of practice does that.";
 
 /** The daily's own one-line pitch. Same words on every surface (DRY). */
 export const DAILY_PITCH = "Five calls, one minute. The same five for everyone today.";
@@ -315,9 +315,8 @@ export function dailyShareText(share: DailyShare, channel: ShareChannel): string
       return [
         `${head} — ${tally}`,
         grid,
-        "The AILX daily is five calls: is this a photograph or a generated image, did a person or "
-          + "a model write this, is this message what it claims to be. Everyone gets the same five, "
-          + "and it takes about a minute.",
+        "The AILX daily is five calls: photograph or generated image, person or model, genuine "
+          + "message or not. Everyone gets the same five, and it takes about a minute.",
         DAILY_STREAK_MEANING,
         "It is a game on published practice material. It is not an AILX sitting and reaches no result.",
       ].join("\n\n");

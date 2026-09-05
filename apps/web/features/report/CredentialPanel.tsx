@@ -113,9 +113,9 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
       </h2>
       <p className="muted small" style={{ maxWidth: "62ch" }}>
         A credential states that you sat and completed AILX on a date, on a stated instrument
-        version, and gives a link anyone can check. It carries no score: AILX does not operate a
-        judging pipeline yet, so no AILX credential claims one. When scoring exists, this same
-        credential id gains the result — you will not need to reissue it.
+        version, and gives a link anyone can check. It carries no score: AILX has no judging
+        pipeline yet, so no AILX credential claims one. When scoring exists, this same credential
+        id gains the result, with no reissue.
       </p>
       <ul className="verify-list verify-limits small">
         {CREDENTIAL_LIMITS.map((line) => (
@@ -199,9 +199,9 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
             </div>
           </dl>
           <p className="small muted" style={{ margin: 0 }}>
-            Those are the four fields LinkedIn asks for; the link above is the credential URL.
-            Revoking keeps the link working and makes it say <strong>revoked</strong> — anyone who
-            already has it learns the truth instead of hitting a dead page.
+            Those are the four fields LinkedIn asks for. The link above is the credential URL.
+            Revoking keeps the link working and makes it say <strong>revoked</strong>, so a holder
+            learns the truth instead of hitting a dead page.
           </p>
         </div>
       ) : null}

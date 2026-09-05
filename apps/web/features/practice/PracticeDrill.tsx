@@ -81,9 +81,9 @@ type Stimulus = "pending" | "shown" | "failed";
  * candidate explains nothing and offers nothing.
  */
 const DEAL_FAILED =
-  "We could not deal a round just now. That is usually the connection between you and us, not anything you did.";
+  "We could not deal a round. That is usually the connection, not anything you did.";
 const SUBMIT_FAILED =
-  "Your round could not be sent, so it is not recorded yet. The round below is exactly as you played it — nothing was lost, and practice is unscored either way.";
+  "Your round was not sent, so it is not recorded yet. Nothing was lost: the round below is exactly as you played it, and practice is unscored either way.";
 const STIMULUS_FAILED =
   "This picture did not load, so there is nothing to call. It has not been counted for or against you.";
 
@@ -426,8 +426,8 @@ export function PracticeDrill() {
           </p>
         ) : null}
         <p className="muted">
-          Practice is not scored and never reaches your result. What it does is give you the
-          tell before the clock is running.
+          Practice is not scored and never reaches your result. It gives you the tell before the
+          clock is running.
         </p>
         {streak !== null ? (
           <p className={styles.streak}>
@@ -453,8 +453,8 @@ export function PracticeDrill() {
         {qualification !== null && !qualification.counted ? (
           <p className="small faint">
             {qualification.reason === "too_fast"
-              ? "That round went too fast to count towards a streak day — the drill only counts if it was actually read."
-              : "That round did not finish, so it does not count towards a streak day. Finishing one is all it takes."}
+              ? "That round went too fast to count towards a streak day. The drill counts only if it was read."
+              : "That round did not finish, so it does not count towards a streak day. Finish one and it does."}
           </p>
         ) : null}
         {/* Where the days are, said plainly, on the screen that shows them.

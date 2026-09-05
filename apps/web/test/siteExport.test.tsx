@@ -304,7 +304,7 @@ describe("SiteExportPanel", () => {
   it("always offers the download, and says it needs no account", () => {
     render(<SiteExportPanel attemptId={ATTEMPT} />);
     expect(container.textContent).toContain("Download ZIP");
-    expect(container.textContent).toContain("no account needed");
+    expect(container.textContent).toMatch(/no account needed/i);
   });
 
   it("states exactly what AILX will do to the GitHub account, before connecting", () => {

@@ -81,7 +81,7 @@ export function SiteExportPanel({ attemptId }: { attemptId: string }) {
         return;
       }
       if (Date.now() >= deadline) {
-        setError({ kind: "authorization_failed", message: "The GitHub code expired — start again." });
+        setError({ kind: "authorization_failed", message: "The GitHub code expired. Start again." });
         setPhase("consent");
         return;
       }
@@ -122,8 +122,8 @@ export function SiteExportPanel({ attemptId }: { attemptId: string }) {
       </h3>
       <p className="muted small" style={{ maxWidth: "62ch" }}>
         AILX is an exam, not a website builder. The site you built is yours: export it and keep
-        going somewhere that is built for it. Exporting changes nothing here — the snapshot AILX
-        scored stays exactly as it was.
+        going somewhere built for it. Exporting changes nothing here. The snapshot AILX scored
+        stays as it was.
       </p>
 
       <p style={{ margin: "0.6rem 0" }}>
@@ -136,7 +136,7 @@ export function SiteExportPanel({ attemptId }: { attemptId: string }) {
           {phase === "downloading" ? "Preparing…" : "Download ZIP"}
         </button>{" "}
         <span className="faint small">
-          The exact files that were scored — no account needed, anywhere.
+          The exact files that were scored. No account needed, anywhere.
         </span>
       </p>
 
@@ -151,11 +151,10 @@ export function SiteExportPanel({ attemptId }: { attemptId: string }) {
           {phase === "consent" ? (
             <>
               <p className="small" style={{ maxWidth: "62ch" }}>
-                AILX will ask GitHub for one permission — <code>public_repo</code> — and use it
-                once: to create a single PUBLIC repository in your account and push this site into
-                it, with a README saying what it is. It cannot see your private repositories, and
-                cannot touch any repository it did not just create. The permission is never stored;
-                it is used inside that one request and dropped.
+                AILX asks GitHub for one permission, <code>public_repo</code>, and uses it once:
+                to create a single PUBLIC repository in your account and push this site into it,
+                with a README. It cannot see your private repositories, and cannot touch any
+                repository it did not just create. The permission is never stored.
               </p>
               <label className="small" htmlFor="ailx-export-repo" style={{ display: "block" }}>
                 Repository name
