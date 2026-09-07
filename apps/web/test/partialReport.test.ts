@@ -8,7 +8,30 @@
  * exam service never saw.
  */
 import { describe, expect, it } from "vitest";
-import { reportGate } from "../features/report/reportGate";
+import { reportGate, sittingShape } from "../features/report/reportGate";
+import type { AttemptScores } from "../features/report/scoresOfRecord";
+
+/** The dogfooded sitting: T2 scored, T3 with the jury, T1 and T4 never sat. */
+const FINALIZED_PARTIAL: AttemptScores = {
+  finalized: true,
+  pending: true,
+  pollAfterMs: 5000,
+  tracks: [
+    { trackId: "t1", state: "not_sat", reason: "incomplete", detail: "" },
+    {
+      trackId: "t2",
+      state: "scored",
+      score: { raw: {}, scaled: 30.884 },
+      rubricVersion: "r",
+      scoringDigest: "d",
+      issuedBy: "finalize",
+      computedAt: "2026-09-06T05:38:07.000Z",
+    },
+    { trackId: "t3", state: "pending_judging", detail: "" },
+    { trackId: "t4", state: "not_sat", reason: "incomplete", detail: "" },
+  ],
+  composite: null,
+};
 
 describe("a finished sitting over part of the instrument", () => {
   const gate = reportGate({
@@ -52,5 +75,85 @@ describe("a finished sitting over part of the instrument", () => {
       localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
     });
     expect(full.headline).toBe("The report is the reward");
+  });
+});
+
+
+describe("the shape of a finished sitting", () => {
+  it("reads the service's answer: a track it says nothing about is not invented", () => {
+    const shape = sittingShape({
+      scores: FINALIZED_PARTIAL,
+      localSitting: { completed: true, sat: ["t2", "t3"] },
+    });
+    expect(shape.finished).toBe(true);
+    expect(shape.sat).toEqual(["t2", "t3"]);
+    expect(shape.partial).toBe(true);
+  });
+
+  it("counts a track awaiting its jury as SAT — it is not missing, it is unmarked", () => {
+    const shape = sittingShape({ scores: FINALIZED_PARTIAL, localSitting: undefined });
+    expect(shape.sat).toContain("t3");
+  });
+
+  it("falls back to this browser's log when the service answered nothing", () => {
+    const shape = sittingShape({
+      scores: null,
+      localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
+    });
+    expect(shape).toEqual({ finished: true, sat: ["t1", "t2", "t3", "t4"], partial: false });
+  });
+
+  it("calls an unfinished run unfinished, and offers it nothing", () => {
+    const shape = sittingShape({
+      scores: null,
+      localSitting: { completed: false, sat: ["t2"] },
+    });
+    expect(shape.finished).toBe(false);
+    expect(shape.partial).toBe(false);
+  });
+});
+
+describe("a FINALIZED partial sitting, as the exam service describes it", () => {
+  const gate = reportGate({
+    localScored: [],
+    scores: FINALIZED_PARTIAL,
+    reading: false,
+    localSitting: { completed: true, sat: ["t2", "t3"] },
+  });
+
+  it("names the sitting partial rather than letting it read as the whole instrument", () => {
+    expect(gate.lede).toContain("You sat T2 and T3");
+    expect(gate.lede).toContain("covers part of the instrument");
+  });
+
+  it("says once that no composite is coming, and never that one is on its way", () => {
+    expect(gate.lede).toContain("none is coming for this sitting");
+    expect(gate.lede).not.toContain("It issued the composite too");
+  });
+
+  it("still says a judged track has not been marked yet", () => {
+    expect(gate.lede).toContain("still being judged");
+  });
+});
+
+describe("a hosted FULL sitting the service only half describes", () => {
+  it("is not called partial because the browser scored the other two tracks", () => {
+    /* The run of 2026-09-04: T1 and T4 scored in this browser, T2 and T3 by
+       the exam service, and the service's `tracks` list names only its own
+       two. A shape read from that list alone would call a full sitting
+       partial and offer a credential that lies about it. */
+    const shape = sittingShape({
+      localScored: ["t1", "t4"],
+      scores: {
+        finalized: true,
+        pending: false,
+        pollAfterMs: null,
+        tracks: FINALIZED_PARTIAL.tracks.filter((t) => t.trackId === "t2" || t.trackId === "t3"),
+        composite: null,
+      },
+      localSitting: undefined,
+    });
+    expect(shape.sat).toEqual(["t1", "t2", "t3", "t4"]);
+    expect(shape.partial).toBe(false);
   });
 });

@@ -68,7 +68,7 @@ import { CompositeCard } from "../../features/report/CompositeCard";
 import { localCompositeView, serviceCompositeView } from "../../features/report/compositeView";
 import { HostedComposite } from "../../features/report/HostedComposite";
 import { useScoresOfRecord } from "../../features/report/useScoresOfRecord";
-import { reportGate } from "../../features/report/reportGate";
+import { reportGate, sittingShape } from "../../features/report/reportGate";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 
@@ -251,7 +251,7 @@ export default function ReportPage() {
        the log alone, so a finalized hosted sitting was told for ever to
        "finish the run", with a Continue that led back to /exam and from
        there back to here. */
-    const gate = reportGate({
+    const gateInput = {
       localScored: state ? TRACK_IDS.filter((t) => state.tracks[t].score !== undefined) : [],
       scores: scoresView.scores ?? null,
       reading: scoresView.reading,
@@ -264,7 +264,15 @@ export default function ReportPage() {
             sat: TRACK_IDS.filter((t) => state.tracks[t].status === "completed"),
           }
         : undefined,
-    });
+    };
+    const gate = reportGate(gateInput);
+    /* WHAT A FINISHED SITTING IS OWED, ON THIS SCREEN TOO (dogfood D2).
+       A hosted or partial sitting lands here rather than on the full report,
+       and this screen offered neither the credential nor the share — so the
+       exam service issued a credential on the first hand-rolled POST and no
+       candidate could ever have asked for one. Both panels are the SAME ones
+       the full report renders; there is no second path. */
+    const shape = sittingShape(gateInput);
     return (
       <main className="page">
         <div className="container" style={{ maxWidth: 820 }}>
@@ -294,6 +302,12 @@ export default function ReportPage() {
               marked as the service's and claiming no local replay. */}
           {state?.attemptId ? (
             <HostedComposite attemptId={state.attemptId} scores={scoresView.scores} />
+          ) : null}
+          {state?.attemptId && shape.finished ? (
+            <CredentialPanel attemptId={state.attemptId} sat={shape.sat} />
+          ) : null}
+          {state?.attemptId && shape.finished ? (
+            <ShareLink attemptId={state.attemptId} sat={shape.sat} />
           ) : null}
           {state?.attemptId ? <ScoresOfRecordView view={scoresView} /> : null}
         </div>
@@ -390,9 +404,16 @@ export default function ReportPage() {
 
         <Diagnosis trackRaw={summary.trackRaw} process={sharedProcess} />
 
-        {!sample && state.attemptId ? <CredentialPanel attemptId={state.attemptId} /> : null}
+        {/* This branch needs a local score for all four tracks
+            (`candidateComposite` returns null otherwise), so the sitting IS a
+            full one and both panels are told so explicitly. */}
+        {!sample && state.attemptId ? (
+          <CredentialPanel attemptId={state.attemptId} sat={TRACK_IDS} />
+        ) : null}
 
-        {!sample && state.attemptId ? <ShareLink attemptId={state.attemptId} /> : null}
+        {!sample && state.attemptId ? (
+          <ShareLink attemptId={state.attemptId} sat={TRACK_IDS} />
+        ) : null}
 
         {/* The exam service's OWN numbers, including a T3 score the judging
             pass issues after finalize has answered (TEN-69). Separate from

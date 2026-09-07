@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
+import { TRACK_IDS, type TrackId } from "@ailx/session";
 import { serviceHeaders } from "../../lib/data/traceparent";
 import {
   DEFAULT_SHARE_SECTIONS,
@@ -70,6 +71,22 @@ type Phase = "loading" | "none" | "live" | "busy" | "error";
 
 /** The four manifest routes this panel drives, and nothing else. */
 type ShareRoute = "createShare" | "getShare" | "revokeShare" | "publishShare";
+
+/**
+ * The share off the wire, or null when the body is not one. A 200 carrying no
+ * share is not a share, and rendering one threw on `share.token` — the same
+ * check `scoresOfRecord.ts` makes, for the same reason.
+ */
+function ownerShare(body: unknown): ShareState | null {
+  const record = body as { share?: unknown } | null;
+  const share = record?.share as ShareState | undefined;
+  return share !== null &&
+    typeof share === "object" &&
+    typeof share?.token === "string" &&
+    typeof share.payload === "object"
+    ? share
+    : null;
+}
 
 /** Which sections a live link actually carries, read from its frozen payload. */
 function includedSections(payload: SharePayload): ShareSection[] {
@@ -144,7 +161,18 @@ function PublishControl({
   );
 }
 
-export function ShareLink({ attemptId }: { attemptId: string }) {
+export function ShareLink({
+  attemptId,
+  sat,
+}: {
+  attemptId: string;
+  /**
+   * Which tracks this sitting covered. A sitting over PART of the instrument
+   * has no four-letter type, no character and no band to send, so the card
+   * this panel offers must not be described as if it had them (TEN-149).
+   */
+  sat?: readonly TrackId[];
+}) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [share, setShare] = useState<ShareState | null>(null);
   const [sections, setSections] = useState<ShareSections>({ ...DEFAULT_SHARE_SECTIONS });
@@ -185,13 +213,15 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
       try {
         const res = await request("getShare");
         if (!live) return;
-        if (res.ok) {
-          const body = (await res.json()) as { share: ShareState };
-          setShare(body.share);
-          setPhase("live");
-        } else {
+        /* 404 is the ordinary answer for a sitting nobody has shared yet, and
+           it is the OFFER below rather than an error. */
+        const held = res.ok ? ownerShare(await res.json()) : null;
+        if (held === null) {
           setPhase("none");
+          return;
         }
+        setShare(held);
+        setPhase("live");
       } catch {
         if (live) setPhase("error");
       }
@@ -206,6 +236,17 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   const url =
     share === null ? null : `${window.location.origin}${shareUrlPath(share.token, basePath())}`;
 
+  /* A PARTIAL SITTING HAS NO TYPE TO SEND. The card's type, shape and band
+     are read over the whole instrument; a sitting that covered part of it has
+     no four-letter code, no character and no band, so this panel says what
+     the link DOES carry rather than promising three things that are not
+     there (docs/CREDENTIAL.md §6 makes the same point for the credential). */
+  const partial = sat !== undefined && sat.length > 0 && sat.length < TRACK_IDS.length;
+  const satList = (sat ?? []).map((t) => t.toUpperCase()).join(" · ");
+  const cardCopy = partial
+    ? `the tracks you sat (${satList}) and how far you got in each`
+    : "your type, your four-track shape and your band";
+
   const create = async () => {
     setPhase("busy");
     try {
@@ -214,8 +255,9 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
         note: sections.note ? note : "",
       });
       if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as { share: ShareState };
-      setShare(body.share);
+      const created = ownerShare(await res.json());
+      if (created === null) throw new Error("no share in the response");
+      setShare(created);
       setPhase("live");
       // A link now exists. The TOKEN never leaves with this event: it is a
       // capability, and a capability in a metrics table is a leak.
@@ -237,8 +279,8 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
     try {
       const res = await request("publishShare");
       if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as { share?: ShareState };
-      if (body.share) setShare(body.share);
+      const published = ownerShare(await res.json());
+      if (published !== null) setShare(published);
     } catch {
       setPublishFailed(true);
     } finally {
@@ -264,13 +306,20 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   return (
     <section className="card" aria-labelledby="share-heading" style={{ marginBottom: "2rem" }}>
       <p className="eyebrow" style={{ margin: 0 }}>share · private until you say so</p>
-      <h2 id="share-heading" style={{ margin: "0.2rem 0 0.4rem" }}>Send someone your player type</h2>
-      <p className="muted small" style={{ maxWidth: "62ch" }}>
-        Creates an unlisted link with your type, your four-track shape and your band, plus
-        whatever you tick below. Never your answers, the items you saw, or anything that could
-        identify you. It is unlisted and not indexed. Revoke it and it stops working everywhere,
-        at once.
+      <h2 id="share-heading" style={{ margin: "0.2rem 0 0.4rem" }}>
+        {partial ? "Send someone this sitting" : "Send someone your player type"}
+      </h2>
+      <p className="muted small" style={{ maxWidth: "62ch" }} data-testid="share-card-copy">
+        Creates an unlisted link with {cardCopy}, plus whatever you tick below. Never your
+        answers, the items you saw, or anything that could identify you. It is unlisted and not
+        indexed. Revoke it and it stops working everywhere, at once.
       </p>
+      {partial ? (
+        <p className="small" style={{ maxWidth: "62ch" }} data-testid="share-partial-notice">
+          You sat {satList} of the four tracks, so this card carries no four-letter type, no
+          character and no band. Those are read over the whole instrument.
+        </p>
+      ) : null}
 
       {phase === "loading" ? <p className="faint small" role="status">Checking…</p> : null}
 
@@ -352,8 +401,8 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
           </ShareTargets>
           <p className="small muted" style={{ margin: 0 }}>
             This link carries: {includedSections(share.payload).length === 0
-              ? "your type, shape and band only"
-              : `your type, shape and band, ${includedSections(share.payload)
+              ? `${cardCopy} only`
+              : `${cardCopy}, ${includedSections(share.payload)
                   .map((k) => SECTION_COPY[k].label.toLowerCase())
                   .join(", ")}`}
             . Contents are frozen when the link is made. To change them, revoke it and create a

@@ -277,8 +277,12 @@ describe("CredentialPanel in server mode", () => {
     await act(async () => {
       button(/Issue my credential/)!.click();
     });
-    expect(container.querySelector('[role="alert"]')!.textContent).toContain(
-      "Finish and score every track first",
-    );
+    /* The old wording told the candidate to "finish and score every track
+       first". A PARTIAL sitting is finished and gets a credential of its own
+       (docs/CREDENTIAL.md §6), and no candidate scores a track, so the
+       sentence blamed them for a service that did not answer. */
+    const alert = container.querySelector('[role="alert"]')!.textContent ?? "";
+    expect(alert).toContain("did not reach the exam service");
+    expect(alert).not.toContain("every track");
   });
 });

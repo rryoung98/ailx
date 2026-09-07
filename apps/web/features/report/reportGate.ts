@@ -45,6 +45,53 @@ export interface GateInput {
   readonly localSitting?: { readonly completed: boolean; readonly sat: readonly TrackId[] };
 }
 
+/**
+ * THE SHAPE OF A FINISHED SITTING, FOR THE SURFACES THAT ACT ON IT.
+ *
+ * The credential panel and the share panel are offered on a FINISHED
+ * sitting, and "finished" has two witnesses: the exam service says the
+ * attempt is finalized, or this browser's own log says the run ended. Either
+ * is enough — a run that finished with no model connected is finished
+ * whether or not the service answered this page (TEN-149).
+ *
+ * `sat` is which tracks the sitting covered, so a partial sitting can be
+ * NAMED as one everywhere it appears. The service's list wins when there is
+ * one: `not_sat` is the service's own word for a track it holds no work for,
+ * and it is the same fact the credential's name is built from.
+ */
+export interface SittingShape {
+  readonly finished: boolean;
+  readonly sat: readonly TrackId[];
+  /** True when a finished sitting covered part of the instrument. */
+  readonly partial: boolean;
+}
+
+export function sittingShape(
+  input: Pick<GateInput, "scores" | "localSitting"> & { readonly localScored?: readonly TrackId[] },
+): SittingShape {
+  const service = input.scores;
+  const finalized = service?.finalized === true;
+  const finished = finalized || input.localSitting?.completed === true;
+  /* A finalized sitting is described by the service: every track it names
+     with a state other than `not_sat` was sat, whether or not it carries a
+     number yet. A track it says nothing about is not claimed either way, so
+     the local log fills the gap rather than the page inventing one. */
+  /* What THIS BROWSER knows a track was sat by: the run log says it was
+     completed, or the browser holds a score of record for it. A hosted
+     sitting whose T1 and T4 were scored locally is a full sitting even when
+     the service's list mentions only the two it marked itself. */
+  const local = TRACK_IDS.filter(
+    (t) => (input.localSitting?.sat ?? []).includes(t) || (input.localScored ?? []).includes(t),
+  );
+  const sat = finalized
+    ? TRACK_IDS.filter((t) => {
+        const record = service?.tracks.find((r) => r.trackId === t);
+        return record === undefined ? local.includes(t) : record.state !== "not_sat";
+      })
+    : local;
+  return { finished, sat, partial: finished && sat.length < TRACK_IDS.length };
+}
+
 export interface GateView {
   readonly headline: string;
   readonly lede: string;
@@ -80,16 +127,33 @@ export function reportGate(input: GateInput): GateView {
        page below, and a service too old to send the field says nothing at
        all rather than a sentence that would then be wrong. */
     const issued = input.scores.composite?.state === "issued";
+    /* A FINALIZED PARTIAL SITTING IS NAMED AS ONE, HERE TOO (TEN-149).
+       The credential this page offers is called "Partial Sitting (T2, T3)",
+       and a lede that said only "your sitting is finished" would read as the
+       whole instrument beside it. Which tracks were sat is the service's
+       answer, not a guess (`sittingShape`). */
+    const shape = sittingShape(input);
+    const notSat = TRACK_IDS.filter((t) => !shape.sat.includes(t));
     return {
       headline: "Your sitting is finished",
       lede:
         `The scores of record are below, issued by the exam service. ` +
+        (shape.partial
+          ? `You sat ${trackList(shape.sat)}. ${trackList(notSat)} ` +
+            `${notSat.length === 1 ? "was" : "were"} not sat, so this sitting covers part of ` +
+            "the instrument. " +
+            /* Said ONCE, and said the same way as the withheld card below
+               (`WITHHELD_LEDE.awaiting_track`): a subset cannot produce this
+               composite, so no composite is coming — whatever the jury does
+               with the tracks that were sat (D4, dogfood 2026-09-06). */
+            "A composite needs every scored track, so none is coming for this sitting. "
+          : "") +
         (pending > 0
           ? `${pending === 1 ? "One track is" : `${pending} tracks are`} still being judged, and this page checks for the score. `
           : "") +
         (issued
           ? "It issued the composite too: this browser did not compute it and claims no replay of it."
-          : input.scores.composite?.state === "withheld"
+          : input.scores.composite?.state === "withheld" || shape.partial
             ? ""
             : "No composite here: it is computed from the scores this browser issued, " +
               "and it did not issue these."),
