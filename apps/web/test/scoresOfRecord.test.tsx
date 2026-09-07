@@ -378,9 +378,28 @@ describe("what the wire is allowed to say", () => {
       stateCopy({ trackId: "t3", state: "unscored", reason: "no_deck", detail: "" }),
       stateCopy({ trackId: "t3", state: "unscored", reason: "no_score", detail: "" }),
       stateCopy({ trackId: "t3", state: "unscored", reason: "instrument_mismatch", detail: "" }),
+      stateCopy({ trackId: "t3", state: "unscored", reason: "judging_failed", detail: "" }),
     ];
     expect(new Set(copies).size).toBe(copies.length);
     for (const c of copies) expect(c.length).toBeGreaterThan(20);
+  });
+
+  /**
+   * The service can now say the judging pass RAN and refused. It is terminal:
+   * it is not `pending_judging` wearing another word, so the report must stop
+   * polling and must not promise a composite that is not coming (D1/D4).
+   */
+  it("reads judging_failed as terminal, not as another kind of waiting", () => {
+    const parsed = parseAttemptScores(
+      body([{ trackId: "t3", state: "unscored", reason: "judging_failed", detail: "no jury is configured" }]),
+    );
+    const track = parsed?.tracks.find((t) => t.trackId === "t3");
+    expect(track?.state).toBe("unscored");
+    expect(track && "reason" in track && track.reason).toBe("judging_failed");
+    expect(parsed?.pending).toBe(false);
+    expect(stateCopy({ trackId: "t3", state: "unscored", reason: "judging_failed", detail: "" })).not.toMatch(
+      /wait|arriv|later/i,
+    );
   });
 });
 
