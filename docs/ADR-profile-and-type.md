@@ -3,7 +3,9 @@
 Status: **proposed — schema and endpoints specified, nothing implemented.** No
 product code lands on this branch; the only file it adds is this one.
 Date: 2026-09-06. Branch: `w/profile-type`. Issue: TEN-178.
-Amended the same day by the founder: a type CHANGES OVER TIME (§7).
+Amended the same day by the founder: a type CHANGES OVER TIME (§7), and the
+gallery is readable only by people who have taken part, with a PREVIEW for
+everybody else (§16).
 Yardstick: `docs/ADR-orpc.md` and `docs/ADR-redis.md` — a number before a
 preference, and where a number could not be taken this document says so.
 Reviewed against `docs/SHARING.md`, `docs/SAMPLING.md` §2/§3/§11,
@@ -393,6 +395,11 @@ Consequences, spelled out so nobody re-decides them:
   defaults to `private`, and today governs nothing that is served. It is there
   so a future profile page cannot be built without one; it does not turn the
   gallery on.
+- **The wall is gated and the preview is not** (§16). Three states: signed out
+  gets six sample cards and a count and no wall entry at all; signed in with no
+  round gets one capped page with the filters; a completed round gets the whole
+  wall, and a completed sitting gets the artefacts. All of it is withheld
+  server-side. A `/s/<token>` link is unchanged and resolves for anybody.
 - `noindex` stays on every surface that names a person
   (`docs/CREDENTIAL.md` §4). A filterable, indexable directory of candidates is
   the thing that document already refused.
@@ -560,6 +567,14 @@ This feature may never:
    their past self as if one letter beat another. The register is the one
    `DAILY_STREAK_MEANING` already uses, and it is testable the same way
    `SHARE_TEXT_FORBIDDEN` is.
+9. **Serve another person's ARTEFACT or PROMPT to somebody who has not attempted
+   that material.** The participation gate of §16, stated as an invariant rather
+   than a preference because a published T1 build is a worked answer to a brief
+   the reader has not yet met, and their artefact is evidence inside a
+   credential. A derived CARD carries no item, no key and no per-item outcome,
+   so serving one spoils nothing — which is why the §16.5 preview is allowed and
+   an artefact preview is not. The gate may never become a paywall, a ranking, a
+   reason to sit again, or a thing described to users as exclusivity (§16.9). Sign-in and participation are TWO gates and only the second protects a score — §16.2, and collapsing them is how a measurement rule becomes a growth tactic.
 
 ## 12. Implementation plan
 
@@ -710,6 +725,17 @@ The reading is written inside the existing score path, not by an endpoint.
 - **F3 — display names.** A chosen name on a public card is a moderation
   surface this repo does not have. Until F3 is answered, `display_name` is
   stored and never served publicly.
+- **F4 — should the daily be a key to the gallery?** §16.3 makes a
+  server-stamped practice round the key that exists today. The daily could be a
+  second key, but only if it starts submitting to the service — today it never
+  leaves the browser, and `docs/SHARING.md` §8 treats that as a feature ("no
+  server round trip is needed to agree on what today is"). The trade is one
+  route and one column against a daily that still works offline and in the
+  static export. It is a product call, not an engineering one.
+- **F5 — the one-page cap** for a signed-in visitor who has not played (§16.3).
+  It reuses the shipped `GALLERY_PAGE_SIZE` of 24, so it adds no number, but
+  where "a look" ends and "a search" begins is a judgement and the founder owns
+  it.
 
 ## 13. Flip conditions
 
@@ -770,7 +796,15 @@ of a working gallery and needs no ADR.
    somebody who practised between runs is not being re-measured, they have
    changed. The 44.4% figure inherits the same N = 44 demo cohort as everything
    else in §3.
-8. **`profile_identities` does not undo RENAME I3.** Attempts, sittings and
+8. **The gate is a spoiler default, not access control.** Anyone can collect
+   share links other people posted, or ask a friend, and see cards without
+   playing (§16.4). Nothing in §16 is a security boundary, and calling it one
+   would be the overclaim this document keeps refusing elsewhere.
+9. **The gate's cost is not measured.** Nobody knows how many people bounce at
+   a locked wall rather than play a round, because nothing is gated today. The
+   preview exists to make that number small; whether it does is §16.12's flip,
+   and it needs a month of real traffic to read.
+10. **`profile_identities` does not undo RENAME I3.** Attempts, sittings and
    credentials still point at `participants.id` and are still orphaned by an
    instance switch. This design saves the profile, not the history.
 
@@ -792,3 +826,541 @@ of a working gallery and needs no ADR.
 | `?held=current` / `?held=ever` | a card is a frozen snapshot of one run, so neither word is true of it; "ever" also reads as a bigger cohort than it is |
 | history in the share payload | a second public fact with no second opt-in, and `docs/SHARING.md` §2 allows no default share |
 | a forum table "while we are here" | not asked for, and it would be the second definition of what a type is |
+| a gate whose only key is a completed sitting | TEN-149 means nobody can sit, so the wall would be readable by nobody, forever. A gate whose key does not exist is a wall (§16.3) |
+| a blurred or faded gallery behind the gate | a blurred card is a full card in the DOM with a filter over it — a leak with a decoration on it. Withholding is server-side (§16.5.3) |
+| gating the `/s/<token>` share view | the token is a capability its owner handed over on purpose; gating it breaks the loop `docs/SHARING.md` exists to build, and a preview that 401s does not spread (§16.4) |
+| a claimed local practice day as a key | `practice_claims` holds days a browser asserted, so the gate would be openable by `POST /practice/claim` with a made-up date (§16.3) |
+| the daily as a key, today | it has no route and never leaves the browser, so the service that owns the answer cannot verify it. Founder step F4 (§12.7) |
+| a preview of the newest cards | recency on a public page, beside a token circulating on social, is a weak identification, and it turns the preview into a feed people time their publishing for (§16.5.2) |
+| a modal over the share page | founder refinement 2 replaced it: one canonical URL, one server render, works with JavaScript off and for a crawler. A modal is a client nicety over a page that already stands alone (§16.4) |
+| a separate `/gallery/preview` URL | a third surface showing the same six cards is a third thing to keep on the safe list (§16.4) |
+| sign-in justified as spoiler protection | a signed-in stranger is exactly as unattempted as a signed-out one, so the identity gate protects no score and may not borrow the argument (§16.2) |
+| `sharePayloadSchema.pick()` for the preview card | a new opt-in section would join the preview automatically. The preview is a hand-listed strict object (§16.10) |
+| a per-card `og:image` for the gallery | it would publish six specific people's card art to every scraper, and be re-argued on every sample change. One static image (§16.7) |
+| a reciprocity rule ("publish to see") | a share only exists over a completed attempt, so it constrains nobody, and it would buy low-effort cards published for access (§16.8) |
+
+## 16. Two gates: sign-in, and having taken part
+
+Added 2026-09-06, second amendment, over three founder messages read together:
+
+1. *"to see the forum / gallery people need to take the test first."*
+2. *"I think the share link should have some spoilers where you can see a modal
+   of the gallery, i.e. a preview."*
+3. *"Not a modal, but something that can still show a preview and requires
+   someone to sign in. Similar to a Twitter share link."*
+
+**The shape is the public post page.** A shared link resolves to a real,
+server-rendered, indexable PAGE that anybody can read: the card its owner
+published, plus a bounded preview of the wall around it. Going further asks for
+a sign-in. Going further than that asks for a round of your own.
+
+**The rule.** Other people's WORK is not readable by someone who has not taken
+part. The SHAPE of what people made is readable by anybody.
+
+### 16.1 Why: spoilers, not signups
+
+The defensible reason is **spoiler protection**, and the growth reason is not
+used — not in this document and not in the copy.
+
+The gallery shows what people built and, once the forum exists, how they
+prompted. To somebody who has not yet attempted the same material, that is a
+**worked answer**. This repo already refuses worked answers twice, in these
+words:
+
+- `docs/SHARING.md` §8: the daily grid "describes an ITEM SET that other people
+  have not played yet", so `dailyGrid` takes `hit | miss | skip` and nothing
+  else, and a fourth glyph is refused because "a grid plus one poster's answers
+  is the whole answer sheet".
+- The same file: "The grid guard protects the READ — what somebody sees in a
+  feed before they have played — which is the only thing that can actually be
+  spoiled here."
+
+The participation gate is that guard applied to the wall instead of to a glyph.
+
+"It drives signups" does not survive scrutiny and is not the reason. A gate
+justified by engagement gets widened whenever engagement dips. A gate justified
+by spoilers has a fixed edge — the material you have not attempted — and that
+edge is what §16.3 and §16.5 cut on.
+
+### 16.2 THE TWO GATES ARE DIFFERENT, and only one of them is a measurement rule
+
+This is the section to read before changing anything else here, because
+collapsing these two is how a measurement rule quietly becomes a growth tactic.
+
+| | **sign-in** | **participation** |
+|---|---|---|
+| what it is | an IDENTITY gate | a SPOILER gate |
+| what it protects | the wall from anonymous bulk enumeration — §11 item 4, "never a directory of candidates" — and it is what a profile, a cross-device streak and the right to publish hang off | the measurement: another person's artefact or prompt reaching somebody who has not attempted that material |
+| is it an invariant? | **no.** A product decision, flippable on a number (§16.12) | **yes**, for artefacts and prompts. §11 item 9 |
+| may it use the spoiler argument? | **never** | it is the spoiler argument |
+
+**A signed-in stranger is exactly as unattempted as a signed-out one.** Signing
+in teaches nobody anything about the instrument and protects no score. So
+whatever state 1 gains over state 0 (§16.3) is justified by identity and scale,
+never by spoilers, and the copy for that step must not borrow the spoiler
+sentence.
+
+**Does the preview contaminate a score of record? No, and the reason is exactly
+what it withholds.** Put in the invariants, because it is why a preview may
+exist at all:
+
+> A derived CARD carries no item, no key, no per-item outcome and no artefact
+> (`docs/SHARING.md` §1 — item ids, item content, per-item correctness,
+> confidence, latency, `dPrime`, `brier`, `nSignal`, `nNoise` and event counts
+> are "deliberately NOT sections, and never serialized"). Seeing one before your
+> own attempt therefore changes nothing you could be scored on. **Another
+> person's ARTEFACT or PROMPT is different in kind, and is never served to
+> somebody who has not attempted that material.**
+
+The artefact half is the measurement half. The `site` section carries a T1
+build; T1 is an open build task judged by a comparative-judgement panel
+(`docs/COMPARATIVE-JUDGEMENT.md`) against a brief the next candidate will meet,
+and the artefact is evidence inside a credential (`docs/CREDENTIAL.md` §1 —
+"here is the artifact they built"). Somebody who studies three published builds
+and then attempts that brief has been coached, and their submission is a
+contaminated input.
+
+Two things this does **not** claim, said out loud because the overclaim is
+tempting:
+
+1. It does not protect the item bank. The bank is in the private repo and no
+   browser holds it (`AGENTS.md`, "The repository split"); the daily deals from
+   published content whose keys are public on purpose.
+2. It does not protect the population statistic. That is protected by the frozen
+   anchor being panel-only — `docs/TREND-FORM.md` §2.1: "Track A never sees the
+   anchor." Track A's growth loop is assumed to involve screenshotting items. No
+   gate on a web wall changes that, and none is claimed to.
+
+### 16.3 Three states, and what each one gains
+
+| state | who | what they see | what it gains over the state above |
+|---|---|---|---|
+| **0 — signed out** | anybody, including a crawler | the shared card in full, plus a **preview strip**: six sample cards from the wall, the total published count, and one sentence. No filters, no paging, no search, no artefacts, no tokens | — |
+| **1 — signed in, no round** | authenticated, no qualifying round | the **wall of cards**: the first page — `GALLERY_PAGE_SIZE`, already 24 and already shipped — with the axis filters and facets on. Still no artefact, no forum, and **no paging past that page** | browsing and filtering instead of a fixed sample of six — plus the things sign-in is actually for: a profile, a streak that follows them across devices, and the right to publish |
+| **2 — one qualifying round** | a completed, SERVER-STAMPED practice round | the whole wall: every page, every filter, every published card and its `/s/<token>` link | the wall as a **search** rather than a look — unbounded browsing |
+| **3 — a sitting of their own** | a completed sitting, or (once §6.2's partial sittings exist) the tracks the artefact came from | the **artefacts**: the `site` section, and any future forum thread carrying prompts | the measurement half, §16.2 |
+
+**What each boundary is for, in one line each.** 0 → 1 is identity. 1 → 2 is
+scale: a fixed page is a look, and the whole wall is a search, and it is the
+search that "the wall is not readable by someone who has not taken part"
+actually means. 2 → 3 is the measurement.
+
+**The one-page cap on state 1 is not a spoiler rule and is not described as one.** It is the existing `GALLERY_PAGE_SIZE` (24, `packages/contract/src/gallery.ts`), so it invents no number and no new constant.
+Cards are spoiler-safe (§16.2). The cap exists so that mining the wall costs a
+round rather than an account, and so that the founder's rule — take part before
+you read other people's work — has a real edge without the page being a wall.
+It is the number most likely to be wrong in this document, and §16.12 flips it
+on traffic rather than on taste.
+
+**If signing in gained a visitor nothing, the step would be friction with no
+payoff and should not ship.** It gains the two rows above and it is worth saying
+in the visitor's own terms rather than ours (§16.6).
+
+**Tier 2's key exists today.** `POST /practice` and `POST /practice/:id` are
+shipped and server-stamped, and `PRACTICE_MIN_ANSWERS` / `PRACTICE_MIN_ELAPSED_MS`
+(`docs/PROGRESSION.md` §3.1) already define a round that "took long enough to
+have been read". A person can sign in, play one six-card round, and be in —
+tonight, with TEN-149 open. That is the test this design had to pass: §6 says
+only a sitting produces a type, and TEN-149 says nobody can sit, so a gate whose
+only key was a completed sitting would ship a wall readable by **nobody**. A
+gate whose key does not exist is a wall.
+
+**A qualifying round is a SERVER-STAMPED round; a claimed local day is not.**
+`practice_claims` holds days a browser asserted (`docs/PROGRESSION.md` §3.6: "a
+table of its own, so a client-asserted day can never wear a server stamp"). A
+gate that accepted a claimed day would be opened by `POST /practice/claim` with
+a made-up date, which is not a gate. The predicate reads practice sessions,
+never claims.
+
+**The daily is not a key yet, and saying otherwise would be false.**
+`packages/contract/src/routes.ts` carries `startPractice`, `claimPractice` and
+`submitPractice`, and nothing daily; `docs/SHARING.md` §8 makes a virtue of it —
+"no server round trip is needed to agree on what today is". A round that never
+leaves the browser cannot be verified by the service that owns the answer.
+Making the daily a key needs a server-stamped daily submit: founder step **F4**
+(§12.7). Until then the copy says "practice round", because that is the door
+that opens.
+
+**Anonymous play stays anonymous, and stays open to play.** Nothing here
+gates `/practice`, `/daily`, `/wall` or the static export. The gate is on the
+wall of other people's work, never on the work.
+
+### 16.4 The share page: the destination, not a doorway
+
+**Decision: `/s/<token>` keeps working for everybody, exactly as it does today.
+No token starts 404ing, nothing that was public yesterday moves behind auth, and
+`docs/SHARING.md`'s promises are unbroken.** The page is where the link lands,
+and it is complete on arrival: the card, then the preview strip, then one
+sentence.
+
+The gate is on the INDEX, never on the capability. This repo already made that
+distinction — `docs/SHARING.md` §3, "Unlisted is not published": a capability URL
+"is not listed anywhere, is not indexed, and is only reachable by someone the
+candidate handed it to". The wall is a search nobody handed you. A link is a
+gift: one card, chosen by its owner, sent on purpose. Gating it would make the
+owner's own act of sending conditional on the recipient's participation, which
+is not the founder's rule and reads as a demand.
+
+**There is no modal.** One canonical URL, one server render. The preview strip
+is server-rendered HTML on the share page and on a locked `/gallery`; it works
+with JavaScript off, it works for a crawler, it works at 360 px, and there is no
+overlay state to get out of sync with a page. A modal presentation may be added
+later as a client nicety over a page that already stands alone — never as the
+route to the content, and never as the only way to read it.
+
+There is also **no separate `/gallery/preview` page**. The preview is a
+component over one service route, rendered inline in the two places it belongs.
+A third URL showing the same six cards would be a second thing to keep on the
+safe list.
+
+Two consequences of leaving the link ungated, both accepted:
+
+1. Somebody determined can collect links other people posted and see cards
+   without playing. So can they by asking a friend. The gate is a spoiler
+   default, not an access-control system, and this document does not call it
+   one.
+2. The gallery tile links to `/s/<token>` (`docs/SHARING.md` §7.1) and that stays
+   true. The tile is behind the gate; the link it points at is not; and the
+   preview strip carries no token at all (§16.5.1).
+
+**If this is ever reversed** — if a share view starts demanding participation —
+`docs/SHARING.md` §2's "recoverable by its owner" and §4's social preview must
+both be reopened in the same change, because a preview that 401s does not
+spread. Do not reverse it in a corner.
+
+### 16.5 The preview strip
+
+**The line, and it is the whole design: a preview may reveal the SHAPE of what
+people made, and nothing that functions as an answer.**
+
+#### 16.5.1 The two lists
+
+**Safe to preview** — served to anybody, on a public, indexable page:
+
+| field | why it is safe |
+|---|---|
+| `playerType.code`, `name`, `tagline` | a lens over four aggregate numbers; names no item |
+| the four poles: letter, label, `strength`, the meter, `evidence` | `evidence` describes the OWNER's own behaviour ("revised most builds"), never an item |
+| `tracks` — four 0-100 values | track SHAPE. `docs/SHARING.md` §1: "cannot identify which items were drawn, cannot reveal an answer key, and do not change with item content" |
+| `band` | a quota band over the demo cohort, not a judged result |
+| the character portrait | art, keyed off the code |
+| `completedOn` | one UTC day |
+| counts: cards published, people who published | aggregate, names nobody |
+| **the shared card itself**, on `/s/<token>` | its owner published it and the page is already showing it. Showing it again gives nothing away |
+
+**Never in a preview, withheld SERVER-SIDE** — absent from the response body,
+never hidden in the DOM:
+
+| field | why it is withheld |
+|---|---|
+| the `site` section — the T1 build | a worked answer to a brief the reader has not attempted (§16.2). Invariant, not preference |
+| prompt text, now or in the forum | the same thing in another medium |
+| any rationale, tell or key | teaching material for a deck; a preview is not where to meet one cold |
+| anything derived from an operational item — id, content, per-item outcome, confidence, latency, `dPrime`, `brier`, `nSignal`, `nNoise`, event counts | already never serialized (`docs/SHARING.md` §1); the preview adds no exception |
+| the owner's `note` | the candidate's own words, human-approved for the WALL. A public page is a wider audience than the wall |
+| the share `token`, and any `/s/` link | a token is a capability, and a capability does not belong in a public, cacheable, indexed page |
+| `displayName` | not served publicly at all until founder step F3 (§12.7) |
+| facet counts per axis | §16.5.3 |
+
+The rule behind both lists in one line: **if a field could help somebody
+recognise an item, or hand them another person's work on material they have not
+met, it is not in the preview.** The safe list describes a person's run. The
+withheld list describes the instrument, or another person's work on it.
+
+**A crawler and a signed-out visitor get the same bytes.** That is the test of
+whether the line is real: if the two ever differ, something is being withheld by
+presentation rather than by the server.
+
+#### 16.5.2 How many cards, and which
+
+**Six cards, a FIXED sample, deterministic and stable. Not the newest.**
+
+- **Newest leaks recency.** "Published in the last hour", on a public page,
+  beside a token circulating on social, is a weak identification of one person —
+  and it turns the preview into a feed people time their publishing for.
+- A fixed sample is **cacheable**, so a crawler, a scraper and a human see the
+  same page, and it cannot drift from what was indexed.
+- Six is two rows of three on a phone and one row on a desktop. It is enough to
+  show that the cards differ from each other, which is all the preview must
+  prove.
+
+**Selection: the six oldest published, card-only shares** — oldest, because it is
+the one order that never changes; card-only (`site_digest IS NULL`), so no
+artefact can enter the sample even before the projection strips it. The sample
+is recomputed only when a member is revoked or refused, which is also the only
+way it goes stale. With fewer than six, the preview shows what there is and says
+so — never a placeholder, never a card invented for the purpose.
+
+**Personalised previews are rejected.** A preview that varies by viewer has to
+have its withholding re-argued per viewer, and it cannot be cached or crawled
+coherently.
+
+#### 16.5.3 What is withheld, and how
+
+**The withholding is server-side. The wall's `entries` are ABSENT from a state-0
+response — not empty, not `null`, never present-but-hidden.** The browser never
+receives what it must not show, so there is nothing for `filter: none` in
+devtools to reveal. A blurred card is a full card in the DOM with a decoration
+over it: a leak, not a design, and it is refused by name.
+
+**Facets are withheld at state 0 too.** §8 argues facet counts are safe because
+each counted card is individually visible; for a state-0 caller they are not, so
+the argument does not carry — a facet of size 1, plus a card circulating on X, is
+a weak identification. Facets arrive with the filters, at state 1.
+
+**The tests that prove it.** Private repo,
+`packages/backend/test/galleryGate.test.ts`, in the style
+`packages/report/test/share.test.ts` already uses: serialize a state-0 response
+and assert the string contains no share token, no `/s/` path, no `site`, no
+`note`, no `displayName`, and that the parsed object has no `entries` and no
+`facets` key — forbidden-substring and exact-object, the two layers that already
+guard the share payload. Public repo: a view test asserts the preview renders no
+wall entry and no element carrying a blur, an opacity or a `user-select` style,
+so the design cannot become CSS-recoverable later without failing a build.
+
+### 16.6 The copy: three states, three sentences, and what sign-in really buys
+
+Collapsing any pair produces the sentence that reads "sign in" to somebody who
+is already signed in.
+
+| state | headline | body | action |
+|---|---|---|---|
+| **0 signed out** | "This is one card from a real Foray run." | "Below is a sample of what other people published. Sign in to browse the wall — you get a profile, a practice streak that follows you across devices, and the ability to publish a card of your own." | "Sign in" |
+| **1 signed in, no round** | "One round opens the whole wall." | "You are seeing the first page. Play one six-card practice round and every page and filter opens. It is held back so nobody reads other people's work before their own first go — about five minutes." | "Play a practice round" → `/practice` |
+| **3-locked section, on an open wall** | (inline, on the card) | "The build behind this card opens once you have sat the exam yourself. It is a worked answer to a brief you have not attempted." | no button while TEN-149 is open; the sentence stands alone |
+
+**Note which sentence carries the spoiler reason.** State 1's does. State 0's
+does not, and may not: signing in protects no measurement (§16.2), so its copy
+says what the person actually gets — a profile, their own type once they take
+part, a streak across devices, and the right to publish. That is the honest
+answer in their terms, and if it is ever not enough to justify the step, the
+step should go rather than the sentence get stronger.
+
+Exported as constants beside `BAD_QUERY_COPY` in the gallery feature, so the
+honesty tests (`SHARE_TEXT_FORBIDDEN`, `efficacyClaims.test.ts`) run over them
+like every other emitted string. Three words are refused in review and in test:
+**exclusive**, **members**, and **unlock** as a noun. No sentence counts what
+the visitor is missing — "412 cards you cannot see" is pressure wearing a fact.
+The register is `docs/PROGRESSION.md` §3.6's, which already refuses scarcity and
+countdowns.
+
+**The rule every line must satisfy: the action it names must be possible TODAY.**
+That is why state 1's key is a practice round and not a sitting, and why the
+tier-3 sentence names no button while nobody can sit.
+
+### 16.7 Crawlers and Open Graph
+
+A crawler carries no identity, so a crawler is state 0, and everything it can
+reach is on the safe list of §16.5.1. That is deliberate: the public page is
+public because there is nothing on it to withhold.
+
+- **`/s/<token>` is unchanged**, and stays `noindex` with `cache-control:
+  no-store` (`docs/SHARING.md` §2). The preview strip added to it carries no
+  token and no artefact, so the page's crawl posture does not change.
+- **`/s/<token>/card.png` is unchanged.** It renders only from the frozen
+  payload, holds no key, reads no store, and 404s on a revoked or unknown token.
+  Nothing gated can leak through it, because nothing gated is in the payload it
+  reads.
+- **`/gallery` serves a crawler the state-0 page**: the preview strip plus the
+  existing generic `metadata` in `app/gallery/page.api.tsx`, which describes the
+  wall and names no card. No wall entry is server-rendered to an unauthenticated
+  caller, so no search cache can hold one. It names nobody — `displayName` is
+  not served (§16.5.1) — which is why it may be indexed at all;
+  `docs/CREDENTIAL.md` §4 keeps `noindex` on every surface that NAMES a person.
+- **No new `og:image` route.** The gallery's own social image, if it ever gets
+  one, is a STATIC asset — never a render of the six sample cards. A per-card OG
+  on a public page would publish six specific people's card art to every scraper
+  and would have to be re-argued each time the sample changed.
+
+Nothing gated leaks through metadata, because the withholding is server-side
+(§16.5.3) and the only per-card metadata surface in this app is the share view,
+which is not gated. A gate implemented in the browser would have leaked through
+both.
+
+### 16.8 Reciprocity — a recommendation, marked as one
+
+The founder did not ask whether publishing requires having published, so this
+document invents no rule. What it records is that the system already answered it:
+
+**A share can only exist over a completed attempt.** `createShare` builds the
+payload from a stored log, so anybody who can publish has already taken part.
+There is no publisher who has not participated, and a reciprocity rule would
+constrain nobody.
+
+**Recommendation, not a decision:** do not add one later either. "Publish to
+see" turns a wall into a toll and converts a spoiler default into a demand, and
+the first thing it produces is low-effort cards published to buy access — a
+moderation cost with nothing on the other side of it.
+
+### 16.9 Never-trade, added to §11 as item 9
+
+Neither gate may ever:
+
+- become a **paywall**, or be lifted by paying, in any currency;
+- become a **ranking** — no "you have seen N cards", no state shown as status, no
+  badge for holding a key;
+- become a reason to take the test **again**. One round opens it for good. A gate
+  that re-closes is a retention mechanic wearing a spoiler argument;
+- be described to users as **exclusivity**, membership or a club. The
+  participation step is described as spoiler protection, in the words of §16.6
+  and no others, and the sign-in step is described by what it gives the person;
+- have a key that costs money, an invitation, or a wait;
+- be checked in the **browser**. A gate the client evaluates is a gate the client
+  can lie about, and it ships the data it is gating on the way past.
+
+And the sign-in gate may never borrow the spoiler justification (§16.2), because
+a signed-in stranger is exactly as unattempted as a signed-out one. The preview
+may never carry an artefact, a prompt, a rationale, a key, an item-derived field,
+a note or a token. Widening the safe list is an ADR, not a ticket.
+
+### 16.10 Implementation
+
+**Where the check runs: the exam service, in one place.** The service owns the
+store, so it is the only side that knows whether a round happened. This repo
+holds no store and must not grow one
+(`packages/core/test/frontendOnly.test.ts`).
+
+*PRIVATE repo.*
+
+- One predicate, defined once beside `PUBLICLY_SERVED` and composed, never
+  re-implemented (`docs/SHARING.md` §7.1's rule):
+
+  ```sql
+  -- state 2: one server-stamped qualifying round. Never practice_claims.
+  EXISTS (SELECT 1 FROM practice_sessions s
+           WHERE s.participant_id = $1
+             AND s.completed_at IS NOT NULL
+             AND s.answer_count >= $min_answers
+             AND s.completed_at - s.started_at >= $min_elapsed)
+  -- state 3: an attempt of their own.
+  OR EXISTS (SELECT 1 FROM attempts a
+              WHERE a.participant_id = $1 AND a.completed_at IS NOT NULL)
+  ```
+
+  The floors are the exported `PRACTICE_MIN_ANSWERS` and
+  `PRACTICE_MIN_ELAPSED_MS`, so the gate and the streak cannot disagree about
+  what a round is.
+- `GET /v1/gallery` becomes **identity-OPTIONAL**: an unauthenticated caller gets
+  **200** with the preview payload, never a 401. A 401 cannot carry the sentence
+  that says what to do, and the page must.
+- The state is computed once per request, before the listing query. A state-0
+  request runs the preview query instead of the listing query, and a state-1
+  request runs the listing query with `limit = min(limit, GALLERY_PAGE_SIZE)` and `offset = 0`
+  **enforced server-side** — a browser asking for page 2 gets page 1, and the
+  response says which state it is in rather than silently truncating (the
+  TEN-107 rule: never normalise a filter in silence; here the cap is a property
+  of the caller, not of the query, so it is reported in `access`, not a 400).
+- `GET /v1/gallery/preview` — the same preview payload on its own route,
+  unauthenticated and cacheable, for the share page and the locked gallery. It
+  is the only public gallery-shaped route, and it selects card-only shares by
+  construction (`site_digest IS NULL`), so an artefact cannot enter it even if
+  the projection changes later.
+- State 3 is per-section, not per-card: a state-2 caller gets the card with
+  `payload.site = null` and `siteLocked: true`, redacted **in the projection**.
+
+*PUBLIC repo — `packages/contract`.*
+
+```ts
+export const GALLERY_ACCESS_STATES = ["signed-out", "no-round", "open"] as const;
+
+export const galleryAccessSchema = z.strictObject({
+  state: z.enum(GALLERY_ACCESS_STATES),
+  /** 0 signed out · 1 signed in, no round · 2 a round · 3 a sitting */
+  tier: z.number().int().min(0).max(3),
+  /** Cards published. Aggregate, and the only wall number state 0 gets. */
+  total: z.number().int().nonnegative(),
+  /** Present when the server capped the page (state 1). Null otherwise. */
+  pageCap: z.number().int().positive().nullable(),
+});
+
+/** The preview card: the safe list of §16.5.1 and nothing else. */
+export const previewCardSchema = z.strictObject({
+  code: z.string().regex(PLAYER_TYPE_CODE_RE),
+  name: z.string().min(1),
+  tagline: z.string().min(1),
+  poles: z.array(previewPoleSchema).max(4),   // track, letter, label, strength
+  tracks: z.record(z.enum(TRACK_IDS), z.number().min(0).max(100)),
+  band: z.string().min(1),
+  completedOn: z.string().nullable(),          // one UTC day
+});
+```
+
+The object is built by one pure `previewCardFrom(payload)` in
+`packages/report`, an ALLOWLIST in the same shape as `sharePayloadFrom`
+(`docs/SHARING.md` §1: "the payload is an ALLOWLIST, not a redaction"), and the
+contract's schema is a **strict object over a hand-listed set of fields** — not
+a `.pick()` off the payload, and never `sharePayloadSchema` itself, which
+delegates to `parseSharePayload` and therefore carries whatever the payload
+carries. `galleryEntrySchema`
+carries the whole frozen payload on purpose (`docs/SHARING.md` §7.1), and that
+is exactly the property a preview must not inherit: a new opt-in section must
+appear on the wall automatically and must NOT appear in the preview
+automatically. One contract test asserts a preview card parses with `site`,
+`note` and `token` in the input and absent from the output; one asserts that
+adding a field to the share payload does not add it here.
+
+The listing response's `entries` and `facets` become **optional and absent** when
+`state === "signed-out"` — optional, not nullable and not empty, so a client that
+forgets to check `state` fails to compile rather than rendering an empty wall
+under the "nobody has published a card yet" sentence (§9.3, which must keep
+meaning what it says).
+
+*PUBLIC repo — the app.*
+
+- `GalleryView` starts sending identity headers. It sends none today, on purpose
+  ("what is listed does not depend on who is looking"), and `gallery.ts`'s own
+  header says `GET /gallery` is "public, unauthenticated". Both comments become
+  false and must change in the same commit as the behaviour. The headers are the frozen
+  `BROWSER_REQUEST_HEADERS` list, so no CORS preflight changes.
+- `features/gallery/GalleryPreview.tsx` renders the six sample cards and the
+  §16.6 copy. It imports no `GalleryCard`: a preview that reuses the wall's tile
+  inherits the wall's fields, which is the leak this section exists to prevent.
+- `app/s/[token]/page.api.tsx` renders the strip under the card, server-side. No
+  dialog, no client route, no new URL.
+- `/gallery` renders the same component when `state === "signed-out"`, and the
+  wall plus the state-1 sentence when `state === "no-round"`.
+- The four empty-state sentences of §9.3 are untouched and are never shown to a
+  locked caller: "nobody has published a card yet" and "you have not played yet"
+  are different facts and must never be swapped.
+- Bundle budgets for `/gallery` and `/s/[token]` are re-measured
+  (`apps/web/test/bundleBudget.test.ts`).
+
+*Order.* The contract's `access` and `previewCard` blocks first, then the service
+predicate and the preview route, then the share-page strip and the gallery
+states. The browser must not be able to render a state the service has not
+learned to send — the rule §12.6 already applies to the filter.
+
+### 16.11 Steps that need the founder
+
+- **F4 — is the daily a key?** §16.3 makes a server-stamped practice round the
+  key that exists today. The daily could be a second key, but only if it starts
+  submitting to the service; today it never leaves the browser and
+  `docs/SHARING.md` §8 treats that as a feature. One route and one column against
+  a daily that still works offline and in the static export.
+- **F5 — the one-page cap.** It reuses the shipped `GALLERY_PAGE_SIZE` of 24,
+  so it adds no number, but where "a look" ends and "a search" begins is a
+  judgement and the founder owns it.
+- **F1 and F3 above still apply**: the code-versus-character headline, and
+  whether a display name is ever served publicly. A named card changes the
+  crawl posture of §16.7 and would have to be re-argued there.
+
+### 16.12 Flip conditions
+
+- **The sign-in step goes** if it gains the visitor nothing measurable: state-0
+  pages viewed rising over a month with at least 200 of them while sign-ins do
+  not move. It is not an invariant and it protects no score (§16.2), so it is
+  the first thing to drop rather than the last.
+- **The page cap moves or goes.** If almost nobody at state 1 reaches the bottom
+  of the first page, the cap is theatre and should go. If the wall is being
+  scraped page by page by signed-in accounts, it should tighten.
+- **The card tier opens** — the whole wall public — if the numbers show the gate
+  turning people away rather than delaying them. Cards were never the
+  measurement half.
+- **The artefact tier never opens on a number.** It is item 9 of §11, and it
+  changes only if T1 stops being judged against a re-used brief.
+- **The preview shrinks** if a card ever starts carrying a field that names an
+  item. The safe list is a list, not a rule of thumb, and it is re-read whenever
+  the payload version changes (§12.4 takes it to v3).
+- **The gate tightens to a sitting** only if TEN-149 is fixed AND a measured
+  spoiler effect appears — published builds converging on a shape after the wall
+  opens, say. Never as a growth decision.
