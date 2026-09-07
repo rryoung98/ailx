@@ -59,6 +59,13 @@ export const galleryEntrySchema = z.strictObject({
   at: z.string().min(1),
   payload: sharePayloadSchema,
   approvedBy: z.string().nullable(),
+  /**
+   * The artefact was REMOVED from `payload.site` before serialization, for a
+   * caller who has not sat the material (docs/ADR-profile-and-type.md §16).
+   * Present so a renderer can say the section is withheld rather than say the
+   * owner published nothing. Absent means nothing was removed.
+   */
+  siteLocked: z.literal(true).optional(),
 });
 export type GalleryEntry = z.infer<typeof galleryEntrySchema>;
 
@@ -170,7 +177,7 @@ export function parseAxisFilter(raw: string): QueryParseResult<AxisFilter> {
  * the both-sides rule.
  */
 export const galleryAxisFacetSchema = z.strictObject({
-  track: z.enum(AXIS_TRACKS as unknown as [string, ...string[]]),
+  track: z.enum(AXIS_TRACKS as unknown as [AxisTrack, ...AxisTrack[]]),
   letter: z.string().length(1),
   label: z.string().min(1),
   count: z.number().int().nonnegative(),
@@ -252,7 +259,7 @@ export type GalleryAccess = z.infer<typeof galleryAccessSchema>;
  * item-derived.
  */
 export const previewPoleSchema = z.strictObject({
-  track: z.enum(AXIS_TRACKS as unknown as [string, ...string[]]),
+  track: z.enum(AXIS_TRACKS as unknown as [AxisTrack, ...AxisTrack[]]),
   letter: z.string().length(1),
   label: z.string().min(1),
   /** Absent on a v1/v2 card: it predates the number and renders no meter. */
@@ -264,7 +271,7 @@ export const previewCardSchema = z.strictObject({
   name: z.string().min(1),
   tagline: z.string().min(1),
   poles: z.array(previewPoleSchema).max(AXIS_TRACKS.length),
-  tracks: z.record(z.enum(AXIS_TRACKS as unknown as [string, ...string[]]), z.number().min(0).max(100)),
+  tracks: z.record(z.enum(AXIS_TRACKS as unknown as [AxisTrack, ...AxisTrack[]]), z.number().min(0).max(100)),
   band: z.string().min(1),
   completedOn: z.string().nullable(),
 });
