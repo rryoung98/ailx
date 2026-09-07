@@ -107,16 +107,41 @@ describe("response-schema coupling", () => {
 
   it("validates the body the route's `response` line names", () => {
     expect(API_ROUTES.gallery.response).toBe("{ gallery: GalleryListing }");
-    const parsed = API_RESPONSE_SCHEMAS.gallery.safeParse({
-      gallery: { entries: [], total: 0, facets: [], query: parsedQuery() },
-    });
+    const listing = {
+      access: { state: "open", tier: 2, total: 0, pageCap: null },
+      entries: [],
+      total: 0,
+      facets: [],
+      query: parsedQuery(),
+    };
+    const parsed = API_RESPONSE_SCHEMAS.gallery.safeParse({ gallery: listing });
     expect(parsed.success).toBe(true);
     // The envelope is checked too: a bare listing is not this route's body.
-    expect(API_RESPONSE_SCHEMAS.gallery.safeParse({ entries: [], total: 0, facets: [], query: parsedQuery() }).success).toBe(false);
+    expect(API_RESPONSE_SCHEMAS.gallery.safeParse(listing).success).toBe(false);
   });
 
-  it("covers one route of the manifest, and says so rather than implying more", () => {
-    expect(Object.keys(API_RESPONSE_SCHEMAS)).toEqual(["gallery"]);
+  /**
+   * A LOCKED body is a different shape, and the schema knows it: no `entries`
+   * and no `facets` AT ALL. Not empty arrays — an empty wall and a withheld
+   * wall are different facts, and the browser must not be able to confuse them
+   * (docs/ADR-profile-and-type.md §16.5.3).
+   */
+  it("validates a state-0 body, which carries no wall at all", () => {
+    const locked = {
+      gallery: {
+        access: { state: "signed-out", tier: 0, total: 12, pageCap: null },
+        preview: { cards: [], total: 12 },
+        query: parsedQuery(),
+      },
+    };
+    expect(API_RESPONSE_SCHEMAS.gallery.safeParse(locked).success).toBe(true);
+    // ... and `entries: null` is not a spelling of absent.
+    const nulled = { gallery: { ...locked.gallery, entries: null } };
+    expect(API_RESPONSE_SCHEMAS.gallery.safeParse(nulled).success).toBe(false);
+  });
+
+  it("covers two routes of the manifest, and says so rather than implying more", () => {
+    expect(Object.keys(API_RESPONSE_SCHEMAS)).toEqual(["gallery", "profile"]);
     expect(Object.keys(API_ROUTES).length).toBeGreaterThan(30);
   });
 });

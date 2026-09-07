@@ -34,10 +34,21 @@ import { candidateComposite } from "./composite.js";
 import { trackInsights, type TrackProcessInsight } from "./insights.js";
 import { identitySignals, playerType, type PlayerTypeSignals, type Pole } from "./playerType.js";
 
-export const SHARE_PAYLOAD_VERSION = 2;
+export const SHARE_PAYLOAD_VERSION = 3;
 
-/** Versions a stored row may legally have. v1 predates the opt-in sections. */
-export const SHARE_PAYLOAD_VERSIONS = [1, SHARE_PAYLOAD_VERSION] as const;
+/**
+ * Versions a stored row may legally have. v1 predates the opt-in sections; v2
+ * predates the pole STRENGTH, and v3 carries it.
+ *
+ * The bump exists because `Pole.strength` and `Pole.evidence` were computed and
+ * then DROPPED on the way into the stored payload, so every published card
+ * rendered a letter with no indication of how firmly it was decided and the
+ * store held no number to filter on (docs/ADR-profile-and-type.md §2). A v1 or
+ * v2 row has no strength and never will: it reads back as `undefined`, which
+ * every reader treats as UNDECIDED — the truthful reading, since we do not know
+ * how firmly that letter was decided.
+ */
+export const SHARE_PAYLOAD_VERSIONS = [1, 2, SHARE_PAYLOAD_VERSION] as const;
 
 /**
  * The opt-in units. ONE list, used by the builder, the parser, the server-side
@@ -110,6 +121,13 @@ export interface SharePole {
   letter: string;
   label: string;
   high: boolean;
+  /**
+   * 50-100, toward the chosen pole — how firmly this letter was decided.
+   * OPTIONAL, and absent on every v1/v2 row ever written. A reader that finds
+   * it missing must read the pole as undecided (`isUndecided`), never as a
+   * number: "we do not know" and "50" are different facts.
+   */
+  strength?: number;
 }
 
 /**
@@ -280,6 +298,7 @@ export function sharePayloadFrom(
         letter: pole.letter,
         label: pole.label,
         high: pole.high,
+        strength: pole.strength,
       })),
     },
     tracks,
@@ -372,6 +391,11 @@ export function parseSharePayload(value: unknown): SharePayload | null {
         letter: String(pole.letter),
         label: String(pole.label),
         high: pole.high === true,
+        // A missing strength stays MISSING. Reading it as 0, or as 50, would
+        // turn "this card predates the number" into a measurement.
+        ...(typeof pole.strength === "number" && Number.isFinite(pole.strength)
+          ? { strength: pole.strength }
+          : {}),
       })),
     },
     tracks: clean,

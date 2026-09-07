@@ -42,7 +42,8 @@ describe("sharePayloadFrom", () => {
       sections: CARD_ONLY,
     });
     expect(payload).toEqual({
-      v: 2,
+      // v3 carries the pole STRENGTH, which v1 and v2 computed and threw away.
+      v: 3,
       instrument: "ailx 2026.1",
       band: "Distinction",
       playerType: {
@@ -54,6 +55,7 @@ describe("sharePayloadFrom", () => {
           letter: p.letter,
           label: p.label,
           high: p.high,
+          strength: p.strength,
         })),
       },
       tracks: { t1: 88.2, t2: 79.5, t3: 71.1, t4: 66.9 },
