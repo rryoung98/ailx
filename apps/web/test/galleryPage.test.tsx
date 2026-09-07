@@ -116,6 +116,9 @@ function defaultQuery() {
 
 function listingOf(entries: PublicGalleryEntry[], over: Partial<GalleryListing> = {}): GalleryListing {
   return {
+    // The wall is OPEN unless a test says otherwise: the gate is the service's
+    // decision, and every one of these cases is about what an open wall shows.
+    access: { state: "open", tier: 2, total: entries.length, pageCap: null },
     entries,
     total: entries.length,
     facets: [{ code: payload.playerType.code, name: payload.playerType.name, count: entries.length }],
@@ -423,7 +426,11 @@ describe("a body that is not the shape the route declares", () => {
   });
 
   it("refuses a wrong type, a missing field and an unknown key", async () => {
-    for (const over of [{ total: "1" }, { facets: undefined }, { surprise: true }]) {
+    // `access` is the one field every body carries: it is how the page tells a
+    // withheld wall from an empty one. `facets` is NOT in this list any more —
+    // it is legitimately absent when the wall was withheld, which the locked
+    // case below covers.
+    for (const over of [{ total: "1" }, { access: undefined }, { surprise: true }]) {
       listing = bad(over);
       expect(await markup()).toContain("could not read");
     }
@@ -434,5 +441,69 @@ describe("a body that is not the shape the route declares", () => {
     const html = await markup();
     expect(html).toContain("gallery-card");
     expect(logged.length).toBe(0);
+  });
+});
+
+
+/**
+ * THE GATE, AS THE PAGE SEES IT (docs/ADR-profile-and-type.md §16.5.3).
+ *
+ * The withholding happens in the SERVICE: a locked body carries no `entries`
+ * and no `facets` at all. What is tested here is that the page cannot put them
+ * back, and cannot fake them with a decoration — a blurred card is a full card
+ * in the DOM with a filter over it, which is a leak with a design on it.
+ */
+describe("a wall the caller has not earned", () => {
+  const locked = (state: "signed-out" | "no-round", tier: number): GalleryListing =>
+    ({
+      access: { state, tier, total: 12, pageCap: null },
+      preview: { cards: [], total: 12 },
+      query: defaultQuery(),
+    }) as unknown as GalleryListing;
+
+  it("renders no card, no filter chip and no share link", async () => {
+    listing = locked("signed-out", 0);
+    const html = await markup();
+    expect(html).not.toContain("gallery-card");
+    expect(html).not.toContain("gallery-filters");
+    expect(html).not.toContain("/s/");
+    expect(html).not.toContain(TOKEN);
+  });
+
+  it("carries no blur, no opacity and no user-select — nothing CSS can recover", async () => {
+    listing = locked("signed-out", 0);
+    const html = await markup();
+    for (const decoration of ["blur(", "filter:", "opacity", "user-select", "userSelect"]) {
+      expect(html).not.toContain(decoration);
+    }
+  });
+
+  it("never says nobody has published yet, which is a different fact", async () => {
+    listing = locked("no-round", 1);
+    const html = await markup();
+    expect(html).not.toContain("Nobody has published");
+    expect(html).toContain("One round opens the whole wall.");
+  });
+
+  it("tells a signed-out visitor and a signed-in one different things", async () => {
+    listing = locked("signed-out", 0);
+    const out = await markup();
+    listing = locked("no-round", 1);
+    const inn = await markup();
+    expect(out).not.toBe(inn);
+    expect(out).toContain("This is a preview of the gallery.");
+    // The sign-in step protects no measurement, so its sentence does not
+    // borrow the spoiler argument; the participation step's does.
+    expect(inn).toContain("held back for spoilers");
+  });
+
+  it("uses none of the three refused words, in either state", async () => {
+    for (const state of [locked("signed-out", 0), locked("no-round", 1)]) {
+      listing = state;
+      const html = (await markup()).toLowerCase();
+      for (const word of ["exclusive", "members", "unlock"]) expect(html).not.toContain(word);
+      // No sentence counts what the visitor is missing.
+      expect(html).not.toContain("12 card");
+    }
   });
 });

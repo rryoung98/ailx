@@ -13,6 +13,7 @@
 import { z } from "zod";
 import { parseCaseQuery } from "./moderation.js";
 import { galleryListingSchema, parseGalleryQuery } from "./gallery.js";
+import { profileSchema } from "./profile.js";
 import type { ApiQueryParserName, ApiRouteKey } from "./routes.js";
 
 /**
@@ -47,5 +48,6 @@ export type ResponseSchema<T> = z.ZodType<T>;
 
 export const API_RESPONSE_SCHEMAS = {
   gallery: z.strictObject({ gallery: galleryListingSchema }),
+  profile: z.strictObject({ profile: profileSchema }),
 } as const satisfies Partial<Record<ApiRouteKey, z.ZodType>>;
 

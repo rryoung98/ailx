@@ -78,6 +78,32 @@ function notice(result: ServiceState<unknown>): string | undefined {
   return undefined;
 }
 
+/**
+ * The two locked states, and they are TWO (ADR §16.4). Collapsing them
+ * produces the sentence that reads "sign in" to somebody who is already
+ * signed in.
+ *
+ * The register is spoiler protection, never scarcity: no count of what is
+ * being missed, no timer, and the words "exclusive", "members" and "unlock"
+ * as a noun are refused in review and in test. The action each sentence names
+ * must be possible TODAY — a gate whose key does not exist is a wall — which
+ * is why both point at a practice round rather than at a sitting.
+ */
+export const LOCKED_COPY: Record<"signed-out" | "no-round", { title: string; body: string }> = {
+  "signed-out": {
+    title: "This is a preview of the gallery.",
+    body:
+      "The whole wall opens after your own first round — we hold it back so nobody reads other " +
+      "people's work before their own first go. About five minutes.",
+  },
+  "no-round": {
+    title: "One round opens the whole wall.",
+    body:
+      "You are signed in, so this is the last step: play one six-card practice round and every " +
+      "published card and filter opens. It is held back for spoilers, not to keep anyone out.",
+  },
+};
+
 const SORTS: { key: GalleryQuery["sort"]; label: string }[] = [
   { key: "recent", label: "Newest" },
   { key: "oldest", label: "Oldest" },
@@ -115,7 +141,32 @@ export function GalleryView() {
     return <PageError eyebrow={EYEBROW} title={TITLE} message={notice(result)} />;
   }
 
-  const { entries, total, facets, query } = result.data.gallery;
+  const { access, entries, facets, query } = result.data.gallery;
+  // THE GATE, DECIDED BY THE SERVICE (docs/ADR-profile-and-type.md §16).
+  //
+  // A locked response carries no `entries` and no `facets` AT ALL — not empty
+  // arrays, not nulls — so there is nothing here to hide and nothing for a
+  // devtools `filter: none` to recover. This branch renders the sentence that
+  // says what opens the wall; it never says "nobody has published a card yet",
+  // which is a different fact about other people's work.
+  if (entries === undefined || facets === undefined) {
+    const copy = access.state === "signed-out" ? LOCKED_COPY["signed-out"] : LOCKED_COPY["no-round"];
+    return (
+      <main className="page">
+        <div className="container">
+          <p className="eyebrow">{EYEBROW}</p>
+          <h1 style={{ maxWidth: "18ch" }}>{copy.title}</h1>
+          <p className="lede" style={{ maxWidth: "52ch" }}>
+            {copy.body}
+          </p>
+          <p>
+            <Link href="/practice">Play a practice round →</Link>
+          </p>
+        </div>
+      </main>
+    );
+  }
+  const total = result.data.gallery.total ?? 0;
   const shown = query.offset + entries.length;
   // Facet counts are over the whole listed gallery, so this is the unfiltered size.
   const listed = facets.reduce((a, f) => a + f.count, 0);

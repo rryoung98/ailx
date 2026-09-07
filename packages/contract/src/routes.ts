@@ -113,8 +113,23 @@ export const API_ROUTES = {
   moderationComment: { method: "POST", path: "/moderation/:id", response: "{ comment: ModerationComment }" },
   // ---- gallery + review ---------------------------------------------------
   gallery: { method: "GET", path: "/gallery", response: "{ gallery: GalleryListing }", queryParser: "gallery" },
+  /**
+   * The preview strip: a FIXED sample of six published cards and the count
+   * they are a sample of, on the safe list of the ADR §16.5.1 and nothing
+   * else. Unauthenticated and cacheable, because a crawler and a signed-out
+   * visitor must get the same bytes.
+   */
+  galleryPreview: { method: "GET", path: "/gallery/preview", response: "{ preview: GalleryPreview }" },
   reviewQueue: { method: "GET", path: "/gallery/review", response: "{ submissions: GalleryEntry[] }" },
   reviewDecision: { method: "POST", path: "/gallery/review", response: "{ share: GalleryEntry }" },
+  // ---- profile ------------------------------------------------------------
+  /**
+   * The caller's OWN profile: the durable record, and the type derived from
+   * its readings. There is deliberately no route that returns anybody else's,
+   * and no route that WRITES a type — a client-asserted type would be a
+   * client-asserted score-adjacent claim (docs/ADR-profile-and-type.md §6.1).
+   */
+  profile: { method: "GET", path: "/profile", response: "{ profile: Profile }" },
   // ---- practice + progress ------------------------------------------------
   startPractice: { method: "POST", path: "/practice", response: "{ session: { id, itemIds } }" },
   claimPractice: { method: "POST", path: "/practice/claim", response: "{ claimed: string[], progress: ProgressReport }" },

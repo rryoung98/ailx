@@ -95,7 +95,81 @@ const NAMES: Record<string, [string, string]> = {
   PTAE: ["The Explorer", "First contact with all four tracks. Every axis is still in play."],
 };
 
+/**
+ * The character behind a four-letter code, or `null` for anything that is not
+ * one of the sixteen. Exported so `currentType()` names a derived code through
+ * the same table `playerType()` uses — a second name table would be a second
+ * answer to "who is MSVD".
+ */
+export function typeName(code: string): { name: string; tagline: string } | null {
+  const entry = NAMES[code];
+  return entry === undefined ? null : { name: entry[0], tagline: entry[1] };
+}
+
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+
+/**
+ * Below this strength an axis is UNDECIDED and must be rendered as one
+ * (docs/ADR-profile-and-type.md §4.2).
+ *
+ * Derived, not chosen. On the cohort-median fallback path
+ * `strength = 50 + (score - median) / 2`, so a quarter of a cohort standard
+ * deviation maps to 52.0-54.4 depending on the track; 55 covers 0.25 SD on all
+ * four with ONE number instead of four. `test/currentType.test.ts` recomputes
+ * that table from `demoCohortRows()`, so the threshold fails the build if the
+ * demo cohort moves under it.
+ *
+ * HONEST LIMIT, and it is in the ADR too: the mapping is exact only for the
+ * fallback path. For the two behaviour-derived axes (T1 iteration ratio, T3
+ * verification events) `strength` is a saturation meter against a display
+ * constant, not an SD map, so 55 there is a display convention.
+ */
+export const POLE_UNDECIDED_STRENGTH = 55;
+
+/**
+ * "This letter is a coin flip." A pole with no strength recorded at all — an
+ * old v1/v2 share payload never carried one — reads as undecided, because
+ * "we do not know how firmly this was decided" is exactly what undecided
+ * means. It is never read as a number.
+ */
+export function isUndecided(pole: { strength?: number | null }): boolean {
+  const s = pole.strength;
+  return typeof s !== "number" || !Number.isFinite(s) || s < POLE_UNDECIDED_STRENGTH;
+}
+
+/**
+ * One axis, read from a POSITION in [0,1] toward the high pole.
+ *
+ * The single place a position becomes a letter, a label and a strength.
+ * `playerType()` reads one run through it and `currentType()` reads a mean of
+ * three; two spellings of `value >= 0.5` is how a letter and a meter come to
+ * disagree.
+ */
+export function poleAt(track: TrackId, value: number, evidence: string): Pole {
+  const axis = AXES.find((a) => a.track === track);
+  if (axis === undefined) throw new Error(`no axis for track ${track}`);
+  const v = clamp01(value);
+  const high = v >= 0.5;
+  const side = high ? axis.hi : axis.lo;
+  return {
+    track,
+    letter: side.letter,
+    label: side.label,
+    high,
+    strength: Math.round((high ? v : 1 - v) * 100),
+    evidence,
+  };
+}
+
+/**
+ * The inverse of `poleAt`'s strength: the position in [0,1] a stored pole was
+ * read from. Lossy by exactly the rounding `poleAt` applied, and that is the
+ * whole error budget of the three-run mean.
+ */
+export function poleValue(pole: { high: boolean; strength: number }): number {
+  const s = clamp01(pole.strength / 100);
+  return pole.high ? s : 1 - s;
+}
 
 /** Per-track cohort medians (demo cohort, deterministic). */
 export function cohortMedians(): TrackRawScores {
@@ -197,20 +271,14 @@ export function playerType(trackRaw: TrackRawScores, signals: PlayerTypeSignals 
     const value = signal
       ? clamp01(signal.value)
       : clamp01(0.5 + (trackRaw[a.track] - med[a.track]) / 200);
-    const high = value >= 0.5;
-    const side = high ? a.hi : a.lo;
-    return {
-      track: a.track,
-      letter: side.letter,
-      label: side.label,
-      high,
-      strength: Math.round((high ? value : 1 - value) * 100),
-      evidence:
-        signal?.evidence ??
+    return poleAt(
+      a.track,
+      value,
+      signal?.evidence ??
         `${TRACK_META[a.track].code} score ${trackRaw[a.track].toFixed(1)} vs cohort median ${med[
           a.track
         ].toFixed(1)}`,
-    };
+    );
   });
   const code = poles.map((p) => p.letter).join("");
   const [name, tagline] = NAMES[code];

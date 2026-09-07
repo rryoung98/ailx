@@ -6,6 +6,7 @@ import {
   GALLERY_MAX_PAGE_SIZE,
   GALLERY_PAGE_SIZE,
   PLAYER_TYPE_CODE_RE,
+  emptyAxisFilter,
   galleryEntrySchema,
   galleryListingSchema,
   galleryQueryString,
@@ -41,6 +42,8 @@ describe("parseGalleryQuery", () => {
   it("defaults everything when nothing is asked for", () => {
     expect(ok()).toEqual({
       type: null,
+      axis: emptyAxisFilter(),
+      decided: false,
       sort: "recent",
       withSite: false,
       limit: GALLERY_PAGE_SIZE,
@@ -92,8 +95,10 @@ describe("parseGalleryQuery", () => {
   });
 
   it("reads an absent key as absent, not as an empty string", () => {
-    expect(ok({ type: undefined, limit: undefined })).toEqual({
+    expect(ok({ type: undefined, limit: undefined, axis: undefined, decided: undefined })).toEqual({
       type: null,
+      axis: emptyAxisFilter(),
+      decided: false,
       sort: "recent",
       withSite: false,
       limit: GALLERY_PAGE_SIZE,
@@ -195,11 +200,14 @@ describe("the gallery response schema", () => {
   });
 
   const listing = (over: Record<string, unknown> = {}) => ({
+    access: { state: "open", tier: 2, total: 1, pageCap: null },
     entries: [publicEntry(entry())],
     total: 1,
     facets: [{ code: "MSVD", name: "Method Sceptic", count: 1 }],
     query: {
       type: null,
+      axis: emptyAxisFilter(),
+      decided: false,
       sort: "recent",
       withSite: false,
       limit: GALLERY_PAGE_SIZE,
@@ -222,8 +230,10 @@ describe("the gallery response schema", () => {
   });
 
   it("refuses a missing field, a wrong type and an unknown key", () => {
-    const { total: _total, ...noTotal } = listing();
-    expect(galleryListingSchema.safeParse(noTotal).success).toBe(false);
+    // `access` is the one field EVERY response carries: it is how a reader
+    // knows whether the wall it did not receive was withheld or empty.
+    const { access: _access, ...noAccess } = listing();
+    expect(galleryListingSchema.safeParse(noAccess).success).toBe(false);
     expect(galleryListingSchema.safeParse(listing({ total: "1" })).success).toBe(false);
     expect(galleryListingSchema.safeParse({ ...listing(), extra: 1 }).success).toBe(false);
   });
