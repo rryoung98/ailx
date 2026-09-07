@@ -9,11 +9,17 @@
  * — e.g. interleaved writes from a second tab, a duplicated append, or a
  * hand-edited entry — is truncated at the first violation and reported via
  * `dropped`, instead of being silently folded into state.
+ *
+ * ONE THING IS NOT CORRUPTION, and used to be indistinguishable from it: a
+ * `track_scored` entry written before scores had to attest their evidence.
+ * That is a build-age problem, not a tamper, so it is counted separately in
+ * `legacyScores` and skipped rather than truncated at. See `ValidatedLog`.
  */
 
 import { readMigratedItem, removeMigratedItem } from "@ailx/core";
 import type { SequencedEntry, SessionLogEntry } from "./machine.js";
-import { append } from "./machine.js";
+import { append, isPreAttestationScore } from "./machine.js";
+import type { TrackId } from "./scoring.js";
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -79,10 +85,31 @@ export function saveAttempt(storage: StorageLike, log: readonly SequencedEntry[]
 export interface ValidatedLog {
   /** Longest valid prefix of the stored log (machine-replayable, seq 0..n-1). */
   log: SequencedEntry[];
-  /** Entries discarded after the first invariant violation. 0 for a clean log. */
+  /**
+   * Entries discarded after the first invariant violation. 0 for a clean log.
+   * THIS NUMBER MEANS TAMPER, and nothing else. A log left behind by an older
+   * build is counted in {@link legacyScores} instead — see below.
+   */
   dropped: number;
   /** Reason the first dropped entry was rejected (undefined when dropped=0). */
   reason?: string;
+  /**
+   * Pre-attestation `track_scored` entries removed while replaying (TEN-160).
+   *
+   * A build older than 2026-09-01 wrote scores with no `scoredBy` and no
+   * `judgmentIds`, so `append()` refuses them and the whole tail after the
+   * first one used to be truncated and reported as CORRUPTION. That reading
+   * was wrong twice over: the log was not tampered with, and the truncation
+   * threw away every completed track that came after the score.
+   *
+   * Such an entry is now skipped individually, and the replay continues. The
+   * score itself is still refused, because it carries no evidence claim and
+   * nothing can make one for it honestly. Everything else the candidate did
+   * is kept.
+   */
+  legacyScores: number;
+  /** Tracks whose stored score was pre-attestation, in log order. */
+  legacyTracks: TrackId[];
 }
 
 /**
@@ -93,26 +120,41 @@ export interface ValidatedLog {
  */
 export function validateStoredLog(raw: readonly unknown[]): ValidatedLog {
   let log: SequencedEntry[] = [];
+  const legacyTracks: TrackId[] = [];
+  const stop = (i: number, reason: string): ValidatedLog => ({
+    log,
+    dropped: raw.length - i,
+    reason,
+    legacyScores: legacyTracks.length,
+    legacyTracks,
+  });
   for (let i = 0; i < raw.length; i++) {
     const e = raw[i];
     if (typeof e !== "object" || e === null) {
-      return { log, dropped: raw.length - i, reason: `entry ${i} is not an object` };
+      return stop(i, `entry ${i} is not an object`);
     }
     const seq = (e as { seq?: unknown }).seq;
     if (seq !== i) {
-      return {
-        log,
-        dropped: raw.length - i,
-        reason: `entry ${i} has seq ${String(seq)} — duplicate or out-of-order append`,
-      };
+      return stop(i, `entry ${i} has seq ${String(seq)} — duplicate or out-of-order append`);
+    }
+    /**
+     * A score from a build older than the attestation invariant. Skipped, not
+     * truncated at: the entries AFTER it are the rest of the candidate's
+     * sitting, and they replay fine. `seq` is checked against the raw index
+     * above, so skipping does not disturb contiguity; `append()` renumbers
+     * the log it returns, so the surviving entries stay 0..n-1.
+     */
+    if (isPreAttestationScore(e)) {
+      legacyTracks.push((e as { trackId: TrackId }).trackId);
+      continue;
     }
     try {
       log = append(log, e as SessionLogEntry);
     } catch (err) {
-      return { log, dropped: raw.length - i, reason: `entry ${i} rejected: ${String(err)}` };
+      return stop(i, `entry ${i} rejected: ${String(err)}`);
     }
   }
-  return { log, dropped: 0 };
+  return { log, dropped: 0, legacyScores: legacyTracks.length, legacyTracks };
 }
 
 /**
