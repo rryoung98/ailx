@@ -33,6 +33,20 @@ export interface TrackModule {
   placeholder: boolean;
 }
 
+/**
+ * Whether a track needs a model, re-exported so the registry surface carries
+ * it: a caller that already holds the registry does not need to know a second
+ * module name to ask. The DECLARATION itself lives in `./modelGate`, alone and
+ * pure, so the exam page's gate can be tested without pulling four track
+ * packages into the test (TEN-149). One source, read everywhere.
+ */
+export {
+  MODEL_FREE_TRACKS,
+  MODEL_TRACKS,
+  needsModel,
+  TRACK_NEEDS_MODEL,
+} from "./modelGate";
+
 /** Runners come from each plugin's own ui() loader (F11) — no hardcoded
  * platform imports of Runner components. */
 export async function loadTrackModule(trackId: TrackId): Promise<TrackModule> {

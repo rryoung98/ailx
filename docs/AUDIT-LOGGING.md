@@ -20,7 +20,10 @@ Each attempt has one append-only event log in `packages/session/src/machine.ts`.
 | Report | projection of the log; verbatim Event log section | `apps/web/app/report/page.tsx` |
 | Export | individual tier (own data) + research tier (allowlist) | `apps/web/lib/exportTiers.ts` |
 
-At append time, the machine enforces legal phase transitions and the fixed T1→T4 order.
+At append time, the machine enforces legal phase transitions and sits each track at most
+once. T1→T4 is the order the tracks are PRESENTED in, not a rule: a candidate with no
+model connected sits the tracks that need none (TEN-149), so the order actually sat is
+read off the log rather than assumed.
 It requires nondecreasing timestamps. It rejects `track_event` after budget exhaustion.
 Budget accounting derives `timedOut`; the machine never trusts the caller's value.
 

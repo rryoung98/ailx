@@ -13,6 +13,7 @@ import { URL as NodeURL, fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { withQueryClient } from "./helpers/clientPage";
 import { ATTEMPT_KEY, append, type SequencedEntry, type SessionConfig } from "@ailx/session";
 import { PersistWarning } from "../features/exam/PersistWarning";
 import ExamPage from "../app/exam/page";
@@ -68,7 +69,7 @@ async function render(node: ReturnType<typeof createElement>) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
-  await act(async () => { root!.render(node); });
+  await act(async () => { root!.render(withQueryClient(node)); });
   await act(async () => { await Promise.resolve(); });
   return host;
 }

@@ -21,6 +21,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { withQueryClient } from "./helpers/clientPage";
 import {
   ATTEMPT_KEY, append, project, saveAttempt,
   type SequencedEntry, type SessionConfig, type TrackId,
@@ -121,7 +122,7 @@ async function mountExam() {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
-  await act(async () => { root!.render(createElement(ExamPage)); });
+  await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
   await act(async () => { await Promise.resolve(); });
 }
 

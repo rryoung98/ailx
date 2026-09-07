@@ -255,6 +255,15 @@ export default function ReportPage() {
       localScored: state ? TRACK_IDS.filter((t) => state.tracks[t].score !== undefined) : [],
       scores: scoresView.scores ?? null,
       reading: scoresView.reading,
+      /* A finished run over PART of the instrument is finished (TEN-149).
+         The gate needs both halves to say so: that the run ended, and which
+         tracks it covered. */
+      localSitting: state
+        ? {
+            completed: state.phase === "completed",
+            sat: TRACK_IDS.filter((t) => state.tracks[t].status === "completed"),
+          }
+        : undefined,
     });
     return (
       <main className="page">

@@ -55,12 +55,38 @@ export const CREDENTIAL_CLAIM_VERSION = 1;
 export const CREDENTIAL_CLAIMS = ["sitting-completed", "scored"] as const;
 export type CredentialClaimKind = (typeof CREDENTIAL_CLAIMS)[number];
 
+/**
+ * What a partial sitting carries where a full one carries a type. Not a
+ * placeholder to be filled in later: a 1-3 axis reading has no four-letter
+ * code and no character, and an empty pair is how the stored claim says so
+ * without a shape change that would strand every row already written.
+ */
+export const NO_PLAYER_TYPE: { code: string; name: string } = { code: "", name: "" };
+
 /** Issuing organisation, spelled once — LinkedIn, the page and the JSON. */
 export const CREDENTIAL_ISSUER = "Foray";
 
-/** Human name of the credential. Says "completed", never "passed". */
-export function credentialName(instrument: string): string {
+/**
+ * Human name of the credential. Says "completed", never "passed" — and never
+ * "completed" over a sitting that covered part of the instrument (TEN-149).
+ *
+ * A candidate with no model connected can now sit the model-free tracks and
+ * stop there, honestly. This is the name that travels furthest with no page
+ * around it: a stranger reads it in a LinkedIn certification row and nowhere
+ * near `tracksAttempted`. So the name itself carries which tracks were sat
+ * when they are not all of them. Called with no track list (an old caller, a
+ * test) it keeps the historical spelling.
+ */
+export function credentialName(instrument: string, tracksAttempted?: readonly string[]): string {
+  if (tracksAttempted !== undefined && !isFullSitting(tracksAttempted)) {
+    return `Foray ${instrument} — Partial Sitting (${tracksAttempted.join(", ")})`;
+  }
   return `Foray ${instrument} — Sitting Completed`;
+}
+
+/** True when the sitting covered every track of the instrument. */
+export function isFullSitting(tracksAttempted: readonly string[]): boolean {
+  return tracksAttempted.length === TRACK_IDS.length;
 }
 
 /**
@@ -141,7 +167,12 @@ export interface CredentialClaim {
   completedOn: string;
   /** Track codes attempted, in sitting order: ['T1','T2','T3','T4']. */
   tracksAttempted: string[];
-  /** The playful four-letter type and its name. Never a score. */
+  /**
+   * The playful four-letter type and its name. Never a score, and EMPTY on a
+   * partial sitting: one axis is read per track, so a sitting that skipped a
+   * track has no reading on that axis and gets no code and no name at all
+   * (see {@link NO_PLAYER_TYPE}).
+   */
   playerType: { code: string; name: string };
   /** Path of the candidate's own built site, or null. */
   artifact: string | null;
@@ -163,8 +194,8 @@ export const CREDENTIAL_CLAIM_KEYS = [
 
 /** Plain-language statement of what the credential says. Shown on /verify. */
 export const CREDENTIAL_ASSERTS = [
-  "This person sat the Foray examination and completed it on the date shown.",
-  "The instrument version and the tracks they attempted are as listed.",
+  "This person sat Foray on the date shown and completed the tracks listed.",
+  "The instrument version and the tracks they attempted are as listed. A sitting that lists fewer than four tracks is a partial sitting and is named as one.",
   "The player type is a descriptive read of how that run was played.",
 ] as const;
 
@@ -216,7 +247,18 @@ export function buildCredentialClaim(
   const tracksAttempted = attemptedTrackCodes(state);
   if (completedOn === null || trackRawOrNull === null || tracksAttempted.length === 0) return null;
   const version = state.config?.version ?? "2026.1";
-  const p = playerTypeFor(state, trackRawOrNull);
+  /**
+   * A PARTIAL SITTING GETS NO TYPE (TEN-149, docs/ADR-profile-and-type.md).
+   *
+   * The four letters are one axis per track. A sitting that skipped a track
+   * has no reading on its axis, and the fallback would invent one from a
+   * number nobody produced — a letter, a code and a character name, all from
+   * work that was never done. A reading over 1-3 axes gets no code and no
+   * name, and the credential says the sitting was partial instead.
+   */
+  const p = isFullSitting(tracksAttempted)
+    ? playerTypeFor(state, trackRawOrNull)
+    : NO_PLAYER_TYPE;
   return {
     v: CREDENTIAL_CLAIM_VERSION,
     instrument: `${state.config?.instrument ?? "ailx"} ${version}`,
@@ -310,7 +352,7 @@ export function credentialDocument(
     "@context": [...CREDENTIAL_CONTEXT],
     id,
     type: ["VerifiableCredential", "OpenBadgeCredential"],
-    name: credentialName(claim.instrumentVersion),
+    name: credentialName(claim.instrumentVersion, claim.tracksAttempted),
     description: CREDENTIAL_ASSERTS.join(" "),
     issuer: { id: origin, type: ["Profile"], name: CREDENTIAL_ISSUER },
     validFrom: state.issuedAt,
@@ -319,7 +361,7 @@ export function credentialDocument(
       achievement: {
         id: `${origin}/methodology`,
         type: ["Achievement"],
-        name: credentialName(claim.instrumentVersion),
+        name: credentialName(claim.instrumentVersion, claim.tracksAttempted),
         description: CREDENTIAL_ASSERTS.join(" "),
         criteria: { narrative: CREDENTIAL_ASSERTS.join(" ") },
       },
@@ -366,7 +408,7 @@ export function linkedInCertification(
 ): LinkedInCertification {
   const issued = new Date(state.issuedAt);
   return {
-    name: credentialName(claim.instrumentVersion),
+    name: credentialName(claim.instrumentVersion, claim.tracksAttempted),
     organizationName: CREDENTIAL_ISSUER,
     // getUTCMonth is 0-based; LinkedIn's issueMonth is 1-based.
     issueYear: issued.getUTCFullYear(),

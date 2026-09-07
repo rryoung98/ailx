@@ -27,16 +27,51 @@ function start(): SequencedEntry[] {
 }
 
 describe("session machine", () => {
-  it("starts idle and enforces T1\u2192T4 order", () => {
+  it("starts idle, presents T1 first, and lets a track be sat out of order", () => {
     expect(initialState().phase).toBe("idle");
     let log = start();
     expect(project(log).phase).toBe("between_tracks");
+    // The presentation order is unchanged: T1 is still the track on offer.
     expect(nextTrack(project(log))).toBe("t1");
+    // But T1 needs a model and T2 does not, so a candidate with no model must
+    // be able to sit T2 (TEN-149). The order is presented, not mandatory.
+    log = append(log, { type: "track_started", trackId: "t2", ts: T0 });
+    expect(project(log).currentTrack).toBe("t2");
+  });
+
+  it("refuses a track that is not in the run, and one already sat", () => {
+    let log = start();
+    log = append(log, { type: "track_started", trackId: "t2", ts: T0 });
+    log = append(log, { type: "track_completed", trackId: "t2", artifact: {}, timedOut: false, ts: T0 + 1000 });
+    // A track is sat once. Reopening it would let a second artifact overwrite
+    // the first under the same budget.
     expect(() =>
-      append(log, { type: "track_started", trackId: "t2", ts: T0 }),
+      append(log, { type: "track_started", trackId: "t2", ts: T0 + 2000 }),
     ).toThrow(TransitionError);
-    log = append(log, { type: "track_started", trackId: "t1", ts: T0 });
-    expect(project(log).currentTrack).toBe("t1");
+    expect(() =>
+      append(log, { type: "track_started", trackId: "t9" as "t1", ts: T0 + 2000 }),
+    ).toThrow(TransitionError);
+  });
+
+  it("completes a run over a SUBSET of the tracks, scoring only what was sat", () => {
+    let log = start();
+    let t = T0;
+    for (const trackId of ["t2", "t3"] as const) {
+      t += 1000;
+      log = append(log, { type: "track_started", trackId, ts: t });
+      t += 1000;
+      log = append(log, { type: "track_completed", trackId, artifact: { trackId }, timedOut: false, ts: t });
+    }
+    log = append(log, { type: "attempt_completed", ts: t + 1000 });
+    const s = project(log);
+    expect(s.phase).toBe("completed");
+    expect(s.tracks.t2.status).toBe("completed");
+    expect(s.tracks.t3.status).toBe("completed");
+    // The tracks never sat are pending and carry no score. Nothing invents
+    // a zero for them, and the composite over a subset is withheld.
+    expect(s.tracks.t1.status).toBe("pending");
+    expect(s.tracks.t1.score).toBeUndefined();
+    expect(s.tracks.t4.status).toBe("pending");
   });
 
   it("runs the full four-track happy path", () => {
@@ -118,7 +153,11 @@ describe("session machine", () => {
     log = append(log, { type: "paused", ts: T0 + 700_000 });
     log = append(log, { type: "track_completed", trackId: "t1", artifact: null, timedOut: true, ts: T0 + 700_500 });
     expect(project(log).tracks.t1.timedOut).toBe(true);
-    expect(() => append(log, { type: "attempt_completed", ts: T0 + 700_500 })).toThrow(TransitionError);
+    // Ending the run here is legal since TEN-149: one track was sat, and a
+    // sitting over a subset is recorded as the subset it is. What is still
+    // refused is ending a run that sat nothing at all.
+    expect(project(append(log, { type: "attempt_completed", ts: T0 + 700_500 })).phase).toBe("completed");
+    expect(() => append(start(), { type: "attempt_completed", ts: T0 })).toThrow(TransitionError);
   });
 
   it("append never mutates the input log and seq is contiguous", () => {

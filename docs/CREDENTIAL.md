@@ -11,9 +11,13 @@ Recorded 2026-08-29, alongside the skill diagnosis on `/report`. Code:
 empty.** So a credential cannot honestly report a score, a band, a percentile
 or a pass mark, and this one does not. It asserts exactly:
 
-> *This person sat Foray `<version>` and completed it on `<date>`; they
-> attempted these tracks; their run produced this player type; here is the
-> artifact they built.*
+> *This person sat Foray `<version>` on `<date>` and completed the tracks
+> listed; their run produced this player type; here is the artifact they
+> built.*
+
+"Completed the tracks listed" is the exact wording, not "completed it": a
+sitting may cover part of the instrument (§6), and a bare "completed" would
+read as all four.
 
 Everything it refuses to say is printed **on the credential itself**
 (`CREDENTIAL_LIMITS`), including the one most people will assume: Foray does
@@ -100,6 +104,18 @@ cannot produce a different entry from the one the button produces.
 The credential NAME says "Sitting Completed". Not "certified", not "passed",
 not "level". That wording is asserted in the tests, because it is the one line
 a growth incentive will try to soften.
+
+**A partial sitting is named as one.** Since TEN-149 a candidate with no model
+connected can sit the tracks that need none and stop there, so a sitting may
+cover two of the four tracks. The LinkedIn row and the credential title then
+read `Foray 2026.1 — Partial Sitting (T2, T3)`, because the name is the field
+that travels furthest with no page around it: a reader sees it in a
+certification row and nowhere near `tracksAttempted`. Such a claim also
+carries NO player type — the four letters are one axis per track, a track that
+was not sat has no reading on its axis, and inventing the missing letters from
+a median of nothing is the mistake `playerType.ts` exists to avoid
+(`docs/ADR-profile-and-type.md` §6.2). `/verify` prints the reason where the
+type would have been.
 
 ## 7. Diagnosis, and why it is the other half of this work
 
