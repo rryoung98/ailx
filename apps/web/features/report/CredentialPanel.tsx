@@ -16,13 +16,30 @@
  * Revoking keeps the URL alive and makes it say "revoked" — the honest answer
  * to anyone already holding it.
  *
+ * NOTHING IS ISSUED UNTIL THE CANDIDATE ASKS. `GET` answering 404 is the
+ * honest state before a credential exists, so it is the OFFER and never an
+ * error (dogfood 2026-09-06, D2: the service issued a credential on the first
+ * ask, and no screen ever asked). A credential is a public claim published
+ * under a person's own name — minting one unasked would put a verification
+ * URL for their sitting into the world before they decided they wanted it,
+ * and `docs/CREDENTIAL.md` §1 is explicit that the holder is the one making
+ * the assertion. So the sitting ends, the offer appears, and the button is
+ * the consent.
+ *
+ * A PARTIAL SITTING IS NAMED AS ONE, HERE AND ON /verify. The stored claim
+ * decides: `tracksAttempted` shorter than the instrument means the name reads
+ * "Partial Sitting (T2, T3)", and there is no four-letter code and no
+ * character to show, because one axis is read per track (TEN-149,
+ * docs/CREDENTIAL.md §6).
+ *
  * Static export: `isServerMode()` is false, there is nothing to issue against
  * and this component renders nothing (FRONTEND.md §2.3.4).
  */
 import { useCallback, useEffect, useState } from "react";
 import { API_ROUTES, apiPath, type OwnerCredential } from "@ailx/contract";
+import type { TrackId } from "@ailx/session";
 import { serviceHeaders } from "../../lib/data/traceparent";
-import { CREDENTIAL_LIMITS, linkedInAddUrl } from "@ailx/report";
+import { CREDENTIAL_LIMITS, isFullSitting, linkedInAddUrl, TRACK_META } from "@ailx/report";
 import { basePath, isServerMode } from "../../lib/mode";
 import { browserApiOptions, getServerAttemptId } from "../../lib/data/persistence";
 
@@ -31,7 +48,37 @@ type Phase = "loading" | "none" | "live" | "busy" | "error";
 /** The three manifest routes this panel drives — one path, three methods. */
 type CredentialRoute = "issueCredential" | "getCredential" | "revokeCredential";
 
-export function CredentialPanel({ attemptId }: { attemptId: string }) {
+/**
+ * The credential off the wire, or null when the body is not one.
+ *
+ * A 200 with nothing in it is not a credential, and rendering one anyway
+ * threw on the first field this panel reads. Checked rather than cast, for
+ * the same reason `scoresOfRecord.ts` checks: this body decides what a
+ * candidate is told they can publish.
+ */
+function ownerCredential(body: unknown): OwnerCredential | null {
+  const record = body as { credential?: unknown } | null;
+  const credential = record?.credential as OwnerCredential | undefined;
+  return credential !== null &&
+    typeof credential === "object" &&
+    typeof credential?.verifyPath === "string" &&
+    typeof credential.claim === "object"
+    ? credential
+    : null;
+}
+
+export function CredentialPanel({
+  attemptId,
+  sat,
+}: {
+  attemptId: string;
+  /**
+   * Which tracks this sitting covered, when the page knows. It only shapes
+   * the copy BEFORE anything is issued; once a credential exists its own
+   * stored claim is the authority and this is not read.
+   */
+  sat?: readonly TrackId[];
+}) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [credential, setCredential] = useState<OwnerCredential | null>(null);
   const [copied, setCopied] = useState(false);
@@ -58,12 +105,17 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
       try {
         const res = await request("getCredential");
         if (!live) return;
-        if (res.ok) {
-          setCredential(((await res.json()) as { credential: OwnerCredential }).credential);
-          setPhase("live");
-        } else {
+        /* 404 IS THE ORDINARY ANSWER, NOT A FAILURE: no credential has been
+           issued for this sitting yet, which is exactly the state the offer
+           below exists for. A 200 carrying no credential means the same
+           thing to a candidate. */
+        const held = res.ok ? ownerCredential(await res.json()) : null;
+        if (held === null) {
           setPhase("none");
+          return;
         }
+        setCredential(held);
+        setPhase("live");
       } catch {
         if (live) setPhase("error");
       }
@@ -80,6 +132,20 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
       ? null
       : `${window.location.origin}${basePath()}${credential.verifyPath}`;
 
+  /* WHICH SITTING THIS IS, FROM THE BEST SOURCE AVAILABLE. The stored claim
+     once one exists — it is what /verify will print — and the page's own
+     view of the run before that. */
+  const satCodes =
+    credential !== null
+      ? credential.claim.tracksAttempted
+      : (sat ?? []).map((t) => TRACK_META[t].code);
+  const partialSitting = satCodes.length > 0 && !isFullSitting(satCodes);
+  /* A partial claim carries the pair EMPTY rather than absent, and a service
+     that later drops the key entirely means the same thing (dogfood D8). Both
+     read as "no type" here, and neither prints a blank. */
+  const typeCode = credential?.claim.playerType?.code ?? "";
+  const typeName = credential?.claim.playerType?.name ?? "";
+
   const act = async (route: "issueCredential" | "revokeCredential") => {
     setPhase("busy");
     try {
@@ -90,7 +156,9 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
         setPhase("none");
         return;
       }
-      setCredential(((await res.json()) as { credential: OwnerCredential }).credential);
+      const issued = ownerCredential(await res.json());
+      if (issued === null) throw new Error("no credential in the response");
+      setCredential(issued);
       setPhase("live");
     } catch {
       setPhase("error");
@@ -113,10 +181,18 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
       </h2>
       <p className="muted small" style={{ maxWidth: "62ch" }}>
         A credential states that you sat and completed Foray on a date, on a stated instrument
-        version, and gives a link anyone can check. It carries no score: Foray has no judging
-        pipeline yet, so no Foray credential claims one. When scoring exists, this same credential
-        id gains the result, with no reissue.
+        version, and gives a link anyone can check. It carries no score, and no Foray credential
+        claims one: a credential asserts a sitting, never a result. When a scored claim exists,
+        this same credential id gains it, with no reissue.
       </p>
+      {partialSitting ? (
+        <p className="small" style={{ maxWidth: "62ch" }} data-testid="credential-partial-notice">
+          This sitting covered {satCodes.join(" · ")}, so the credential names itself a{" "}
+          <strong>partial sitting</strong> and lists those tracks. It carries no four-letter code
+          and no character: one axis is read per track, and a track that was not sat has no
+          reading on its axis.
+        </p>
+      ) : null}
       <ul className="verify-list verify-limits small">
         {CREDENTIAL_LIMITS.map((line) => (
           <li key={line}>{line}</li>
@@ -126,21 +202,29 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
       {phase === "loading" ? <p className="faint small" role="status">Checking…</p> : null}
 
       {phase === "none" || phase === "busy" || phase === "error" ? (
-        <p style={{ marginBottom: 0 }}>
-          <button
-            type="button"
-            className="btn primary"
-            onClick={() => act("issueCredential")}
-            disabled={phase === "busy"}
-          >
-            {phase === "busy" ? "Working…" : "Issue my credential"}
-          </button>
-          {phase === "error" ? (
-            <span className="small" style={{ marginLeft: "0.6rem", color: "var(--bad)" }} role="alert">
-              That did not work. Finish and score every track first, then try again.
-            </span>
-          ) : null}
-        </p>
+        /* THE 404 LANDS HERE, AND IT IS THE OFFER. "No credential yet" is the
+           true state of a sitting nobody has asked about, so this branch
+           carries the action rather than an error message. */
+        <div data-testid="credential-offer">
+          <p style={{ marginBottom: "0.4rem" }}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => act("issueCredential")}
+              disabled={phase === "busy"}
+            >
+              {phase === "busy" ? "Working…" : "Issue my credential"}
+            </button>
+            {phase === "error" ? (
+              <span className="small" style={{ marginLeft: "0.6rem", color: "var(--bad)" }} role="alert">
+                That did not reach the exam service. Your sitting is saved. Try again in a moment.
+              </span>
+            ) : null}
+          </p>
+          <p className="faint small" style={{ marginBottom: 0 }}>
+            Nothing exists until you press this, and you can revoke it afterwards.
+          </p>
+        </div>
       ) : null}
 
       {phase === "live" && credential !== null && url !== null ? (
@@ -196,6 +280,33 @@ export function CredentialPanel({ attemptId }: { attemptId: string }) {
             <div>
               <dt>Credential id</dt>
               <dd className="mono" style={{ fontSize: "0.9rem" }}>{credential.linkedIn.credentialId}</dd>
+            </div>
+            <div>
+              <dt>Tracks attempted</dt>
+              <dd className="mono" style={{ fontSize: "1rem" }} data-testid="credential-tracks">
+                {credential.claim.tracksAttempted.join(" · ")}
+              </dd>
+            </div>
+            <div>
+              <dt>Player type</dt>
+              {/* The same branch /verify draws, from the same stored claim
+                  (VerifyView.tsx): a partial sitting has no four-letter code
+                  and no character, and this says why instead of printing the
+                  blank pair the row carries (dogfood D8). The two screens
+                  must not disagree about one claim. */}
+              <dd style={{ fontSize: "1rem" }} data-testid="credential-player-type">
+                {typeCode === "" ? (
+                  <span className="faint small">
+                    Not derived — this sitting covered{" "}
+                    {credential.claim.tracksAttempted.join(" · ")}, and one axis is read per
+                    track.
+                  </span>
+                ) : (
+                  <>
+                    <span className="mono">{typeCode}</span> — {typeName}
+                  </>
+                )}
+              </dd>
             </div>
           </dl>
           <p className="small muted" style={{ margin: 0 }}>

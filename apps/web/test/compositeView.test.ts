@@ -13,6 +13,7 @@ import { SCORED_TRACKS } from "@ailx/session";
 import {
   WITHHELD_LEDE,
   awaitingCopy,
+  compositeStillPossible,
   localCompositeView,
   serviceCompositeView,
   withheldHeadline,
@@ -165,5 +166,35 @@ describe("what a withheld composite says", () => {
   it("explains why a partial composite is not issued at all", () => {
     expect(WITHHELD_LEDE.awaiting_track).toContain("shares of the whole instrument");
     expect(WITHHELD_LEDE.not_finalized).toContain("still open");
+  });
+});
+
+describe("the jury sentence beside a track that was never sat (D4)", () => {
+  const awaiting: AwaitedTrack[] = [
+    { trackId: "t1", trackState: "not_sat", detail: "" },
+    { trackId: "t3", trackState: "pending_judging", detail: "" },
+  ];
+  const withheld = { state: "withheld", reason: "awaiting_track", awaiting, detail: "" } as const;
+
+  it("knows the composite cannot arrive once a track was never sat", () => {
+    expect(compositeStillPossible(withheld)).toBe(false);
+    expect(
+      compositeStillPossible({ ...withheld, awaiting: [awaiting[1]] }),
+    ).toBe(true);
+  });
+
+  it("stops promising a composite the jury cannot deliver", () => {
+    /* One screen said "no composite is coming for this sitting" and "The
+       composite is issued when it does" — both cannot be true, and the first
+       is right (dogfood 2026-09-06, D4). */
+    const jury = awaitingCopy(awaiting[1], compositeStillPossible(withheld));
+    expect(jury).toContain("its score arrives later");
+    expect(jury).not.toContain("The composite is issued when it does");
+    expect(jury).toContain("no composite follows it");
+    expect(awaitingCopy(awaiting[0], false)).toContain("no composite is coming for this sitting");
+  });
+
+  it("does not call the composite 'waiting' when it is settled", () => {
+    expect(withheldHeadline(withheld)).toBe("No composite for this sitting");
   });
 });

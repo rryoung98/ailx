@@ -154,12 +154,20 @@ export function serviceCompositeView(
  *
  * Pure: a record in, a sentence out.
  */
-export function awaitingCopy(awaited: AwaitedTrack): string {
+export function awaitingCopy(awaited: AwaitedTrack, composable = true): string {
   const name = TRACK_IDS.find((t) => t === awaited.trackId);
   const label = name === undefined ? awaited.trackId.toUpperCase() : `${TRACK_META[name].code} ${TRACK_META[name].name}`;
   switch (awaited.trackState) {
     case "pending_judging":
-      return `${label} is with the jury. A judged track is marked after the sitting, so its score arrives later. The composite is issued when it does.`;
+      return composable
+        ? `${label} is with the jury. A judged track is marked after the sitting, so its score arrives later. The composite is issued when it does.`
+        : /* THE JURY CANNOT RESCUE A COMPOSITE THIS SITTING CANNOT HAVE.
+             Two sentences on one screen said "no composite is coming for this
+             sitting" and "The composite is issued when it does" (D4, dogfood
+             2026-09-06). Both cannot be true, and the first is right: a track
+             that was never sat is not waiting for anything. The jury sentence
+             therefore promises the SCORE it can deliver and nothing else. */
+          `${label} is with the jury. A judged track is marked after the sitting, so its score arrives later — but no composite follows it, because another track this sitting needs was not sat.`;
     case "not_sat":
       return `${label} was not sat. The exam service holds no work for it, so there is nothing to compose and no composite is coming for this sitting.`;
     case "unscored":
@@ -170,8 +178,24 @@ export function awaitingCopy(awaited: AwaitedTrack): string {
 /** The heading over a withheld composite. It names the state, never a number. */
 export function withheldHeadline(withheld: WithheldComposite): string {
   if (withheld.reason === "not_finalized") return "No composite yet";
-  const waiting = withheld.awaiting.some((a) => a.trackState === "pending_judging");
-  return waiting ? "Your composite is waiting on a judged track" : "No composite for this sitting";
+  /* Waiting means EVERY missing track is still coming. One track that was
+     never sat settles the question, and a headline that said the composite
+     was "waiting" beside it would contradict the sentence under it (D4). */
+  return compositeStillPossible(withheld)
+    ? "Your composite is waiting on a judged track"
+    : "No composite for this sitting";
+}
+
+/**
+ * Could the number still arrive? Only when every track the composite waits on
+ * is a track the jury has yet to mark. A `not_sat` or `unscored` track is
+ * terminal for this sitting: nothing later turns it into a composite.
+ */
+export function compositeStillPossible(withheld: WithheldComposite): boolean {
+  return (
+    withheld.awaiting.length > 0 &&
+    withheld.awaiting.every((a) => a.trackState === "pending_judging")
+  );
 }
 
 /** Why a composite over part of the instrument is not issued at all. */
