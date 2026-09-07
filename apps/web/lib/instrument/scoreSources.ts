@@ -52,15 +52,29 @@ export function completionSummary(state: ScoreSourceState): string {
   const scored = state.order.filter(
     (t) => state.tracks[t].status === "completed" && state.tracks[t].score !== undefined,
   );
+  /**
+   * Tracks the run never sat. A candidate with no model connected sits the
+   * model-free tracks and finishes there (TEN-149), and the screen that ends
+   * that run may not describe it as the whole instrument. The composite is
+   * withheld rather than computed over a subset, and this is where that is
+   * first said.
+   */
+  const notSat = state.order.filter((t) => state.tracks[t].status !== "completed");
+  const partial =
+    notSat.length === 0
+      ? ""
+      : ` ${trackList(notSat)} ${notSat.length === 1 ? "was" : "were"} not sat, so this is a ` +
+        "partial sitting: no composite is issued for part of the instrument, and your report " +
+        "says which tracks you sat.";
   if (awaiting.length === 0) {
-    return `All ${scored.length} tracks are scored in this browser. The diagnostic report is the real reward.`;
+    return `All ${scored.length} tracks are scored in this browser. The diagnostic report is the real reward.${partial}`;
   }
   const many = awaiting.length > 1;
   return (
     `Your work is recorded for every track you sat. ${trackList(awaiting)} ` +
     `${many ? "are" : "is"} marked by the exam service, which issues ` +
     `${many ? "those scores" : "that score"} when your sitting is finalized. ` +
-    "Your report shows what it issued."
+    `Your report shows what it issued.${partial}`
   );
 }
 

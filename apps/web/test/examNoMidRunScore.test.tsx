@@ -20,6 +20,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { withQueryClient } from "./helpers/clientPage";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -121,7 +122,7 @@ async function mountExam() {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
-  await act(async () => { root!.render(createElement(ExamPage)); });
+  await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
   for (let i = 0; i < 8; i++) await act(async () => { await Promise.resolve(); });
 }
 

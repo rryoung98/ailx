@@ -74,22 +74,30 @@ describe("run start screen", () => {
     ).toBeTruthy();
   });
 
-  it("gates the start on a model connection: disabled pill, no attempt, attention pulse", async () => {
+  /**
+   * The gate is PER-TRACK now (TEN-149). It used to be per-run, and this test
+   * used to assert the defect: a shut pill for a candidate whose two
+   * model-free tracks were ready to run. What survives from it is the rule
+   * that nothing starts silently — the tracks that cannot run are named on
+   * the same screen, with the action that opens them.
+   */
+  it("starts without a model, and names the tracks that cannot run", async () => {
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
     await act(async () => { root!.render(withQueryClient(createElement(ExamPage))); });
 
     const pill = [...host.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
-    expect(pill.textContent).toContain("Connect a model to start");
-    expect(pill.getAttribute("aria-disabled")).toBe("true");
+    expect(pill.textContent).toContain("Start your run");
+    expect(pill.getAttribute("aria-disabled")).toBeNull();
 
-    // Clicking the gated pill must NOT start a run — it nudges the panel.
+    const note = host.querySelector('[data-testid="start-note"]')!.textContent ?? "";
+    expect(note).toContain("T2 and T3");
+    expect(note).toContain("T1 and T4");
+    expect(host.querySelector('[data-testid="locked-t1"]')!.textContent).toContain("Connect one above");
+
     await act(async () => { pill.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
-    expect(host.textContent).toContain("Connect a model to start"); // still on start screen
-    expect(window.localStorage.getItem("foray:attempt:v1")).toBeNull();
-    const connect = host.querySelector('section[aria-label="AI connection"]')!;
-    expect(connect.className).toContain("connect-attention");
+    expect(window.localStorage.getItem("foray:attempt:v1")).not.toBeNull();
   });
 
   it("enables the start once an endpoint is stored (and after ConnectPanel announces a change)", async () => {

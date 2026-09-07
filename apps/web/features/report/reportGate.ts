@@ -20,7 +20,8 @@
  *
  * Pure: state in, copy out. No fetch, no clock, no storage.
  */
-import type { TrackId } from "@ailx/session";
+import { TRACK_IDS, type TrackId } from "@ailx/session";
+import { trackList } from "../../lib/instrument/scoreSources";
 import type { AttemptScores } from "./scoresOfRecord";
 
 export interface GateInput {
@@ -30,6 +31,18 @@ export interface GateInput {
   readonly scores: AttemptScores | null;
   /** True while the first read of the service's scores is still in flight. */
   readonly reading: boolean;
+  /**
+   * The sitting as THIS BROWSER's log has it: whether the run was finished,
+   * and which tracks were actually sat.
+   *
+   * A candidate with no model connected sits the model-free tracks and
+   * finishes there (TEN-149). Without this the gate told them "2 of 4 tracks
+   * scored. Finish the run to see it." with a Continue that goes to /exam,
+   * which sends them straight back — the TEN-128 closed loop, still open for
+   * a run the service never saw. The run IS finished; what it is missing is
+   * two tracks that were never sat, and that is a different sentence.
+   */
+  readonly localSitting?: { readonly completed: boolean; readonly sat: readonly TrackId[] };
 }
 
 export interface GateView {
@@ -83,6 +96,29 @@ export function reportGate(input: GateInput): GateView {
       cta: null,
       scored,
     };
+  }
+  const local = input.localSitting;
+  if (local?.completed === true) {
+    const notSat = TRACK_IDS.filter((t) => !local.sat.includes(t));
+    if (notSat.length > 0) {
+      /* A finished PARTIAL sitting. It is not unfinished and there is
+         nothing to go back for, so no Continue: the honest answer is which
+         tracks were sat, and why no composite follows from a subset. The
+         reason is the same one the service gives for a withheld composite
+         (WITHHELD_LEDE.awaiting_track) — one fact, said the same way. */
+      return {
+        headline: "Your sitting is finished",
+        lede:
+          `You sat ${trackList(local.sat)}. ${trackList(notSat)} ` +
+          `${notSat.length === 1 ? "was" : "were"} not sat, so this sitting covers part of the ` +
+          "instrument. A composite needs every scored track — the weights are shares of the " +
+          "whole instrument and the band ranks you against peers who sat all of it — so none " +
+          "is issued here rather than a different number under the same name. What you sat is " +
+          "scored below.",
+        cta: null,
+        scored,
+      };
+    }
   }
   return {
     headline: "The report is the reward",

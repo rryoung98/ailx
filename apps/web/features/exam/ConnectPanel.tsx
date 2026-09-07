@@ -317,7 +317,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <strong style={{ fontSize: 15 }}>Bring a real model</strong>
         <span className="small faint" style={{ flex: 1, minWidth: 220 }}>
-          Required to start: T1 (vibe coding) and T4 (image generation) run on your model. If a call fails mid-run, retry it or switch to the free offline simulators in one click.
+          T1 (vibe coding) and T4 (image generation) run on your model. T2 and T3 do not, so you can start without one and sit those two — connect later and the rest open where you stand. If a call fails mid-run, retry it or switch to the free offline simulators in one click.
         </span>
         {connected ? (
           <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>

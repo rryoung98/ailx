@@ -174,7 +174,22 @@ export function VerifyView() {
             <div style={WIDE_FACT}>
               <dt>Player type</dt>
               <dd>
-                <span className="mono">{credential.playerType.code}</span> — {credential.playerType.name}
+                {/* A partial sitting carries no type, and says why rather
+                    than printing an em dash between two blanks (TEN-149).
+                    One axis is read per track; a track that was not sat has
+                    no reading, and a code invented from the missing ones
+                    would be the credential's first false statement. */}
+                {credential.playerType.code === "" ? (
+                  <span className="faint">
+                    Not derived. One axis is read per track, and this sitting covered{" "}
+                    {credential.tracksAttempted.join(" · ")} — so there is no four-letter code
+                    and no character for it.
+                  </span>
+                ) : (
+                  <>
+                    <span className="mono">{credential.playerType.code}</span> — {credential.playerType.name}
+                  </>
+                )}
               </dd>
             </div>
           </dl>

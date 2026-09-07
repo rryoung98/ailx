@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
 import {
-  append, nextTrack, project,
+  append, project,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
@@ -20,6 +20,9 @@ import {
   checkpointToArtifact, loadTrackModule, scoreTrack,
   trackScoredEntry, type TrackModule,
 } from "../../lib/instrument/registry";
+import {
+  lockedPendingTracks, lockedTrackCopy, nextAvailableTrack, runGate,
+} from "../../lib/instrument/modelGate";
 import { t3FormBudgetSeconds, trackConfig } from "../../lib/instrument/instrument";
 // Locale UI removed: the demo serves the English deck; SessionConfig.locale
 // stays in the frozen data contract (always "en" at attempt start).
@@ -35,7 +38,7 @@ import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
 import { eventLogCopy, examAccessCopy } from "../../lib/mode";
 import { funnel } from "../../lib/data/funnel";
-import { completionSummary, SERVICE_SCORES_THIS_TRACK } from "../../lib/instrument/scoreSources";
+import { completionSummary, SERVICE_SCORES_THIS_TRACK, trackList } from "../../lib/instrument/scoreSources";
 
 function demoConfig(locale: "en"): SessionConfig {
   return {
@@ -132,7 +135,12 @@ export default function ExamPage() {
   /** Track whose time-up notice has been acknowledged (see TimeUpNotice). */
   const [timeUpAck, setTimeUpAck] = useState<TrackId | null>(null);
 
-  // Start gate: a run needs a connected model (key or custom base URL).
+  /**
+   * Is a model endpoint connected? ONE fact, read once, and the only input
+   * the per-track gate needs (TEN-149). The gate itself is derived in
+   * lib/instrument/modelGate — this page does not know which tracks need a
+   * model, and must not learn.
+   */
   const [connected, setConnected] = useState(false);
   const [connectAttention, setConnectAttention] = useState(0);
   /**
@@ -192,11 +200,20 @@ export default function ExamPage() {
     setHydrated(true);
   }, []);
 
-  // Track the model connection — the Start pill is gated on it. There is
-  // exactly one thing to read now: the ENDPOINT this browser talks to. The
-  // key slot it used to read as well is gone, because the browser no longer
-  // holds a key in either build (TEN-62). Re-read on ConnectPanel changes and
-  // cross-tab storage.
+  /**
+   * Track the model connection — every per-track gate on this page hangs off
+   * it. There is exactly one thing to read: the ENDPOINT this browser talks
+   * to. The key slot it used to read as well is gone, because the browser no
+   * longer holds a key in either build (TEN-62).
+   *
+   * THE GATE MUST NOT GO STALE. Connecting mid-run has to open the remaining
+   * tracks where they stand, and a missed event used to leave the Start pill
+   * lying about the connection. So the same read runs on the panel's own
+   * event, on a cross-tab storage write, AND on focus and visibility — the
+   * two occasions a browser comes back from an OAuth round trip in another
+   * tab or window, which is exactly how a hosted connection is made. Cheap
+   * (one localStorage read), idempotent, and no second mechanism.
+   */
   useEffect(() => {
     const read = () => {
       try {
@@ -208,9 +225,13 @@ export default function ExamPage() {
     read();
     window.addEventListener(CONNECTION_CHANGED_EVENT, read);
     window.addEventListener("storage", read);
+    window.addEventListener("focus", read);
+    document.addEventListener("visibilitychange", read);
     return () => {
       window.removeEventListener(CONNECTION_CHANGED_EVENT, read);
       window.removeEventListener("storage", read);
+      window.removeEventListener("focus", read);
+      document.removeEventListener("visibilitychange", read);
     };
   }, []);
 
@@ -619,6 +640,10 @@ export default function ExamPage() {
   // ---- No attempt yet -----------------------------------------------------
   if (!state) {
     const cfg = demoConfig("en");
+    /* The gate over the tracks this run would contain. A run starts when at
+       least ONE of them can run, which is why a candidate with no model is no
+       longer refused the two tracks that need none (TEN-149). */
+    const startGate = runGate({ connected });
     return (
       <main className="page">
       <PersistWarning warning={persistWarning} />
@@ -635,13 +660,21 @@ export default function ExamPage() {
               (it was previously buried below the fold). */}
           <ConnectPanel attention={connectAttention} />
           <ul className="rule-rows" style={{ margin: "1rem 0 1.5rem" }}>
-            {TRACK_LIST.map((t) => (
+            {TRACK_LIST.map((t) => {
+              const locked = startGate.locked.includes(t.id);
+              return (
               <Reveal as="li" key={t.id}>
                 <span className="row-title"><span className="mono" style={{ color: "var(--accent)", fontSize: "0.8em", marginRight: "0.6rem" }}>{t.code}</span>{t.name}</span>
-                <span className="row-detail muted small">{TRACK_META[t.id as keyof typeof TRACK_META].hype}</span>
+                {/* A track that cannot run says WHY and what opens it, in the
+                    row where a candidate is reading about it. It is never
+                    dropped from the list and never drawn as a failure. */}
+                <span className={locked ? "row-detail small faint" : "row-detail muted small"} data-testid={locked ? `locked-${t.id}` : undefined}>
+                  {locked ? lockedTrackCopy(t.id) : TRACK_META[t.id as keyof typeof TRACK_META].hype}
+                </span>
                 <span className="faint small mono">{fmt(t.demoBudgetSeconds)}</span>
               </Reveal>
-            ))}
+              );
+            })}
           </ul>
           <Reveal as="section">
           <p className="small faint">
@@ -649,10 +682,15 @@ export default function ExamPage() {
             plugins score your stored artifacts and judgments. Same play, same score, forever.
           </p>
           </Reveal>
+          {startGate.startNote ? (
+            <p className="small muted" data-testid="start-note" style={{ margin: "0 0 1rem" }}>
+              {startGate.startNote}
+            </p>
+          ) : null}
           <PillCTA
-            disabled={!connected}
+            disabled={!startGate.canStart}
             onClick={async () => {
-              if (!connected) {
+              if (!startGate.canStart) {
                 // Redirect attention to the connect panel instead of starting.
                 setConnectAttention((a) => a + 1);
                 return;
@@ -688,7 +726,7 @@ export default function ExamPage() {
               }
             }}
           >
-            {connected ? "Start your run" : "Connect a model to start"}
+            {startGate.startLabel}
           </PillCTA>
         </div>
       </main>
@@ -720,9 +758,16 @@ export default function ExamPage() {
   if (state.phase === "between_tracks") {
     // A track that ended on the timer says so, explicitly, at the moment it
     // happens. It used to teleport the candidate to the track list, which
-    // reads as a crash rather than a timeout. Completion follows the fixed
-    // T1→T4 order, so the last completed track is the one just finished.
-    const justFinished = [...state.order].reverse().find((id) => state.tracks[id].status === "completed");
+    // reads as a crash rather than a timeout.
+    //
+    // Read from the LOG, not from the run order: since TEN-149 a candidate
+    // may sit the model-free tracks first and the rest after connecting, so
+    // "the last completed track in T1→T4 order" is no longer the track that
+    // just finished. The log says which one did.
+    const justFinished = [...(log ?? [])]
+      .reverse()
+      .find((e): e is Extract<SequencedEntry, { type: "track_completed" }> => e.type === "track_completed")
+      ?.trackId;
     if (justFinished && state.tracks[justFinished].timedOut && timeUpAck !== justFinished) {
       return (
         <main className="page">
@@ -736,7 +781,12 @@ export default function ExamPage() {
         </main>
       );
     }
-    const next = nextTrack(state);
+    /* The next track that can actually be sat. `nextTrack` from the session
+       engine returns the first track that is not completed, which on a
+       model-free sitting is a track that cannot run — the run would hang on
+       it with a Start button that does nothing (TEN-149). */
+    const next = nextAvailableTrack(state, connected);
+    const lockedPending = lockedPendingTracks(state, connected);
     const done = state.order.filter((t) => state.tracks[t].status === "completed");
     return (
       <main className="page">
@@ -762,6 +812,10 @@ export default function ExamPage() {
                     </span>
                   ) : t.id === next ? (
                     <span className="small mono" style={{ color: "var(--warn)" }}>next</span>
+                  ) : lockedPending.includes(t.id) ? (
+                    /* Not a failure and not a drop: a track waiting on the
+                       one thing that opens it. The row says which. */
+                    <span className="small faint" data-testid={`locked-${t.id}`}>needs a model</span>
                   ) : (
                     <span className="small faint mono">pending</span>
                   )}
@@ -773,6 +827,17 @@ export default function ExamPage() {
             <p className="faint small" style={{ margin: "-0.8rem 0 1.5rem" }}>{DEMO_SCORE_NOTE}</p>
           ) : null}
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
+          {/* Connecting mid-run opens the tracks that were waiting on it, in
+              place: the panel writes the endpoint slot and fires
+              CONNECTION_CHANGED_EVENT, the gate above re-reads, and the next
+              track becomes the one that just opened. Nothing restarts and no
+              clock is spent (TEN-149). */}
+          {lockedPending.length > 0 ? (
+            <div data-testid="locked-panel">
+              <p className="small muted" style={{ margin: "0 0 0.4rem" }}>{lockedTrackCopy(lockedPending[0])}</p>
+              <ConnectPanel attention={connectAttention} />
+            </div>
+          ) : null}
           {next ? (
             <>
               <p className="muted" style={{ margin: "0 0 0.8rem" }}>{TRACK_META[next].hype}</p>
@@ -784,8 +849,14 @@ export default function ExamPage() {
               </button>
             </>
           ) : (
+            /* The last track a candidate can sit is finished. The run ENDS
+               here rather than hanging on a track it cannot offer — and the
+               button says which sitting it is closing, because a run that
+               finishes two of four tracks is not a full one. */
             <button className="btn primary" onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}>
-              Finish run
+              {lockedPending.length > 0
+                ? `Finish here with ${trackList(done)}`
+                : "Finish run"}
             </button>
           )}
           <span style={{ marginLeft: "0.8rem" }}>

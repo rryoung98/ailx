@@ -120,7 +120,12 @@ export interface SessionConfig {
   instrument: string;           // 'ailx'
   version: string;              // '2026.1'
   locale: "en" | "ja" | "ko";
-  /** Per-track time budgets in seconds. Order of sitting is fixed T1→T4. */
+  /**
+   * Per-track time budgets in seconds. T1→T4 is the order the tracks are
+   * PRESENTED in; since TEN-149 a candidate may sit a subset — the tracks
+   * that need no model, when none is connected — so the order actually sat
+   * is whatever the log records.
+   */
   budgets: Record<TrackId, number>;
   /** Marked true for the static showcase’s compressed demo budgets. */
   demo?: boolean;
@@ -340,8 +345,27 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
       return;
     case "track_started": {
       if (s.phase !== "between_tracks") fail("not between tracks");
-      const next = s.order.find((t) => s.tracks[t].status !== "completed");
-      if (next !== e.trackId) fail(`expected next track ${next ?? "none"}`);
+      if (!s.order.includes(e.trackId)) fail(`${e.trackId} is not in this run`);
+      /**
+       * A track is sat ONCE, and a track already sat cannot be reopened —
+       * that is the invariant. It is no longer "the first track that is not
+       * completed" (TEN-149).
+       *
+       * The old rule made the run order MANDATORY, and that is what refused a
+       * candidate with no model the whole instrument: T1 needs a model and is
+       * first, so T2 and T3 — which need none — could not be reached. The
+       * presentation order is still T1→T4 (`order`, `nextTrack`) and nothing
+       * about a run with a model changes. What moved is that the ORDER OF
+       * SITTING IS NOW RECORDED RATHER THAN ASSUMED: the log says which track
+       * was started when, so a replay reads the true order off the events
+       * instead of inferring it from a rule the run may not have followed.
+       *
+       * Nothing downstream is weakened. Each track's budget is its own, a
+       * skipped track stays `pending` and scores nothing, and the composite
+       * is withheld unless every scored track has a score of record — a
+       * partial sitting yields no composite rather than one over a subset.
+       */
+      if (s.tracks[e.trackId].status === "completed") fail(`${e.trackId} has already been sat`);
       return;
     }
     case "paused":
@@ -393,11 +417,24 @@ function assertLegal(s: SessionState, e: SessionLogEntry): void {
       assertJudgmentsAttested(e, fail);
       return;
     }
-    case "attempt_completed":
+    case "attempt_completed": {
       if (s.phase !== "between_tracks") fail("tracks still pending or running");
-      if (s.order.some((t) => s.tracks[t].status !== "completed"))
-        fail("not all tracks completed");
+      /**
+       * A run ends when at least ONE track was sat (TEN-149). It used to
+       * require all four, which left a model-free sitting with no legal way
+       * to end: T1 and T4 cannot run without a model, so the run hung on a
+       * track it could not offer with no way to close it.
+       *
+       * A sitting over a subset is not silently equal to a full one. The
+       * tracks never sat stay `pending` and carry no score, `attemptedTrackCodes`
+       * lists only what was reached, the credential is NAMED a partial
+       * sitting and carries no player type, and the composite is withheld.
+       * An EMPTY sitting is still refused: there is nothing to record.
+       */
+      if (!s.order.some((t) => s.tracks[t].status === "completed"))
+        fail("no track was sat — there is nothing to complete");
       return;
+    }
     default:
       fail(`unknown entry type ${String((e as { type?: unknown }).type)}`);
   }
