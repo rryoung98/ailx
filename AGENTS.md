@@ -89,6 +89,13 @@ commands and the invariants stay here.
   credential still resolves while a revoked share token 404s.
 
 ## The rename to Foray
+- `docs/CUTOVER-foray.md` — the origin move to `foray.tenken.co`, which
+  executes `RENAME.md` steps 1-3 and AMENDS its step 13: every credential row
+  is ours, so the legacy hostname is retired instead of answering forever, and
+  the Vercel project is renamed rather than replaced. Carries the ordered
+  steps, the one step with no rollback, the Clerk production-instance
+  recommendation and its `auth_ref` cost, and the test identity that
+  production bot protection makes necessary. Nothing is cut over.
 - `docs/RENAME.md` — the sequenced plan for renaming AILX to Foray: the
   occurrence counts in all three repos, what is irreversible and therefore
   first in the order, why the credential issuer is the hardest part (the

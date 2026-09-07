@@ -161,6 +161,14 @@ promise is broken for the two revoked credentials first.
 
 ### 3.5 Does the old origin have to answer forever? Yes — but only two paths
 
+> **AMENDED 2026-09-07 — `docs/CUTOVER-foray.md` §2.** The RULE below is
+> unchanged and is still right. It is not being PAID this time: all four
+> credential rows in the store are ours (three `dev:` test rows from 2026-08-29
+> and 2026-08-30, two of them revoked; one issued to a Clerk test account during
+> a dogfood run), so the hostname protects nothing but our own test data and is
+> retired instead. **This is the last time that is true.** Once one credential is
+> held by somebody we cannot phone, everything below applies in full.
+
 **Answer: yes, for as long as any credential issued under it exists, which is
 forever unless we contact all holders.** The minimum is small, and it is not a
 whole application:
@@ -272,7 +280,7 @@ one window. Steps 9–13 are the irreversible ones, deliberately last.
 | 10 | Point `NEXT_PUBLIC_AILX_API_BASE` (still so named until step 12) at the new service. Watch for one week | flip back | — |
 | 11 | Clerk: switch the frontend publishable key to the Foray production instance. **Do this only after the `auth_ref` question in §2/I3 has an answer with a migration or an accepted loss** | flip the key back — but any `auth_ref` written in between is orphaned either way | I3 |
 | 12 | Env vars: `FORAY_*` read with an `AILX_*` fallback in all three repos (40 distinct names), then set the new names in Vercel / Cloud Run / GitHub, then delete the fallback one release later | revert the deleting release | — |
-| 13 | New Vercel project `foray-staging`. **The old `ailx-staging` project is NOT renamed and NOT deleted** — it is reduced to the two 301 routes of §3.5 and left running forever | — | I2 (avoided by not renaming) |
+| 13 | ~~New Vercel project `foray-staging`. **The old `ailx-staging` project is NOT renamed and NOT deleted** — it is reduced to the two 301 routes of §3.5 and left running forever~~ **AMENDED — see `docs/CUTOVER-foray.md` §3.2.** All four credential rows are ours, so there is nobody to keep the hostname answering for. The EXISTING project is renamed to `foray-staging` (keeping its env vars, domains and history) and no redirect is built. The old origin must leave `allowed_origins` and `model_callback_url` BEFORE the rename, or a released hostname keeps a CORS grant | — | I2 (accepted, not avoided) |
 | 14 | Pages base path `/ailx` → `/foray`, with the old path left as a redirect page if GitHub Pages allows one | `git revert` | I6 |
 | 15 | GitHub repo renames, all three, last. Announce first; update every worktree remote in the same hour | rename back, if nobody claimed the old name | I1 |
 
