@@ -39,6 +39,7 @@ import { useCallback, useEffect, useState } from "react";
 import { API_ROUTES, apiPath, type OwnerCredential } from "@ailx/contract";
 import type { TrackId } from "@ailx/session";
 import { serviceHeaders } from "../../lib/data/traceparent";
+import { deadline, isTimeout } from "../../lib/data/deadline";
 import { CREDENTIAL_LIMITS, isFullSitting, linkedInAddUrl, TRACK_META } from "@ailx/report";
 import { basePath, isServerMode } from "../../lib/mode";
 import { browserApiOptions, getServerAttemptId } from "../../lib/data/persistence";
@@ -82,18 +83,33 @@ export function CredentialPanel({
   const [phase, setPhase] = useState<Phase>("loading");
   const [credential, setCredential] = useState<OwnerCredential | null>(null);
   const [copied, setCopied] = useState(false);
+  /** Whether the failure on screen is "too slow" rather than "did not land". */
+  const [timedOut, setTimedOut] = useState(false);
 
   const request = useCallback(
     async (route: CredentialRoute): Promise<Response> => {
       const opts = browserApiOptions();
       const id = getServerAttemptId(window.localStorage, attemptId) ?? attemptId;
-      return opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id })}`, {
-        method: API_ROUTES[route].method,
-        headers: {
-          "content-type": "application/json",
-          ...(await serviceHeaders(window.localStorage)),
-        },
-      });
+      /* BOUNDED, by what the route is FOR: reading whether a credential
+         exists is a `read`, and issuing or revoking one is a `write`. Before
+         TEN-210 this helper passed no signal at all, so a service that
+         accepted the socket and never answered left this panel on
+         "Checking…" for as long as the report was open. The bound goes
+         through `opts.fetchFn`, which is the injected fetch the tests
+         drive. */
+      const bound = deadline(route === "getCredential" ? "read" : "write");
+      try {
+        return await opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id })}`, {
+          method: API_ROUTES[route].method,
+          headers: {
+            "content-type": "application/json",
+            ...(await serviceHeaders(window.localStorage)),
+          },
+          signal: bound.signal,
+        });
+      } finally {
+        bound.settle();
+      }
     },
     [attemptId],
   );
@@ -116,8 +132,10 @@ export function CredentialPanel({
         }
         setCredential(held);
         setPhase("live");
-      } catch {
-        if (live) setPhase("error");
+      } catch (err) {
+        if (!live) return;
+        setTimedOut(isTimeout(err));
+        setPhase("error");
       }
     })();
     return () => {
@@ -148,6 +166,7 @@ export function CredentialPanel({
 
   const act = async (route: "issueCredential" | "revokeCredential") => {
     setPhase("busy");
+    setTimedOut(false);
     try {
       const res = await request(route);
       if (!res.ok) throw new Error(String(res.status));
@@ -160,7 +179,8 @@ export function CredentialPanel({
       if (issued === null) throw new Error("no credential in the response");
       setCredential(issued);
       setPhase("live");
-    } catch {
+    } catch (err) {
+      setTimedOut(isTimeout(err));
       setPhase("error");
     }
   };
@@ -217,7 +237,9 @@ export function CredentialPanel({
             </button>
             {phase === "error" ? (
               <span className="small" style={{ marginLeft: "0.6rem", color: "var(--bad)" }} role="alert">
-                That did not reach the exam service. Your sitting is saved. Try again in a moment.
+                {timedOut
+                  ? "The exam service did not answer in time, so nothing was issued. It is slow rather than down — your sitting is saved, so try again."
+                  : "That did not reach the exam service. Your sitting is saved. Try again in a moment."}
               </span>
             ) : null}
           </p>

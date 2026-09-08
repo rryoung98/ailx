@@ -68,6 +68,8 @@ import { CompositeCard } from "../../features/report/CompositeCard";
 import { localCompositeView, serviceCompositeView } from "../../features/report/compositeView";
 import { HostedComposite } from "../../features/report/HostedComposite";
 import { useScoresOfRecord } from "../../features/report/useScoresOfRecord";
+import { useSyncStatus } from "../../lib/data/useSyncStatus";
+import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
 import { reportGate, sittingShape } from "../../features/report/reportGate";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
@@ -214,6 +216,18 @@ export default function ReportPage() {
    * so it asks the service nothing.
    */
   const scoresView = useScoresOfRecord(sample ? null : (reportAttemptId ?? null));
+  /**
+   * FIRES THE RESUME PASS THE REPORT NEVER FIRED (TEN-206).
+   *
+   * This page reads the stored log directly, so a sitting whose finalize POST
+   * failed arrived here complete, unscored, and asked the service for
+   * nothing: `Run complete`, then a report with no score of record, no reason
+   * and no action. `resumeOnMount` re-offers the log; the mirror returns
+   * early when the service has already finalized, so a normal report costs
+   * one function call and no request. The bundled sample is nobody's sitting
+   * and asks for nothing.
+   */
+  const finalizeSync = useSyncStatus({ resumeOnMount: !sample });
   useEffect(() => {
     if (!reportAttemptId) return;
     let cancelled = false;
@@ -300,6 +314,7 @@ export default function ReportPage() {
               goes above the track scores because it is what the candidate
               came for (TEN-92). It is the same card the local report draws,
               marked as the service's and claiming no local replay. */}
+          <FinalizeNotice status={finalizeSync.status} busy={finalizeSync.busy} onRetry={finalizeSync.retry} />
           {state?.attemptId ? (
             <HostedComposite attemptId={state.attemptId} scores={scoresView.scores} />
           ) : null}
@@ -326,6 +341,7 @@ export default function ReportPage() {
             <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setSample(false)}>Exit sample</button>
           </div>
         ) : null}
+        <FinalizeNotice status={finalizeSync.status} busy={finalizeSync.busy} onRetry={finalizeSync.retry} />
         <CompositeCard view={localCompositeView(state.attemptId, summary)} />
 
         {/* ONE identity: the type, then the evidence each axis was decided

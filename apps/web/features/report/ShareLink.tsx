@@ -22,6 +22,7 @@ import Link from "next/link";
 import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 import { serviceHeaders } from "../../lib/data/traceparent";
+import { deadline, isTimeout } from "../../lib/data/deadline";
 import {
   DEFAULT_SHARE_SECTIONS,
   SHARE_NOTE_MAX,
@@ -115,12 +116,15 @@ function PublishControl({
   needsHuman,
   busy,
   failed,
+  timedOut,
   onPublish,
 }: {
   status: ShareStatus;
   needsHuman: boolean;
   busy: boolean;
   failed: boolean;
+  /** Whether that failure was us giving up waiting, which reads differently. */
+  timedOut: boolean;
   onPublish: () => void;
 }) {
   if (status === "revoked" || status === "rejected") return null;
@@ -154,7 +158,9 @@ function PublishControl({
       </p>
       {failed ? (
         <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
-          That did not reach the gallery. Your link is untouched. Try again in a moment.
+          {timedOut
+            ? "The gallery did not answer in time, so nothing was submitted. It is slow rather than down — your link is untouched, so try again."
+            : "That did not reach the gallery. Your link is untouched. Try again in a moment."}
         </p>
       ) : null}
     </div>
@@ -180,6 +186,10 @@ export function ShareLink({
   const [hasSite, setHasSite] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishFailed, setPublishFailed] = useState(false);
+  /** Whether the failure on screen is "too slow" rather than "did not land". */
+  const [timedOut, setTimedOut] = useState(false);
+  /** The same fact for the publish button, which has a failure line of its own. */
+  const [publishTimedOut, setPublishTimedOut] = useState(false);
 
   const serverId = useCallback(
     () => getServerAttemptId(window.localStorage, attemptId) ?? attemptId,
@@ -193,14 +203,25 @@ export function ShareLink({
   const request = useCallback(
     async (route: ShareRoute, body?: unknown): Promise<Response> => {
       const opts = browserApiOptions();
-      return opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id: serverId() })}`, {
-        method: API_ROUTES[route].method,
-        headers: {
-          "content-type": "application/json",
-          ...(await serviceHeaders(window.localStorage)),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      /* BOUNDED, by what the route is FOR: asking whether a link exists is a
+         `read`, and creating, publishing or revoking one is a `write`. This
+         helper passed no signal at all until TEN-210, so a stalled service
+         left the panel on "Checking…" — or the button on "Submitting…" —
+         for the life of the page. */
+      const bound = deadline(route === "getShare" ? "read" : "write");
+      try {
+        return await opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id: serverId() })}`, {
+          method: API_ROUTES[route].method,
+          headers: {
+            "content-type": "application/json",
+            ...(await serviceHeaders(window.localStorage)),
+          },
+          body: body === undefined ? undefined : JSON.stringify(body),
+          signal: bound.signal,
+        });
+      } finally {
+        bound.settle();
+      }
     },
     [serverId],
   );
@@ -222,8 +243,10 @@ export function ShareLink({
         }
         setShare(held);
         setPhase("live");
-      } catch {
-        if (live) setPhase("error");
+      } catch (err) {
+        if (!live) return;
+        setTimedOut(isTimeout(err));
+        setPhase("error");
       }
     })();
     return () => {
@@ -249,6 +272,7 @@ export function ShareLink({
 
   const create = async () => {
     setPhase("busy");
+    setTimedOut(false);
     try {
       const res = await request("createShare", {
         sections: { ...sections, site: sections.site && hasSite },
@@ -262,7 +286,8 @@ export function ShareLink({
       // A link now exists. The TOKEN never leaves with this event: it is a
       // capability, and a capability in a metrics table is a leak.
       funnel().step("share_created");
-    } catch {
+    } catch (err) {
+      setTimedOut(isTimeout(err));
       setPhase("error");
     }
   };
@@ -276,12 +301,14 @@ export function ShareLink({
   const publish = async () => {
     setPublishing(true);
     setPublishFailed(false);
+    setPublishTimedOut(false);
     try {
       const res = await request("publishShare");
       if (!res.ok) throw new Error(String(res.status));
       const published = ownerShare(await res.json());
       if (published !== null) setShare(published);
-    } catch {
+    } catch (err) {
+      setPublishTimedOut(isTimeout(err));
       setPublishFailed(true);
     } finally {
       setPublishing(false);
@@ -290,12 +317,14 @@ export function ShareLink({
 
   const revoke = async () => {
     setPhase("busy");
+    setTimedOut(false);
     try {
       const res = await request("revokeShare");
       if (!res.ok) throw new Error(String(res.status));
       setShare(null);
       setPhase("none");
-    } catch {
+    } catch (err) {
+      setTimedOut(isTimeout(err));
       setPhase("error");
     }
   };
@@ -413,6 +442,7 @@ export function ShareLink({
             needsHuman={needsHumanApproval(share.payload)}
             busy={publishing}
             failed={publishFailed}
+            timedOut={publishTimedOut}
             onPublish={publish}
           />
           {share.status === "rejected" ? (
@@ -430,7 +460,9 @@ export function ShareLink({
 
       {phase === "error" ? (
         <p className="small" style={{ color: "var(--bad)" }} role="alert">
-          That did not work. Your run is saved. Try again in a moment.
+          {timedOut
+            ? "The exam service did not answer in time. It is slow rather than down — your run is saved, so try again."
+            : "That did not work. Your run is saved. Try again in a moment."}
         </p>
       ) : null}
       <p className="faint small" style={{ marginBottom: 0 }}>

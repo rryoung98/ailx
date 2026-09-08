@@ -28,6 +28,7 @@ import {
 } from "@ailx/contract";
 import { apiBase, isServerMode } from "../lib/mode";
 import { serviceHeaders } from "../lib/data/traceparent";
+import { deadline, fetchWithDeadline, isTimeout } from "../lib/data/deadline";
 import { browserApiOptions, getServerAttemptId } from "../lib/data/persistence";
 
 const AUTHOR_LABEL: Record<string, string> = {
@@ -154,15 +155,22 @@ export function ModeratorThread({ shareId, trail }: { shareId: string; trail: Mo
     try {
       // Header identity, not the cookie: cross-origin to the exam service a
       // SameSite=Lax cookie never travels (docs/DEPLOY.md §4.1).
-      const res = await fetch(`${apiBase()}${apiPath("moderationComment", { id: shareId })}`, {
+      // `write`: a note is a row in the trail, and an unbounded POST left the
+      // composer disabled with "Sending…" for as long as the tab was open
+      // (TEN-210).
+      const res = await fetchWithDeadline("write", `${apiBase()}${apiPath("moderationComment", { id: shareId })}`, {
         method: API_ROUTES.moderationComment.method,
         headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({ body, visibility: shared ? "shared" : "internal" }),
       });
       if (!res.ok) setError(failure(res.status));
       else router.refresh();
-    } catch {
-      setError("The note did not reach the server. Nothing was written.");
+    } catch (err) {
+      setError(
+        isTimeout(err)
+          ? "The server did not answer in time, so nothing was written. It is slow rather than down — send it again."
+          : "The note did not reach the server. Nothing was written.",
+      );
     }
     setBusy(false);
   };
@@ -233,7 +241,20 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
 
   const load = useCallback(async () => {
     const { url, method, fetchFn } = endpoint("candidateThread");
-    const res = await fetchFn(url, { method, headers: await serviceHeaders(window.localStorage) });
+    // `read`: this asks what the moderators said, and carries nothing. The
+    // bound goes on through `fetchFn` rather than `fetchWithDeadline`,
+    // because the injected fetch is what the report's tests drive.
+    const bound = deadline("read");
+    let res: Response;
+    try {
+      res = await fetchFn(url, {
+        method,
+        headers: await serviceHeaders(window.localStorage),
+        signal: bound.signal,
+      });
+    } finally {
+      bound.settle();
+    }
     if (!res.ok) {
       setThread(null);
       return;
@@ -260,15 +281,27 @@ export function CandidateThread({ attemptId }: { attemptId: string }) {
     setError(null);
     try {
       const { url, method, fetchFn } = endpoint("candidateReply");
-      const res = await fetchFn(url, {
-        method,
-        headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
-        body: JSON.stringify({ body }),
-      });
+      // `write`: the candidate's own words, so the longer bound.
+      const bound = deadline("write");
+      let res: Response;
+      try {
+        res = await fetchFn(url, {
+          method,
+          headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
+          body: JSON.stringify({ body }),
+          signal: bound.signal,
+        });
+      } finally {
+        bound.settle();
+      }
       if (!res.ok) setError("That did not send. Nothing was written.");
       else await load();
-    } catch {
-      setError("That did not reach the server. Nothing was written.");
+    } catch (err) {
+      setError(
+        isTimeout(err)
+          ? "The server did not answer in time, so nothing was written. It is slow rather than down — send it again."
+          : "That did not reach the server. Nothing was written.",
+      );
     }
     setBusy(false);
   };

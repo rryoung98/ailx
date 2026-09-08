@@ -83,7 +83,15 @@ describe("createLocalPersistence", () => {
   });
 
   it("flush resolves immediately (nothing to sync)", async () => {
-    await expect(createLocalPersistence(fakeStorage()).flush()).resolves.toBeUndefined();
+    // `flush()` now REPORTS an outcome rather than resolving with nothing
+    // (TEN-206). A local-only build has no server copy, so the honest answer
+    // is `idle`: there is nothing to wait for and nothing unfinalized.
+    await expect(createLocalPersistence(fakeStorage()).flush()).resolves.toEqual({
+      phase: "idle",
+      finalized: false,
+      finalizePending: false,
+      failures: 0,
+    });
   });
 });
 
