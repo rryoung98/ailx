@@ -147,7 +147,12 @@ describe("every exam-page call site uses it", () => {
       expect(host!.textContent).toContain(marker);
       const el = warning();
       expect(el, `${name} branch must render the shared warning`).not.toBeNull();
-      expect(el!.textContent).toContain("Persistence warning");
+      // The seeded corruption is a genuine tamper (a `resumed` with nothing
+      // paused), so every branch must show the TAMPER heading, never the
+      // older-build one. features/exam/persistNotice.ts owns the wording.
+      expect(el!.textContent).toContain("Saved run damaged");
+      expect(el!.textContent).toContain("does not match its evidence");
+      expect(el!.textContent).not.toContain("older version of Foray");
     });
   }
 });

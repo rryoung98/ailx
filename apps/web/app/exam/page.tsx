@@ -32,6 +32,7 @@ import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/Conn
 import { modelGatewayFetch } from "../../lib/data/modelGateway";
 import { hasModelEndpoint, LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
 import { PersistWarning } from "../../features/exam/PersistWarning";
+import { persistNotice } from "../../features/exam/persistNotice";
 import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
 import { PillCTA } from "../../components/ui/PillCTA";
 import { Reveal } from "../../components/ui/Reveal";
@@ -120,6 +121,8 @@ export default function ExamPage() {
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
+  /** Heading for the banner above — names WHICH persistence problem it is. */
+  const [persistLabel, setPersistLabel] = useState<string>("Persistence warning");
   /**
    * Runner crash handling (P0-1). The clock is the candidate's, not ours:
    * a fault in OUR code pauses the track so the crash is never charged to
@@ -194,8 +197,16 @@ export default function ExamPage() {
       const sub = loadSiteSubmission(window.localStorage, started.attemptId);
       if (sub) setSiteStatus({ state: "live", url: sub.url });
     }
-    if (v && v.dropped > 0) {
-      setPersistWarning(`stored run log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
+    /**
+     * A stored log that did not load clean says WHICH thing happened: a log
+     * that disagrees with its evidence, or a log an older build wrote. Those
+     * used to be the same red banner, and the older-build case is the one
+     * that actually fires (TEN-160).
+     */
+    const notice = persistNotice(v);
+    if (notice) {
+      setPersistWarning(notice.message);
+      setPersistLabel(notice.label);
     }
     setHydrated(true);
   }, []);
@@ -290,6 +301,7 @@ export default function ExamPage() {
         // Multi-tab conflict or storage quota/security failure: keep the
         // in-memory log authoritative for this tab and warn loudly instead
         // of silently overwriting another tab or losing writes (audit B1/M4).
+        setPersistLabel("Persistence warning");
         setPersistWarning(err instanceof Error ? err.message : String(err));
       }
       return next;
@@ -633,7 +645,7 @@ export default function ExamPage() {
 
   if (!hydrated) {
     return <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
       <div className="container"><p className="muted">Loading your run…</p></div></main>;
   }
 
@@ -646,7 +658,7 @@ export default function ExamPage() {
     const startGate = runGate({ connected });
     return (
       <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · Foray 2026.1</div>
@@ -737,7 +749,7 @@ export default function ExamPage() {
   if (state.phase === "completed") {
     return (
       <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Run complete</h1>
           {/* Derived, never asserted (TEN-129). The old line said "All four
@@ -771,7 +783,7 @@ export default function ExamPage() {
     if (justFinished && state.tracks[justFinished].timedOut && timeUpAck !== justFinished) {
       return (
         <main className="page">
-          <PersistWarning warning={persistWarning} />
+          <PersistWarning warning={persistWarning} label={persistLabel} />
           <TimeUpNotice
             trackId={justFinished}
             budgetSeconds={state.config!.budgets[justFinished]}
@@ -790,7 +802,7 @@ export default function ExamPage() {
     const done = state.order.filter((t) => state.tracks[t].status === "completed");
     return (
       <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">run {state.attemptId}</div>
           <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
@@ -934,7 +946,7 @@ export default function ExamPage() {
 
   return (
     <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
       {/* Full-width workspace while a track is live: the runners are
           two-pane environments and need the room (~1400px). */}
       <div className="container" style={{ maxWidth: 1400 }}>
