@@ -66,20 +66,16 @@ export default function DailyPage() {
         <section aria-labelledby="honest">
           <h2 id="honest">What this is, and what it is not</h2>
           <p className="muted" style={{ maxWidth: "62ch" }}>
-            The daily is a game on <strong>published</strong> material: the released practice
-            tier, whose answer keys are public on purpose, and the practice corpus. It is not the
-            examination and issues no result. Nothing here reaches a score, a report or a
-            credential. It needs no account, and your streak stays on this device, not with us.
+            A game on published material. It is not the examination and reaches no score, report
+            or credential. No account, and your streak stays on this device.
           </p>
           <p className="small faint" style={{ maxWidth: "62ch" }}>
-            Honest about the pool. There are {DAILY_POOL.length} cards in total, so a card comes
-            back every couple of weeks. That is sooner than a real deck, and you may recognise one
-            whose answer you have seen. That is the size of the public material, not a design
-            goal, and another reason the daily is a game, not a measurement. The{" "}
-            <Link href="/practice">practice drill</Link> shows the tell on every card; the{" "}
-            <Link href="/exam">full run</Link> is the instrument.
+            {DAILY_POOL.length} cards in the pool, so one comes round again every couple of
+            weeks. The <Link href="/practice">practice drill</Link> shows the tell on every card;
+            the <Link href="/exam">full run</Link> is the instrument.
           </p>
         </section>
+
       </div>
     </main>
   );
