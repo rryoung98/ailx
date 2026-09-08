@@ -5,12 +5,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
 import {
   append, project,
+  SaveConflictError,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
 import {
   DeckMismatchError, getAttemptPersistence, startServerAttempt,
 } from "../../lib/data/persistence";
+import { useSyncStatus } from "../../lib/data/useSyncStatus";
+import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
+import { withDeadline } from "../../lib/data/deadline";
 import { fetchHostedTrackConfig } from "../../lib/instrument/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/data/siteUpload";
 import {
@@ -32,12 +36,14 @@ import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/Conn
 import { modelGatewayFetch } from "../../lib/data/modelGateway";
 import { hasModelEndpoint, LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
 import { PersistWarning } from "../../features/exam/PersistWarning";
+import { StorageStop } from "../../features/exam/StorageStop";
+import { carriedOnCopy, storageStopCopy } from "../../features/exam/storageStopCopy";
 import { persistNotice } from "../../features/exam/persistNotice";
 import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
 import { PillCTA } from "../../components/ui/PillCTA";
 import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
-import { eventLogCopy, examAccessCopy } from "../../lib/mode";
+import { eventLogCopy, examAccessCopy, isServerMode } from "../../lib/mode";
 import { funnel } from "../../lib/data/funnel";
 import { completionSummary, SERVICE_SCORES_THIS_TRACK, trackList } from "../../lib/instrument/scoreSources";
 
@@ -66,30 +72,20 @@ type SiteStatus =
   | { state: "live"; url: string }
   | { state: "error"; kind: SiteUploadFailureKind; message: string };
 
-/**
- * How long a hosted content fetch may hang before it becomes a visible
- * failure with a retry. The clock is held while it runs (see the content
- * hold below), so this costs the candidate nothing — it exists so a dead
- * socket ends in an answer instead of an empty screen (TEN-116).
- */
-const CONTENT_FETCH_TIMEOUT_MS = 20_000;
-
 /** How long content may take to appear before the clock is held for it. */
 const CONTENT_HOLD_GRACE_MS = 1_000;
 
-/** Reject with a plain Error when `p` has not settled in `ms`. */
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const id = window.setTimeout(
-      () => reject(new Error(`the exam service did not answer in ${Math.round(ms / 1000)}s`)),
-      ms,
-    );
-    p.then(
-      (v) => { window.clearTimeout(id); resolve(v); },
-      (err: unknown) => { window.clearTimeout(id); reject(err); },
-    );
-  });
-}
+/*
+ * The hosted content fetch used to be bounded by a `withTimeout` helper and a
+ * `CONTENT_FETCH_TIMEOUT_MS` constant written here — the ONLY bound anywhere
+ * in `apps/web` before TEN-210, and a bound on exactly one call. Both are
+ * gone: the number is now the `content` class in `lib/data/deadline.ts`, with
+ * every other class beside it, and `withDeadline` is the same wrapper for the
+ * same reason (this seam call is several requests, so there is no single
+ * signal to hand it). The clock is held while it runs, so waiting costs the
+ * candidate nothing; the bound exists so a dead socket ends in a retry button
+ * instead of an empty screen (TEN-116).
+ */
 
 /**
  * What a candidate is told when the exam service will not open their run
@@ -185,6 +181,27 @@ export default function ExamPage() {
   const logRef = useRef<SequencedEntry[] | null>(null);
   const startingRef = useRef(false); // run-start in flight (server attempt pre-creation)
   logRef.current = log;
+  /**
+   * Has the SERVICE recorded this sitting as finished? Only that step issues
+   * a score (TEN-66), and until TEN-206 a finalize that failed was silent:
+   * the candidate read `Run complete` and then a report with no score, no
+   * reason and no action. No resume pass is fired here — this page owns the
+   * live mirror, so the pass is already running.
+   */
+  const finalizeSync = useSyncStatus();
+  /**
+   * THIS BROWSER WILL NOT STORE ANY MORE OF THE RUN (TEN-208). The reason the
+   * store gave, or null while it is still storing. Not a banner: the clock is
+   * held and the workspace is covered until the candidate has decided, because
+   * the alternative is working — and being charged — for entries that reach no
+   * store at all.
+   */
+  const [storageStop, setStorageStop] = useState<string | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
+  /** True once the candidate has been shown the stop and chosen to carry on. */
+  const storageStopAckRef = useRef(false);
+  /** True while the clock is held BY the stop, so only that hold is released. */
+  const storageHeldRef = useRef(false);
 
   // Hydrate from localStorage (client-only; static export has no SSR data).
   useEffect(() => {
@@ -298,11 +315,30 @@ export default function ExamPage() {
         getAttemptPersistence().save(next);
         setPersistWarning(null);
       } catch (err) {
-        // Multi-tab conflict or storage quota/security failure: keep the
-        // in-memory log authoritative for this tab and warn loudly instead
-        // of silently overwriting another tab or losing writes (audit B1/M4).
-        setPersistLabel("Persistence warning");
-        setPersistWarning(err instanceof Error ? err.message : String(err));
+        // TWO different failures, and they used to share one banner over a
+        // running clock (TEN-208).
+        //
+        // A CONFLICT is another tab writing the same attempt. This tab's
+        // in-memory log stays authoritative for this tab and the banner is
+        // the right weight: nothing has been lost, and the other tab is
+        // saving.
+        //
+        // ANYTHING ELSE is the store refusing to hold the run — quota, a
+        // locked-down browser. The log only grows, so the next save fails the
+        // same way and every one after it: a banner means the candidate keeps
+        // working, keeps being charged for the time, and none of it is
+        // written. That is a stop, and it is handled below.
+        if (err instanceof SaveConflictError) {
+          setPersistLabel("Persistence warning");
+          setPersistWarning(err instanceof Error ? err.message : String(err));
+        } else if (!storageStopAckRef.current) {
+          setStorageStop(err instanceof Error ? err.message : String(err));
+        } else {
+          // The candidate was shown the stop and chose to carry on. Nagging
+          // them on every entry is not new information; the banner is.
+          setPersistLabel("Not saved in this browser");
+          setPersistWarning(carriedOnCopy(err instanceof Error ? err.message : String(err)));
+        }
       }
       return next;
     });
@@ -339,7 +375,7 @@ export default function ExamPage() {
     if (cur?.attemptId === attemptId && cur.trackId === activeTrack) return;   // already resolved
     let cancelled = false;
     setDeckError(null);
-    withTimeout(fetchHostedTrackConfig(attemptId, activeTrack), CONTENT_FETCH_TIMEOUT_MS)
+    withDeadline("content", fetchHostedTrackConfig(attemptId, activeTrack))
       .then((config) => {
         if (!cancelled) setHostedTrack({ attemptId, trackId: activeTrack, config });
       })
@@ -620,6 +656,92 @@ export default function ExamPage() {
     return () => window.clearTimeout(id);
   }, [contentPresentable, crashed, state, holdContent]);
 
+  /**
+   * STORAGE HOLD (TEN-208). Same shape as the crash hold above and for the
+   * same reason: the failure is ours to deal with, not the candidate's to be
+   * charged for, and an involuntary pause must carry a recorded cause so a
+   * later audit can see why the interval is there. The `paused` entry may
+   * itself fail to save — the store is the thing that is broken — and that is
+   * fine: the in-memory log is what the clock is derived from, and the mirror
+   * has the entry in a hosted run.
+   */
+  useEffect(() => {
+    if (storageStop === null || storageHeldRef.current) return;
+    const cur = logRef.current ? project(logRef.current) : null;
+    if (!cur || cur.phase !== "in_track" || !cur.currentTrack) return;
+    const t = cur.currentTrack;
+    const ts = stamp();
+    storageHeldRef.current = true;
+    commitIfLegal([
+      {
+        type: "track_event", trackId: t, ts,
+        event: {
+          verb: "storage_exhausted",
+          object: `track:${t}`,
+          result: { message: storageStop },
+          context: { track: t, clock: "held" },
+          clientTs: new Date().toISOString(),
+        },
+      },
+      { type: "paused", ts },
+    ]);
+  }, [storageStop, commitIfLegal, stamp]);
+
+  /** Release a hold the stop placed, and only that one. */
+  const releaseStorageHold = useCallback(() => {
+    if (!storageHeldRef.current) return;
+    storageHeldRef.current = false;
+    const cur = logRef.current ? project(logRef.current) : null;
+    if (cur?.phase === "paused") commitIfLegal([{ type: "resumed", ts: stamp() }]);
+  }, [commitIfLegal, stamp]);
+
+  /** The candidate cleared space and wants the run written here again. */
+  const retryStorage = useCallback(() => {
+    setStorageBusy(true);
+    try {
+      const cur = logRef.current;
+      if (cur) getAttemptPersistence().save(cur);
+      setStorageStop(null);
+      setPersistWarning(null);
+      releaseStorageHold();
+    } catch (err) {
+      // Still full. Say what it said this time rather than repeating
+      // ourselves: the message is the only thing that has changed.
+      setStorageStop(err instanceof Error ? err.message : String(err));
+    } finally {
+      setStorageBusy(false);
+    }
+  }, [releaseStorageHold]);
+
+  /**
+   * The candidate has read what carrying on costs and wants to carry on.
+   * Acknowledged for the rest of the run: the stop is information, and once
+   * it has been given, repeating it every entry is only in the way.
+   */
+  const continueWithoutStorage = useCallback(() => {
+    storageStopAckRef.current = true;
+    setStorageStop(null);
+    setPersistLabel("Not saved in this browser");
+    setPersistWarning(carriedOnCopy(storageStop ?? "no room left"));
+    releaseStorageHold();
+  }, [releaseStorageHold, storageStop]);
+
+  /**
+   * The stop, ready to render. Fixed and full-screen, so it goes beside the
+   * persistence banner in every phase branch rather than being wired into one
+   * of them: the store can refuse a write on any commit, including the
+   * `attempt_completed` that ends the run.
+   */
+  const storageOverlay =
+    storageStop === null ? null : (
+      <StorageStop
+        copy={storageStopCopy({ mirrored: isServerMode(), reason: storageStop })}
+        busy={storageBusy}
+        onRetry={retryStorage}
+        onContinue={continueWithoutStorage}
+      />
+    );
+
   const retryRunner = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
     // Only auto-resume a pause WE forced; a candidate-initiated pause stands.
@@ -646,6 +768,7 @@ export default function ExamPage() {
   if (!hydrated) {
     return <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
       <div className="container"><p className="muted">Loading your run…</p></div></main>;
   }
 
@@ -659,6 +782,7 @@ export default function ExamPage() {
     return (
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · Foray 2026.1</div>
@@ -750,12 +874,14 @@ export default function ExamPage() {
     return (
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Run complete</h1>
           {/* Derived, never asserted (TEN-129). The old line said "All four
               tracks are scored" on a run where the service had scored none of
               them yet, on the same screen as the error saying so. */}
           <p className="lede" data-testid="completion-summary">{completionSummary(state)}</p>
+          <FinalizeNotice status={finalizeSync.status} busy={finalizeSync.busy} onRetry={finalizeSync.retry} />
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
           <p style={{ display: "flex", gap: "0.8rem" }}>
             <Link href="/report" className="btn primary">Open your report →</Link>
@@ -784,6 +910,7 @@ export default function ExamPage() {
       return (
         <main className="page">
           <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
           <TimeUpNotice
             trackId={justFinished}
             budgetSeconds={state.config!.budgets[justFinished]}
@@ -803,6 +930,7 @@ export default function ExamPage() {
     return (
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">run {state.attemptId}</div>
           <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
@@ -947,6 +1075,7 @@ export default function ExamPage() {
   return (
     <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
       {/* Full-width workspace while a track is live: the runners are
           two-pane environments and need the room (~1400px). */}
       <div className="container" style={{ maxWidth: 1400 }}>

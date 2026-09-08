@@ -189,7 +189,10 @@ describe("no call site opts out", () => {
         // Built in pieces so this file does not itself contain the literal
         // a linter reads as an unintended template placeholder.
         const seam = ["$", "{apiBase()}"].join("");
-        return src.includes(seam) && /\bfetch(Fn)?\s*\(/.test(src);
+        // `fetchWithDeadline` counts too: since TEN-210 a bounded request is
+        // still a request, and a seam check that did not know the helper's
+        // name would quietly stop looking at every call site that adopted it.
+        return src.includes(seam) && /\bfetch(Fn|WithDeadline)?\s*\(/.test(src);
       });
     // A check that found nothing to check would pass forever. Five modules
     // spell `${apiBase()}` straight into a fetch today; the rest take a base

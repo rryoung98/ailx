@@ -38,13 +38,49 @@ function fire(el: Element, isIntersecting: boolean) {
   });
 }
 
-/** Put the reader `remaining` px above the bottom of the document. */
-function scrollTo(remaining: number) {
+type ROCallback = () => void;
+let resizeObservers: ROCallback[] = [];
+
+class FakeRO {
+  constructor(cb: ROCallback) {
+    resizeObservers.push(cb);
+  }
+  observe() {}
+  disconnect() {}
+}
+
+/** The document box changed under the component; no scroll, no window resize. */
+function fireResizeObserver() {
+  act(() => {
+    for (const cb of resizeObservers) cb();
+  });
+}
+
+/**
+ * Set the page geometry. Height is per-test: the defect this file missed for
+ * a release was a page that does not scroll at all, and a `scrollHeight`
+ * pinned in `beforeEach` cannot see one.
+ */
+function setPage({
+  scrollHeight,
+  innerHeight = 800,
+  scrollY = 0,
+}: {
+  scrollHeight: number;
+  innerHeight?: number;
+  scrollY?: number;
+}) {
   Object.defineProperty(document.documentElement, "scrollHeight", {
     configurable: true,
-    value: 5000,
+    value: scrollHeight,
   });
-  Object.defineProperty(window, "scrollY", { configurable: true, value: 5000 - 800 - remaining });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: innerHeight });
+  Object.defineProperty(window, "scrollY", { configurable: true, value: scrollY });
+}
+
+/** Put the reader `remaining` px above the bottom of a 5000px document. */
+function scrollTo(remaining: number) {
+  setPage({ scrollHeight: 5000, scrollY: 5000 - 800 - remaining });
   act(() => window.dispatchEvent(new Event("scroll")));
 }
 
@@ -54,7 +90,9 @@ let marked: HTMLElement;
 
 beforeEach(() => {
   observers = [];
+  resizeObservers = [];
   vi.stubGlobal("IntersectionObserver", FakeIO);
+  vi.stubGlobal("ResizeObserver", FakeRO);
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
   marked = document.createElement("div");
@@ -123,6 +161,50 @@ describe("PillCTA clearance", () => {
     scrollTo(60);
     expect(pill().className).toContain("pill-cta-cleared");
     expect(pill().getAttribute("style")).toBeNull();
+  });
+
+  it("stays on a page that does not scroll — there is no footer to clear", () => {
+    // A 2560x1440 monitor, or a zoomed-out browser, against a start screen
+    // barely taller than the viewport. This is /exam, and the pill is the
+    // only Start control.
+    setPage({ scrollHeight: 1250, innerHeight: 1200, scrollY: 0 });
+    act(() => root!.render(<PillCTA href="/exam">Play</PillCTA>));
+    expect(pill().className).not.toContain("pill-cta-cleared");
+    expect(pill().getAttribute("aria-hidden")).toBeNull();
+    expect(pill().getAttribute("tabindex")).toBeNull();
+  });
+
+  it("stays on a page that fits the viewport exactly", () => {
+    setPage({ scrollHeight: 1200, innerHeight: 1200, scrollY: 0 });
+    act(() => root!.render(<PillCTA href="/exam">Play</PillCTA>));
+    expect(pill().className).not.toContain("pill-cta-cleared");
+  });
+
+  it("still clears a marked control on a page that does not scroll", () => {
+    setPage({ scrollHeight: 1250, innerHeight: 1200, scrollY: 0 });
+    act(() => root!.render(<PillCTA href="/exam">Play</PillCTA>));
+    fire(marked, true);
+    expect(pill().className).toContain("pill-cta-cleared");
+  });
+
+  it("still clears at the bottom of a page that does scroll", () => {
+    setPage({ scrollHeight: 5000, innerHeight: 800, scrollY: 4200 });
+    act(() => root!.render(<PillCTA href="/exam">Play</PillCTA>));
+    expect(pill().className).toContain("pill-cta-cleared");
+  });
+
+  it("re-measures when the content grows past the viewport, and when it shrinks back", () => {
+    setPage({ scrollHeight: 1250, innerHeight: 1200, scrollY: 0 });
+    act(() => root!.render(<PillCTA href="/exam">Play</PillCTA>));
+    expect(pill().className).not.toContain("pill-cta-cleared");
+    // The page grows and the reader is already at its bottom: footer in play.
+    setPage({ scrollHeight: 3000, innerHeight: 1200, scrollY: 1750 });
+    fireResizeObserver();
+    expect(pill().className).toContain("pill-cta-cleared");
+    // And back: the content collapses, the document stops scrolling.
+    setPage({ scrollHeight: 1250, innerHeight: 1200, scrollY: 0 });
+    fireResizeObserver();
+    expect(pill().className).not.toContain("pill-cta-cleared");
   });
 
   it("works as a button too, and keeps aria-disabled independent of clearing", () => {

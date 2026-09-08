@@ -42,6 +42,7 @@ import {
   type StreakSummary,
 } from "@ailx/report";
 import { serviceHeaders } from "../../lib/data/traceparent";
+import { fetchWithDeadline, isTimeout } from "../../lib/data/deadline";
 import { hasIdentity, useIdentity } from "../../lib/auth/identityState";
 import { funnel } from "../../lib/data/funnel";
 import {
@@ -85,6 +86,16 @@ const DEAL_FAILED =
   "We could not deal a round. That is usually the connection, not anything you did.";
 const SUBMIT_FAILED =
   "Your round was not sent, so it is not recorded yet. Nothing was lost: the round below is exactly as you played it, and practice is unscored either way.";
+/**
+ * The SAME two failures, when the service is there and too slow to use. A
+ * different sentence because it is a different fact and it points somewhere
+ * else: reloading a slow service can work, checking a connection cannot fix
+ * one (TEN-210).
+ */
+const DEAL_TIMED_OUT =
+  "The service did not deal a round in time. It is slow rather than down, so trying again often works.";
+const SUBMIT_TIMED_OUT =
+  "The service did not take your round in time, so it is not recorded yet. Nothing was lost: the round below is exactly as you played it, and it is slow rather than down — send it again.";
 const STIMULUS_FAILED =
   "This picture did not load, so there is nothing to call. It has not been counted for or against you.";
 
@@ -185,6 +196,9 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   /** What the sign-in claim did, if it happened while this page was open. */
   const [claim, setClaim] = useState<ClaimOutcome | null>(null);
   const [submitFailed, setSubmitFailed] = useState(false);
+  /** Whether the failure on screen is "too slow", for both the deal and the send. */
+  const [dealTimedOut, setDealTimedOut] = useState(false);
+  const [submitTimedOut, setSubmitTimedOut] = useState(false);
   const [sending, setSending] = useState(false);
   const [stimulus, setStimulus] = useState<Stimulus>("pending");
   // Bumped to remount the <img>, which is what actually re-requests a picture
@@ -215,6 +229,8 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
     setPlayed([]);
     setQualification(null);
     setSubmitFailed(false);
+    setDealTimedOut(false);
+    setSubmitTimedOut(false);
     setStimulus("pending");
     try {
       // No account (and the whole static export): the browser seeds its own
@@ -224,7 +240,8 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
       let id: string;
       let ids: string[];
       if (recorded) {
-        const res = await fetch(`${apiBase()}${apiPath("startPractice")}`, {
+        // `read`: this deals a deck and carries nothing of the candidate's.
+        const res = await fetchWithDeadline("read", `${apiBase()}${apiPath("startPractice")}`, {
           method: "POST",
           headers: await serviceHeaders(window.localStorage),
         });
@@ -245,9 +262,12 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
       shownAt.current = Date.now();
       roundStartedAt.current = shownAt.current;
       setPhase("card");
-    } catch {
+    } catch (err) {
       // The exception itself is never shown: offline, this is a TypeError
-      // reading "Failed to fetch", which is browser plumbing, not copy.
+      // reading "Failed to fetch", which is browser plumbing, not copy. WHICH
+      // failure it was does reach the page, because "too slow" and "no
+      // connection" ask a candidate to do different things.
+      setDealTimedOut(isTimeout(err));
       setPhase("error");
     }
   }, [recorded]);
@@ -397,7 +417,10 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
     }
     setSending(true);
     try {
-      const res = await fetch(`${apiBase()}${apiPath("submitPractice", { id: sessionId })}`, {
+      // `write`: this POST carries the candidate's answers, so it is given
+      // the longer bound — giving up early on a write loses work, and the
+      // server's per-seq idempotency makes the re-send below safe.
+      const res = await fetchWithDeadline("write", `${apiBase()}${apiPath("submitPractice", { id: sessionId })}`, {
         method: "POST",
         headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({
@@ -420,8 +443,10 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
       setStreak(body.progress.streak);
       setQualification(body.result.qualification);
       setSubmitFailed(false);
-    } catch {
+      setSubmitTimedOut(false);
+    } catch (err) {
       // Same rule as the deal: the exception is plumbing, the page gets copy.
+      setSubmitTimedOut(isTimeout(err));
       setSubmitFailed(true);
     } finally {
       setSending(false);
@@ -435,7 +460,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   if (phase === "error") {
     return (
       <div className={styles.stage}>
-        <p role="alert">{DEAL_FAILED}</p>
+        <p role="alert">{dealTimedOut ? DEAL_TIMED_OUT : DEAL_FAILED}</p>
         <button type="button" className={styles.restart} onClick={() => void deal()}>
           Try again
         </button>
@@ -531,7 +556,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
           // The round above is still on screen: a failed send must not cost a
           // candidate the thing they just did.
           <div role="alert" className={styles.trouble}>
-            <p>{SUBMIT_FAILED}</p>
+            <p>{submitTimedOut ? SUBMIT_TIMED_OUT : SUBMIT_FAILED}</p>
             <button
               type="button"
               className={styles.restart}

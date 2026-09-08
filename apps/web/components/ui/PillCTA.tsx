@@ -14,7 +14,14 @@
  * End-of-page guard: the pill also hides once the reader reaches the last
  * PAGE_END_PX of the document, where the site footer lives. The footer is in
  * the layout, so no page can mark it, and the pill was rasterizing straight
- * across its text.
+ * across its text. That guard applies only when the document scrolls FARTHER
+ * than the band it hides in — overflow > PAGE_END_PX. Below that there is no
+ * position the reader can take that is not "at the end", so clearing the pill
+ * hides it for the whole life of the page and no scroll event can bring it
+ * back: on a tall display or in a zoomed-out browser (a low-vision setting)
+ * that took the only Start control on /exam away at first paint, with no
+ * error and nothing to tab to. A page that does not scroll has no footer to
+ * clear.
  *
  * `disabled` renders the gated state (still clickable so the page can
  * redirect attention, e.g. pulse the ConnectPanel) — aria-disabled only.
@@ -42,13 +49,15 @@ export function PillCTA({
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return;
-    const els = Array.from(document.querySelectorAll("[data-pill-clear]"));
-    if (els.length === 0) return;
     const intersecting = new Set<Element>();
     let io: IntersectionObserver | null = null;
+    // Re-query on every attach: the marked controls are the page's, and a
+    // panel can mount after this one does.
     const attach = () => {
       io?.disconnect();
       intersecting.clear();
+      setOverlapping(false);
+      const els = Array.from(document.querySelectorAll("[data-pill-clear]"));
       // Root = the bottom CLEAR_BAND_PX of the viewport (negative top margin
       // shrinks the root box from the top).
       io = new IntersectionObserver(
@@ -75,15 +84,25 @@ export function PillCTA({
     if (typeof window === "undefined") return;
     const read = () => {
       const doc = document.documentElement;
-      const remaining = doc.scrollHeight - window.scrollY - window.innerHeight;
-      setAtPageEnd(remaining <= PAGE_END_PX);
+      const overflow = doc.scrollHeight - window.innerHeight;
+      const remaining = overflow - window.scrollY;
+      setAtPageEnd(overflow > PAGE_END_PX && remaining <= PAGE_END_PX);
     };
     read();
     window.addEventListener("scroll", read, { passive: true });
     window.addEventListener("resize", read);
+    // Geometry changes without a scroll or a resize: a panel opens, a form
+    // grows, an image lands. Re-read the document box itself so the guard is
+    // never stuck on a measurement taken at mount.
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(read);
+      ro.observe(document.documentElement);
+    }
     return () => {
       window.removeEventListener("scroll", read);
       window.removeEventListener("resize", read);
+      ro?.disconnect();
     };
   }, []);
 

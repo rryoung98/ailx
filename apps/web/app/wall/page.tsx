@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from "react";
 import { readMigratedItem } from "@ailx/core";
 import Link from "next/link";
 import { Annotation } from "../../components/ui/Annotation";
+import { fetchWithDeadline, isTimeout } from "../../lib/data/deadline";
 
 const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
 
@@ -48,13 +49,18 @@ export default function GalleryPage() {
     setError(null);
     setSubs(null);
     try {
-      const res = await fetch(GALLERY_API);
+      // The list and each set's document are both `read`: this page's own
+      // data, from a third-party service. Bounded per REQUEST, so one blob
+      // that never answers costs its own card and not the whole wall — the
+      // `Promise.all` below waits for every document, so an unbounded one of
+      // them held the page on "Loading the wall…" for ever (TEN-210).
+      const res = await fetchWithDeadline("read", GALLERY_API);
       if (!res.ok) throw new Error(String(res.status));
       const { items } = (await res.json()) as { items: Sub[] };
       const docs = await Promise.all(
         items.map(async (it) => {
           try {
-            const d = await fetch(it.url);
+            const d = await fetchWithDeadline("read", it.url);
             return { ...it, doc: await d.json() };
           } catch {
             return it;
@@ -62,8 +68,12 @@ export default function GalleryPage() {
         }),
       );
       setSubs(docs.filter((d) => d.doc));
-    } catch {
-      setError("The shared demo service did not answer.");
+    } catch (err) {
+      setError(
+        isTimeout(err)
+          ? "The shared demo service did not answer in time."
+          : "The shared demo service did not answer.",
+      );
     }
   }, []);
 
@@ -91,7 +101,10 @@ export default function GalleryPage() {
     };
     remember(next);
     try {
-      const res = await fetch(`${GALLERY_API}/vote`, {
+      // `write`: a vote is a row at the demo service. Bounded so the rollback
+      // below actually happens — an unbounded vote left the optimistic count
+      // on screen for ever, which is the page claiming a write it never made.
+      const res = await fetchWithDeadline("write", `${GALLERY_API}/vote`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id }),
