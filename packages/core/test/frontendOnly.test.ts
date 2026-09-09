@@ -204,12 +204,26 @@ const packageJsons = files.filter(
 const sources = files.filter((f) => /\.(ts|tsx|mjs|js)$/.test(f) && !f.includes("/node_modules/"));
 
 /**
- * This file QUOTES the strings it bans — a fixture has to say them to prove
- * the scan bites — so it names itself out of every source scan below. It is
- * the one exemption, and it is spelled once.
+ * A guard has to QUOTE the strings it bans — a fixture must say them to prove
+ * the scan bites — so guard files name themselves out of every source scan
+ * below. The list is spelled ONCE and every entry carries its reason, because
+ * an exemption without a reason is indistinguishable from a hole.
+ *
+ * This is not a general "tests are exempt" carve-out. Each file here is itself
+ * a guard whose fixtures are banned specifiers, and each is asserted to exist
+ * below — if one is renamed, the scan does not silently start ignoring
+ * nothing, it fails.
  */
-const GUARD_FILE = "packages/core/test/frontendOnly.test.ts";
-const scanned = sources.filter((f) => f !== GUARD_FILE);
+const GUARD_FILES = [
+  // Bans server-side auth and database imports repo-wide; its fixture table
+  // quotes every specifier it rejects.
+  "packages/core/test/frontendOnly.test.ts",
+  // Bans ANY auth SDK from /daily's import closure, by capability rather than
+  // by vendor. Its fixture table quotes `@clerk/backend`, `next-auth`,
+  // `@auth0/nextjs-auth0`, `firebase/auth` and the rest for the same reason.
+  "apps/web/test/dailyChallenge.test.tsx",
+] as const;
+const scanned = sources.filter((f) => !(GUARD_FILES as readonly string[]).includes(f));
 
 /** Source with comments removed: prose ABOUT a banned import is not one. */
 const code = (text: string): string =>
@@ -258,8 +272,11 @@ describe("the guard can see the repository", () => {
     expect(sources.length).toBeGreaterThan(100);
     // The one self-exemption must name a file that is really there, or the
     // scans below would silently include this file's own fixtures.
-    expect(files).toContain(GUARD_FILE);
-    expect(scanned.length).toBe(sources.length - 1);
+    // Every self-exemption must name a file that is really there, or the scans
+    // below would silently include that file's own fixtures — or, worse, exempt
+    // a path that no longer exists while a reader believes it is covered.
+    for (const guard of GUARD_FILES) expect(files, `${guard} is exempted`).toContain(guard);
+    expect(scanned.length).toBe(sources.length - GUARD_FILES.length);
   });
 });
 
