@@ -64,6 +64,45 @@ const exists = (rel: string): boolean => {
   }
 };
 
+interface Manifest {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+/** The exam service's own packages, banned by name because that is their name. */
+const BANNED_PACKAGES: readonly string[] = ["@ailx/backend", "@ailx/instrument", "@clerk/backend"];
+
+/**
+ * A DATABASE is banned by CAPABILITY, not by name (TEN-226).
+ *
+ * The ban used to be six literal names, and `@neondatabase/serverless` — the
+ * driver docs/DEPLOY.md names for the hosted database — was not one of them,
+ * so a hosted page reading Neon directly would have gone through green. The
+ * rule this repo actually has is "the frontend talks to the exam service, not
+ * to a store", so match the SHAPE: a SQL driver, a migration runner, an ORM or
+ * a key-value client, whoever ships it.
+ */
+const DATABASE_DEPS: readonly RegExp[] = [
+  /^@types\/pg$/,
+  /^pg(-[a-z0-9-]+)?$/, // pg, pg-promise, pg-pool, pg-native...
+  /^node-pg-migrate$/,
+  /^postgres(-migrations)?$/,
+  /^@neondatabase\//,
+  /^@vercel\/postgres/,
+  /^@planetscale\/database$/,
+  /^@libsql\//,
+  /^@electric-sql\/pglite$/,
+  /^(mysql|mysql2|sqlite3|better-sqlite3|mongodb|mongoose|ioredis|redis)$/,
+  /^(drizzle-orm|prisma|@prisma\/client|kysely|knex|typeorm|sequelize|slonik|mikro-orm|@mikro-orm\/)/,
+];
+
+/** Pure, so a fixture manifest proves it bites without touching the tree. */
+function bannedDependencies(pkg: Manifest): string[] {
+  return Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
+    .filter((dep) => BANNED_PACKAGES.includes(dep) || DATABASE_DEPS.some((re) => re.test(dep)))
+    .sort();
+}
+
 const packageJsons = files.filter(
   (f) => f.endsWith("package.json") && !f.includes("/node_modules/"),
 );
@@ -92,22 +131,45 @@ describe("no second copy of the exam service", () => {
   });
 
   it("depends on no database, no object store SDK and no exam-service package", () => {
-    // `@vercel/blob` is deliberately absent from this list: the BROWSER uses
-    // `@vercel/blob/client` to PUT a T1 site straight into the object store
-    // with a scoped token the service issued. That is a frontend capability
-    // and holds no credential of its own.
-    const banned = ["pg", "@types/pg", "@ailx/backend", "@ailx/instrument", "node-pg-migrate", "@clerk/backend"];
     const offenders: string[] = [];
     for (const f of packageJsons) {
-      const pkg = JSON.parse(read(f)) as {
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-      };
-      for (const dep of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) {
-        if (banned.includes(dep)) offenders.push(`${f} -> ${dep}`);
+      for (const dep of bannedDependencies(JSON.parse(read(f)) as Manifest)) {
+        offenders.push(`${f} -> ${dep}`);
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it("names a database driver added to an app, not just the six it knew about", () => {
+    // The fixture is the REAL apps/web manifest plus the driver docs/DEPLOY.md
+    // names for the hosted database. A name list missed it (TEN-226).
+    const real = JSON.parse(read("apps/web/package.json")) as Manifest;
+    expect(bannedDependencies(real), "apps/web is clean today").toEqual([]);
+    const withNeon: Manifest = {
+      ...real,
+      dependencies: { ...real.dependencies, "@neondatabase/serverless": "^0.10.4" },
+    };
+    expect(bannedDependencies(withNeon)).toEqual(["@neondatabase/serverless"]);
+  });
+
+  it("bans a database by capability, and lets a browser capability through", () => {
+    for (const dep of [
+      "pg", "@types/pg", "node-pg-migrate", "pg-promise", "postgres",
+      "@neondatabase/serverless", "@vercel/postgres", "@planetscale/database",
+      "@libsql/client", "mysql2", "better-sqlite3", "mongodb", "drizzle-orm",
+      "@prisma/client", "kysely", "knex", "typeorm", "sequelize",
+      "@ailx/backend", "@ailx/instrument",
+    ]) {
+      expect(bannedDependencies({ dependencies: { [dep]: "1" } }), dep).toEqual([dep]);
+      expect(bannedDependencies({ devDependencies: { [dep]: "1" } }), dep).toEqual([dep]);
+    }
+    // `@vercel/blob` is deliberately NOT banned: the BROWSER uses
+    // `@vercel/blob/client` to PUT a T1 site straight into the object store
+    // with a scoped token the service issued. That is a frontend capability
+    // and holds no credential of its own. Nor is the Clerk BROWSER SDK.
+    for (const ok of ["@vercel/blob", "@clerk/nextjs", "next", "zod", "yaml"]) {
+      expect(bannedDependencies({ dependencies: { [ok]: "1" } }), ok).toEqual([]);
+    }
   });
 
   it("imports neither deleted package from any source file", () => {
@@ -120,8 +182,17 @@ describe("no second copy of the exam service", () => {
   });
 
   it("has no database schema or migration to be a second truth about", () => {
+    // Root-only was the hole: `apps/web/db/` passed (TEN-226). A `db/` or a
+    // `migrations/` directory ANYWHERE in the tree is a second truth about a
+    // store this repo does not own.
     expect(exists("db")).toBe(false);
-    expect(files.filter((f) => f.startsWith("db/"))).toEqual([]);
+    const dbTrees = files.filter((f) => /(^|\/)(db|migrations)\//.test(f));
+    expect(dbTrees, "a schema or migration directory belongs in the private repo").toEqual([]);
+    // ...and the pattern really would see one under an app.
+    const bites = (f: string): boolean => /(^|\/)(db|migrations)\//.test(f);
+    expect(bites("apps/web/db/schema.sql")).toBe(true);
+    expect(bites("db/1-init.sql")).toBe(true);
+    expect(bites("apps/web/lib/dbg/log.ts")).toBe(false);
   });
 });
 
