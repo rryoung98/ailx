@@ -5,10 +5,13 @@
  * their whole run to the backend.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createElement } from "react";
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { accessCopy, assetUrl, eventLogCopy, examAccessCopy, footerModeCopy, isServerMode } from "../lib/mode";
 import RootLayout from "../app/layout";
+
+(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -29,14 +32,50 @@ describe("isServerMode", () => {
 });
 
 describe("footerModeCopy", () => {
-  it("keeps the offline claim in the static build", () => {
+  it("says the simulator is the default and runs locally, with nothing connected", () => {
+    // TEN-121. The unconditional "Nothing leaves your browser" was FALSE in
+    // the same build: `foray:llm-base-url` can point the T1 and T4 runners at
+    // the shared demo proxy, and the static footer went on promising silence
+    // while the browser posted a candidate's prompts to a third party. The
+    // claim is now conditioned on the slot the runners actually read.
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
-    const copy = footerModeCopy();
+    const copy = footerModeCopy(null);
     expect(copy).toContain("static demo build");
-    // The copy pass replaced "No network calls. Everything runs in your
-    // browser." with one sentence that says the same thing.
-    expect(copy).toMatch(/nothing leaves your browser/i);
     expect(copy).toContain("deterministic simulator");
+    expect(copy).toMatch(/runs in this browser/i);
+  });
+
+  it("names the origin the browser will send prompts to once one is connected", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    const copy = footerModeCopy("https://ailx-shared-demo.vercel.app/api/v1");
+    expect(copy).toContain("static demo build");
+    // The ORIGIN, named — not the word "somewhere", and not a promise of
+    // silence that this build cannot keep.
+    expect(copy).toContain("https://ailx-shared-demo.vercel.app");
+    expect(copy).not.toMatch(/nothing leaves your browser/i);
+    expect(copy).not.toMatch(/no network calls/i);
+    expect(copy).toMatch(/simulator is the default/i);
+  });
+
+  it("names a local endpoint too, and keeps the sentence to one origin", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    expect(footerModeCopy("http://localhost:11434/v1")).toContain("http://localhost:11434");
+  });
+
+  it("ignores a slot value that is not an absolute http(s) endpoint", () => {
+    // A junk slot is not a network call. Naming "null" as an origin would be
+    // a worse lie than the one this replaces.
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    for (const junk of ["", "   ", "not a url", "javascript:alert(1)", "/api/v1"]) {
+      expect(footerModeCopy(junk), junk).toBe(footerModeCopy(null));
+    }
+  });
+
+  it("ignores the slot entirely in the hosted build", () => {
+    // The hosted build's own sentence is about the backend, and TEN-62 put
+    // the model key there: a browser slot cannot change what it stores.
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    expect(footerModeCopy("https://ailx-shared-demo.vercel.app/api/v1")).toBe(footerModeCopy(null));
   });
 
   it("never claims offline in the hosted build", () => {
@@ -148,15 +187,56 @@ describe("footer rendering", () => {
 
   it("renders the static claim in static mode", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
-    expect(render()).toContain("Nothing leaves your browser");
+    expect(render()).toContain("runs in this browser");
   });
 
   it("drops the static claim in server mode", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     const html = render();
-    expect(html).not.toContain("Nothing leaves your browser");
+    expect(html).not.toContain("runs in this browser");
     expect(html).toContain("hosted build");
   });
+
+  /**
+   * The slot lives in the browser, so the SERVER tree cannot know about it:
+   * the prerendered footer is the unconnected sentence and the effect
+   * replaces it after mount. Hydrating the connected sentence directly would
+   * be a mismatch in the static export, which is prerendered once for
+   * everybody.
+   */
+  it("names the connected origin after mount, and prerenders the local claim", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    const { FooterMode } = await import("../components/FooterMode");
+    expect(renderToStaticMarkup(createElement(FooterMode))).toContain("runs in this browser");
+
+    const slot = new Map<string, string>([
+      ["foray:llm-base-url", "https://ailx-shared-demo.vercel.app/api/v1"],
+    ]);
+    Object.defineProperty(window, "localStorage", {
+      value: { getItem: (k: string) => slot.get(k) ?? null },
+      configurable: true,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => root.render(createElement(FooterMode)));
+    expect(host.textContent).toContain("https://ailx-shared-demo.vercel.app");
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  it("reads the very slot the runners read", async () => {
+    // The footer's claim is only true if it looks where T1 and T4 look. The
+    // component spells the key rather than importing it (bundle cost — see
+    // the comment there), so the two are pinned equal HERE, where importing
+    // the track package costs nothing.
+    const { LLM_BASE_URL_STORAGE } = await import("@ailx/track-t1");
+    const { MODEL_ENDPOINT_SLOT } = await import("../components/FooterMode");
+    expect(MODEL_ENDPOINT_SLOT).toBe(LLM_BASE_URL_STORAGE);
+  });
+
+
+
 });
 
 describe("assetUrl", () => {

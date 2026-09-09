@@ -35,9 +35,17 @@ export function isClerkEnabled(): boolean {
 
 /**
  * Footer provenance line, on EVERY page — so it says only what a reader
- * needs on every page. The static showcase really is offline; the hosted
- * build is not, and claiming "no network calls" there is a lie the
- * dogfooder caught on every page.
+ * needs on every page. The hosted build is not offline, and claiming "no
+ * network calls" there was a lie the dogfooder caught on every page.
+ *
+ * NEITHER IS THE STATIC BUILD, ALWAYS (TEN-121). Its default really is the
+ * local simulator, but the same export lets a candidate connect a model
+ * endpoint — the shared demo proxy is offered by name in ConnectPanel — and
+ * from that moment the T1 and T4 runners post their prompts to a third-party
+ * origin while the footer went on promising "Nothing leaves your browser".
+ * So the claim is conditioned on the slot the runners actually read
+ * (`foray:llm-base-url`) and the connected origin is NAMED. That value lives
+ * in the browser, so the caller passes it in and this stays pure.
  *
  * It used to run to 75 words and four clauses. Two of them belong where the
  * decision is made, not under every screen, and are still said there:
@@ -52,10 +60,35 @@ export function isClerkEnabled(): boolean {
  * provider key onto the exam service, and a footer that stops saying so
  * reads as though the browser still holds one.
  */
-export function footerModeCopy(): string {
-  return isServerMode()
-    ? "Foray 2026.1 · hosted build. Your event log, answers and any site you published are saved on the Foray backend. Your model key is held there too, never in this browser."
-    : "Foray 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs. Nothing leaves your browser.";
+export function footerModeCopy(modelEndpoint?: string | null): string {
+  if (isServerMode()) {
+    return "Foray 2026.1 · hosted build. Your event log, answers and any site you published are saved on the Foray backend. Your model key is held there too, never in this browser.";
+  }
+  const origin = endpointOrigin(modelEndpoint);
+  return origin === null
+    ? "Foray 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs, and runs in this browser."
+    : `Foray 2026.1 · static demo build. The simulator is the default and runs in this browser. You connected ${origin}, so a model call sends your prompt there.`;
+}
+
+/**
+ * The origin a connected model endpoint points at, or null when this browser
+ * has connected nothing usable.
+ *
+ * `normalizeOrigin` cannot be reused: the slot holds a BASE URL with a path
+ * ("https://ailx-shared-demo.vercel.app/api/v1"), which that predicate rejects
+ * on purpose because an API base with a path would be concatenated into every
+ * request URL. Here the path is expected and only the authority is reported —
+ * the footer names WHERE the prompt goes, not the exact route.
+ */
+function endpointOrigin(value: string | null | undefined): string | null {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.origin === "null" || url.hostname === "" ? null : url.origin;
+  } catch {
+    return null;
+  }
 }
 
 /**
