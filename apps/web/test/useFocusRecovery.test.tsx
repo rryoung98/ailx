@@ -87,6 +87,23 @@ describe("useFocusRecovery picks something focus() can actually land on", () => 
     expect(document.activeElement?.tagName).toBe("A");
   });
 
+  it("never picks an input[type=hidden], where focus() is the same no-op", () => {
+    // A hidden input matches `input` and is not `disabled`, `[hidden]` or
+    // `aria-hidden`, so it passed every check this hook makes while being
+    // exactly the defect the hook exists to prevent: focus() on it does
+    // nothing, and focus stays on <body>.
+    mount(
+      <>
+        <input type="hidden" name="day" value="2026-01-01" />
+        <button type="button">Another round</button>
+      </>,
+    );
+    recover();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement?.tagName).not.toBe("INPUT");
+    expect(document.activeElement?.textContent).toBe("Another round");
+  });
+
   it("still takes the first control when nothing is disabled", () => {
     mount(
       <>

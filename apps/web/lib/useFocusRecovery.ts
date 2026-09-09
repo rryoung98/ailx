@@ -34,7 +34,16 @@ import { type RefObject, useCallback, useEffect, useRef, useState } from "react"
  * replaced. `[tabindex]` is in the second list because a `tabIndex={-1}`
  * heading or stage is focusable programmatically, which is what this does.
  */
-const FOCUSABLE = ["button, input, select, textarea", "a[href], [tabindex]"];
+const FOCUSABLE = [
+  // `input[type=hidden]` is an `input` that renders nothing and takes no
+  // focus: `focus()` on it is the same silent no-op as a disabled control,
+  // which is the defect this hook exists to prevent. It is excluded in the
+  // SELECTOR rather than in `isFocusable` because it is not "hidden" in any
+  // sense that element carries — `el.hidden` is false and it is not
+  // `aria-hidden` — so only the type tells you.
+  "button, input:not([type=hidden]), select, textarea",
+  "a[href], [tabindex]",
+];
 
 /** Whether `focus()` on this element would do anything. */
 function isFocusable(el: HTMLElement): boolean {
