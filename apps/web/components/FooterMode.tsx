@@ -8,31 +8,32 @@
  * sentence — the static export is prerendered once for every visitor, so a
  * connected sentence in the HTML would be both a hydration mismatch and a
  * claim about a browser the build has never met.
- */
-import { useEffect, useState } from "react";
-import { footerModeCopy } from "../lib/mode";
-
-/**
- * The slot the T1 and T4 runners read, spelled here rather than imported.
  *
- * `@ailx/track-t1` exports it (`LLM_BASE_URL_STORAGE`) and this component is
- * in the ROOT LAYOUT, so importing the constant from that package drags the
- * T1 barrel — Runner and all — into the chunk every page loads: +11 kB gzip
- * on all nine prerendered pages, measured, and three budgets in
- * `test/bundleBudget.test.ts` went red. One string is the cheaper copy, and
- * `test/mode.test.tsx` pins it EQUAL to the track's own constant, so the two
- * cannot drift.
+ * It also LISTENS. Reading once on mount was TEN-121 narrowed, not closed:
+ * the only writer of the slot is `ConnectPanel`, which lives on /exam, so
+ * the page where a candidate connects the shared proxy is exactly the page
+ * where a mount-only read is already stale. The slot key and the event are
+ * `@ailx/core`'s (`connection.ts`) — one spelling for the footer, the panel
+ * and both runners, in a leaf module the root layout can afford.
  */
-export const MODEL_ENDPOINT_SLOT = "foray:llm-base-url";
+import { CONNECTION_CHANGED_EVENT, MODEL_ENDPOINT_SLOT } from "@ailx/core";
+import { useCallback, useEffect, useState } from "react";
+import { footerModeCopy } from "../lib/mode";
 
 export function FooterMode(): React.ReactElement {
   const [endpoint, setEndpoint] = useState<string | null>(null);
-  useEffect(() => {
+  const read = useCallback(() => {
     try {
       setEndpoint(window.localStorage.getItem(MODEL_ENDPOINT_SLOT));
     } catch {
       // A locked-down profile has no slot, which is the unconnected case.
+      setEndpoint(null);
     }
   }, []);
+  useEffect(() => {
+    read();
+    window.addEventListener(CONNECTION_CHANGED_EVENT, read);
+    return () => window.removeEventListener(CONNECTION_CHANGED_EVENT, read);
+  }, [read]);
   return <p>{footerModeCopy(endpoint)}</p>;
 }

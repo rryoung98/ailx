@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
+import { MODEL_ENDPOINT_SLOT } from "@ailx/core";
 import {
   append, project,
   SaveConflictError,
@@ -34,7 +35,7 @@ import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META
 import { Annotation } from "../../components/ui/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/ConnectPanel";
 import { modelGatewayFetch } from "../../lib/data/modelGateway";
-import { hasModelEndpoint, LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
+import { hasModelEndpoint } from "@ailx/track-t1";
 import { PersistWarning } from "../../features/exam/PersistWarning";
 import { StorageStop } from "../../features/exam/StorageStop";
 import { carriedOnCopy, storageStopCopy } from "../../features/exam/storageStopCopy";
@@ -250,7 +251,7 @@ export default function ExamPage() {
   useEffect(() => {
     const read = () => {
       try {
-        setConnected(hasModelEndpoint(window.localStorage.getItem(LLM_BASE_URL_STORAGE)));
+        setConnected(hasModelEndpoint(window.localStorage.getItem(MODEL_ENDPOINT_SLOT)));
       } catch {
         setConnected(false);
       }

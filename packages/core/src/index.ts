@@ -3,6 +3,7 @@ export * from "./plugin.js";
 export * from "./hash.js";
 export * from "./judgments.js";
 export * from "./rounding.js";
+export * from "./connection.js";
 export * from "./content-address.js";
 export * from "./purity.js";
 export * from "./storageKeys.js";

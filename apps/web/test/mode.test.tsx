@@ -245,14 +245,76 @@ describe("footer rendering", () => {
     host.remove();
   });
 
-  it("reads the very slot the runners read", async () => {
-    // The footer's claim is only true if it looks where T1 and T4 look. The
-    // component spells the key rather than importing it (bundle cost — see
-    // the comment there), so the two are pinned equal HERE, where importing
-    // the track package costs nothing.
-    const { LLM_BASE_URL_STORAGE } = await import("@ailx/track-t1");
-    const { MODEL_ENDPOINT_SLOT } = await import("../components/FooterMode");
-    expect(MODEL_ENDPOINT_SLOT).toBe(LLM_BASE_URL_STORAGE);
+  /**
+   * TEN-121 was NARROWED, not closed, by reading the slot once on mount.
+   *
+   * `ConnectPanel` is the only writer of the slot, it lives on /exam, and it
+   * already announces every change on `CONNECTION_CHANGED_EVENT` — the run
+   * start gate listens. The footer did not, so on the one page where a
+   * candidate connects the shared proxy the footer went on saying the
+   * simulator "runs in this browser" while T1 and T4 would post the next
+   * prompt to a third party. One event late is still a false sentence.
+   */
+  it("names the origin when a connection is made while it is on screen", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    const { CONNECTION_CHANGED_EVENT, MODEL_ENDPOINT_SLOT } = await import("@ailx/core");
+    const { FooterMode } = await import("../components/FooterMode");
+
+    const slot = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {
+      value: {
+        getItem: (k: string) => slot.get(k) ?? null,
+        setItem: (k: string, v: string) => void slot.set(k, v),
+        removeItem: (k: string) => void slot.delete(k),
+      },
+      configurable: true,
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => root.render(createElement(FooterMode)));
+    expect(host.textContent).toContain("runs in this browser");
+
+    // Exactly what ConnectPanel does when the shared demo is connected.
+    await act(async () => {
+      slot.set(MODEL_ENDPOINT_SLOT, "https://ailx-shared-demo.vercel.app/api/v1");
+      window.dispatchEvent(new Event(CONNECTION_CHANGED_EVENT));
+    });
+    expect(host.textContent).toContain("https://ailx-shared-demo.vercel.app");
+    expect(host.textContent).toMatch(/sends your prompt there/i);
+
+    // And a disconnection drops the named origin again, the same way.
+    await act(async () => {
+      slot.delete(MODEL_ENDPOINT_SLOT);
+      window.dispatchEvent(new Event(CONNECTION_CHANGED_EVENT));
+    });
+    expect(host.textContent).not.toContain("https://ailx-shared-demo.vercel.app");
+    expect(host.textContent).toContain("runs in this browser");
+
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  it("stops listening once it leaves the tree", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
+    const { CONNECTION_CHANGED_EVENT } = await import("@ailx/core");
+    const { FooterMode } = await import("../components/FooterMode");
+    const added = new Set<string>();
+    const addSpy = vi.spyOn(window, "addEventListener");
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    await act(async () => root.render(createElement(FooterMode)));
+    for (const [type] of addSpy.mock.calls) if (type === CONNECTION_CHANGED_EVENT) added.add(type);
+    expect([...added]).toEqual([CONNECTION_CHANGED_EVENT]);
+    await act(async () => root.unmount());
+    expect(
+      removeSpy.mock.calls.filter(([type]) => type === CONNECTION_CHANGED_EVENT),
+    ).toHaveLength(1);
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+    host.remove();
   });
 
 

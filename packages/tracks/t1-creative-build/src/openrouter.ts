@@ -17,8 +17,17 @@
  * consumes the stored artifact.
  */
 
-/** Persisted OpenAI-compatible API base (the gateway, the demo proxy, Ollama). */
-export const LLM_BASE_URL_STORAGE = "foray:llm-base-url";
+import { MODEL_ENDPOINT_SLOT } from "@ailx/core";
+
+/**
+ * Persisted OpenAI-compatible API base (the gateway, the demo proxy, Ollama).
+ *
+ * ONE spelling, `@ailx/core`'s: the footer, the run-start panel and T4 read
+ * the same slot, and the duplicate copies of this string cost a live defect
+ * (see `packages/core/src/connection.ts`). The historical name is kept so
+ * this package's callers do not have to be rewritten.
+ */
+export const LLM_BASE_URL_STORAGE = MODEL_ENDPOINT_SLOT;
 
 /** Every browser-local slot that makes up "a connected model". */
 export const LLM_CONNECTION_KEYS: ReadonlyArray<string> = [LLM_BASE_URL_STORAGE];
