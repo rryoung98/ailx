@@ -12,8 +12,11 @@
  */
 import { z } from "zod";
 import { parseCaseQuery } from "./moderation.js";
+import { credentialViewSchema } from "./credential.js";
 import { galleryListingSchema, parseGalleryQuery } from "./gallery.js";
 import { profileSchema } from "./profile.js";
+import { aggregatesResponseSchema, progressResponseSchema } from "./progress.js";
+import { shareViewResponseSchema } from "./share.js";
 import type { ApiQueryParserName, ApiRouteKey } from "./routes.js";
 
 /**
@@ -49,5 +52,13 @@ export type ResponseSchema<T> = z.ZodType<T>;
 export const API_RESPONSE_SCHEMAS = {
   gallery: z.strictObject({ gallery: galleryListingSchema }),
   profile: z.strictObject({ profile: profileSchema }),
+  // The four routes a PAGE dereferences during render. They were casts until
+  // TEN-216, so a 200 with an unknown shape threw a TypeError into the root
+  // error boundary on /progress, /world, /s/<token> and /verify/<code>
+  // instead of showing the sentence written for exactly that (`SERVICE_INVALID_COPY`).
+  progress: progressResponseSchema,
+  aggregates: aggregatesResponseSchema,
+  shareView: shareViewResponseSchema,
+  credentialView: credentialViewSchema,
 } as const satisfies Partial<Record<ApiRouteKey, z.ZodType>>;
 

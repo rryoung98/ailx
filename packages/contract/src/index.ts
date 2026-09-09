@@ -104,11 +104,26 @@ export {
 } from "./share-url.js";
 export {
   needsHumanApproval,
+  shareViewResponseSchema,
+  sharedViewSchema,
   type OwnerShare,
   type PublishResult,
   type ShareRecord,
+  type SharedView,
 } from "./share.js";
-export { type CredentialRecord, type OwnerCredential } from "./credential.js";
+export {
+  credentialViewFrom,
+  credentialViewSchema,
+  type CredentialRecord,
+  type CredentialView,
+  type OwnerCredential,
+} from "./credential.js";
+export {
+  aggregatesResponseSchema,
+  progressReportSchema,
+  progressResponseSchema,
+  worldAggregatesSchema,
+} from "./progress.js";
 export {
   PROFILE_READING_HISTORY,
   READING_SOURCES,

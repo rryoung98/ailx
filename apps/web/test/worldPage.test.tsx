@@ -23,6 +23,7 @@ import {
   stubJsonFetch,
   type StubbedCall,
 } from "./helpers/clientPage";
+import { SERVICE_INVALID_COPY } from "../lib/data/serviceFetch";
 import { WorldView } from "../features/world/WorldView";
 import { metadata } from "../app/world/page.api";
 
@@ -277,5 +278,20 @@ describe("how it reads the service", () => {
     expect(html).toContain("genuinely zero rather than");
     expect(html).not.toContain("was reached and refused");
     expect(html).not.toContain("did not answer");
+  });
+});
+
+/**
+ * TEN-216 — the same 200-with-an-unknown-shape as /progress. Every figure on
+ * this page is read out of the body during render, so a cast made wire drift
+ * a crash instead of a sentence.
+ */
+describe("a 200 whose body is not the shape /aggregates promises", () => {
+  it("says the answer was unreadable rather than throwing into the boundary", async () => {
+    const { participation: _participation, ...withoutParticipation } = aggregates(40);
+    payload = withoutParticipation as WorldAggregates;
+    const html = await markup();
+    expect(html).toContain(SERVICE_INVALID_COPY);
+    expect(html).not.toContain("runs started");
   });
 });

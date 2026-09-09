@@ -1,5 +1,7 @@
 /**
- * `features/verify/credentialView.ts` — unwrapping the public Open Badges document.
+ * `@ailx/contract` `credentialViewFrom` — unwrapping the public Open Badges
+ * document. It moved out of `apps/web` in TEN-216, because the seam validates
+ * this route's body from `API_RESPONSE_SCHEMAS` and the reader IS the schema.
  *
  * /verify/<code> renders a stranger's only source of truth, from a PUBLIC
  * endpoint, so this parser has to be hostile-input safe: a document that is
@@ -14,7 +16,7 @@ import {
   type CredentialState,
 } from "@ailx/report";
 import { initialState, TRACK_IDS, type SessionState } from "@ailx/session";
-import { credentialViewFrom } from "../features/verify/credentialView";
+import { credentialViewFrom } from "@ailx/contract";
 
 const ORIGIN = "https://ailx.example";
 const CODE = "AILX-2026.1-AB12-CD34-EF56-GH78";

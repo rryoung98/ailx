@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { apiPath } from "@ailx/contract";
+import { API_RESPONSE_SCHEMAS, apiPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
 import { pageOrigin, serverRead } from "../../../../lib/server/page";
 import { characterDataUrl } from "../../../../lib/server/portrait";
@@ -47,7 +47,12 @@ export async function GET(
     // cache that fetched during the window (TEN-213).
     const res = await serverRead(apiPath("shareView", { token }));
     if (res === null || !res.ok) return notFound();
-    const payload = ((await res.json()) as { share: { payload: SharePayload } }).share.payload;
+    // VALIDATED, not cast: an unreadable body used to throw here and 500 the
+    // card, which every social cache then held (TEN-216). A body we cannot
+    // read is a card we cannot draw, which is the 404 above.
+    const parsed = API_RESPONSE_SCHEMAS.shareView.safeParse(await res.json());
+    if (!parsed.success) return notFound();
+    const payload: SharePayload = parsed.data.share.payload;
     // The character is loaded HERE, not inside the card tree, so the tree
     // stays pure and a failed read degrades to a portrait-less card.
     const portrait = await characterDataUrl(payload.playerType.code, await pageOrigin());

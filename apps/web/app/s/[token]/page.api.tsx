@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { apiPath, shareCardPath, shareUrlPath } from "@ailx/contract";
+import { API_RESPONSE_SCHEMAS, apiPath, shareCardPath, shareUrlPath, type SharedView } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
 import { pageOrigin, serverRead } from "../../../lib/server/page";
-import { ShareView, type SharedView } from "../../../features/share/ShareView";
+import { ShareView } from "../../../features/share/ShareView";
 
 /**
  * /s/<token> — the share view.
@@ -32,8 +32,12 @@ async function readShare(token: string): Promise<SharedView | null> {
   const res = await serverRead(apiPath("shareView", { token }));
   if (res === null || res.status !== 200) return null;
   try {
-    const body = (await res.json()) as { share?: SharedView };
-    return body.share ?? null;
+    // VALIDATED with the same schema the page uses. The cast here was the
+    // SERVER half of TEN-216, and the half a stranger meets first: an
+    // unreadable body threw inside `generateMetadata` instead of unfurling
+    // as the link-not-found title written for it.
+    const parsed = API_RESPONSE_SCHEMAS.shareView.safeParse(await res.json());
+    return parsed.success ? parsed.data.share : null;
   } catch {
     return null;
   }

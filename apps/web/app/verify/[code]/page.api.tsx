@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { apiPath } from "@ailx/contract";
-import { credentialViewFrom } from "../../../features/verify/credentialView";
+import { apiPath, credentialViewFrom } from "@ailx/contract";
 import { serverRead } from "../../../lib/server/page";
 import { VerifyView } from "../../../features/verify/VerifyView";
 

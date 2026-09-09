@@ -409,7 +409,7 @@ describe("the daily never touches the credential", () => {
     "lib/instrument/registry.ts",
     "lib/data/persistence.ts",
     "lib/data/checkpoints.ts",
-    "features/verify/credentialView.ts",
+    "features/verify/VerifyView.tsx",
     "features/report/CredentialPanel.tsx",
   ];
   /** The daily page and everything it imports, transitively. */

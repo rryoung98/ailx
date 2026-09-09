@@ -33,9 +33,8 @@
  */
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { apiPath } from "@ailx/contract";
+import { API_RESPONSE_SCHEMAS, apiPath, type CredentialView } from "@ailx/contract";
 import { CREDENTIAL_ASSERTS, CREDENTIAL_ISSUER, CREDENTIAL_LIMITS } from "@ailx/report";
-import { credentialViewFrom } from "./credentialView";
 import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
@@ -81,9 +80,12 @@ export function VerifyView() {
   // must not depend on who is holding it. Anonymous is spelled out because
   // every call site now says which identity it wants, and silence is what
   // let `/world` ask with none by accident (TEN-107).
-  const result = useService<unknown>(
+  const result = useService<CredentialView>(
     code === null ? null : apiPath("credentialView", { code }),
-    { identity: "anonymous" },
+    // VALIDATED at the seam, by the same pure reader the metadata uses. A
+    // document this build cannot read is OUR bug, and it now says so instead
+    // of telling a stranger the credential could not be confirmed (TEN-216).
+    { identity: "anonymous", schema: API_RESPONSE_SCHEMAS.credentialView },
   );
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title="Checking this credential" />;
@@ -105,8 +107,7 @@ export function VerifyView() {
       />
     );
   }
-  const credential = credentialViewFrom(result.data);
-  if (credential === null) return <CannotConfirm />;
+  const credential = result.data;
 
   const revoked = credential.status === "revoked";
   // The document carries the site PATH under the issuer's origin; which host
