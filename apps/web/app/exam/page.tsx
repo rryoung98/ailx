@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { TrackEvent } from "@ailx/core";
 import { MODEL_ENDPOINT_SLOT } from "@ailx/core";
 import {
@@ -16,7 +16,12 @@ import {
 import { useSyncStatus } from "../../lib/data/useSyncStatus";
 import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
 import { withDeadline } from "../../lib/data/deadline";
-import { fetchHostedTrackConfig } from "../../lib/instrument/hostedDeck";
+import {
+  fetchHostedTrackConfig,
+  outstandingTranscriptTurns,
+  subscribeTranscriptTurns,
+  turnsOutstandingCopy,
+} from "../../lib/instrument/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/data/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
@@ -119,6 +124,16 @@ export default function ExamPage() {
   // sentence about THEM, and it used to be a sentence about the build
   // (TEN-151).
   const identity = useIdentity();
+  /**
+   * T3 transcript turns still in this browser. Read here rather than passed
+   * down, because the answer outlives the T3 track mount and the finalize
+   * button is on a different screen (TEN-122).
+   */
+  const outstandingTurns = useSyncExternalStore(
+    subscribeTranscriptTurns,
+    outstandingTranscriptTurns,
+    () => 0,
+  );
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -1005,12 +1020,27 @@ export default function ExamPage() {
                here rather than hanging on a track it cannot offer — and the
                button says which sitting it is closing, because a run that
                finishes two of four tracks is not a full one. */
-            <button className="btn primary" onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}>
+            /* BLOCKED while a T3 transcript turn is still in this browser.
+               Finalizing is the moment the service stops accepting evidence,
+               and those rows are what its T3 score reads for stances — so
+               finishing with one outstanding is a score computed from less
+               than the candidate did (TEN-122). The wait is visible and it
+               ends by itself. */
+            <button
+              className="btn primary"
+              disabled={outstandingTurns > 0}
+              onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}
+            >
               {lockedPending.length > 0
                 ? `Finish here with ${trackList(done)}`
                 : "Finish run"}
             </button>
           )}
+          {outstandingTurns > 0 ? (
+            <p className="small muted" data-testid="turns-outstanding" style={{ margin: "0.6rem 0 0" }}>
+              {turnsOutstandingCopy(outstandingTurns)}
+            </p>
+          ) : null}
           <span style={{ marginLeft: "0.8rem" }}>
             <ResetButton onReset={resetAttempt} />
           </span>

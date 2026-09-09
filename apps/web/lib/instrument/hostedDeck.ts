@@ -238,38 +238,138 @@ function plantsOf(v: PresentedTrackView): readonly T3RevealedPlant[] {
 }
 
 /**
+ * Transcript turns that have not reached the service yet, as a number the
+ * exam chrome can read.
+ *
+ * These rows are what the SERVER's T3 score reads for stances, so a dropped
+ * one is a scored stance the candidate will never be credited with. `record()`
+ * used to end in `.catch(console.warn)`: one transient failure removed the
+ * turn from the evidence for good, and nothing on screen said so (TEN-122).
+ *
+ * A module-level store, like the mirror's own (`lib/data/persistence.ts`),
+ * because the bridge is built per track mount and the page has to be able to
+ * ask the question after the track is over.
+ */
+let outstandingTurns = 0;
+const turnListeners = new Set<() => void>();
+
+export function outstandingTranscriptTurns(): number {
+  return outstandingTurns;
+}
+
+export function subscribeTranscriptTurns(listener: () => void): () => void {
+  turnListeners.add(listener);
+  return () => void turnListeners.delete(listener);
+}
+
+/**
+ * COUNTED, not assigned from one queue's length: a resumed sitting can build
+ * a second bridge for the same attempt while the first still holds a turn,
+ * and a count written from either queue alone would hide the other's.
+ */
+function addOutstandingTurns(delta: number): void {
+  if (delta === 0) return;
+  outstandingTurns = Math.max(0, outstandingTurns + delta);
+  for (const listener of turnListeners) listener();
+}
+
+/**
+ * What a candidate is told while a T3 turn is still in this browser. Said
+ * once, and said HERE rather than in the page, for two reasons: the count and
+ * the sentence about the count belong together, and a Next.js page module may
+ * export nothing but a page (a second export fails `next build` outright).
+ */
+export function turnsOutstandingCopy(n: number): string {
+  return (
+    `${n} T3 ${n === 1 ? "turn has" : "turns have"} not reached the exam service yet, and the `
+    + "service scores your challenges from those. Foray is still sending them, so finishing "
+    + "waits until they land. Keep this tab open."
+  );
+}
+
+/** Tests only: a fresh module state without reloading the module. */
+export function resetTranscriptTurns(): void {
+  addOutstandingTurns(-outstandingTurns);
+}
+
+/**
+ * How long the queue waits before re-posting a turn that failed. Capped and
+ * additive rather than exponential: the candidate is still in the track, and
+ * a stance that lands late is worth far more than one that lands politely.
+ *
+ * THE LAST DELAY REPEATS for as long as the tab is open. The queue never
+ * gives up, because giving up is the state the page cannot describe: the
+ * notice says Foray is still sending and finalize stays shut, so a queue that
+ * had stopped trying would make that sentence false and leave nothing working
+ * towards opening the button again.
+ */
+export const TURN_RETRY_DELAYS_MS = [1_000, 3_000, 10_000] as const;
+
+const retryDelayMs = (attempt: number): number =>
+  TURN_RETRY_DELAYS_MS[Math.min(attempt, TURN_RETRY_DELAYS_MS.length - 1)];
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
  * The seam the hosted T3 Runner talks to the exam service through.
  *
- * Transcript mirroring is SERIALIZED and best-effort in the same shape as the
- * response mirror in `lib/data/persistence.ts`: these rows are what the server's
- * score reads for stances, and re-posting the same seq is a no-op there, so
- * ordering matters and a duplicate does not.
+ * Transcript mirroring is SERIALIZED, in the same shape as the response
+ * mirror in `lib/data/persistence.ts` — but no longer fire-and-forget. A turn
+ * that fails is RETRIED (the server row is keyed by seq, so a re-post of one
+ * that did land is a no-op), and while any turn is still outstanding the page
+ * says so and will not let the run be finalized: finalizing is the moment the
+ * server stops accepting evidence, and doing it with a stance still in this
+ * browser is how the score is computed from less than the candidate did.
  */
 export function hostedT3Bridge(attemptId: string): T3Hosted {
   const opts = browserApiOptions();
   let queue: Promise<unknown> = Promise.resolve();
+  /** The wire shape of a turn, taken from the poster so the two cannot drift. */
+  type PendingTurn = Parameters<typeof postTranscriptTurn>[4];
+  const pending: PendingTurn[] = [];
+
+  /**
+   * Post the head of the queue until it lands. NOTHING IS DROPPED and nothing
+   * is given up on: a turn that has not landed stays counted, which is what
+   * keeps the notice up and finalize shut, and it is still being re-posted,
+   * which is what makes that notice true.
+   */
+  async function drain(): Promise<void> {
+    while (pending.length > 0) {
+      const body = pending[0];
+      for (let attempt = 0; ; attempt++) {
+        if (attempt > 0) await wait(retryDelayMs(attempt - 1));
+        try {
+          await postTranscriptTurn(window.localStorage, opts, attemptId, "t3", body);
+          break;
+        } catch (err) {
+          // Loud for a developer, and — through the count — visible to the
+          // candidate. Never swallowed.
+          console.warn("[ailx t3] transcript turn not mirrored, retrying", err);
+        }
+      }
+      pending.shift();
+      addOutstandingTurns(-1);
+    }
+  }
+
   return {
     assist: async (req) => {
       const reply = await postT3Assist(window.localStorage, opts, attemptId, req);
       return { text: reply.text, claimRefs: reply.claimRefs };
     },
     record: (turn: T3Turn) => {
-      queue = queue
-        .then(() =>
-          postTranscriptTurn(window.localStorage, opts, attemptId, "t3", {
-            seq: turn.seq,
-            verb: turn.verb,
-            object: turn.object,
-            ...(turn.text !== undefined ? { text: turn.text } : {}),
-            ...(turn.claimIds !== undefined ? { claimRefs: turn.claimIds } : {}),
-          }),
-        )
-        .catch((err: unknown) => {
-          // The local log and checkpoint already hold this turn, and the
-          // server row is keyed by seq, so a retry costs nothing — but a
-          // silent loss would cost the candidate their stance, so say so.
-          console.warn("[ailx t3] transcript turn not mirrored", err);
-        });
+      pending.push({
+        seq: turn.seq,
+        verb: turn.verb,
+        object: turn.object,
+        ...(turn.text !== undefined ? { text: turn.text } : {}),
+        ...(turn.claimIds !== undefined ? { claimRefs: turn.claimIds } : {}),
+      });
+      addOutstandingTurns(1);
+      // Serialized: the rows are an ordered transcript, and a second pass
+      // must not overtake the one still retrying.
+      queue = queue.then(() => drain());
     },
     reveal: async () => {
       const v = await fetchServerTrackView(attemptId, "t3");
