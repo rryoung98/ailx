@@ -132,6 +132,17 @@ function serverAuthImports(src: string): string[] {
   return [...code(src).matchAll(SERVER_AUTH_IMPORT)].map((m) => m[1]!);
 }
 
+/**
+ * A `'use server'` DIRECTIVE: a string statement on a line of its own, at
+ * module scope or at the top of a function. A quoted mention in an expression
+ * is not one, and neither is prose — comments are stripped first.
+ */
+const USE_SERVER = /^[ \t]*["']use server["'][ \t]*;?[ \t]*$/m;
+
+function hasUseServerDirective(src: string): boolean {
+  return USE_SERVER.test(code(src));
+}
+
 describe("the guard can see the repository", () => {
   // A walk that silently returned nothing would make every assertion below
   // pass over an empty list. Sentinels, not faith.
@@ -299,6 +310,49 @@ describe("no API surface of its own", () => {
     expect(src).toContain("ImageResponse");
     expect(src).not.toMatch(/@ailx\/(backend|instrument)/);
     expect(src).not.toMatch(/\bfrom\s+["']pg["']/);
+  });
+});
+
+/**
+ * TEN-228: a server action is a route handler with no file name to catch it.
+ *
+ * FRONTEND.md banned `'use server'` in PROSE only. The gate matched
+ * `apps/*\/app/api/**` and `route.(api.)?tsx?` file NAMES, and neither can see
+ * a directive inside a page component — so a `'use server'` block in any
+ * hosted `page.api.tsx` would have compiled into a public POST endpoint in
+ * this repo, unguarded, with the suite green. The one-route-handler invariant
+ * in AGENTS.md is the reason a reviewer sees any new server surface at all.
+ */
+describe("no server action anywhere under an app", () => {
+  const appSources = scanned.filter((f) => /^apps\/[^/]+\/app\//.test(f));
+
+  it("reads a real set of app sources", () => {
+    expect(appSources.length).toBeGreaterThan(10);
+    expect(appSources).toContain("apps/web/app/page.tsx");
+  });
+
+  it("declares `use server` in no app source", () => {
+    const offenders = appSources.filter((f) => hasUseServerDirective(read(f)));
+    expect(offenders, "a server action is an unguarded public endpoint").toEqual([]);
+  });
+
+  it("names a `use server` directive at module or function scope", () => {
+    expect(hasUseServerDirective('"use server";\nexport async function save() {}')).toBe(true);
+    expect(hasUseServerDirective("'use server'\nexport async function save() {}")).toBe(true);
+    expect(
+      hasUseServerDirective("export async function save() {\n  'use server';\n}"),
+    ).toBe(true);
+    // A hosted page is exactly the file the name-based checks could not see.
+    expect(
+      hasUseServerDirective('export default function Page() {\n  async function act() {\n    "use server";\n  }\n}'),
+    ).toBe(true);
+  });
+
+  it("does not fire on prose, or on a client directive", () => {
+    expect(hasUseServerDirective("// 'use server' is banned here\n")).toBe(false);
+    expect(hasUseServerDirective("/**\n * \"use server\" is banned here\n */\n")).toBe(false);
+    expect(hasUseServerDirective('const mode = "use server";')).toBe(false);
+    expect(hasUseServerDirective('"use client";\n')).toBe(false);
   });
 });
 
