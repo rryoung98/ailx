@@ -36,6 +36,7 @@ import { Annotation } from "../../components/ui/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/ConnectPanel";
 import { modelGatewayFetch } from "../../lib/data/modelGateway";
 import { hasModelEndpoint } from "@ailx/track-t1";
+import { MirrorWarning } from "../../features/exam/MirrorWarning";
 import { PersistWarning } from "../../features/exam/PersistWarning";
 import { StorageStop } from "../../features/exam/StorageStop";
 import { carriedOnCopy, storageStopCopy } from "../../features/exam/storageStopCopy";
@@ -775,6 +776,7 @@ export default function ExamPage() {
     return <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
       <div className="container"><p className="muted">Loading your run…</p></div></main>;
   }
 
@@ -789,6 +791,7 @@ export default function ExamPage() {
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · Foray 2026.1</div>
@@ -881,6 +884,7 @@ export default function ExamPage() {
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Run complete</h1>
           {/* Derived, never asserted (TEN-129). The old line said "All four
@@ -917,6 +921,7 @@ export default function ExamPage() {
         <main className="page">
           <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
           <TimeUpNotice
             trackId={justFinished}
             budgetSeconds={state.config!.budgets[justFinished]}
@@ -937,6 +942,7 @@ export default function ExamPage() {
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">run {state.attemptId}</div>
           <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
@@ -1082,6 +1088,7 @@ export default function ExamPage() {
     <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
       {/* Full-width workspace while a track is live: the runners are
           two-pane environments and need the room (~1400px). */}
       <div className="container" style={{ maxWidth: 1400 }}>

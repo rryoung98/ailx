@@ -880,6 +880,15 @@ export async function startServerAttempt(locale: string): Promise<string | null>
  */
 const byStorage = new WeakMap<object, AttemptPersistence>();
 
+/**
+ * TEN-123 wanted a "not saved" indicator and added a module-level
+ * `mirrorSyncState` plus an `onSyncOk` callback to drive it. Both are gone:
+ * the mirror already publishes its own state (`status()` / `subscribe()`,
+ * TEN-206), so a second store of the same fact is one more thing that can
+ * disagree with the completion screen. `MirrorWarning` reads `useSyncStatus`
+ * instead, and `failures > 0` is the same claim the callback pair made —
+ * a pass has failed and nothing has landed since.
+ */
 export function browserApiOptions(): ApiPersistenceOptions {
   return {
     baseUrl: apiBase(),
