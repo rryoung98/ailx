@@ -120,9 +120,10 @@ function GateHarness({ completed = false }: { completed?: boolean }) {
   const view = useScoresOfRecord(ATTEMPT);
   const gate = reportGate({
     localScored: ["t1"],
-    scores: view.scores ?? null,
+    scores: view.scores,
     reading: view.reading,
     asked: view.asked,
+    readFailed: view.failure !== null,
     localSitting: { completed, sat: completed ? ["t1", "t2", "t3", "t4"] : ["t1"] },
   });
   return createElement(
@@ -505,7 +506,7 @@ describe("it waits for an identity before the first read", () => {
     expect(calls).toHaveLength(0);
     expect(m.html()).toContain("Your sitting is finished");
     expect(m.html()).toContain("never asked the exam service");
-    expect(m.html()).not.toContain("could not be reached");
+    expect(m.html()).not.toContain("did not land");
     expect(m.html()).toContain('data-cta=""');
     await m.unmount();
   });
@@ -532,6 +533,33 @@ describe("it waits for an identity before the first read", () => {
     expect(calls).toHaveLength(1);
     expect(m.html()).toContain('data-cta="/exam"');
     expect(m.html()).not.toContain("Checking what the exam service has issued");
+    setAuthTokenSource(null);
+    await m.unmount();
+  });
+
+  it("does not describe a read that has not answered yet", async () => {
+    /* THE WINDOW THE TWO LATCHES OPEN. Once `identityWaited` has latched,
+       `reading` is false for ever — so an identity that resolves afterwards
+       leaves `asked = true`, `reading = false` and `scores === undefined`
+       WHILE THE REQUEST IS STILL IN FLIGHT. A finished sitting was told the
+       service "returned no scores, or it could not be reached" about a
+       request that had not answered. Neither half is true yet. */
+    setAuthTokenSource(async () => "jwt-9");
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      return new Promise<Response>(() => undefined);
+    });
+    const m = await mount(createElement(GateHarness, { completed: true }));
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    await m.tick(0);
+    expect(calls).toHaveLength(1);
+    expect(m.html()).toContain("Your sitting is finished");
+    expect(m.html()).toContain("has not answered this page yet");
+    expect(m.html()).not.toContain("did not land");
+    expect(m.html()).not.toContain("never asked");
     setAuthTokenSource(null);
     await m.unmount();
   });

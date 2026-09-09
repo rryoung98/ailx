@@ -144,34 +144,60 @@ describe("a finished sitting over part of the instrument", () => {
     expect(view.lede).toContain("What it has issued is below");
   });
 
-  it("says nothing was ASKED when nothing was asked", () => {
-    /* No identity ever arrived, so no request was made. "It returned no
-       scores, or could not be reached" would describe a request nobody
-       sent — and it is what a static export with no service at all would
-       have been told too. */
-    const view = reportGate({
+  /**
+   * ONE SENTENCE PER STATE, AND NO SENTENCE THAT DESCRIBES ANOTHER STATE'S
+   * REQUEST. `undefined` is "no answer yet"; `null` is "answered, and the
+   * body carried no scores". The page flattened the two with `?? null`,
+   * which is how a read still in flight was described as one that came back
+   * empty (TEN-128, third round).
+   */
+  const finishedFull = (over: Partial<Parameters<typeof reportGate>[0]>) =>
+    reportGate({
       localScored: ["t1", "t2", "t3"],
-      scores: null,
+      scores: undefined,
       reading: false,
-      asked: false,
       localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
+      ...over,
     });
+
+  it("says nothing was ASKED when nothing was asked", () => {
+    /* No identity ever arrived, so no request was made — and the static
+       export has no service to ask at all. Any sentence about what came
+       back would describe a request nobody sent. */
+    const view = finishedFull({ asked: false });
     expect(view.headline).toBe("Your sitting is finished");
     expect(view.cta).toBeNull();
     expect(view.lede).toContain("never asked the exam service");
-    expect(view.lede).not.toContain("could not be reached");
+    expect(view.lede).not.toContain("did not land");
+    expect(view.lede).not.toContain("has not answered this page yet");
   });
 
-  it("says a read that DID go out came back with nothing, and says which", () => {
-    const view = reportGate({
-      localScored: ["t1", "t2", "t3"],
-      scores: null,
-      reading: false,
-      asked: true,
-      localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
-    });
-    expect(view.lede).toContain("could not be reached");
+  it("says a read is still out rather than reporting an answer it has not had", () => {
+    const view = finishedFull({ asked: true });
+    expect(view.lede).toContain("has not answered this page yet");
     expect(view.lede).not.toContain("never asked");
+    expect(view.lede).not.toContain("did not land");
+  });
+
+  it("says a read did not land when it did not land", () => {
+    const view = finishedFull({ asked: true, readFailed: true });
+    expect(view.lede).toContain("The last read of the exam service did not land");
+    expect(view.lede).not.toContain("has not answered this page yet");
+  });
+
+  it("says an ANSWER with no scores in it is an answer, not a failure", () => {
+    const view = finishedFull({ asked: true, scores: null });
+    expect(view.lede).toContain("answered without any scores");
+    expect(view.lede).not.toContain("did not land");
+    expect(view.lede).not.toContain("has not answered this page yet");
+  });
+
+  it("keeps the answer's own sentence after a later poll fails", () => {
+    /* An answer that landed is what the panel shows, so it is what this
+       lede describes: one lost poll afterwards changes neither. */
+    const view = finishedFull({ asked: true, scores: null, readFailed: true });
+    expect(view.lede).toContain("answered without any scores");
+    expect(view.lede).not.toContain("did not land");
   });
 });
 

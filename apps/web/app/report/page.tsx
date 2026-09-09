@@ -267,11 +267,16 @@ export default function ReportPage() {
        there back to here. */
     const gateInput = {
       localScored: state ? TRACK_IDS.filter((t) => state.tracks[t].score !== undefined) : [],
-      scores: scoresView.scores ?? null,
+      /* NOT `?? null`: `undefined` (no answer yet) and `null` (answered,
+         issued none) are different facts, and flattening them had the page
+         describe a request still in flight as one that came back empty. */
+      scores: scoresView.scores,
       reading: scoresView.reading,
-      /* "Nothing came back" and "we never asked" are different sentences,
-         and only the second is true with no identity and no service. */
+      /* "Nothing came back", "the read did not land" and "we never asked"
+         are three sentences, and only the last is true with no identity and
+         no service. */
       asked: scoresView.asked,
+      readFailed: scoresView.failure !== null,
       /* A finished run over PART of the instrument is finished (TEN-149).
          The gate needs both halves to say so: that the run ended, and which
          tracks it covered. */

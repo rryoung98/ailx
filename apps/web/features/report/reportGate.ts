@@ -27,10 +27,27 @@ import type { AttemptScores } from "./scoresOfRecord";
 export interface GateInput {
   /** Tracks this browser holds a score for, from the local event log. */
   readonly localScored: readonly TrackId[];
-  /** The service's answer, or null when it gave none (or there is no service). */
-  readonly scores: AttemptScores | null;
+  /**
+   * THREE VALUES, THREE DIFFERENT FACTS.
+   *
+   * `undefined` — no answer yet: in flight, or never asked at all.
+   * `null` — the service ANSWERED and its body carried no `scores`.
+   * an object — the service answered and described the sitting.
+   *
+   * The page used to flatten the first two into `null` (`scores ?? null`),
+   * which is how a request still in flight came to be described as one that
+   * "returned no scores, or could not be reached" (TEN-128).
+   */
+  readonly scores: AttemptScores | null | undefined;
   /** True while the first read of the service's scores is still in flight. */
   readonly reading: boolean;
+  /**
+   * Whether the LAST read of the exam service failed (a refusal or an
+   * unreachable service). It is only ever consulted when no answer has
+   * landed at all: once one has, that answer is what the panel below shows
+   * and what this lede describes.
+   */
+  readonly readFailed?: boolean;
   /**
    * Whether this page ever ASKED the exam service for this sitting.
    *
@@ -139,12 +156,14 @@ export interface GateView {
   readonly scored: readonly TrackId[];
 }
 
+/** The tracks the SERVICE says it has scored. One reading of that list. */
+export function serverScoredTracks(scores: AttemptScores | null | undefined): TrackId[] {
+  return (scores?.tracks ?? []).filter((t) => t.state === "scored").map((t) => t.trackId);
+}
+
 /** Every track with a score of record, wherever it was issued, deduplicated. */
 export function scoredTracks(input: Pick<GateInput, "localScored" | "scores">): TrackId[] {
-  const server = (input.scores?.tracks ?? [])
-    .filter((t) => t.state === "scored")
-    .map((t) => t.trackId);
-  return [...new Set([...input.localScored, ...server])];
+  return [...new Set([...input.localScored, ...serverScoredTracks(input.scores)])];
 }
 
 export function reportGate(input: GateInput): GateView {
@@ -220,26 +239,41 @@ export function reportGate(input: GateInput): GateView {
        the answer, or no answer at all — is the panel below's to say; this
        page has one read and does not guess at its reason. */
     /* WHAT THE SERVICE MANAGED TO SAY, AND NOT ONE WORD MORE.
-       Three different facts, and each has to be said as itself:
-        - it answered and named a score — never deny it, it is printed below;
-        - it answered and named none — say that, and no more;
-        - it was never asked — a read cannot fire without an identity, and
-          the static export has no service at all, so "it returned nothing or
-          could not be reached" would describe a request nobody made.
-       `finalized !== true` alone is NOT a witness that no score exists: a
-       body with `finalized: false` can still carry a scored track. */
-    const serverScored = (input.scores?.tracks ?? []).some((t) => t.state === "scored");
+       Five states, five sentences, and no cell that describes a request in
+       another cell's terms. This one lede took three review rounds, so the
+       whole table is written out here and in the PR that changed it:
+
+        1. an ANSWER naming a score — never deny it, the panel prints it;
+        2. an ANSWER naming none — say that, and no more. `finalized !== true`
+           is not a witness that no score exists: a body with
+           `finalized: false` can still carry a scored track (1 above);
+        3. an ANSWER whose body carried no `scores` at all — the service
+           spoke and had nothing to give, which is not a failure;
+        4. NEVER ASKED — a read cannot fire without an identity, and the
+           static export has no service to ask, so any sentence about what
+           came back would describe a request nobody made;
+        5. ASKED, NOTHING BACK YET — in flight, or a read that did not land.
+           These two are apart because "it has not answered" and "the read
+           failed" are different facts, and the panel below names the second
+           one exactly (status and all).
+
+       Once an answer HAS landed it is what the panel shows and what this
+       lede describes, so a later failed poll does not change the sentence —
+       the same rule the panel keeps by leaving the previous answer up. */
     const serviceSaid =
-      input.scores !== null
-        ? serverScored
+      input.scores !== undefined && input.scores !== null
+        ? serverScoredTracks(input.scores).length > 0
           ? "The exam service has not recorded this sitting as finished. What it has issued is " +
             "below."
           : "The exam service has not recorded this sitting as finished, and it has issued no " +
             "scores of record for it."
-        : input.asked === false
-          ? "No score of record was read here: this page never asked the exam service for one."
-          : "The exam service issued nothing this page could read: it returned no scores, or " +
-            "it could not be reached. What it did answer is below.";
+        : input.scores === null
+          ? "The exam service answered without any scores for this sitting."
+          : input.asked === false
+            ? "No score of record was read here: this page never asked the exam service for one."
+            : input.readFailed === true
+              ? "The last read of the exam service did not land. What it did answer is below."
+              : "The exam service has not answered this page yet.";
     return {
       headline: "Your sitting is finished",
       lede:
