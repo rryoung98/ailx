@@ -98,37 +98,101 @@ export function recordLocalPracticeRound(
   return { ledger, qualification };
 }
 
+/** What this browser is holding, and the day it is holding it on. */
+export interface LocalPracticeDays {
+  /** Every day in the ledger, claimed or not. */
+  days: string[];
+  /** The days this browser believes it has already handed to an account. */
+  claimed: string[];
+  /** The browser's own local day, so a summary is counted against it. */
+  today: string;
+}
+
 /**
- * The days this browser is holding that NO account has, as a hook — read on
- * mount and kept in step with the ledger.
+ * The ledger this browser is holding, as a hook — read on mount and kept in
+ * step with the ledger. RAW: the caller decides which days it may draw,
+ * because only the caller knows what the service just said.
  *
- * `null` means "nothing for a caller to draw", and it is deliberately ONE
- * value for three situations: the first read has not happened, the browser's
- * storage throws (private mode, blocked cookies), and the ledger holds no
- * unclaimed day. It once promised a caller could tell "not asked yet" from
- * "no days" and so avoid a flash; it could not — a throwing storage already
- * returned `null` too — and no caller ever used the distinction. A promise
- * nothing keeps is worse than no promise.
+ * `null` means "nothing readable", and it is deliberately ONE value for the
+ * first render and for a browser whose storage throws (private mode, blocked
+ * cookies). It once promised a caller could tell "not asked yet" from "no
+ * days" and so avoid a flash; it could not — a throwing storage returned
+ * `null` too — and no caller ever used the distinction. A promise nothing
+ * keeps is worse than no promise.
  *
  * /progress needs this because a round the service cannot attribute to
  * anybody never reaches it (TEN-132). Without it the page reports zero days
  * to somebody whose practice summary just said "1 day streak".
  */
-export function useLocalStreak(): StreakSummary | null {
-  const [streak, setStreak] = useState<StreakSummary | null>(null);
+export function useLocalPracticeDays(): LocalPracticeDays | null {
+  const [days, setDays] = useState<LocalPracticeDays | null>(null);
   useEffect(() => {
     const read = (): void => {
       try {
-        const held = unclaimedStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes());
-        setStreak(held.totalDays > 0 ? held : null);
+        const ledger = readLocalLedger(window.localStorage);
+        setDays({
+          days: localPracticeDayStrings(ledger),
+          claimed: ledger.days.filter((d) => d.claimed).map((d) => d.day),
+          today: localDay(Date.now(), utcOffsetMinutes()),
+        });
       } catch {
-        setStreak(null);
+        setDays(null);
       }
     };
     read();
     return subscribeLocalPractice(read);
   }, []);
-  return streak;
+  return days;
+}
+
+/** A browser-held streak, and whether it is counted over PART of the ledger. */
+export interface HeldHere {
+  streak: StreakSummary;
+  /**
+   * True when a day was left out because an account holds it. A run of days
+   * with a hole in it has no honest "best streak", so a caller that gets
+   * `partial` must show the COUNT and not a streak — see `LocalStreak`.
+   */
+  partial: boolean;
+}
+
+/**
+ * The days a browser is holding that no figure on the page already counts,
+ * or `null` when there are none to draw.
+ *
+ * `onAccount` is what the SERVICE said it holds for this caller — never the
+ * browser's own guess alone. Two reasons:
+ *
+ *  - the local `claimed` flag misses a claim whose RESPONSE was lost: the
+ *    server stored the day, this browser never heard so, and the day would be
+ *    drawn twice;
+ *  - when the service did not answer at all, `onAccount` is `null` and
+ *    NOTHING is subtracted. A refusal or a 500 is not evidence that a day is
+ *    on an account, and subtracting on that evidence made a browser holding
+ *    only claimed days read "Nothing has been played in this browser" — false,
+ *    on the page whose whole bug was saying that.
+ *
+ * The local flags are unioned in only when the service DID answer, so a
+ * deployment whose response carries no `claimedDays` still cannot draw one day
+ * in two places.
+ *
+ * `mergePracticeDays` is the other way to spend this overlap — one table of
+ * server and browser days, maxed per field. It is not used because the two
+ * blocks on /progress differ in PROVENANCE, not in arithmetic: merging would
+ * hide which days the service itself stamped, which is the one thing this
+ * page must not blur.
+ */
+export function heldOnlyHere(
+  local: LocalPracticeDays | null,
+  onAccount: ReadonlySet<string> | null,
+): HeldHere | null {
+  if (local === null) return null;
+  const held =
+    onAccount === null
+      ? local.days
+      : local.days.filter((d) => !onAccount.has(d) && !local.claimed.includes(d));
+  if (held.length === 0) return null;
+  return { streak: streakSummary(held, local.today), partial: held.length < local.days.length };
 }
 
 /** The streak this browser has earned, by its own reckoning. */
@@ -138,34 +202,6 @@ export function localStreakSummary(
   tzOffsetMinutes: number,
 ): StreakSummary {
   return streakSummary(localPracticeDayStrings(readLocalLedger(storage)), localDay(now, tzOffsetMinutes));
-}
-
-/**
- * The same reckoning over the days no account has taken yet.
- *
- * A CLAIMED day is on an account and comes back from the service in
- * `progress.practice`, labelled as brought from a browser. Counting it again
- * as a day the service has never seen puts one day on the page twice, the
- * second time under a sentence saying it is on no account — the TEN-132
- * contradiction one size smaller.
- *
- * The drill's own panel keeps `localStreakSummary`: it says nothing about
- * where a day is held, and dropping the claimed days out of it would take a
- * streak away from the browser that earned it.
- *
- * `mergePracticeDays` is the other way to spend this overlap — one table of
- * server and browser days, maxed per field. It is not used here because the
- * two blocks on /progress differ in PROVENANCE, not in arithmetic: merging
- * would hide which days the service actually stamped, which is the one thing
- * the page must not blur.
- */
-export function unclaimedStreakSummary(
-  storage: StorageLike,
-  now: number,
-  tzOffsetMinutes: number,
-): StreakSummary {
-  const unclaimed = claimableDays(readLocalLedger(storage)).map((d) => d.day);
-  return streakSummary(unclaimed, localDay(now, tzOffsetMinutes));
 }
 
 // ---------------------------------------------------------------------------

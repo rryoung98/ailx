@@ -52,12 +52,11 @@ import {
   type PracticeDayPoint,
   type ProgressReport,
   type SittingPoint,
-  type StreakSummary,
 } from "@ailx/report";
 import { apiPath } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 import { hasAuthTokenSource } from "../../lib/data/authHeaders";
-import { useLocalStreak } from "../../lib/data/localPractice";
+import { heldOnlyHere, useLocalPracticeDays, type HeldHere } from "../../lib/data/localPractice";
 import { ForgetBrowser } from "./ForgetBrowser";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { useService } from "../../lib/data/serviceFetch";
@@ -190,47 +189,61 @@ function SittingsChart({ sittings }: { sittings: readonly SittingPoint[] }) {
 }
 
 /**
- * The days this browser is holding that no account has, which the exam
- * service has therefore never seen. TEN-132: the drill records a round the
- * service cannot attribute to anybody in localStorage only
- * (`features/practice/PracticeDrill.tsx`,
+ * The days this browser is holding that no figure above already counts.
+ * TEN-132: the drill records a round the service cannot attribute to anybody
+ * in localStorage only (`features/practice/PracticeDrill.tsx`,
  * `recorded = server && hasIdentity(identity.status) && (!taster || engaged)`),
  * so /practice showed a streak on the same afternoon /progress said there was
  * none. Same ledger, read here, and labelled as this browser's own record —
  * it is still not a server-stamped day and buys nothing.
  *
- * `useLocalStreak` has already dropped the CLAIMED days: those are on the
- * account, are returned by the service, and are shown in the table above as
- * brought from a browser. Showing them here as well would say of one day that
- * it is on no account, on the same page that lists it on one.
+ * `heldOnlyHere` has already dropped the days the SERVICE said it holds:
+ * those are on the account, they are counted in the streak above and named in
+ * the practice table once there are enough days to draw one, and repeating
+ * them here would say of one day that it is on no account on the same page
+ * that shows it on one.
+ *
+ * When days WERE dropped the counters shrink to the one figure that survives
+ * a hole in the run. "Best streak" over days 1 and 3 of a three-day run is
+ * not a best streak, and a number that is only true of a subsequence must not
+ * be printed under a label that says otherwise.
  */
-function LocalStreak({ local }: { local: StreakSummary }) {
+function LocalStreak({ held }: { held: HeldHere }) {
   return (
     <section aria-labelledby="local-streak">
       <h3 id="local-streak">In this browser</h3>
       <p className={styles.streakRow}>
+        {held.partial ? null : (
+          <>
+            <span className="stat">
+              <span className="value">{held.streak.current}</span>
+              <span className="label">day streak</span>
+            </span>
+            <span className="stat">
+              <span className="value">{held.streak.best}</span>
+              <span className="label">your best</span>
+            </span>
+          </>
+        )}
         <span className="stat">
-          <span className="value">{local.current}</span>
-          <span className="label">day streak</span>
-        </span>
-        <span className="stat">
-          <span className="value">{local.best}</span>
-          <span className="label">your best</span>
-        </span>
-        <span className="stat">
-          <span className="value">{local.totalDays}</span>
+          <span className="value">{held.streak.totalDays}</span>
           <span className="label">days practised</span>
         </span>
       </p>
       <p className="muted" style={{ maxWidth: "58ch" }}>
-        The exam service has no record of these days. Nothing about them was ever sent to it,
-        so they are in no server figure and on no account. {LOCAL_PRACTICE_BASIS}
+        No figure above counts these days: the exam service has not shown them back as yours, so
+        this browser is the only place they are held.{" "}
+        {held.partial
+          ? "The days it has already handed over are in the figures above, and are not counted again here — so this is what is left, not a streak. "
+          : ""}
+        {LOCAL_PRACTICE_BASIS}
       </p>
     </section>
   );
 }
 
-function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: StreakSummary | null }) {
+
+function Streak({ streak, held }: { streak: ProgressReport["streak"]; held: HeldHere | null }) {
   // Before the first round there is nothing to count, and three zeros in a
   // row read as a broken page rather than a new one — "0 your best" is a
   // record nobody has failed to set yet. So the counters appear once there
@@ -262,7 +275,7 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
                 : "Today is still open. One round keeps the streak."}
           </p>
         </>
-      ) : local !== null ? (
+      ) : held !== null ? (
         <p className="muted" style={{ maxWidth: "58ch" }}>
           The exam service has no practice days for you. The days below are the ones this
           browser kept.
@@ -273,7 +286,7 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
           a day, and the first one starts the streak.
         </p>
       )}
-      {local === null ? null : <LocalStreak local={local} />}
+      {held === null ? null : <LocalStreak held={held} />}
       <p className="small faint" style={{ maxWidth: "62ch" }}>
         A day counts when you finish a whole round of {PRACTICE_MIN_ANSWERS} cards, in your own
         local day, at a speed that means you read them. A streak survives one missed day, and
@@ -287,7 +300,7 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
 
 
 /** The page a caller we could not identify is shown. Never a blank. */
-function Unrecognised({ accounts, local }: { accounts: boolean; local: StreakSummary | null }) {
+function Unrecognised({ accounts, held }: { accounts: boolean; held: HeldHere | null }) {
   return (
   <main className="page">
     <div className="container">
@@ -295,7 +308,7 @@ function Unrecognised({ accounts, local }: { accounts: boolean; local: StreakSum
       <h1 style={{ maxWidth: "20ch" }}>
         {accounts
           ? "We do not know who you are."
-          : local === null
+          : held === null
             ? "Nothing has been played in this browser."
             : "Your practice is in this browser only."}
       </h1>
@@ -316,18 +329,17 @@ function Unrecognised({ accounts, local }: { accounts: boolean; local: StreakSum
           </>
         )}
       </p>
-      {local === null ? null : <LocalStreak local={local} />}
+      {held === null ? null : <LocalStreak held={held} />}
     </div>
   </main>
   );
 }
 
 export function ProgressView() {
-  // The days this browser kept for itself and no account holds. Read on every
-  // state of the page, including the ones where the service said nothing,
-  // because a browser-kept streak exists whether or not the service answered
-  // (TEN-132). `null` when there is nothing to draw, for any reason.
-  const local = useLocalStreak();
+  // The ledger this browser kept for itself. Read on every state of the page,
+  // including the ones where the service said nothing, because a browser-kept
+  // streak exists whether or not the service answered (TEN-132).
+  const localDays = useLocalPracticeDays();
   // `claimedDays` is a SIBLING of the report, never a field inside it: a
   // claimed day is a fact about provenance, and `ProgressReport` is the pure
   // derivation both repos share.
@@ -354,7 +366,14 @@ export function ProgressView() {
   const accounts = hasAuthTokenSource();
   if (result.state === "missing") {
     return (
-      <Unrecognised accounts={accounts || result.status === 401 || result.status === 403} local={local} />
+      // `null`, not an empty set: a refusal — 401, 403, 400 or a 500 — is not
+      // evidence that any day is on an account, so nothing is subtracted and
+      // the browser is shown everything it holds. The page draws no server
+      // figure here, so nothing can be counted twice.
+      <Unrecognised
+        accounts={accounts || result.status === 401 || result.status === 403}
+        held={heldOnlyHere(localDays, null)}
+      />
     );
   }
   const progress = result.data.progress;
@@ -373,7 +392,7 @@ export function ProgressView() {
 
         <section aria-labelledby="streak">
           <h2 id="streak">Streak</h2>
-          <Streak streak={progress.streak} local={local} />
+          <Streak streak={progress.streak} held={heldOnlyHere(localDays, claimedDays)} />
           {/* The one thing this page wants you to do, as the button it is.
               It used to be a text link under two paragraphs of small print,
               which on a page whose every section says "not yet" left nothing

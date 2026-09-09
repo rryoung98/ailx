@@ -18,6 +18,7 @@ import { createRoot, type Root } from "react-dom/client";
 import {
   CLAIM_PROMISE,
   FAMILY_META,
+  LOCAL_PRACTICE_BASIS,
   LOCAL_PRACTICE_KEY,
   PRACTICE_BANK,
   PRACTICE_DECK_SIZE,
@@ -675,6 +676,26 @@ describe("the landing taster (TEN-156)", () => {
     const claim = posted.find((p) => p.url.endsWith("/api/practice/claim"));
     expect(claim, "a claim POST").toBeTruthy();
     expect((claim!.body as { days: Array<{ answered: number }> }).days[0].answered).toBe(PRACTICE_DECK_SIZE);
+  });
+
+  it("does not say a handed-over day is kept in this browser and on no account", async () => {
+    // The taster round is browser-dealt, so the panel prints "kept in this
+    // browser … no account". The claim then puts that very day on the
+    // account, and the receipt below says so. Both sentences on one screen is
+    // the TEN-132 contradiction, one surface over (adversarial review of #66).
+    await mount(true, false, { taster: true });
+    await playSlowly();
+    await act(async () => {});
+    expect(host.textContent).toContain("now on your account");
+    expect(host.textContent).not.toContain(LOCAL_PRACTICE_BASIS);
+  });
+
+  it("still says where the day is when there is no account to hand it to", async () => {
+    await mount(true, true, { taster: true });
+    await signedOut();
+    await playSlowly();
+    await act(async () => {});
+    expect(host.textContent).toContain(LOCAL_PRACTICE_BASIS);
   });
 
   it("claims nothing for a visitor with no identity to claim onto", async () => {

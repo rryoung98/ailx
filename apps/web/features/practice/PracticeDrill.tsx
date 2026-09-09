@@ -34,6 +34,7 @@ import {
   PRACTICE_OPTIONS,
   SIGNAL_CHOICE,
   SIGN_IN_VALUE_SHORT,
+  localDay,
   practiceItem,
   samplePracticeDeck,
   type PracticeItem,
@@ -312,6 +313,16 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
     setRecoverFocus(false);
   }, [recoverFocus]);
 
+  /**
+   * Has the day this round was kept on already reached the account? The claim
+   * runs the moment a browser-dealt round finishes on an identity the service
+   * accepts (`recordLocally`), so the answer changes DURING the panel's life.
+   * Matched by day, not by "a claim happened": a claim from an earlier round
+   * says nothing about this one.
+   */
+  const handedOver =
+    claim?.ok === true && claim.claimed.includes(localDay(Date.now(), utcOffsetMinutes()));
+
   const index = played.length;
   const current = deck[index];
   const last = played[played.length - 1];
@@ -531,8 +542,15 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
             The ROUND's own truth, not the next round's: a taster round is
             dealt in this browser and the answer to "where is this day?" was
             settled when it was dealt, even though the drill is recorded from
-            the moment it was engaged. */}
-        {roundRecorded.current ? null : <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>}
+            the moment it was engaged.
+
+            ...unless the claim has since handed that very day over. Then
+            "kept in this browser … no account" is false, and the receipt
+            below it says the opposite on the same screen — the TEN-132
+            contradiction, one surface over. */}
+        {roundRecorded.current || handedOver ? null : (
+          <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>
+        )}
         {/* The ask, and only here: after a round, never in front of one. It
             names what an account is for and what happens to these days, and
             it is absent from the static export, which has no sign-in page to
