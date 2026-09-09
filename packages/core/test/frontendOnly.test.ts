@@ -111,15 +111,20 @@ const BROWSER_AUTH_MODULES: readonly RegExp[] = [
  * `isServerAuthModule`, not that it appears first: `A || (B && !C)` is
  * order-independent, so moving this line changes nothing and folding it INTO
  * the capability branch silently removes the protection. Keep it a disjunct.
- * `test/frontendOnly.test.ts` proves it earns its place by building the
- * over-wide allowlist `/^@clerk\//` and asserting `@clerk/backend` is still
- * denied under it.
+ * "the anchor earns its place" is proved BELOW, not asserted here: the test
+ * drives this same function with a deliberately over-wide allowlist and shows
+ * `@clerk/backend` still denied under it. That is why `browser` is a
+ * parameter — a test that re-spelled the predicate would prove nothing about
+ * this one.
  */
 const SERVER_AUTH_LITERALS: readonly RegExp[] = [/^@clerk\/backend(\/.*)?$/];
 
-const isServerAuthModule = (spec: string): boolean =>
+const isServerAuthModule = (
+  spec: string,
+  browser: readonly RegExp[] = BROWSER_AUTH_MODULES,
+): boolean =>
   SERVER_AUTH_LITERALS.some((re) => re.test(spec)) ||
-  (/^@clerk\//.test(spec) && !BROWSER_AUTH_MODULES.some((re) => re.test(spec)));
+  (/^@clerk\//.test(spec) && !browser.some((re) => re.test(spec)));
 
 /**
  * A DATABASE is banned by CAPABILITY, not by name (TEN-226).
@@ -217,7 +222,9 @@ const code = (text: string): string =>
 const CLERK_IMPORT = /(?:from|import|require)\s*\(?\s*["'](@clerk\/[^"']+)["']/g;
 
 function serverAuthImports(src: string): string[] {
-  return [...code(src).matchAll(CLERK_IMPORT)].map((m) => m[1]!).filter(isServerAuthModule);
+  // `.filter(isServerAuthModule)` would pass the INDEX as the second argument
+  // and shadow the allowlist with a number. One arrow, spelled once.
+  return [...code(src).matchAll(CLERK_IMPORT)].map((m) => m[1]!).filter((s) => isServerAuthModule(s));
 }
 
 /**
@@ -503,9 +510,25 @@ describe("no server-side auth is reachable from this repo", () => {
    * The browser allowlist is a deny-by-default with an escape hatch, so ONE
    * over-wide entry in it — a stray `/^@clerk\//` — would unban the whole
    * namespace silently and nothing here would fail. `@clerk/backend` is
-   * therefore ALSO a literal, checked BEFORE the allowlist is consulted. It
-   * costs nothing and it fails loudly.
+   * therefore ALSO a literal, and it is a SEPARATE DISJUNCT of
+   * `isServerAuthModule` rather than a first line: `A || (B && !C)` does not
+   * care what order it is written in.
    */
+  it("still denies @clerk/backend under an allowlist wide enough to unban the namespace", () => {
+    // The failure being insured against, made real: someone widens the browser
+    // allowlist until it swallows the capability branch whole.
+    const overWide: readonly RegExp[] = [/^@clerk\//];
+
+    // The capability branch is now useless — this proves the fixture is
+    // actually over-wide, so the assertion below is not passing for a
+    // different reason than the one claimed.
+    expect(isServerAuthModule("@clerk/express", overWide)).toBe(false);
+
+    // And the anchor still holds, through the real function, not a copy of it.
+    expect(isServerAuthModule("@clerk/backend", overWide)).toBe(true);
+    expect(isServerAuthModule("@clerk/backend/internal", overWide)).toBe(true);
+  });
+
   it("bans @clerk/backend by literal as well as by capability", () => {
     expect(SERVER_AUTH_LITERALS.some((re) => re.test("@clerk/backend"))).toBe(true);
     expect(SERVER_AUTH_LITERALS.some((re) => re.test("@clerk/backend/internal"))).toBe(true);
