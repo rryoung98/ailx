@@ -23,6 +23,7 @@ import { createElement } from "react";
 import {
   LOCAL_PRACTICE_BASIS,
   LOCAL_PRACTICE_KEY,
+  LOCAL_PRACTICE_PARTLY_CLAIMED,
   PROGRESS_BASIS,
   progressReport,
   serializeLocalLedger,
@@ -176,6 +177,10 @@ describe("the days this browser is holding", () => {
     seedLedger([{ day: back(0), claimed: true }]);
     const html = await markup();
     expect(serverSection(html)).toMatch(/>1<\/span>\s*<span class="label">days practised/);
+    // Once, and only once: one "days practised" counter on the page means the
+    // day is neither dropped nor drawn twice. The fixture supplies the server
+    // half, so this is the assertion that pins the PAGE.
+    expect(html.match(/days practised/g)).toHaveLength(1);
     expect(html).not.toContain("In this browser");
   });
 
@@ -216,6 +221,41 @@ describe("the days this browser is holding", () => {
     const html = await markup();
     expect(localSection(html)).toContain("your best");
     expect(localSection(html)).not.toMatch(/what is left, not a streak/);
+  });
+
+  it("does not call a handed-over day browser-only when the service refused", async () => {
+    // Nothing is subtracted on a refusal, which is right — but then the block
+    // drew a CLAIMED day under "this browser is the only place they are held"
+    // and `LOCAL_PRACTICE_BASIS` ("not on our servers. No account"). That is
+    // the sentence this issue exists to remove, on the branch that skipped
+    // the subtraction.
+    status = 500;
+    seedLedger([{ day: back(0), claimed: true }]);
+    const html = await markup();
+    expect(html).toContain("In this browser");
+    expect(html).toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
+    expect(html).not.toContain(LOCAL_PRACTICE_BASIS);
+    expect(localSection(html)).not.toMatch(/the only place they are held/);
+  });
+
+  it("keeps the plain sentence when nothing in the ledger was ever handed over", async () => {
+    status = 500;
+    seedLedger([back(0)]);
+    const html = await markup();
+    expect(html).toContain(LOCAL_PRACTICE_BASIS);
+    expect(html).not.toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
+  });
+
+  it("subtracts the days the figures above actually count, not the claim list", async () => {
+    // The page's own header says the streak is recomputed from server-stamped
+    // sessions. `progress.practice` IS that set, so it is what a day must be
+    // absent from to be drawn here — no dependence on `claimedDays`, which
+    // labels provenance and nothing else.
+    payload = report([{ day: back(0), sessions: 1, answered: 6, correct: 4 }]);
+    claimedOnAccount = [];
+    seedLedger([back(0)]);
+    const html = await markup();
+    expect(html).not.toContain("In this browser");
   });
 
   it("shows every day it holds when the service REFUSED — a refusal is not a claim", async () => {

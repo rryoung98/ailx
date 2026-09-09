@@ -145,7 +145,7 @@ export function useLocalPracticeDays(): LocalPracticeDays | null {
   return days;
 }
 
-/** A browser-held streak, and whether it is counted over PART of the ledger. */
+/** A browser-held streak, and what is true of the days behind it. */
 export interface HeldHere {
   streak: StreakSummary;
   /**
@@ -154,27 +154,40 @@ export interface HeldHere {
    * `partial` must show the COUNT and not a streak — see `LocalStreak`.
    */
   partial: boolean;
+  /**
+   * True when a day that IS shown has already been handed to an account —
+   * only possible when nothing was subtracted, i.e. the service did not
+   * answer. The caller must then not say these days are on no account:
+   * `claimed: true` is written only from a 200 that named the day, so one of
+   * them is. `LOCAL_PRACTICE_PARTLY_CLAIMED` is the sentence for it.
+   */
+  handedOver: boolean;
 }
 
 /**
  * The days a browser is holding that no figure on the page already counts,
  * or `null` when there are none to draw.
  *
- * `onAccount` is what the SERVICE said it holds for this caller — never the
- * browser's own guess alone. Two reasons:
+ * `alreadyCounted` is what the SERVICE said it holds for this caller — the
+ * practice days behind the figures above, never the browser's guess alone.
+ * Two reasons:
  *
  *  - the local `claimed` flag misses a claim whose RESPONSE was lost: the
  *    server stored the day, this browser never heard so, and the day would be
  *    drawn twice;
- *  - when the service did not answer at all, `onAccount` is `null` and
- *    NOTHING is subtracted. A refusal or a 500 is not evidence that a day is
- *    on an account, and subtracting on that evidence made a browser holding
- *    only claimed days read "Nothing has been played in this browser" — false,
- *    on the page whose whole bug was saying that.
+ *  - when the service did not answer, `alreadyCounted` is `null` and NOTHING
+ *    is subtracted. A refusal or a 500 is not evidence that a day is on an
+ *    account, and subtracting on that evidence made a browser holding only
+ *    claimed days read "Nothing has been played in this browser" — false, on
+ *    the page whose whole bug was saying that. What the caller loses is the
+ *    right to call those days browser-only, which is what `handedOver` says.
  *
  * The local flags are unioned in only when the service DID answer, so a
- * deployment whose response carries no `claimedDays` still cannot draw one day
- * in two places.
+ * response that names fewer days than the browser handed over still cannot
+ * draw one day in two places. That hides a day claimed onto a DIFFERENT
+ * account on this browser, which is the safe direction: the alternative is
+ * printing "this browser is the only place they are held" about a day some
+ * account holds.
  *
  * `mergePracticeDays` is the other way to spend this overlap — one table of
  * server and browser days, maxed per field. It is not used because the two
@@ -184,15 +197,31 @@ export interface HeldHere {
  */
 export function heldOnlyHere(
   local: LocalPracticeDays | null,
-  onAccount: ReadonlySet<string> | null,
+  alreadyCounted: ReadonlySet<string> | null,
 ): HeldHere | null {
   if (local === null) return null;
   const held =
-    onAccount === null
+    alreadyCounted === null
       ? local.days
-      : local.days.filter((d) => !onAccount.has(d) && !local.claimed.includes(d));
+      : local.days.filter((d) => !alreadyCounted.has(d) && !local.claimed.includes(d));
   if (held.length === 0) return null;
-  return { streak: streakSummary(held, local.today), partial: held.length < local.days.length };
+  return {
+    streak: streakSummary(held, local.today),
+    partial: held.length < local.days.length,
+    handedOver: held.some((d) => local.claimed.includes(d)),
+  };
+}
+
+/**
+ * Has this browser handed ANY of its days to an account? The durable answer:
+ * the ledger's own flag, which survives a reload, where the claim receipt in
+ * `readLastClaim` is one page's memory of one moment.
+ *
+ * A surface that says "kept in this browser … no account" over a ledger with
+ * one claimed day in it is saying something false about that day (TEN-132).
+ */
+export function hasClaimedDay(storage: StorageLike): boolean {
+  return readLocalLedger(storage).days.some((d) => d.claimed);
 }
 
 /** The streak this browser has earned, by its own reckoning. */

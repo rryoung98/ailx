@@ -43,6 +43,7 @@ import {
   CLAIMED_DAYS_BASIS,
   CLAIM_PROMISE,
   LOCAL_PRACTICE_BASIS,
+  LOCAL_PRACTICE_PARTLY_CLAIMED,
   MIN_TREND_DAYS,
   PROGRESS_BASIS,
   PRACTICE_ACCURACY_CAVEAT,
@@ -231,12 +232,22 @@ function LocalStreak({ held }: { held: HeldHere }) {
         </span>
       </p>
       <p className="muted" style={{ maxWidth: "58ch" }}>
-        No figure above counts these days: the exam service has not shown them back as yours, so
-        this browser is the only place they are held.{" "}
-        {held.partial
-          ? "The days it has already handed over are in the figures above, and are not counted again here — so this is what is left, not a streak. "
-          : ""}
-        {LOCAL_PRACTICE_BASIS}
+        {held.handedOver ? (
+          // Nothing was subtracted, because the service did not answer. One
+          // of these days is on an account — the flag is written only from a
+          // 200 that named it — so the browser-only sentence is not available
+          // here, and saying it anyway is the bug this issue is about.
+          LOCAL_PRACTICE_PARTLY_CLAIMED
+        ) : (
+          <>
+            No figure above counts these days: the exam service has not shown them back as
+            yours, so this browser is the only place they are held.{" "}
+            {held.partial
+              ? "The days it has already handed over are in the figures above, and are not counted again here — so this is what is left, not a streak. "
+              : ""}
+            {LOCAL_PRACTICE_BASIS}
+          </>
+        )}
       </p>
     </section>
   );
@@ -379,6 +390,13 @@ export function ProgressView() {
   const progress = result.data.progress;
   const scoredDays = progress.practice.filter((d) => d.accuracy !== null);
   const claimedDays = new Set(result.data.claimedDays ?? []);
+  // What the figures above ACTUALLY count: the practice days the service
+  // returned, which is the set the streak and the table are derived from. A
+  // day absent from it is a day no figure on this page counts, whatever the
+  // claim list says — `claimedDays` labels provenance in the table and
+  // decides nothing here. Zero-session entries are the report's own gap
+  // filling, not days.
+  const countedAbove = new Set(progress.practice.filter((d) => d.sessions > 0).map((d) => d.day));
 
   return (
     <main className="page">
@@ -392,7 +410,7 @@ export function ProgressView() {
 
         <section aria-labelledby="streak">
           <h2 id="streak">Streak</h2>
-          <Streak streak={progress.streak} held={heldOnlyHere(localDays, claimedDays)} />
+          <Streak streak={progress.streak} held={heldOnlyHere(localDays, countedAbove)} />
           {/* The one thing this page wants you to do, as the button it is.
               It used to be a text link under two paragraphs of small print,
               which on a page whose every section says "not yet" left nothing

@@ -272,6 +272,22 @@ export const LOCAL_PRACTICE_BASIS =
   + "to another browser or another device.";
 
 /**
+ * The same fact for a browser whose ledger holds a day it has already handed
+ * over. `LOCAL_PRACTICE_BASIS` says "not on our servers. No account", which
+ * is false of a claimed day: `claimed: true` is only ever written from a 200
+ * that NAMED the day, so an account holds it.
+ *
+ * Said on both surfaces that draw browser-held days — the drill panel and
+ * /progress when the service did not answer — because one wrong sentence
+ * fixed on one page is a wrong sentence still shipping on the other, which is
+ * exactly how TEN-132 came back.
+ */
+export const LOCAL_PRACTICE_PARTLY_CLAIMED =
+  "Some of these days are on an account already: this browser handed them over, and they are "
+  + "in both places now. The rest are kept in this browser alone — no account, and nothing "
+  + "about you leaves this device. Clearing your site data ends what is kept here.";
+
+/**
  * What signing in actually buys. Three true things, in the order they matter,
  * and nothing about what you would LOSE — a streak already earned is not a
  * hostage, and this list may never be rewritten to imply it is.

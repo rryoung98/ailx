@@ -31,10 +31,10 @@ import {
   CLAIM_PROMISE,
   FAMILY_META,
   LOCAL_PRACTICE_BASIS,
+  LOCAL_PRACTICE_PARTLY_CLAIMED,
   PRACTICE_OPTIONS,
   SIGNAL_CHOICE,
   SIGN_IN_VALUE_SHORT,
-  localDay,
   practiceItem,
   samplePracticeDeck,
   type PracticeItem,
@@ -48,6 +48,7 @@ import { hasIdentity, useIdentity } from "../../lib/auth/identityState";
 import { funnel } from "../../lib/data/funnel";
 import {
   claimLocalPractice,
+  hasClaimedDay,
   localStreakSummary,
   readLastClaim,
   recordLocalPracticeRound,
@@ -196,6 +197,14 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   const [qualification, setQualification] = useState<PracticeQualification | null>(null);
   /** What the sign-in claim did, if it happened while this page was open. */
   const [claim, setClaim] = useState<ClaimOutcome | null>(null);
+  /**
+   * Does this browser's ledger hold a day it has already handed over? The
+   * sentence under the counters is about "your practice days", plural and
+   * durable, so the answer must be too: the in-memory claim receipt dies with
+   * the page and knows only about today, while the ledger's `claimed` flag
+   * survives a reload and covers every day behind the numbers on screen.
+   */
+  const [anyDayClaimed, setAnyDayClaimed] = useState(false);
   const [submitFailed, setSubmitFailed] = useState(false);
   /** Whether the failure on screen is "too slow", for both the deal and the send. */
   const [dealTimedOut, setDealTimedOut] = useState(false);
@@ -293,6 +302,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   useEffect(() => {
     const refresh = () => {
       setClaim(readLastClaim());
+      setAnyDayClaimed(hasClaimedDay(window.localStorage));
       if (recorded) return;
       setStreak(localStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes()));
     };
@@ -312,16 +322,6 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
     stageRef.current?.querySelector("button")?.focus();
     setRecoverFocus(false);
   }, [recoverFocus]);
-
-  /**
-   * Has the day this round was kept on already reached the account? The claim
-   * runs the moment a browser-dealt round finishes on an identity the service
-   * accepts (`recordLocally`), so the answer changes DURING the panel's life.
-   * Matched by day, not by "a claim happened": a claim from an earlier round
-   * says nothing about this one.
-   */
-  const handedOver =
-    claim?.ok === true && claim.claimed.includes(localDay(Date.now(), utcOffsetMinutes()));
 
   const index = played.length;
   const current = deck[index];
@@ -548,8 +548,10 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
             "kept in this browser … no account" is false, and the receipt
             below it says the opposite on the same screen — the TEN-132
             contradiction, one surface over. */}
-        {roundRecorded.current || handedOver ? null : (
-          <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>
+        {roundRecorded.current ? null : (
+          <p className="small faint">
+            {anyDayClaimed ? LOCAL_PRACTICE_PARTLY_CLAIMED : LOCAL_PRACTICE_BASIS}
+          </p>
         )}
         {/* The ask, and only here: after a round, never in front of one. It
             names what an account is for and what happens to these days, and

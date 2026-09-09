@@ -20,6 +20,7 @@ import {
   FAMILY_META,
   LOCAL_PRACTICE_BASIS,
   LOCAL_PRACTICE_KEY,
+  LOCAL_PRACTICE_PARTLY_CLAIMED,
   PRACTICE_BANK,
   PRACTICE_DECK_SIZE,
   PRACTICE_MIN_ELAPSED_MS,
@@ -696,6 +697,26 @@ describe("the landing taster (TEN-156)", () => {
     await playSlowly();
     await act(async () => {});
     expect(host.textContent).toContain(LOCAL_PRACTICE_BASIS);
+  });
+
+  it("remembers a claim made before this page was open", async () => {
+    // The receipt lives in memory and dies with the page; the ledger's
+    // `claimed` flag does not. A browser that claimed yesterday and reloads
+    // must not be told again that its days are on no account.
+    store.set(
+      LOCAL_PRACTICE_KEY,
+      JSON.stringify({
+        days: [{ day: daysAgo(3), sessions: 1, answered: 6, correct: 5, claimed: true }],
+      }),
+    );
+    await mount(true, true, { taster: true });
+    await signedOut();
+    await playSlowly();
+    await act(async () => {});
+    // Today's round is browser-kept and says so; the older day is on an
+    // account, so the blanket "no account" sentence may not be printed.
+    expect(host.textContent).toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
+    expect(host.textContent).not.toContain(LOCAL_PRACTICE_BASIS);
   });
 
   it("claims nothing for a visitor with no identity to claim onto", async () => {
