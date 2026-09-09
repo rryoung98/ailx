@@ -239,3 +239,42 @@ describe("expanding desk panel (full-bleed scrub)", () => {
     expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe("hero fade leaves nothing clickable behind (TEN-222)", () => {
+  /** The declarations at a keyframes rule's final stop, as a style string. */
+  const finalStop = (name: string): string => {
+    const at = css.indexOf(`@keyframes ${name}`);
+    expect(at).toBeGreaterThan(-1);
+    const block = css.slice(at, css.indexOf("}", css.indexOf("}", at) + 1) + 1);
+    const stops = [...block.matchAll(/(?:to|100%)\s*\{([^}]*)\}/g)];
+    expect(stops.length).toBeGreaterThan(0);
+    return stops[stops.length - 1][1].trim();
+  };
+
+  it("heroFadeOut and heroSettle end hidden, not merely transparent", () => {
+    // opacity: 0 alone leaves the subtree hit-testable and in the tab order.
+    for (const name of ["heroFadeOut", "heroSettle"]) {
+      expect(finalStop(name)).toMatch(/visibility:\s*hidden/);
+    }
+  });
+
+  it("the faded drill and both CTAs are unfocusable once the fade has completed", async () => {
+    const h = await render(createElement(Home));
+    const cta = h.querySelector(".hero-cta.hero-fade") as HTMLElement | null;
+    const play = h.querySelector(".hero-play.hero-fade") as HTMLElement | null;
+    expect(cta).not.toBeNull();
+    expect(play).not.toBeNull();
+    // Play the fade to its end: jsdom runs no animation, so apply the final
+    // stop's own declarations, which is exactly what `animation-fill-mode:
+    // both` leaves on screen for the rest of the pin.
+    for (const el of [cta!, play!]) el.style.cssText = finalStop("heroFadeOut");
+    const controls = [...h.querySelectorAll(".hero-cta.hero-fade a, .hero-play.hero-fade button")];
+    expect(controls.length).toBeGreaterThanOrEqual(3); // 2 CTAs + drill buttons
+    for (const c of controls) {
+      // jsdom's focus() implements no rendering check, so assert the spec
+      // condition instead: a visibility:hidden element is not a focusable
+      // area (HTML §6.6.2) and is not hit-testable.
+      expect(getComputedStyle(c).visibility).toBe("hidden");
+    }
+  });
+});
