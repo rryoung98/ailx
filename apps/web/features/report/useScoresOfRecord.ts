@@ -171,6 +171,12 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
 
   const checkAgain = useCallback(() => {
     setBounded(false);
+    /* The PREVIOUS read's failure is not this one's. Left standing, the
+       report said "the last read did not land" while a retry was in flight,
+       which describes a request that has not answered yet — the same
+       confusion `scores ?? null` caused (TEN-128). The last good ANSWER
+       stays: only the failure is cleared. */
+    setFailure(null);
     setRound((r) => r + 1);
   }, []);
 

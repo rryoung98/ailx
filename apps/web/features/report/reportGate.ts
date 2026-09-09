@@ -272,7 +272,7 @@ export function reportGate(input: GateInput): GateView {
           : input.asked === false
             ? "No score of record was read here: this page never asked the exam service for one."
             : input.readFailed === true
-              ? "The last read of the exam service did not land. What it did answer is below."
+              ? "The last read of the exam service did not land. The panel below says why."
               : "The exam service has not answered this page yet.";
     return {
       headline: "Your sitting is finished",

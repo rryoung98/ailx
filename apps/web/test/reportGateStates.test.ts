@@ -1,5 +1,19 @@
 /**
- * THE WHOLE STATE TABLE OF THE REPORT'S GATE (TEN-128).
+ * THE SENTENCE THE GATE SAYS ABOUT THE EXAM SERVICE, ON A FULL SITTING
+ * (TEN-128).
+ *
+ * WHAT THIS TABLE DOES NOT COVER, said first, because the name used to
+ * claim the whole gate and did not freeze it:
+ *  - `localSitting.sat` is FOUR TRACKS in every row. A partial sitting has a
+ *    lede of its own (`partialSittingLede`) which is not in `SENTENCE` at
+ *    all; it is covered in `partialReport.test.ts`, including the case where
+ *    no track was sat.
+ *  - the `final{}` rows stand for a finalized answer as ONE state. Its
+ *    sub-states — how many tracks are still with the jury, and whether the
+ *    composite was issued, withheld or never mentioned — are covered in
+ *    `scoreOrdering.test.ts` and `partialReport.test.ts`.
+ * What it does freeze is every combination of the five inputs that decide
+ * WHICH SENTENCE about the exam service a finished full sitting gets.
  *
  * The lede a finished sitting gets when the exam service has not finalized
  * it took THREE review rounds, each one finding a state described in another
@@ -155,12 +169,12 @@ const TABLE: Row[] = [
   ["true", "true", "open{}", "true", "false", "reading", "-", false],
   ["true", "true", "open{}", "true", "true", "reading", "-", false],
   ["true", "true", "undefined", "false", "false", "reading", "-", true],
-  ["true", "true", "undefined", "false", "true", "reading", "-", true],
+  ["true", "true", "undefined", "false", "true", "reading", "-", false],
   ["true", "true", "undefined", "true", "false", "reading", "-", true],
-  ["true", "true", "undefined", "true", "true", "reading", "-", true],
+  ["true", "true", "undefined", "true", "true", "reading", "-", false],
 ];
 
-describe("every state of the report gate, and the one sentence it produces", () => {
+describe("the service sentence on a full sitting: every read state, one sentence each", () => {
   it.each(TABLE)(
     "asked=%s reading=%s scores=%s completed=%s readFailed=%s → %s (cta %s)",
     (asked, reading, scores, completed, readFailed, sentence, cta) => {
@@ -187,18 +201,25 @@ describe("every state of the report gate, and the one sentence it produces", () 
     expect(withCta.every((r) => r[5] === "lock")).toBe(true);
   });
 
-  it("covers every combination of the five inputs", () => {
+  it("covers every combination of the five inputs it varies", () => {
     expect(TABLE).toHaveLength(2 * 2 * 5 * 2 * 2);
     expect(new Set(TABLE.map((r) => r.slice(0, 5).join("|"))).size).toBe(TABLE.length);
   });
 
   it("names which rows the running app can reach, and reaches no other sentence", () => {
-    /* An answer implies a request, a failure implies a request, and the
-       first read being in flight implies no answer has landed yet. */
+    /* An answer implies a request, a failure implies a request, the first
+       read being in flight implies no answer has landed yet, and a failure
+       implies the page is no longer reading (`useScoresOfRecord`). Each
+       clause is a claim about the PRODUCER, so each is written from the
+       hook's own expression rather than from what looks safe. */
     for (const [asked, reading, scores, , readFailed, , , reachable] of TABLE) {
       const impossible =
         (asked === "false" && (scores !== "undefined" || readFailed === "true")) ||
-        (reading === "true" && scores !== "undefined");
+        (reading === "true" && scores !== "undefined") ||
+        /* A failed read SETS `failure`, and `reading` is
+           `scores === undefined && failure === null && !identityWaited` —
+           so a page cannot be reading and holding a failed read at once. */
+        (reading === "true" && readFailed === "true");
       expect(reachable).toBe(!impossible);
     }
     // Every sentence the gate can say is reachable in some row.

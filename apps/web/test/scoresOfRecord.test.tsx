@@ -24,6 +24,7 @@ import {
   BOUND_COPY,
   NO_SCORES_COPY,
   OPEN_SITTING_COPY,
+  READ_ERROR_COPY,
   parseAttemptScores,
   pollDelayMs,
   stateCopy,
@@ -375,6 +376,31 @@ describe("the bound", () => {
     // Bounded means STOPPED: no further read happens on its own.
     await m.tick(120_000);
     expect(calls).toHaveLength(seen);
+    await m.unmount();
+  });
+
+  it("does not blame the PREVIOUS read while a retry is in flight", async () => {
+    /* `failure` is what went wrong on the LAST read. Left standing across
+       "Check again", the page said the read did not land while a fresh one
+       was still out — a sentence about a request that had not answered. */
+    let i = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      i += 1;
+      if (i > 1) throw new Error("offline");
+      return new Response(JSON.stringify(body([pending("t3")])), { status: 200 });
+    });
+    const m = await mount();
+    await m.tick(181_000);
+    expect(m.html()).toContain(READ_ERROR_COPY);
+    // The retry never answers: what is under test is what the page says
+    // while it is out.
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      return new Promise<Response>(() => undefined);
+    });
+    await m.click("scores-bound");
+    expect(m.html()).not.toContain(READ_ERROR_COPY);
     await m.unmount();
   });
 
