@@ -247,9 +247,13 @@ describe("createApiPersistence", () => {
     p.save(log);
     await p.flush();
     server.calls.length = 0;
-    // Simulate a foreign tab bumping the stored revision.
+    // Simulate a foreign tab writing work of its own. A rev bump ALONE is a
+    // conflict this tab can now absorb (TEN-124), and absorbing it is not
+    // what this test is about: it is about a save that must not happen
+    // reaching the network.
     const stored = JSON.parse(storage.getItem(ATTEMPT_KEY)!);
     stored.rev += 1;
+    stored.log = append(stored.log, { type: "track_started", trackId: "t4", ts: 1500 });
     storage.setItem(ATTEMPT_KEY, JSON.stringify(stored));
     expect(() => p.save(append(log, { type: "track_started", trackId: "t1", ts: 2000 }))).toThrow(SaveConflictError);
     await p.flush();

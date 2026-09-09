@@ -50,30 +50,86 @@ interface PersistedShape {
  */
 const lastSeenRev = new WeakMap<object, number>();
 
+/**
+ * A foreign write this tab CANNOT absorb: the stored log holds work this tab
+ * does not have, so saving over it would delete somebody's sitting.
+ *
+ * The message is read by a candidate, not only by a developer — the exam page
+ * renders `err.message` under its persistence warning — so it says the one
+ * thing that matters: this tab has stopped saving, and work done here from
+ * now on is not being recorded. It does NOT promise a recovery, because at
+ * this point there is not one this tab can perform. The revisions stay on the
+ * error for whoever reads a log.
+ */
 export class SaveConflictError extends Error {
   constructor(public readonly storedRev: number, public readonly expectedRev: number) {
     super(
-      `attempt log was modified by another tab (stored rev ${storedRev}, expected ${expectedRev}) — refusing to overwrite`,
+      "This run is open in another tab, and that tab has work this one does not have. "
+      + "To avoid deleting it, this tab has STOPPED SAVING: what you do here now is not "
+      + "being recorded. Carry on in the other tab, or restart this run here. "
+      + `(stored rev ${storedRev}, expected ${expectedRev})`,
     );
     this.name = "SaveConflictError";
   }
 }
 
-function readStoredRev(storage: StorageLike): number {
+function readStoredShape(storage: StorageLike): PersistedShape | null {
   try {
     const raw = readMigratedItem(storage, ATTEMPT_KEY);
-    if (!raw) return 0;
+    if (!raw) return null;
     const shape = JSON.parse(raw) as PersistedShape;
-    return typeof shape.rev === "number" ? shape.rev : 0;
+    return typeof shape === "object" && shape !== null ? shape : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 
+function readStoredRev(storage: StorageLike): number {
+  const shape = readStoredShape(storage);
+  return shape !== null && typeof shape.rev === "number" ? shape.rev : 0;
+}
+
+/**
+ * Is every entry the OTHER writer stored already in the log we are about to
+ * write? Compared entry by entry from seq 0, because the log is append-only:
+ * if the stored log is a prefix of ours, our write contains all of it and
+ * loses nothing, whoever produced it.
+ *
+ * Unreadable stored bytes count as contained — there is no work in them to
+ * lose, and `loadAttemptValidated` would discard them on the next read
+ * anyway. A stored log LONGER than ours is not contained, even when it starts
+ * the same way: those extra entries are exactly the work the compare-and-swap
+ * exists to protect.
+ */
+function storedWorkIsContainedIn(storage: StorageLike, log: readonly SequencedEntry[]): boolean {
+  const shape = readStoredShape(storage);
+  const stored = shape !== null && Array.isArray(shape.log) ? shape.log : [];
+  if (stored.length > log.length) return false;
+  return stored.every((entry, i) => JSON.stringify(entry) === JSON.stringify(log[i]));
+}
+
+/**
+ * Write the log, re-deriving the compare-and-swap token from the revision
+ * that is in storage RIGHT NOW.
+ *
+ * A conflict is a thing to recover from, not a switch. `lastSeenRev` used to
+ * be left behind after one `SaveConflictError`, so the same two numbers were
+ * compared on every later save and the sitting was never saved again —
+ * locally or server-side — while the candidate went on answering, and the
+ * report was then built from the prefix that stopped at the conflict
+ * (TEN-124). A foreign write whose work is already in our log is now absorbed
+ * and the save proceeds from the current revision.
+ *
+ * What is NOT recovered from is a foreign write holding work we do not have.
+ * That still throws, every time, and the caller is told in a sentence a
+ * candidate can act on — refusing loudly is the honest end of "do not accept
+ * work you are not saving", and silently adopting the other tab's revision
+ * would delete their run.
+ */
 export function saveAttempt(storage: StorageLike, log: readonly SequencedEntry[]): void {
   const storedRev = readStoredRev(storage);
   const expected = lastSeenRev.get(storage) ?? storedRev;
-  if (storedRev !== expected) {
+  if (storedRev !== expected && !storedWorkIsContainedIn(storage, log)) {
     throw new SaveConflictError(storedRev, expected);
   }
   const nextRev = storedRev + 1;
