@@ -251,6 +251,40 @@ describe("hero fade leaves nothing clickable behind (TEN-222)", () => {
     return stops[stops.length - 1][1].trim();
   };
 
+  /**
+   * Every rule that RUNS this animation, with the fill mode it declares —
+   * from the shorthand, or from an `animation-fill-mode` longhand that
+   * overrides it later in the same block.
+   */
+  const runners = (name: string): Array<{ block: string; fill: string }> => {
+    const out: Array<{ block: string; fill: string }> = [];
+    for (const m of css.matchAll(new RegExp(`animation:\\s*${name}\\s[^;]*;`, "g"))) {
+      const block = css.slice(css.lastIndexOf("{", m.index) + 1, css.indexOf("}", m.index));
+      const shorthand = /animation:\s*[^;]+;/.exec(block)![0];
+      const longhand = /animation-fill-mode:\s*([^;]+);/.exec(block)?.[1];
+      out.push({ block, fill: (longhand ?? shorthand).trim() });
+    }
+    expect(out.length, `a rule running ${name}`).toBeGreaterThan(0);
+    return out;
+  };
+
+  it("fills the fade BOTH ways, which is what keeps the final stop on screen", () => {
+    // This is the property that carries the fix, not the keyframe. A
+    // scroll-driven animation with `animation-fill-mode: none` drops every
+    // keyframed value the moment the scrub leaves its range — so the hero
+    // stage, still pinned over the viewport, would go back to opacity 1 and
+    // visibility: visible with the CTAs clickable underneath. The keyframe
+    // test above cannot see that: it applies the final stop by hand.
+    for (const name of ["heroFadeOut", "heroSettle"]) {
+      for (const { block, fill } of runners(name)) {
+        expect(fill, `${name} fill mode`).toMatch(/\bboth\b/);
+        // ...and it is the scrub that drives it, so "the range is over" is a
+        // state the page really sits in for the rest of the pin.
+        expect(block).toMatch(/animation-timeline:\s*--hero-scrub/);
+      }
+    }
+  });
+
   it("heroFadeOut and heroSettle end hidden, not merely transparent", () => {
     // opacity: 0 alone leaves the subtree hit-testable and in the tab order.
     for (const name of ["heroFadeOut", "heroSettle"]) {
