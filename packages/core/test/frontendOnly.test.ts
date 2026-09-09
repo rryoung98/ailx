@@ -105,9 +105,15 @@ const BROWSER_AUTH_MODULES: readonly RegExp[] = [
 /**
  * `@clerk/backend` is banned by LITERAL as well as by capability. The rule
  * above is deny-by-default with an allowlist, and one over-wide entry in that
- * allowlist would unban the whole namespace without a single failure. The
- * literal is checked FIRST, so the package that verifies a token with
- * `CLERK_SECRET_KEY` cannot be let in by accident.
+ * allowlist would unban the whole namespace without a single failure.
+ *
+ * What makes this load-bearing is that the literal is a SEPARATE DISJUNCT of
+ * `isServerAuthModule`, not that it appears first: `A || (B && !C)` is
+ * order-independent, so moving this line changes nothing and folding it INTO
+ * the capability branch silently removes the protection. Keep it a disjunct.
+ * `test/frontendOnly.test.ts` proves it earns its place by building the
+ * over-wide allowlist `/^@clerk\//` and asserting `@clerk/backend` is still
+ * denied under it.
  */
 const SERVER_AUTH_LITERALS: readonly RegExp[] = [/^@clerk\/backend(\/.*)?$/];
 
@@ -479,11 +485,12 @@ describe("no server-side auth is reachable from this repo", () => {
 
     // `@clerk/testing` STAYS DENIED, and here is why, in words, because the
     // Playwright/Clerk e2e work will hit this and a bare failure teaches
-    // nothing: it is a TEST-HARNESS package, not a browser package. Its
-    // Playwright helper `clerkSetup` mints a testing token from the Clerk
-    // BACKEND API with `CLERK_SECRET_KEY`, so it pulls the server-side half
-    // into this repo through a devDependency. If e2e needs it, it belongs in
-    // the exam service repo that already holds the secret key — not here.
+    // nothing: it is a TEST-HARNESS package, not a browser package, and it
+    // DEPENDS on `@clerk/backend` (`@clerk/testing@2.2.34` -> `^3.17.2`).
+    // Installing it puts the token verifier in `node_modules` by declaration,
+    // whatever any code does with it. That fact is checkable in a manifest
+    // rather than remembered. If e2e needs it, it belongs in the exam service
+    // repo that already holds the secret key — not here.
     expect(serverAuthImports('import { clerkSetup } from "@clerk/testing/playwright";')).toEqual([
       "@clerk/testing/playwright",
     ]);
