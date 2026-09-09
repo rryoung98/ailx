@@ -469,7 +469,24 @@ describe("when the network fails under it", () => {
   });
 });
 
-describe("focus never falls to <body> mid-round (TEN-223)", () => {
+/**
+ * What this block claims, and the ONE control it does not claim it for.
+ *
+ * Claimed: every swap that UNMOUNTS the control the user just pressed —
+ * answering a card, "Next card", "Another round", "Try again" after a failed
+ * deal, and the "Dealing a round…" wait in between — leaves focus inside the
+ * drill rather than on `<body>` (TEN-223).
+ *
+ * NOT claimed, and known to be FALSE today: "Try sending it again". That
+ * button is not replaced, it is DISABLED in place while the send is in
+ * flight ("Sending…"), and the browser blurs a control it disables — so
+ * focus reaches `<body>` before anything unmounts, which is earlier than
+ * `useFocusRecovery` can see. The repair is a UX decision (move focus to the
+ * status line? keep the button enabled and guard the handler?), so it is
+ * deferred as TEN-265 rather than fixed here. A green run of this block is
+ * NOT evidence about that button.
+ */
+describe("focus never falls to <body> mid-round, except the send retry (TEN-223, TEN-265)", () => {
   it("does not drop focus on <body> when the answered card is unmounted", async () => {
     await mount(true);
     const stage = host.querySelector('[class*="stage"]')!;
