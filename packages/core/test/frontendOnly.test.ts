@@ -143,6 +143,14 @@ function hasUseServerDirective(src: string): boolean {
   return USE_SERVER.test(code(src));
 }
 
+/**
+ * Which files the `use server` scan reads: EVERY source under an app, not the
+ * `app/` route tree alone. A directive is a property of a module, not of its
+ * path — `apps/web/features/exam/actions.ts` becomes the same public endpoint
+ * as soon as a page imports it, and the route-tree scan could not see it.
+ */
+const isAppSource = (f: string): boolean => /^apps\/[^/]+\//.test(f);
+
 describe("the guard can see the repository", () => {
   // A walk that silently returned nothing would make every assertion below
   // pass over an empty list. Sentinels, not faith.
@@ -324,11 +332,23 @@ describe("no API surface of its own", () => {
  * in AGENTS.md is the reason a reviewer sees any new server surface at all.
  */
 describe("no server action anywhere under an app", () => {
-  const appSources = scanned.filter((f) => /^apps\/[^/]+\/app\//.test(f));
+  const appSources = scanned.filter(isAppSource);
 
   it("reads a real set of app sources", () => {
     expect(appSources.length).toBeGreaterThan(10);
     expect(appSources).toContain("apps/web/app/page.tsx");
+  });
+
+  it("scans every app source, not only the route tree", () => {
+    // The route tree was the first hole and only part of it: a server action
+    // is a module directive, so `apps/web/features/actions.ts` compiles into
+    // the same public endpoint from outside `app/`, and Next bundles it the
+    // moment a page imports it.
+    expect(isAppSource("apps/web/features/exam/actions.ts")).toBe(true);
+    expect(isAppSource("apps/web/lib/data/actions.ts")).toBe(true);
+    expect(isAppSource("apps/web/app/page.tsx")).toBe(true);
+    expect(isAppSource("packages/report/src/index.ts")).toBe(false);
+    expect(appSources).toContain("apps/web/features/exam/ConnectPanel.tsx");
   });
 
   it("declares `use server` in no app source", () => {
