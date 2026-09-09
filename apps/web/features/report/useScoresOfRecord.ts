@@ -175,7 +175,16 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
        report said "the last read did not land" while a retry was in flight,
        which describes a request that has not answered yet — the same
        confusion `scores ?? null` caused (TEN-128). The last good ANSWER
-       stays: only the failure is cleared. */
+       stays: only the failure is cleared.
+
+       WHY THAT IS SAFE, AND WHAT IT DEPENDS ON. Clearing the failure makes
+       `reading` true again while the retry is out, and the gate offers no
+       link while reading — so an UNFINISHED sitting loses its Continue for
+       the length of the retry. Acceptable because the candidate pressed the
+       button, and because it is BOUNDED: `serviceFetch` wraps every read in
+       `deadline("read")`, 10 s (`lib/data/deadline.ts`), so even a retry
+       that never answers resolves into a failure and the link comes back.
+       Remove that deadline and the link goes for ever. */
     setFailure(null);
     setRound((r) => r + 1);
   }, []);
