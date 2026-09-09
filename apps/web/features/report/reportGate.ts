@@ -92,6 +92,27 @@ export function sittingShape(
   return { finished, sat, partial: finished && sat.length < TRACK_IDS.length };
 }
 
+/**
+ * WHY A PARTIAL SITTING GETS NO COMPOSITE, SAID ONCE.
+ *
+ * Both branches below reach this fact — the service's finalized answer and
+ * this browser's own log — and each used to word it its own way, so a copy
+ * edit to one would have left the other saying something slightly different
+ * about the same thing. One sentence, both callers. It is the same reason
+ * the withheld card gives (`WITHHELD_LEDE.awaiting_track`): a subset cannot
+ * produce this composite, so none is coming, whatever the jury does with the
+ * tracks that were sat (D4, dogfood 2026-09-06).
+ */
+export function partialSittingLede(sat: readonly TrackId[], notSat: readonly TrackId[]): string {
+  return (
+    `You sat ${trackList(sat)}. ${trackList(notSat)} ` +
+    `${notSat.length === 1 ? "was" : "were"} not sat, so this sitting covers part of the ` +
+    "instrument. A composite needs every scored track — the weights are shares of the whole " +
+    "instrument and the band ranks you against peers who sat all of it — so none is coming " +
+    "for this sitting."
+  );
+}
+
 export interface GateView {
   readonly headline: string;
   readonly lede: string;
@@ -138,16 +159,7 @@ export function reportGate(input: GateInput): GateView {
       headline: "Your sitting is finished",
       lede:
         `The scores of record are below, issued by the exam service. ` +
-        (shape.partial
-          ? `You sat ${trackList(shape.sat)}. ${trackList(notSat)} ` +
-            `${notSat.length === 1 ? "was" : "were"} not sat, so this sitting covers part of ` +
-            "the instrument. " +
-            /* Said ONCE, and said the same way as the withheld card below
-               (`WITHHELD_LEDE.awaiting_track`): a subset cannot produce this
-               composite, so no composite is coming — whatever the jury does
-               with the tracks that were sat (D4, dogfood 2026-09-06). */
-            "A composite needs every scored track, so none is coming for this sitting. "
-          : "") +
+        (shape.partial ? `${partialSittingLede(shape.sat, notSat)} ` : "") +
         (pending > 0
           ? `${pending === 1 ? "One track is" : `${pending} tracks are`} still being judged, and this page checks for the score. `
           : "") +
@@ -167,22 +179,42 @@ export function reportGate(input: GateInput): GateView {
     if (notSat.length > 0) {
       /* A finished PARTIAL sitting. It is not unfinished and there is
          nothing to go back for, so no Continue: the honest answer is which
-         tracks were sat, and why no composite follows from a subset. The
-         reason is the same one the service gives for a withheld composite
-         (WITHHELD_LEDE.awaiting_track) — one fact, said the same way. */
+         tracks were sat, and why no composite follows from a subset. */
       return {
         headline: "Your sitting is finished",
-        lede:
-          `You sat ${trackList(local.sat)}. ${trackList(notSat)} ` +
-          `${notSat.length === 1 ? "was" : "were"} not sat, so this sitting covers part of the ` +
-          "instrument. A composite needs every scored track — the weights are shares of the " +
-          "whole instrument and the band ranks you against peers who sat all of it — so none " +
-          "is issued here rather than a different number under the same name. What you sat is " +
-          "scored below.",
+        lede: `${partialSittingLede(local.sat, notSat)} What you sat is scored below.`,
         cta: null,
         scored,
       };
     }
+    /* A FINISHED FULL SITTING THE SERVICE DID NOT CONFIRM (TEN-128).
+       The first fix answered this screen from the service's `scores`, so a
+       read that never lands — offline, a 401/404, or a service too old to
+       send the field — fell through to "N of 4 tracks scored. Finish the run
+       to see it." with a Continue into /exam, which says the run is complete
+       and links straight back here. That is the reported closed loop, and it
+       reappears after a finalize that failed, because the sync retries only
+       on the next commit.
+
+       The log is a witness of its own: this browser recorded the run as
+       ended. So the sitting is finished, there is nowhere to continue to,
+       and the missing half is named as the service's silence rather than as
+       the candidate's unfinished work. Which silence it is — no `scores` in
+       the answer, or no answer at all — is the panel below's to say; this
+       page has one read and does not guess at its reason. */
+    return {
+      headline: "Your sitting is finished",
+      lede:
+        "This browser's log says the run ended, and you sat all four tracks. " +
+        `${scored.length} of 4 tracks carry a score here. ` +
+        (input.scores === null
+          ? "The exam service issued nothing this page could read: it returned no scores, or " +
+            "it could not be reached. What it did answer is below."
+          : "The exam service has not recorded this sitting as finished, so it has issued no " +
+            "scores of record for it."),
+      cta: null,
+      scored,
+    };
   }
   return {
     headline: "The report is the reward",

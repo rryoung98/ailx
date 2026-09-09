@@ -67,14 +67,54 @@ describe("a finished sitting over part of the instrument", () => {
     expect(open.cta).toEqual({ href: "/exam", label: "Continue →" });
   });
 
-  it("leaves a FULL local sitting alone", () => {
+  /* THIS PIN CHANGED, ON PURPOSE (TEN-128).
+     It used to read "leaves a FULL local sitting alone" and expect "The
+     report is the reward". That was the original closed loop: a run that
+     finished here, whose service read failed or whose service is too old to
+     send `scores`, was told "N of 4 tracks scored. Finish the run to see
+     it." with a Continue back to /exam, which sends it straight back. A run
+     the log says ended IS ended, whatever the service managed to say. */
+  it("calls a FULL local sitting finished even when the service answered nothing", () => {
     const full = reportGate({
-      localScored: ["t1", "t2", "t3", "t4"],
+      localScored: ["t1", "t2", "t3"],
       scores: null,
       reading: false,
       localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
     });
-    expect(full.headline).toBe("The report is the reward");
+    expect(full.headline).toBe("Your sitting is finished");
+    expect(full.lede).not.toContain("Finish the run");
+    expect(full.cta).toBeNull();
+    // It says WHY there is nothing of record here, rather than a blank.
+    expect(full.lede).toMatch(/exam service/i);
+  });
+
+  it("says a failed finalize is a finished run, not an unfinished one", () => {
+    /* Finalize failed, so the service still calls the attempt open and the
+       sync retries only on the next commit. The run is over all the same:
+       /exam has nothing left to give, so the page must not send them there. */
+    const stale = reportGate({
+      localScored: ["t1", "t2", "t3", "t4"],
+      scores: { finalized: false, pending: false, pollAfterMs: null, tracks: [], composite: null },
+      reading: false,
+      localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
+    });
+    expect(stale.headline).toBe("Your sitting is finished");
+    expect(stale.cta).toBeNull();
+    expect(stale.lede).toContain("has not recorded this sitting as finished");
+  });
+
+  it("keeps a previous answer's verdict after a read fails mid-poll", () => {
+    /* `failure.kind === "error"` keeps the last good answer on screen
+       (`useScoresOfRecord`), so the gate still decides from it: a finalized
+       sitting does not revert to a lock because one poll did not land. */
+    const view = reportGate({
+      localScored: [],
+      scores: FINALIZED_PARTIAL,
+      reading: false,
+      localSitting: { completed: true, sat: ["t2", "t3"] },
+    });
+    expect(view.headline).toBe("Your sitting is finished");
+    expect(view.cta).toBeNull();
   });
 });
 

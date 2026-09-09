@@ -12,10 +12,11 @@
  * every body below is a fixture of the documented wire shape.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, createElement } from "react";
+import { act, createElement, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ScoresOfRecordView } from "../features/report/ScoresOfRecordPanel";
-import { useScoresOfRecord } from "../features/report/useScoresOfRecord";
+import { reportGate } from "../features/report/reportGate";
+import { IDENTITY_WAIT_MS, useScoresOfRecord } from "../features/report/useScoresOfRecord";
 import { installMemoryStorage } from "./helpers/clientPage";
 import { setAuthTokenSource } from "../lib/data/authHeaders";
 import { publishIdentity, resetIdentity } from "../lib/auth/identityState";
@@ -108,14 +109,36 @@ interface Mounted {
   unmount: () => Promise<void>;
 }
 
+/**
+ * WHAT THE REPORT'S GATE MAKES OF THE SAME READ.
+ *
+ * `reading` hides every link on the report (the gate returns `cta: null`),
+ * so a read that never answers is a dead end. This harness renders the gate
+ * the page renders, from the hook the page calls (TEN-128).
+ */
+function GateHarness() {
+  const view = useScoresOfRecord(ATTEMPT);
+  const gate = reportGate({
+    localScored: ["t1"],
+    scores: view.scores ?? null,
+    reading: view.reading,
+    localSitting: { completed: false, sat: ["t1"] },
+  });
+  return createElement(
+    "p",
+    { "data-testid": "gate", "data-cta": gate.cta?.href ?? "" },
+    `${gate.headline} ${gate.lede}`,
+  );
+}
+
 /** Mount for real and keep it mounted: polling is what is under test. */
-async function mount(): Promise<Mounted> {
+async function mount(element: ReactElement = createElement(Harness)): Promise<Mounted> {
   const host = document.createElement("div");
   document.body.appendChild(host);
   let root: Root;
   await act(async () => {
     root = createRoot(host);
-    root.render(createElement(Harness));
+    root.render(element);
   });
   const settle = async () => {
     for (let i = 0; i < 4; i += 1) await act(async () => { await Promise.resolve(); });
@@ -303,6 +326,28 @@ describe("polling", () => {
     await m.unmount();
   });
 
+  /**
+   * A failed poll keeps the previous answer, so the GATE must keep its
+   * verdict too: a finalized sitting that loses one read does not go back to
+   * telling the candidate to finish their run (TEN-128).
+   */
+  it("does not relock the report when one poll fails", async () => {
+    let i = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      i += 1;
+      if (i >= 2) throw new Error("offline");
+      return new Response(JSON.stringify(body([pending("t3")])), { status: 200 });
+    });
+    const m = await mount(createElement(GateHarness));
+    await m.tick(5000);
+    expect(calls.length).toBeGreaterThan(1);
+    expect(m.html()).toContain("Your sitting is finished");
+    expect(m.html()).not.toContain("Finish the run to see it");
+    expect(m.html()).toContain('data-cta=""');
+    await m.unmount();
+  });
+
   it("stops polling when the component goes away", async () => {
     stubReads([body([pending("t3")])]);
     const m = await mount();
@@ -423,6 +468,25 @@ describe("it waits for an identity before the first read", () => {
     expect(calls).toHaveLength(0);
     expect(window.localStorage.getItem("foray:dev-user")).toBeNull();
     expect(m.html()).not.toContain(NO_SCORES_COPY);
+    await m.unmount();
+  });
+
+  /**
+   * A Clerk that mounts but never publishes leaves the identity PENDING for
+   * ever (`identityState`), so this hook fired no read and `reading` stayed
+   * true — and the report's gate answers `cta: null` while reading. The
+   * candidate saw "Checking what the exam service has issued…", no scores
+   * and no link at all: a dead end with no exit (TEN-128).
+   */
+  it("stops calling itself reading when the identity never arrives", async () => {
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount(createElement(GateHarness));
+    expect(m.html()).toContain("Checking what the exam service has issued");
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(calls).toHaveLength(0);
+    // The gate fell back to the local log, so there is a way out again.
+    expect(m.html()).toContain("Finish the run to see it");
+    expect(m.html()).toContain('data-cta="/exam"');
     await m.unmount();
   });
 

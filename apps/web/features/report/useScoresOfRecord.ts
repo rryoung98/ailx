@@ -27,6 +27,22 @@ import {
   type AttemptScores,
 } from "./scoresOfRecord";
 
+/**
+ * HOW LONG THIS PAGE WAITS FOR AN IDENTITY BEFORE IT STOPS SAYING IT IS
+ * READING.
+ *
+ * The read cannot fire while the identity is `pending` — a request sent
+ * before `ClerkTokenBridge` registers carries no token and the service
+ * refuses it, and a 401 does not fix itself on a retry. But a Clerk that
+ * mounts and never publishes leaves the identity pending for ever, and
+ * `reading` hid every link on the report while it lasted: "Checking what the
+ * exam service has issued…", no scores, no way out (TEN-128). After this
+ * wait the page stops CALLING it a read; the effect still fires the moment an
+ * identity arrives, so nothing is given up, and the gate falls back to this
+ * browser's own log meanwhile.
+ */
+export const IDENTITY_WAIT_MS = 8_000;
+
 /** What went wrong on the LAST read. The previous answer stays on screen. */
 export type ReadFailure = { kind: "missing"; status: number } | { kind: "error" };
 
@@ -72,6 +88,17 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    * it is still reading rather than claiming there is nothing of record.
    */
   const identityStatus = useIdentity().status;
+  /** True once the identity has stayed `pending` past `IDENTITY_WAIT_MS`. */
+  const [identityWaited, setIdentityWaited] = useState(false);
+
+  useEffect(() => {
+    if (!live || identityStatus !== "pending") {
+      setIdentityWaited(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setIdentityWaited(true), IDENTITY_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [live, identityStatus]);
 
   useEffect(() => {
     if (!live || identityStatus === "pending") return;
@@ -141,7 +168,10 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
     bounded,
     // "Reading" is the state before the first answer of ANY kind: a page that
     // called this a lock would tell a finished candidate to finish their run.
-    reading: scores === undefined && failure === null,
+    // It is BOUNDED, because a read that never starts is not a read: an
+    // identity stuck at `pending` used to leave the report with no scores
+    // and no link at all (TEN-128).
+    reading: scores === undefined && failure === null && !identityWaited,
     arrived,
     checkAgain,
   };
