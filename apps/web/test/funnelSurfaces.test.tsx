@@ -430,3 +430,86 @@ describe("a page that is instrumented for nothing else", () => {
     expect(window.localStorage.getItem("ailx.funnel.client.v1")).toBeNull();
   });
 });
+
+describe("the six top-level routes that emitted nothing (TEN-144)", () => {
+  /**
+   * `visit_started` used to ride out with the first step a page asked for, so
+   * a route that asks for none emitted nothing: no client id, no session, no
+   * row. Six routes were in that state, and /progress — the one the practice
+   * and daily screens link to as "See your progress" — is where a RETURNING
+   * player goes first. D1 is derived from client ids that emitted something,
+   * so the return D1 exists to count was the return it could not see. Driven
+   * against deployed staging on 2026-09-05: six page loads, zero rows.
+   *
+   * Each route is mounted the way Next renders it — inside the root layout,
+   * which is where the one emitter call lives (`components/FunnelVisit.tsx`).
+   * Mounting the page alone would prove nothing about the route: no page
+   * emits its own visit, and none should.
+   */
+  const ROUTES: ReadonlyArray<{ path: string; load: () => Promise<FunctionComponent> }> = [
+    { path: "/progress", load: async () => (await import("../app/progress/page.api")).default },
+    { path: "/report", load: async () => (await import("../app/report/page")).default },
+    { path: "/gallery", load: async () => (await import("../app/gallery/page.api")).default },
+    { path: "/world", load: async () => (await import("../app/world/page.api")).default },
+    { path: "/validate", load: async () => (await import("../app/validate/page")).default },
+    { path: "/methodology", load: async () => (await import("../app/methodology/page")).default },
+  ];
+
+  /** A new browser: no client id, no session, nothing posted yet. */
+  function freshBrowser(): void {
+    posts.length = 0;
+    resetFunnel();
+    Object.defineProperty(window, "localStorage", { value: memoryStorage(), configurable: true });
+    Object.defineProperty(window, "sessionStorage", { value: memoryStorage(), configurable: true });
+  }
+
+  /** The route as a browser meets it: the root layout around the page. */
+  async function mountRoute(Page: FunctionComponent): Promise<void> {
+    const RootLayout = (await import("../app/layout")).default;
+    await render(RootLayout as FunctionComponent<{ children: React.ReactNode }>, {
+      children: createElement(Page),
+    });
+  }
+
+  function unmountRoute(): void {
+    if (root !== null) act(() => root!.unmount());
+    host?.remove();
+    root = null;
+    host = null;
+  }
+
+  it("counts one visit on each of them, and no other step", async () => {
+    for (const route of ROUTES) {
+      freshBrowser();
+      await mountRoute(await route.load());
+      expect(await steps(), route.path).toEqual(["visit_started"]);
+      unmountRoute();
+    }
+  });
+
+  it("counts ONE visit for a session that reads several of them", async () => {
+    // A session is a session however many uninstrumented routes it walks
+    // through, and a reload in the middle of it is not a second visit.
+    freshBrowser();
+    await mountRoute(await ROUTES[0]!.load());
+    funnel().flush();
+    unmountRoute();
+    await mountRoute(await ROUTES[1]!.load());
+    unmountRoute();
+    resetFunnel(); // what a reload does to the singleton, not to the session
+    await mountRoute(await ROUTES[2]!.load());
+    expect((await steps()).filter((s) => s === "visit_started")).toHaveLength(1);
+  });
+
+  it("posts nothing from any of them in the static export", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_API_BASE", "");
+    for (const route of ROUTES) {
+      freshBrowser();
+      await mountRoute(await route.load());
+      funnel().flush();
+      expect(posts, route.path).toEqual([]);
+      expect(window.localStorage.getItem("ailx.funnel.client.v1"), route.path).toBeNull();
+      unmountRoute();
+    }
+  });
+});
