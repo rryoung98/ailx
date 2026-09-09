@@ -445,6 +445,13 @@ describe("the six top-level routes that emitted nothing (TEN-144)", () => {
    * which is where the one emitter call lives (`components/FunnelVisit.tsx`).
    * Mounting the page alone would prove nothing about the route: no page
    * emits its own visit, and none should.
+   *
+   * SO BE HONEST ABOUT WHAT SIX ROUTES BUY. There is ONE emitter and it is
+   * in the layout, so the loop below is largely one assertion repeated six
+   * times. What it adds over a single case is narrow and worth having: each
+   * of these six pages really does mount under the root layout without
+   * throwing, and none of them emits a step of its own. It is not six
+   * independent proofs of the fix.
    */
   const ROUTES: ReadonlyArray<{ path: string; load: () => Promise<FunctionComponent> }> = [
     { path: "/progress", load: async () => (await import("../app/progress/page.api")).default },
@@ -501,6 +508,13 @@ describe("the six top-level routes that emitted nothing (TEN-144)", () => {
     expect((await steps()).filter((s) => s === "visit_started")).toHaveLength(1);
   });
 
+  /**
+   * NOT a TEN-144 test, and it must not be counted as one: deleting the
+   * emitter would make it pass harder. It belongs to the separate rule that
+   * the GitHub Pages export has no service to post to and must stay silent
+   * (docs/ADR-analytics.md), and it is here because these six routes are the
+   * ones that just started emitting.
+   */
   it("posts nothing from any of them in the static export", async () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_API_BASE", "");
     for (const route of ROUTES) {
