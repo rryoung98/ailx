@@ -234,6 +234,31 @@ describe("what a refusal is reported as", () => {
     stub(200, { nope: 1 });
     expect(await readKeyStatus()).toMatchObject({ ok: false });
   });
+
+  /**
+   * The callback path used to cast, so a 200 with no `connected` ended the
+   * round trip as a SUCCESS carrying a falsy `connected` — the panel then
+   * cleared the endpoint slot and left Start shut with no error (TEN-217).
+   */
+  it("a callback 200 whose body is not a status is a refusal, not a silent disconnect", async () => {
+    stub(200, {});
+    expect(await finishConnect({ code: "c-1", state: "st-1" })).toEqual({
+      ok: false,
+      message: callbackFailureCopy(200),
+    });
+    expect(callbackFailureCopy(200)).toContain("could not read");
+  });
+
+  /**
+   * The ADJACENT path of the same class: a fingerprint that is not 12 hex
+   * must not reach the panel's copy from the callback either.
+   */
+  it("drops a callback fingerprint that is not a fingerprint", async () => {
+    stub(200, { connected: true, fingerprint: "sk-or-v1-deadbeef" });
+    const done = await finishConnect({ code: "c-1", state: "st-1" });
+    expect(done).toMatchObject({ ok: true });
+    expect(done.ok && done.status.fingerprint).toBeUndefined();
+  });
 });
 
 describe("the status body, read rather than cast", () => {
