@@ -20,6 +20,7 @@ import {
   FAMILY_META,
   LOCAL_PRACTICE_BASIS,
   LOCAL_PRACTICE_KEY,
+  LOCAL_PRACTICE_ALL_CLAIMED,
   LOCAL_PRACTICE_PARTLY_CLAIMED,
   PRACTICE_BANK,
   PRACTICE_DECK_SIZE,
@@ -689,6 +690,11 @@ describe("the landing taster (TEN-156)", () => {
     await act(async () => {});
     expect(host.textContent).toContain("now on your account");
     expect(host.textContent).not.toContain(LOCAL_PRACTICE_BASIS);
+    // Every day this browser holds is claimed — a one-round browser is the
+    // commonest case — so "the rest are kept here alone" would be about
+    // nothing at all.
+    expect(host.textContent).toContain(LOCAL_PRACTICE_ALL_CLAIMED);
+    expect(host.textContent).not.toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
   });
 
   it("still says where the day is when there is no account to hand it to", async () => {

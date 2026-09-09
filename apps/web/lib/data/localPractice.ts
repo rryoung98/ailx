@@ -155,13 +155,14 @@ export interface HeldHere {
    */
   partial: boolean;
   /**
-   * True when a day that IS shown has already been handed to an account —
-   * only possible when nothing was subtracted, i.e. the service did not
-   * answer. The caller must then not say these days are on no account:
-   * `claimed: true` is written only from a 200 that named the day, so one of
-   * them is. `LOCAL_PRACTICE_PARTLY_CLAIMED` is the sentence for it.
+   * How many of the days that ARE shown have already been handed to an
+   * account — only ever more than `none` when nothing was subtracted, i.e.
+   * the service did not answer. The caller must then not say these days are
+   * on no account: `claimed: true` is written only from a 200 that named the
+   * day, so at least one of them is. `some` and `all` have their own
+   * sentences, because a browser one round old is entirely claimed.
    */
-  handedOver: boolean;
+  handedOver: ClaimedShare;
 }
 
 /**
@@ -208,20 +209,46 @@ export function heldOnlyHere(
   return {
     streak: streakSummary(held, local.today),
     partial: held.length < local.days.length,
-    handedOver: held.some((d) => local.claimed.includes(d)),
+    handedOver: claimedShare(held.map((d) => ({ claimed: local.claimed.includes(d) }))),
   };
 }
 
 /**
- * Has this browser handed ANY of its days to an account? The durable answer:
- * the ledger's own flag, which survives a reload, where the claim receipt in
- * `readLastClaim` is one page's memory of one moment.
+ * How much of a set of days has already been handed to an account: `none`,
+ * `some`, or `all`. Which sentence a surface may print, in one word.
  *
- * A surface that says "kept in this browser … no account" over a ledger with
- * one claimed day in it is saying something false about that day (TEN-132).
+ * `all` is not a rounding of `some`: the taster claims the day it just dealt,
+ * so a browser one round old is entirely claimed, and "the rest are kept in
+ * this browser alone" would then be a sentence about an empty set.
  */
-export function hasClaimedDay(storage: StorageLike): boolean {
-  return readLocalLedger(storage).days.some((d) => d.claimed);
+export type ClaimedShare = "none" | "some" | "all";
+
+export function claimedShare(days: readonly { claimed: boolean }[]): ClaimedShare {
+  const claimed = days.filter((d) => d.claimed).length;
+  if (claimed === 0) return "none";
+  return claimed === days.length ? "all" : "some";
+}
+
+/**
+ * The same question about the whole LEDGER, read from storage — the durable
+ * answer, where the claim receipt in `readLastClaim` is one page's memory of
+ * one moment and knows only about today.
+ *
+ * A corrupt ledger, an empty one and one written by a build with no `claimed`
+ * field all come back `none`: `readLocalLedger` swallows the throw and
+ * `parseLocalLedger` only ever sets the flag from a literal `true`. `none` is
+ * the right answer for all three — an unreadable ledger has handed nothing
+ * over that anybody can point to.
+ *
+ * The DRILL asks this, over every day it is holding. /progress asks
+ * `claimedShare` over the days it is actually DRAWING, because it has already
+ * filtered the ones an account holds. The two surfaces can therefore print
+ * different sentences from the same ledger, and that is correct rather than
+ * drift: they are describing different sets. Making them agree would put a
+ * false sentence back on one of them.
+ */
+export function ledgerClaimedShare(storage: StorageLike): ClaimedShare {
+  return claimedShare(readLocalLedger(storage).days);
 }
 
 /** The streak this browser has earned, by its own reckoning. */

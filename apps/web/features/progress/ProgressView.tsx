@@ -42,6 +42,7 @@ import Link from "next/link";
 import {
   CLAIMED_DAYS_BASIS,
   CLAIM_PROMISE,
+  LOCAL_PRACTICE_ALL_CLAIMED,
   LOCAL_PRACTICE_BASIS,
   LOCAL_PRACTICE_PARTLY_CLAIMED,
   MIN_TREND_DAYS,
@@ -232,12 +233,14 @@ function LocalStreak({ held }: { held: HeldHere }) {
         </span>
       </p>
       <p className="muted" style={{ maxWidth: "58ch" }}>
-        {held.handedOver ? (
-          // Nothing was subtracted, because the service did not answer. One
-          // of these days is on an account — the flag is written only from a
-          // 200 that named it — so the browser-only sentence is not available
-          // here, and saying it anyway is the bug this issue is about.
-          LOCAL_PRACTICE_PARTLY_CLAIMED
+        {held.handedOver !== "none" ? (
+          // Nothing was subtracted, because the service did not answer. At
+          // least one of these days is on an account — the flag is written
+          // only from a 200 that named it — so the browser-only sentence is
+          // not available here, and saying it anyway is the bug this issue is
+          // about. `all` gets its own sentence: on the commonest path (a
+          // taster claimed the moment it was played) there is no "rest".
+          held.handedOver === "all" ? LOCAL_PRACTICE_ALL_CLAIMED : LOCAL_PRACTICE_PARTLY_CLAIMED
         ) : (
           <>
             No figure above counts these days: the exam service has not shown them back as

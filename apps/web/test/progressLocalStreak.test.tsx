@@ -23,6 +23,7 @@ import { createElement } from "react";
 import {
   LOCAL_PRACTICE_BASIS,
   LOCAL_PRACTICE_KEY,
+  LOCAL_PRACTICE_ALL_CLAIMED,
   LOCAL_PRACTICE_PARTLY_CLAIMED,
   PROGRESS_BASIS,
   progressReport,
@@ -233,9 +234,21 @@ describe("the days this browser is holding", () => {
     seedLedger([{ day: back(0), claimed: true }]);
     const html = await markup();
     expect(html).toContain("In this browser");
-    expect(html).toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
+    // EVERY day here is claimed — the commonest shape, because the taster
+    // claims the day it just dealt. "The rest are kept in this browser alone"
+    // would describe an empty set.
+    expect(html).toContain(LOCAL_PRACTICE_ALL_CLAIMED);
+    expect(html).not.toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
     expect(html).not.toContain(LOCAL_PRACTICE_BASIS);
     expect(localSection(html)).not.toMatch(/the only place they are held/);
+  });
+
+  it("says SOME only when some of the days on screen are still only here", async () => {
+    status = 500;
+    seedLedger([{ day: back(1), claimed: true }, back(0)]);
+    const html = await markup();
+    expect(html).toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
+    expect(html).not.toContain(LOCAL_PRACTICE_ALL_CLAIMED);
   });
 
   it("keeps the plain sentence when nothing in the ledger was ever handed over", async () => {
