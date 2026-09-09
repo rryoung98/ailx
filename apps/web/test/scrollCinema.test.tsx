@@ -255,18 +255,43 @@ describe("hero fade leaves nothing clickable behind (TEN-222)", () => {
    * Every rule that RUNS this animation, with the fill mode it declares —
    * from the shorthand, or from an `animation-fill-mode` longhand that
    * overrides it later in the same block.
+   *
+   * BOTH spellings of "run this animation" are matched: `animation: name …`
+   * and the `animation-name: name` longhand. globals.css already uses the
+   * longhand once (`.tv3-b2`), so a shorthand-only matcher would skip a
+   * future longhand hero rule in SILENCE — this guard would still be green
+   * while checking nothing. One rule may spell it both ways, so a block is
+   * reported once.
    */
   const runners = (name: string): Array<{ block: string; fill: string }> => {
-    const out: Array<{ block: string; fill: string }> = [];
-    for (const m of css.matchAll(new RegExp(`animation:\\s*${name}\\s[^;]*;`, "g"))) {
-      const block = css.slice(css.lastIndexOf("{", m.index) + 1, css.indexOf("}", m.index));
-      const shorthand = /animation:\s*[^;]+;/.exec(block)![0];
+    const out = new Map<number, { block: string; fill: string }>();
+    const runs = new RegExp(`animation(?:-name)?:\\s*[^;]*\\b${name}\\b[^;]*;`, "g");
+    for (const m of css.matchAll(runs)) {
+      const at = css.lastIndexOf("{", m.index) + 1;
+      const block = css.slice(at, css.indexOf("}", m.index));
+      const shorthand = /animation:\s*[^;]+;/.exec(block)?.[0];
       const longhand = /animation-fill-mode:\s*([^;]+);/.exec(block)?.[1];
-      out.push({ block, fill: (longhand ?? shorthand).trim() });
+      // No fill declared in either spelling is not a crash: it is `none`,
+      // the CSS initial value, and the assertions below must SEE that.
+      out.set(at, { block, fill: (longhand ?? shorthand ?? "none").trim() });
     }
-    expect(out.length, `a rule running ${name}`).toBeGreaterThan(0);
-    return out;
+    expect(out.size, `a rule running ${name}`).toBeGreaterThan(0);
+    return [...out.values()];
   };
+
+  it("sees a rule that runs an animation through the animation-name LONGHAND", () => {
+    // The matcher above is the whole guard: a hero rule it does not see is a
+    // rule this file checks nothing about, SILENTLY. globals.css already
+    // spells one animation the longhand way (`.tv3-b2 { … animation-name:
+    // tv3In2; }`), so the shorthand-only form of this matcher was one
+    // longhand hero rule away from passing while checking nothing.
+    const found = runners("tv3In2");
+    expect(found).toHaveLength(1);
+    expect(found[0].block).toContain("animation-name: tv3In2");
+    // That block declares no fill mode at all, in either spelling — which is
+    // the CSS initial value, and is reported as such rather than crashing.
+    expect(found[0].fill).toBe("none");
+  });
 
   it("fills the fade BOTH ways, which is what keeps the final stop on screen", () => {
     // This is the property that carries the fix, not the keyframe. A
