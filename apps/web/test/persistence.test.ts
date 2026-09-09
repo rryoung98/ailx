@@ -3,6 +3,7 @@ import { append, attestJudgments, SaveConflictError, ATTEMPT_KEY, type Sequenced
 import {
   DEV_USER_KEY,
   DeckMismatchError,
+  ServiceShapeError,
   createApiPersistence,
   createLocalPersistence,
   createServerAttempt,
@@ -305,6 +306,49 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
     const responses = server.calls.filter((c) => c.path.endsWith("/responses"));
     expect(responses.map((c) => c.path)).toEqual([`/api/attempts/${SERVER_ID}/responses`]);
     expect((responses[0].body as { seq: number }).seq).toBe(0);
+  });
+
+  /**
+   * A 200 the service means as a success, whose body this build does not
+   * know. Casting it produced `Cannot read properties of undefined` in front
+   * of the candidate, and an `id` that was not a string poisoned every later
+   * `apiPath` call instead (TEN-230).
+   */
+  it.each([
+    ["a body with no attempt", {}],
+    ["an attempt with no id", { attempt: {} }],
+    ["an id that is not a string", { attempt: { id: 7 } }],
+    ["an id that is empty", { attempt: { id: "" } }],
+  ])("refuses %s with a typed failure, not a TypeError", async (_what, body) => {
+    const storage = fakeStorage();
+    const fetchFn = (async () => ({ ok: true, status: 201, json: async () => body }) as Response) as typeof fetch;
+    const err = await createServerAttempt(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn }, "en").catch(
+      (e: unknown) => e,
+    );
+    expect(String(err)).not.toContain("Cannot read properties");
+    expect(err).toBeInstanceOf(ServiceShapeError);
+    expect(String(err)).toContain("attempt");
+    // Nothing was written under a bad id.
+    expect([...storage._map.keys()].filter((k) => k.startsWith("foray:sync:"))).toEqual([]);
+  });
+
+  /**
+   * The ADJACENT path of the same class: the MIRROR creates an attempt too,
+   * and a cast there breaks every later sync pass rather than the start.
+   */
+  it("reports the same failure when the MIRROR creates the attempt", async () => {
+    const storage = fakeStorage();
+    const errors: unknown[] = [];
+    const fetchFn = (async () => ({ ok: true, status: 201, json: async () => ({}) }) as Response) as typeof fetch;
+    const p = createApiPersistence(storage, {
+      baseUrl: "/api",
+      siteRoot: "/api",
+      fetchFn,
+      onSyncError: (e) => errors.push(e),
+    });
+    p.save(startedLog());
+    await p.flush();
+    expect(errors[0]).toBeInstanceOf(ServiceShapeError);
   });
 
   it("propagates a create failure (caller falls back to a local attempt id)", async () => {

@@ -409,7 +409,7 @@ class ServerMirror {
 
     if (!state.serverAttemptId) {
       const created = await this.post(apiPath("createAttempt"), {});
-      state.serverAttemptId = (created.attempt as { id: string }).id;
+      state.serverAttemptId = createdAttemptId(created, apiPath("createAttempt"));
       this.write(clientAttemptId, state);
     }
     for (let i = state.syncedThrough; i < log.length; i++) {
@@ -496,6 +496,40 @@ export function createApiPersistence(
   };
 }
 
+/**
+ * The service answered, and what it said is not the shape this build knows.
+ *
+ * TYPED, because the two create paths have different readers: the start path
+ * puts the message in front of the candidate, and the mirror hands it to
+ * `onSyncError`. Both used to dereference the body and produce
+ * `Cannot read properties of undefined` — a raw TypeError shown to a person
+ * (TEN-230). An `id` that is present but not a NON-EMPTY STRING is refused
+ * here too, because it would otherwise throw one route later, inside
+ * `apiPath()`, on every sync pass for the rest of the sitting.
+ */
+export class ServiceShapeError extends Error {
+  constructor(path: string, what: string) {
+    super(`the exam service answered ${path} with something this build cannot read: ${what}`);
+    this.name = "ServiceShapeError";
+  }
+}
+
+/**
+ * The server attempt id out of a create response. One reader, two call sites
+ * (the mirror and the pre-created start), so they cannot disagree.
+ */
+function createdAttemptId(created: Record<string, unknown>, path: string): string {
+  const attempt = created.attempt;
+  if (typeof attempt !== "object" || attempt === null) {
+    throw new ServiceShapeError(path, "no `attempt` object in the body");
+  }
+  const id = (attempt as { id?: unknown }).id;
+  if (typeof id !== "string" || id === "") {
+    throw new ServiceShapeError(path, "`attempt.id` is not a non-empty string");
+  }
+  return id;
+}
+
 /** One track's exposure record, as POST /attempts returns it. */
 interface DeckRecord {
   trackId: string;
@@ -574,7 +608,7 @@ export async function createServerAttempt(
   locale: string,
 ): Promise<string> {
   const created = await postJson(storage, opts, apiPath("createAttempt"), { locale, decks: true });
-  const id = (created.attempt as { id: string }).id;
+  const id = createdAttemptId(created, apiPath("createAttempt"));
   const recorded = readDecks(created);
   writeSyncState(storage, id, {
     serverAttemptId: id,
