@@ -64,9 +64,18 @@ const exists = (rel: string): boolean => {
   }
 };
 
+type Overrides = Record<string, unknown>;
+
 interface Manifest {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  overrides?: Overrides;
+  resolutions?: Overrides;
+  pnpm?: { overrides?: Overrides };
+  bundledDependencies?: string[];
+  bundleDependencies?: string[];
 }
 
 /** The exam service's own packages, banned by name because that is their name. */
@@ -115,9 +124,44 @@ const DATABASE_DEPS: readonly RegExp[] = [
   /^(drizzle-orm|prisma|@prisma\/client|kysely|knex|typeorm|sequelize|slonik|mikro-orm|@mikro-orm\/)/,
 ];
 
+/**
+ * Every package a manifest names, through ANY field it can name one in
+ * (TEN-226 review). `dependencies` and `devDependencies` were the whole scan,
+ * so `optionalDependencies`, `peerDependencies`, `overrides`, `resolutions`,
+ * `pnpm.overrides` and a bundled list were all open doors into the same
+ * `node_modules`. An override key may carry a version selector (`pg@8`) and
+ * may be NESTED under the package it applies to, so both are unwrapped.
+ */
+function overrideNames(node: unknown): string[] {
+  if (Array.isArray(node)) return node.filter((n): n is string => typeof n === "string");
+  if (!node || typeof node !== "object") return [];
+  const out: string[] = [];
+  for (const [key, value] of Object.entries(node as Overrides)) {
+    // `pg@8` -> `pg`, `@clerk/backend@2` -> `@clerk/backend`, `>pg` -> `pg`.
+    const at = key.lastIndexOf("@");
+    out.push((at > 0 ? key.slice(0, at) : key).replace(/^[<>=^~]+/, ""));
+    out.push(...overrideNames(value));
+  }
+  return out;
+}
+
+function declaredPackages(pkg: Manifest): string[] {
+  return [
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.devDependencies ?? {}),
+    ...Object.keys(pkg.optionalDependencies ?? {}),
+    ...Object.keys(pkg.peerDependencies ?? {}),
+    ...overrideNames(pkg.overrides),
+    ...overrideNames(pkg.resolutions),
+    ...overrideNames(pkg.pnpm?.overrides),
+    ...overrideNames(pkg.bundledDependencies),
+    ...overrideNames(pkg.bundleDependencies),
+  ];
+}
+
 /** Pure, so a fixture manifest proves it bites without touching the tree. */
 function bannedDependencies(pkg: Manifest): string[] {
-  return Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
+  return [...new Set(declaredPackages(pkg))]
     .filter(
       (dep) =>
         BANNED_PACKAGES.includes(dep) ||
@@ -220,6 +264,32 @@ describe("no second copy of the exam service", () => {
       dependencies: { ...real.dependencies, "@neondatabase/serverless": "^0.10.4" },
     };
     expect(bannedDependencies(withNeon)).toEqual(["@neondatabase/serverless"]);
+  });
+
+  it("reads every dependency field a manifest can carry, not just the two", () => {
+    // `dependencies` and `devDependencies` were the whole scan, so a driver
+    // installed through any other field was invisible — and every one of
+    // these fields really does put a package in the store on `pnpm install`
+    // or pin the version that lands there.
+    expect(bannedDependencies({ optionalDependencies: { pg: "^8" } })).toEqual(["pg"]);
+    expect(bannedDependencies({ peerDependencies: { "@neondatabase/serverless": "*" } })).toEqual([
+      "@neondatabase/serverless",
+    ]);
+    expect(bannedDependencies({ overrides: { "better-sqlite3": "11" } })).toEqual([
+      "better-sqlite3",
+    ]);
+    // An override may be NESTED under the package it applies to.
+    expect(bannedDependencies({ overrides: { next: { mongodb: "6" } } })).toEqual(["mongodb"]);
+    expect(bannedDependencies({ resolutions: { mysql2: "3" } })).toEqual(["mysql2"]);
+    expect(bannedDependencies({ pnpm: { overrides: { "@clerk/backend": "2" } } })).toEqual([
+      "@clerk/backend",
+    ]);
+    expect(bannedDependencies({ bundledDependencies: ["drizzle-orm"] })).toEqual(["drizzle-orm"]);
+    expect(bannedDependencies({ bundleDependencies: ["typeorm"] })).toEqual(["typeorm"]);
+    // A version spec in an override key is still that package.
+    expect(bannedDependencies({ overrides: { "pg@8": "8.13.0" } })).toEqual(["pg"]);
+    // ...and the fields a real manifest carries stay quiet.
+    expect(bannedDependencies({ peerDependencies: { react: "^19.0.0" } })).toEqual([]);
   });
 
   it("bans a database by capability, and lets a browser capability through", () => {
