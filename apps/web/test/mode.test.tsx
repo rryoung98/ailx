@@ -158,16 +158,36 @@ describe("examAccessCopy", () => {
    * accounts — just play" to a candidate standing at a gate they could not
    * pass (TEN-125). The hero's line is separate and says something else.
    */
-  it("asks for a sign-in where a sitting needs one", () => {
+  it("asks for a sign-in where a sitting needs one, and the reader has not", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
-    expect(examAccessCopy()).toBe("sign in to sit a scored run");
+    expect(examAccessCopy("anonymous")).toBe("sign in to sit a scored run");
   });
 
-  it("still says no accounts where there are none", () => {
+  it("never asks a signed-in candidate to do the thing they just did", () => {
+    // TEN-151: the line was unconditional on a Clerk build, so it was on
+    // screen for the candidate who had already signed in.
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    expect(examAccessCopy("signed-in")).not.toMatch(/sign in/i);
+    expect(examAccessCopy("signed-in")).toMatch(/scored run/i);
+  });
+
+  it("asks for nothing while Clerk is still answering", () => {
+    // The first paint of a hosted page is `pending`. Telling everybody to
+    // sign in until the session resolves is the same bug, one render early.
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_stub");
+    expect(examAccessCopy("pending")).not.toMatch(/sign in/i);
+    expect(examAccessCopy("pending")).toBe("a scored run needs an account");
+  });
+
+  it("still says no accounts where there are none, whoever is reading", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
-    expect(examAccessCopy()).toBe("no accounts — just play");
+    for (const status of ["pending", "anonymous", "asserted", "signed-in"] as const) {
+      expect(examAccessCopy(status), status).toBe("no accounts — just play");
+    }
   });
 });
 

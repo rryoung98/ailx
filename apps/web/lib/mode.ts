@@ -1,3 +1,4 @@
+import type { IdentityStatus } from "./auth/identityState";
 import { normalizeOrigin } from "./origin";
 
 /**
@@ -116,9 +117,23 @@ export function accessCopy(): string {
  * On a deployment that mounts Clerk it is false at the exact moment it matters
  * most — the candidate is standing at the gate they cannot pass — and it was
  * still on screen after `AILX_AUTH=clerk` went live on staging (TEN-125).
+ *
+ * THE CURE THEN OVERSHOT (TEN-151): a Clerk build told EVERY reader to sign
+ * in, including the candidate who had just done it. So the line reads the
+ * identity rather than the build. The type is imported, never the module's
+ * state — `lib/auth/identityState` reads this file, and the caller (a client
+ * component with the hook) is the one that knows who is here.
  */
-export function examAccessCopy(): string {
-  return isClerkEnabled() ? "sign in to sit a scored run" : "no accounts — just play";
+export function examAccessCopy(status: IdentityStatus): string {
+  if (!isClerkEnabled()) return "no accounts — just play";
+  if (status === "signed-in") return "signed in · a scored run is yours to start";
+  // Clerk resolves a session asynchronously, and the first paint of a hosted
+  // page is `pending`. Telling everybody to sign in while the answer is still
+  // coming is the same bug one render earlier, so the waiting line states the
+  // requirement and asks for nothing.
+  return status === "pending"
+    ? "a scored run needs an account"
+    : "sign in to sit a scored run";
 }
 
 /**

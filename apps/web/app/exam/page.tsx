@@ -43,6 +43,7 @@ import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
 import { PillCTA } from "../../components/ui/PillCTA";
 import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
+import { useIdentity } from "../../lib/auth/identityState";
 import { eventLogCopy, examAccessCopy, isServerMode } from "../../lib/mode";
 import { funnel } from "../../lib/data/funnel";
 import { completionSummary, SERVICE_SCORES_THIS_TRACK, trackList } from "../../lib/instrument/scoreSources";
@@ -112,6 +113,10 @@ function fmt(sec: number): string {
 }
 
 export default function ExamPage() {
+  // Who is reading this page — the access pill beside the start gate is a
+  // sentence about THEM, and it used to be a sentence about the build
+  // (TEN-151).
+  const identity = useIdentity();
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -791,7 +796,7 @@ export default function ExamPage() {
             T1 to T4 in order, each on its own clock. Pause between moves, never
             mid-swipe. {eventLogCopy()}
           </p>
-          <div style={{ textAlign: "right" }}><Annotation side="left">{examAccessCopy()}</Annotation></div>
+          <div style={{ textAlign: "right" }}><Annotation side="left">{examAccessCopy(identity.status)}</Annotation></div>
           {/* AI connection FIRST — users must see it before the Start pill
               (it was previously buried below the fold). */}
           <ConnectPanel attention={connectAttention} />

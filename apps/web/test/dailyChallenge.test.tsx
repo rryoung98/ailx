@@ -644,8 +644,25 @@ describe("the daily never touches the credential", () => {
     expect(DAILY_MODULES.filter((m) => reachable("app/daily/page.tsx").has(m))).toEqual(DAILY_MODULES);
   });
 
-  it("reaches no identity, so a signed-in player's daily is the same daily", () => {
-    expect(DAILY_CLOSURE.filter((f) => /^lib\/auth/.test(f))).toEqual([]);
+  it("reaches ONE read-only identity status and nothing else under lib/auth", () => {
+    // It reached nothing at all until TEN-151, and the reason was right: a
+    // signed-in player's daily must be the same daily. What broke that rule
+    // in practice was the opposite of an identity read — the result screen
+    // told every player "There is no account to lose it to", including the
+    // ones who have one.
+    //
+    // So the allowance is exactly one module, and it is the SDK-free status
+    // store: it carries a status, never an account id, never a token, and it
+    // decides ONE sentence of copy. Everything the original guard was for is
+    // still asserted — no @clerk anywhere in the closure (above), no scoring
+    // module (above), no request during a round (above), and the round itself
+    // is proved identical for both readers in test/identityCopy.test.tsx.
+    expect(DAILY_CLOSURE.filter((f) => /^lib\/auth/.test(f))).toEqual(["lib/auth/identityState.ts"]);
+    // And that module pulls no auth SDK into the static export, which is the
+    // property the file-name ban was standing in for.
+    const identityImports = MODULE_GRAPH.get("lib/auth/identityState.ts")?.imports ?? [];
+    expect(identityImports.length).toBeGreaterThan(0);
+    expect(identityImports.filter((i) => /@clerk/.test(i.specifier))).toEqual([]);
   });
 
   it("reads imports with the compiler, so no string can hide one", () => {
