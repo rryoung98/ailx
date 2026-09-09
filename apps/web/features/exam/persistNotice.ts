@@ -51,6 +51,17 @@ function legacySentence(v: ValidatedLog): string {
 
 function tamperSentence(v: ValidatedLog): string {
   const n = v.dropped;
+  /**
+   * NOTHING survived. Saying "everything before that point is intact" here
+   * would be false — there is no before. This is the case that used to be
+   * reported as no stored run at all (TEN-220).
+   */
+  if (v.log.length === 0) {
+    return (
+      "This saved run does not match its evidence. None of it replayed, so none of it could be "
+      + `restored and this run starts from the beginning. Technical reason: ${v.reason ?? "unknown"}.`
+    );
+  }
   return (
     `This log does not match its evidence. The last ${n} ${plural(n, "entry", "entries")} ` +
     `did not replay and ${plural(n, "was", "were")} dropped. Everything before that point ` +

@@ -158,9 +158,27 @@ export function validateStoredLog(raw: readonly unknown[]): ValidatedLog {
 }
 
 /**
- * Load + validate the stored attempt. Returns null when nothing valid is
- * stored. `dropped > 0` means the stored log had a corrupt tail that was
- * truncated (the valid prefix is still returned so no good data is lost).
+ * A stored attempt that is present and unreadable — bytes that are not JSON,
+ * or a shape this build does not know. It is a LOSS, not an absence, so it is
+ * reported like any other drop rather than as `null` (TEN-220). `dropped` is
+ * 1 because one stored attempt was discarded; how many entries were inside it
+ * is exactly what could not be read.
+ */
+function unreadableAttempt(reason: string): ValidatedLog {
+  return { log: [], dropped: 1, reason, legacyScores: 0, legacyTracks: [] };
+}
+
+/**
+ * Load + validate the stored attempt. Returns null ONLY when nothing is
+ * stored at all — the one case that means "there was no run".
+ *
+ * `dropped > 0` means work was discarded, whether that is a corrupt tail
+ * (the valid prefix is still returned, so no good data is lost) or the WHOLE
+ * log. The two used to be collapsed: a log whose first entry failed to replay
+ * returned `null`, which the caller could not tell from a browser that had
+ * never sat anything, so the candidate started over with no notice at all
+ * (TEN-220). An empty result with `dropped > 0` is now a distinct return, and
+ * `persistNotice` says so out loud.
  */
 export function loadAttemptValidated(storage: StorageLike): ValidatedLog | null {
   const raw = readMigratedItem(storage, ATTEMPT_KEY);
@@ -170,18 +188,16 @@ export function loadAttemptValidated(storage: StorageLike): ValidatedLog | null 
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return null;
+    return unreadableAttempt("the stored run could not be parsed");
   }
   if (
     typeof parsed !== "object" || parsed === null ||
     (parsed as PersistedShape).formatVersion !== 1 ||
     !Array.isArray((parsed as PersistedShape).log)
   ) {
-    return null;
+    return unreadableAttempt("the stored run is not in a format this build knows");
   }
-  const validated = validateStoredLog((parsed as PersistedShape).log);
-  if (validated.log.length === 0) return validated.dropped > 0 ? null : validated;
-  return validated;
+  return validateStoredLog((parsed as PersistedShape).log);
 }
 
 export function loadAttempt(storage: StorageLike): SequencedEntry[] | null {

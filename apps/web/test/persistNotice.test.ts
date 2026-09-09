@@ -14,8 +14,15 @@ import { persistNotice } from "../features/exam/persistNotice";
 
 const clean: ValidatedLog = { log: [], dropped: 0, legacyScores: 0, legacyTracks: [] };
 const legacy: ValidatedLog = { ...clean, legacyScores: 1, legacyTracks: ["t2"] };
+/**
+ * A TRUNCATION keeps a prefix — that is what "everything before that point is
+ * intact" refers to. A dropped log with NO prefix is a different sentence
+ * (TEN-220), so these fixtures carry the entry that survived.
+ */
+const survivor = [{ type: "attempt_started", seq: 0 }] as unknown as ValidatedLog["log"];
 const tampered: ValidatedLog = {
   ...clean,
+  log: survivor,
   dropped: 4,
   reason: "entry 4 rejected: Error: track_scored rejected: judgmentIds[0] claims x but the stored row content-addresses to y",
 };
@@ -77,12 +84,27 @@ describe("persistNotice", () => {
   });
 
   it("counts one dropped entry in the singular", () => {
-    const n = persistNotice({ ...clean, dropped: 1, reason: "entry 1 rejected: x" })!;
+    const n = persistNotice({ ...clean, log: survivor, dropped: 1, reason: "entry 1 rejected: x" })!;
     expect(n.message).toContain("The last 1 entry did not replay and was dropped");
   });
 
+  /**
+   * A log that dropped EVERYTHING says so, and never claims a prefix that
+   * does not exist. Returning null for this case is what let the candidate
+   * start over in silence (TEN-220).
+   */
+  it("says nothing was restored when nothing survived the replay", () => {
+    const n = persistNotice({ ...clean, dropped: 3, reason: "entry 0 rejected: x" })!;
+    expect(n.kind).toBe("tamper");
+    expect(n.label).toBe("Saved run damaged");
+    expect(n.message).toContain("None of it replayed");
+    expect(n.message).toContain("starts from the beginning");
+    expect(n.message).not.toContain("Everything before that point is intact");
+    expect(n.message).toContain("entry 0 rejected: x");
+  });
+
   it("does not print 'undefined' when a truncation carries no reason", () => {
-    const n = persistNotice({ ...clean, dropped: 2 })!;
+    const n = persistNotice({ ...clean, log: survivor, dropped: 2 })!;
     expect(n.message).toContain("Technical reason: unknown.");
   });
 
