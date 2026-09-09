@@ -70,7 +70,26 @@ interface Manifest {
 }
 
 /** The exam service's own packages, banned by name because that is their name. */
-const BANNED_PACKAGES: readonly string[] = ["@ailx/backend", "@ailx/instrument", "@clerk/backend"];
+const BANNED_PACKAGES: readonly string[] = ["@ailx/backend", "@ailx/instrument"];
+
+/**
+ * SERVER-SIDE CLERK is banned by CAPABILITY, not by name (TEN-227 review).
+ *
+ * The ban was two literals, `@clerk/nextjs/server` and `@clerk/backend`, so
+ * `@clerk/express`, `@clerk/fastify`, `@clerk/clerk-sdk-node`, `@clerk/remix`
+ * and the rest walked through both the manifest scan and the import scan —
+ * every one of them wraps `@clerk/backend` and verifies a token with a secret
+ * key. Adding three more names would leave the next one open, so invert it:
+ * a Clerk entrypoint is server-side unless it is one of the BROWSER halves,
+ * which are the short, stable list.
+ */
+const BROWSER_AUTH_MODULES: readonly RegExp[] = [
+  /^@clerk\/nextjs$/, // the subpath `@clerk/nextjs/server` is NOT this
+  /^@clerk\/(clerk-react|clerk-js|themes|localizations|types|shared)(\/.*)?$/,
+];
+
+const isServerAuthModule = (spec: string): boolean =>
+  /^@clerk\//.test(spec) && !BROWSER_AUTH_MODULES.some((re) => re.test(spec));
 
 /**
  * A DATABASE is banned by CAPABILITY, not by name (TEN-226).
@@ -99,7 +118,12 @@ const DATABASE_DEPS: readonly RegExp[] = [
 /** Pure, so a fixture manifest proves it bites without touching the tree. */
 function bannedDependencies(pkg: Manifest): string[] {
   return Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })
-    .filter((dep) => BANNED_PACKAGES.includes(dep) || DATABASE_DEPS.some((re) => re.test(dep)))
+    .filter(
+      (dep) =>
+        BANNED_PACKAGES.includes(dep) ||
+        isServerAuthModule(dep) ||
+        DATABASE_DEPS.some((re) => re.test(dep)),
+    )
     .sort();
 }
 
@@ -122,14 +146,13 @@ const code = (text: string): string =>
 
 /**
  * Every server-side Clerk entrypoint a source imports, in any import form.
- * `@clerk/nextjs` (the browser SDK) is allowed; `@clerk/nextjs/server` and
- * every `@clerk/backend` path are not.
+ * The import scan asks the same capability question as the manifest scan:
+ * every `@clerk/*` specifier is server-side unless it is a browser half.
  */
-const SERVER_AUTH_IMPORT =
-  /(?:from|import|require)\s*\(?\s*["'](@clerk\/nextjs\/server|@clerk\/backend(?:\/[^"']*)?)["']/g;
+const CLERK_IMPORT = /(?:from|import|require)\s*\(?\s*["'](@clerk\/[^"']+)["']/g;
 
 function serverAuthImports(src: string): string[] {
-  return [...code(src).matchAll(SERVER_AUTH_IMPORT)].map((m) => m[1]!);
+  return [...code(src).matchAll(CLERK_IMPORT)].map((m) => m[1]!).filter(isServerAuthModule);
 }
 
 /**
@@ -206,6 +229,10 @@ describe("no second copy of the exam service", () => {
       "@libsql/client", "mysql2", "better-sqlite3", "mongodb", "drizzle-orm",
       "@prisma/client", "kysely", "knex", "typeorm", "sequelize",
       "@ailx/backend", "@ailx/instrument",
+      // Server-side Clerk is the same kind of capability: it verifies a token
+      // with a secret key, whichever framework binding ships it.
+      "@clerk/backend", "@clerk/express", "@clerk/fastify", "@clerk/clerk-sdk-node",
+      "@clerk/remix", "@clerk/astro", "@clerk/tanstack-react-start",
     ]) {
       expect(bannedDependencies({ dependencies: { [dep]: "1" } }), dep).toEqual([dep]);
       expect(bannedDependencies({ devDependencies: { [dep]: "1" } }), dep).toEqual([dep]);
@@ -214,7 +241,10 @@ describe("no second copy of the exam service", () => {
     // `@vercel/blob/client` to PUT a T1 site straight into the object store
     // with a scoped token the service issued. That is a frontend capability
     // and holds no credential of its own. Nor is the Clerk BROWSER SDK.
-    for (const ok of ["@vercel/blob", "@clerk/nextjs", "next", "zod", "yaml"]) {
+    for (const ok of [
+      "@vercel/blob", "@clerk/nextjs", "@clerk/clerk-react", "@clerk/themes",
+      "@clerk/localizations", "@clerk/types", "next", "zod", "yaml",
+    ]) {
       expect(bannedDependencies({ dependencies: { [ok]: "1" } }), ok).toEqual([]);
     }
   });
@@ -280,9 +310,33 @@ describe("no server-side auth is reachable from this repo", () => {
     ]);
   });
 
+  it("names a server-side Clerk SDK by capability, not by the two it knew about", () => {
+    // Two literals — `@clerk/nextjs/server` and `@clerk/backend` — left every
+    // other framework binding through, and each of these verifies a token
+    // with a secret key exactly as `@clerk/backend` does; they all wrap it.
+    expect(serverAuthImports('import { clerkMiddleware } from "@clerk/express";')).toEqual([
+      "@clerk/express",
+    ]);
+    expect(serverAuthImports('import clerkPlugin from "@clerk/fastify";')).toEqual([
+      "@clerk/fastify",
+    ]);
+    expect(serverAuthImports("const c = require('@clerk/clerk-sdk-node')")).toEqual([
+      "@clerk/clerk-sdk-node",
+    ]);
+    expect(serverAuthImports('import { getAuth } from "@clerk/remix/ssr.server";')).toEqual([
+      "@clerk/remix/ssr.server",
+    ]);
+    expect(serverAuthImports('import { verifyToken } from "@clerk/astro/server";')).toEqual([
+      "@clerk/astro/server",
+    ]);
+  });
+
   it("lets the BROWSER SDK through, and does not fire on prose", () => {
     // `<SignIn />` and `<SignUp />` are the whole point of the hosted build.
     expect(serverAuthImports('import { SignUp } from "@clerk/nextjs";')).toEqual([]);
+    expect(serverAuthImports('import { useUser } from "@clerk/clerk-react";')).toEqual([]);
+    expect(serverAuthImports('import { dark } from "@clerk/themes";')).toEqual([]);
+    expect(serverAuthImports('import type { UserResource } from "@clerk/types";')).toEqual([]);
     expect(serverAuthImports('vi.mock("@clerk/nextjs", () => ({}))')).toEqual([]);
     expect(serverAuthImports("// never import @clerk/nextjs/server here")).toEqual([]);
   });
