@@ -99,23 +99,28 @@ export function recordLocalPracticeRound(
 }
 
 /**
- * The streak this browser has earned, by its own reckoning, as a hook — read
- * on mount and kept in step with the ledger.
+ * The days this browser is holding that NO account has, as a hook — read on
+ * mount and kept in step with the ledger.
  *
- * `null` until the first read, and `null` for a browser whose storage throws
- * (private mode, blocked cookies): a page must be able to tell "no days" from
- * "not asked yet" so it does not flash a wrong empty state.
+ * `null` means "nothing for a caller to draw", and it is deliberately ONE
+ * value for three situations: the first read has not happened, the browser's
+ * storage throws (private mode, blocked cookies), and the ledger holds no
+ * unclaimed day. It once promised a caller could tell "not asked yet" from
+ * "no days" and so avoid a flash; it could not — a throwing storage already
+ * returned `null` too — and no caller ever used the distinction. A promise
+ * nothing keeps is worse than no promise.
  *
- * /progress needs this because a signed-out round never reaches the exam
- * service (TEN-132). Without it the page reports zero days to somebody whose
- * practice summary just said "1 day streak".
+ * /progress needs this because a round the service cannot attribute to
+ * anybody never reaches it (TEN-132). Without it the page reports zero days
+ * to somebody whose practice summary just said "1 day streak".
  */
 export function useLocalStreak(): StreakSummary | null {
   const [streak, setStreak] = useState<StreakSummary | null>(null);
   useEffect(() => {
     const read = (): void => {
       try {
-        setStreak(localStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes()));
+        const held = unclaimedStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes());
+        setStreak(held.totalDays > 0 ? held : null);
       } catch {
         setStreak(null);
       }
@@ -133,6 +138,34 @@ export function localStreakSummary(
   tzOffsetMinutes: number,
 ): StreakSummary {
   return streakSummary(localPracticeDayStrings(readLocalLedger(storage)), localDay(now, tzOffsetMinutes));
+}
+
+/**
+ * The same reckoning over the days no account has taken yet.
+ *
+ * A CLAIMED day is on an account and comes back from the service in
+ * `progress.practice`, labelled as brought from a browser. Counting it again
+ * as a day the service has never seen puts one day on the page twice, the
+ * second time under a sentence saying it is on no account — the TEN-132
+ * contradiction one size smaller.
+ *
+ * The drill's own panel keeps `localStreakSummary`: it says nothing about
+ * where a day is held, and dropping the claimed days out of it would take a
+ * streak away from the browser that earned it.
+ *
+ * `mergePracticeDays` is the other way to spend this overlap — one table of
+ * server and browser days, maxed per field. It is not used here because the
+ * two blocks on /progress differ in PROVENANCE, not in arithmetic: merging
+ * would hide which days the service actually stamped, which is the one thing
+ * the page must not blur.
+ */
+export function unclaimedStreakSummary(
+  storage: StorageLike,
+  now: number,
+  tzOffsetMinutes: number,
+): StreakSummary {
+  const unclaimed = claimableDays(readLocalLedger(storage)).map((d) => d.day);
+  return streakSummary(unclaimed, localDay(now, tzOffsetMinutes));
 }
 
 // ---------------------------------------------------------------------------

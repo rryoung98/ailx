@@ -270,18 +270,26 @@ export const MIN_TREND_ANSWERS = 12;
  * page and its tests share a single wording (DRY) and it cannot drift.
  *
  * It used to say practice answers are "graded on the server", full stop. That
- * was false for the anonymous on-ramp: a signed-out round is recorded only in
- * the browser's own ledger (`localPractice.ts`, and the drill's
- * `recorded = server && signed-in` rule), so the service has nothing to grade
- * and /progress could only ever show zero while /practice showed a streak
- * (TEN-132). Both places a practice day can live are now named.
+ * was false for the anonymous on-ramp: a round the service cannot attribute
+ * to anybody is recorded only in the browser's own ledger
+ * (`localPractice.ts`), so the service has nothing to grade and /progress
+ * could only ever show zero while /practice showed a streak (TEN-132).
+ *
+ * The replacement said "while signed in", which claims more than the code
+ * does: the drill's rule is `hasIdentity(identity.status)`
+ * (`apps/web/features/practice/PracticeDrill.tsx`), and a hosted build with
+ * no Clerk records a round for an asserted dev identity nobody signed in to.
+ * So the sentence names IDENTITY, which is the question the code asks, and it
+ * names the claim, because a browser-kept day does reach an account when the
+ * service can finally identify the browser holding it.
  */
 export const PROGRESS_BASIS =
-  "Counted from what you actually did. Practice you finish while signed in is recorded and "
-  + "graded by the exam service. Practice you do signed out is kept by your browser and never "
-  + "reaches the service, so only that browser can show it. Each sitting's figures are that "
-  + "run's own scorer output from its stored event log. No percentile, no composite and "
-  + "no judged result — the judging pipeline is not built yet, so a number implying one "
+  "Counted from what you actually did. Practice you finish in a browser the exam service can "
+  + "identify — an account, or whatever identity your deployment accepts — is recorded and "
+  + "graded by the service. Practice it cannot attribute to anyone is kept by your browser "
+  + "alone, so only that browser can show it until it is handed over. Each sitting's figures "
+  + "are that run's own scorer output from its stored event log. No percentile, no composite "
+  + "and no judged result — the judging pipeline is not built yet, so a number implying one "
   + "would be a claim we cannot back.";
 
 /**
@@ -333,7 +341,6 @@ export interface ProgressReport {
   sittings: SittingPoint[];
   /** Only what genuinely moved; empty is a legitimate answer. */
   improvements: Improvement[];
-  basis: string;
   /** Why a figure is missing, so the page never shows a silent blank. */
   notEnoughYet: { practice: boolean; sittings: boolean };
 }
@@ -419,7 +426,6 @@ export function progressReport(input: {
     practiceAccuracy,
     sittings,
     improvements,
-    basis: PROGRESS_BASIS,
     notEnoughYet: {
       practice: practice.filter((p) => p.sessions > 0).length < MIN_TREND_DAYS,
       sittings: sittings.length < 2,

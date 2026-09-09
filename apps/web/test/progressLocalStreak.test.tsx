@@ -16,6 +16,9 @@
  * key, or no service at all.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import {
   LOCAL_PRACTICE_BASIS,
@@ -49,12 +52,28 @@ const TODAY = localDay(Date.now(), utcOffsetMinutes());
 const back = (n: number): string =>
   new Date(Date.parse(`${TODAY}T00:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
 
+/**
+ * The part of the page that speaks for this browser alone. Asserted by
+ * SLICE, not against the whole document: a bare `toContain("3")` over the
+ * markup matches an id, a class or a server figure, so it passed before the
+ * count it was meant to check existed.
+ */
+function localSection(html: string): string {
+  const start = html.indexOf('aria-labelledby="local-streak"');
+  if (start === -1) return "";
+  const end = html.indexOf("</section>", start);
+  return html.slice(start, end === -1 ? undefined : end);
+}
+
 /** The ledger the drill writes, in the shape it writes it. */
-function seedLedger(days: readonly string[], claimed = false): void {
+function seedLedger(days: readonly (string | { day: string; claimed: boolean })[]): void {
   window.localStorage.setItem(
     LOCAL_PRACTICE_KEY,
     serializeLocalLedger({
-      days: days.map((day) => ({ day, sessions: 1, answered: 6, correct: 4, claimed })),
+      days: days.map((entry) => {
+        const { day, claimed } = typeof entry === "string" ? { day: entry, claimed: false } : entry;
+        return { day, sessions: 1, answered: 6, correct: 4, claimed };
+      }),
     }),
   );
 }
@@ -90,7 +109,7 @@ describe("the days this browser is holding", () => {
     seedLedger([back(2), back(1), back(0)]);
     const html = await markup();
     expect(html).toContain("In this browser");
-    expect(html).toContain("3");
+    expect(localSection(html)).toMatch(/>3<\/span>\s*<span class="label">days practised/);
     expect(html).not.toContain("No practice days behind you yet");
   });
 
@@ -100,11 +119,11 @@ describe("the days this browser is holding", () => {
     expect(html).toContain(LOCAL_PRACTICE_BASIS);
   });
 
-  it("says plainly why the service has no record of them", async () => {
+  it("says plainly that the service has no record of them", async () => {
     seedLedger([back(0)]);
     const html = await markup();
-    expect(html).toMatch(/signed out/i);
-    expect(html).toMatch(/never reach(es|ed) the exam service|the service never saw/i);
+    expect(html).toMatch(/no record of these days/i);
+    expect(html).toMatch(/in no server figure and on no account/i);
   });
 
   it("keeps the empty copy when the browser is holding nothing", async () => {
@@ -119,6 +138,33 @@ describe("the days this browser is holding", () => {
     const html = await markup();
     expect(html).toContain("day streak");
     expect(html).toContain("In this browser");
+  });
+
+  it("does not show a claimed day here — the account already holds it", async () => {
+    // The taster deals in the browser and claims the day the moment the
+    // service can identify the visitor (`PracticeDrill.tsx`, `recordLocally`).
+    // The day is then in the server table, labelled "brought from a browser".
+    // Repeating it under "on no account" is the TEN-132 contradiction again,
+    // one size smaller.
+    payload = report([{ day: back(0), sessions: 1, answered: 6, correct: 4 }]);
+    seedLedger([{ day: back(0), claimed: true }]);
+    const html = await markup();
+    expect(html).not.toContain("In this browser");
+  });
+
+  it("counts only the days no account has taken when the ledger holds both", async () => {
+    payload = report([{ day: back(2), sessions: 1, answered: 6, correct: 4 }]);
+    seedLedger([{ day: back(2), claimed: true }, back(1), back(0)]);
+    const html = await markup();
+    expect(html).toContain("In this browser");
+    expect(localSection(html)).toMatch(/>2<\/span>\s*<span class="label">days practised/);
+  });
+
+  it("says nothing was played here when every day has been claimed", async () => {
+    status = 400;
+    seedLedger([{ day: back(0), claimed: true }]);
+    const html = await markup();
+    expect(html).not.toContain("In this browser");
   });
 
   it("treats junk in the key as no days rather than failing the page", async () => {
@@ -184,12 +230,25 @@ describe("what the method line may claim", () => {
   });
 
   it("names the two places a practice day can live", async () => {
-    expect(PROGRESS_BASIS).toMatch(/signed in/i);
+    expect(PROGRESS_BASIS).toMatch(/exam service/i);
     expect(PROGRESS_BASIS).toMatch(/browser/i);
   });
 
+  it("does not make signing in the rule when the code asks a wider question", async () => {
+    // The drill records a round for ANY identity the service accepts, which
+    // on a dev-auth deployment is nobody's account. Copy that says "while
+    // signed in" describes a rule this code does not apply.
+    const webDir = join(dirname(fileURLToPath(import.meta.url)), "..");
+    const drill = readFileSync(join(webDir, "features", "practice", "PracticeDrill.tsx"), "utf8");
+    expect(drill).toMatch(/const recorded =[^;]*hasIdentity\(identity\.status\)/);
+    expect(PROGRESS_BASIS).not.toMatch(/signed in/i);
+  });
+
   it("prints its own basis, so a stale service cannot re-assert server grading", async () => {
-    payload = { ...report(), basis: "practice answers graded on the server" };
+    // `basis` is no longer a field of `ProgressReport`; a service still
+    // sending one must change nothing here, so it is sent as the extra
+    // property a stale deployment would put on the wire.
+    payload = { ...report(), basis: "practice answers graded on the server" } as ProgressReport;
     const html = await markup();
     expect(html).not.toMatch(/graded on the server/);
     expect(html).toContain("No percentile, no composite");

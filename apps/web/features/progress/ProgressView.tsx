@@ -190,12 +190,19 @@ function SittingsChart({ sittings }: { sittings: readonly SittingPoint[] }) {
 }
 
 /**
- * The days a signed-out browser is holding, which the exam service has never
- * seen. TEN-132: the drill records an anonymous round in localStorage only
- * (`features/practice/PracticeDrill.tsx`, `recorded = server && signed-in`),
+ * The days this browser is holding that no account has, which the exam
+ * service has therefore never seen. TEN-132: the drill records a round the
+ * service cannot attribute to anybody in localStorage only
+ * (`features/practice/PracticeDrill.tsx`,
+ * `recorded = server && hasIdentity(identity.status) && (!taster || engaged)`),
  * so /practice showed a streak on the same afternoon /progress said there was
  * none. Same ledger, read here, and labelled as this browser's own record —
  * it is still not a server-stamped day and buys nothing.
+ *
+ * `useLocalStreak` has already dropped the CLAIMED days: those are on the
+ * account, are returned by the service, and are shown in the table above as
+ * brought from a browser. Showing them here as well would say of one day that
+ * it is on no account, on the same page that lists it on one.
  */
 function LocalStreak({ local }: { local: StreakSummary }) {
   return (
@@ -216,8 +223,8 @@ function LocalStreak({ local }: { local: StreakSummary }) {
         </span>
       </p>
       <p className="muted" style={{ maxWidth: "58ch" }}>
-        You played these days signed out. Signed-out practice never reaches the exam service, so
-        it is in no server figure and on no account. {LOCAL_PRACTICE_BASIS}
+        The exam service has no record of these days. Nothing about them was ever sent to it,
+        so they are in no server figure and on no account. {LOCAL_PRACTICE_BASIS}
       </p>
     </section>
   );
@@ -229,9 +236,6 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
   // record nobody has failed to set yet. So the counters appear once there
   // is a day behind them; the rules below them are the same either way.
   const started = streak.totalDays > 0;
-  // Days this browser is holding, which the service has never seen. The empty
-  // line below is only true when there are none of those either.
-  const localHeld = local !== null && local.totalDays > 0 ? local : null;
   return (
     <>
       {started ? (
@@ -258,7 +262,7 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
                 : "Today is still open. One round keeps the streak."}
           </p>
         </>
-      ) : localHeld !== null ? (
+      ) : local !== null ? (
         <p className="muted" style={{ maxWidth: "58ch" }}>
           The exam service has no practice days for you. The days below are the ones this
           browser kept.
@@ -269,7 +273,7 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
           a day, and the first one starts the streak.
         </p>
       )}
-      {localHeld === null ? null : <LocalStreak local={localHeld} />}
+      {local === null ? null : <LocalStreak local={local} />}
       <p className="small faint" style={{ maxWidth: "62ch" }}>
         A day counts when you finish a whole round of {PRACTICE_MIN_ANSWERS} cards, in your own
         local day, at a speed that means you read them. A streak survives one missed day, and
@@ -284,7 +288,6 @@ function Streak({ streak, local }: { streak: ProgressReport["streak"]; local: St
 
 /** The page a caller we could not identify is shown. Never a blank. */
 function Unrecognised({ accounts, local }: { accounts: boolean; local: StreakSummary | null }) {
-  const localHeld = local !== null && local.totalDays > 0 ? local : null;
   return (
   <main className="page">
     <div className="container">
@@ -292,7 +295,7 @@ function Unrecognised({ accounts, local }: { accounts: boolean; local: StreakSum
       <h1 style={{ maxWidth: "20ch" }}>
         {accounts
           ? "We do not know who you are."
-          : localHeld === null
+          : local === null
             ? "Nothing has been played in this browser."
             : "Your practice is in this browser only."}
       </h1>
@@ -313,16 +316,17 @@ function Unrecognised({ accounts, local }: { accounts: boolean; local: StreakSum
           </>
         )}
       </p>
-      {localHeld === null ? null : <LocalStreak local={localHeld} />}
+      {local === null ? null : <LocalStreak local={local} />}
     </div>
   </main>
   );
 }
 
 export function ProgressView() {
-  // The days this browser kept for itself. Read on every state of the page,
-  // including the ones where the service said nothing, because a signed-out
-  // streak exists whether or not the service answered (TEN-132).
+  // The days this browser kept for itself and no account holds. Read on every
+  // state of the page, including the ones where the service said nothing,
+  // because a browser-kept streak exists whether or not the service answered
+  // (TEN-132). `null` when there is nothing to draw, for any reason.
   const local = useLocalStreak();
   // `claimedDays` is a SIBLING of the report, never a field inside it: a
   // claimed day is a fact about provenance, and `ProgressReport` is the pure
