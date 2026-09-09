@@ -8,6 +8,7 @@
  * exam service never saw.
  */
 import { describe, expect, it } from "vitest";
+import { TRACK_IDS } from "@ailx/session";
 import { reportGate, sittingShape } from "../features/report/reportGate";
 import type { AttemptScores } from "../features/report/scoresOfRecord";
 
@@ -105,16 +106,97 @@ describe("a finished sitting over part of the instrument", () => {
 
   it("keeps a previous answer's verdict after a read fails mid-poll", () => {
     /* `failure.kind === "error"` keeps the last good answer on screen
-       (`useScoresOfRecord`), so the gate still decides from it: a finalized
-       sitting does not revert to a lock because one poll did not land. */
+       (`useScoresOfRecord`), so the gate decides from it. The answer here is
+       NOT finalized — a finalized one never reached the branch this change
+       touched — so the local log is what says the run ended, and one lost
+       poll must not turn a finished sitting back into a lock. */
     const view = reportGate({
-      localScored: [],
-      scores: FINALIZED_PARTIAL,
+      localScored: ["t1", "t2", "t3", "t4"],
+      scores: { finalized: false, pending: true, pollAfterMs: 5000, tracks: [], composite: null },
       reading: false,
-      localSitting: { completed: true, sat: ["t2", "t3"] },
+      asked: true,
+      localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
+    });
+    expect(view.headline).toBe("Your sitting is finished");
+    expect(view.lede).not.toContain("Finish the run");
+    expect(view.cta).toBeNull();
+  });
+
+  it("never denies a score the page is printing below it", () => {
+    /* `finalized !== true` is not a witness that no score exists: a body
+       with `finalized: false` can still carry a scored track, and the panel
+       under this lede prints it. Saying "it has issued no scores of record"
+       there would have the page contradict itself. */
+    const view = reportGate({
+      localScored: ["t1", "t4"],
+      scores: {
+        finalized: false,
+        pending: false,
+        pollAfterMs: null,
+        tracks: [FINALIZED_PARTIAL.tracks[1]],
+        composite: null,
+      },
+      reading: false,
+      asked: true,
+      localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
+    });
+    expect(view.lede).not.toContain("issued no scores of record");
+    expect(view.lede).toContain("What it has issued is below");
+  });
+
+  it("says nothing was ASKED when nothing was asked", () => {
+    /* No identity ever arrived, so no request was made. "It returned no
+       scores, or could not be reached" would describe a request nobody
+       sent — and it is what a static export with no service at all would
+       have been told too. */
+    const view = reportGate({
+      localScored: ["t1", "t2", "t3"],
+      scores: null,
+      reading: false,
+      asked: false,
+      localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
     });
     expect(view.headline).toBe("Your sitting is finished");
     expect(view.cta).toBeNull();
+    expect(view.lede).toContain("never asked the exam service");
+    expect(view.lede).not.toContain("could not be reached");
+  });
+
+  it("says a read that DID go out came back with nothing, and says which", () => {
+    const view = reportGate({
+      localScored: ["t1", "t2", "t3"],
+      scores: null,
+      reading: false,
+      asked: true,
+      localSitting: { completed: true, sat: ["t1", "t2", "t3", "t4"] },
+    });
+    expect(view.lede).toContain("could not be reached");
+    expect(view.lede).not.toContain("never asked");
+  });
+});
+
+describe("a finalized sitting in which no track was sat at all", () => {
+  it("does not print an empty list: 'You sat .' is not a sentence", () => {
+    const view = reportGate({
+      localScored: [],
+      scores: {
+        finalized: true,
+        pending: false,
+        pollAfterMs: null,
+        tracks: TRACK_IDS.map((trackId) => ({
+          trackId,
+          state: "not_sat" as const,
+          reason: "incomplete",
+          detail: "",
+        })),
+        composite: null,
+      },
+      reading: false,
+      localSitting: { completed: true, sat: [] },
+    });
+    expect(view.lede).not.toContain("You sat .");
+    expect(view.lede).toContain("No track in this sitting was sat.");
+    expect(view.lede).toContain("none is coming for this sitting");
   });
 });
 

@@ -32,6 +32,16 @@ export interface GateInput {
   /** True while the first read of the service's scores is still in flight. */
   readonly reading: boolean;
   /**
+   * Whether this page ever ASKED the exam service for this sitting.
+   *
+   * "No scores came back" and "we never asked" are different facts, and only
+   * the second one is true when the identity never resolved (the read cannot
+   * fire without one) or when there is no exam service at all. Saying the
+   * service "returned no scores, or could not be reached" in that case names
+   * a request that was never made. Absent means: not known, say neither.
+   */
+  readonly asked?: boolean;
+  /**
    * The sitting as THIS BROWSER's log has it: whether the run was finished,
    * and which tracks were actually sat.
    *
@@ -104,10 +114,17 @@ export function sittingShape(
  * tracks that were sat (D4, dogfood 2026-09-06).
  */
 export function partialSittingLede(sat: readonly TrackId[], notSat: readonly TrackId[]): string {
+  /* A finalized attempt can name EVERY track `not_sat`. `trackList([])` is
+     the empty string, so the sentence read "You sat ." — and "covers part of
+     the instrument" would be wrong as well, because it covers none of it. */
+  const opening =
+    sat.length === 0
+      ? "No track in this sitting was sat."
+      : `You sat ${trackList(sat)}. ${trackList(notSat)} ` +
+        `${notSat.length === 1 ? "was" : "were"} not sat, so this sitting covers part of the ` +
+        "instrument.";
   return (
-    `You sat ${trackList(sat)}. ${trackList(notSat)} ` +
-    `${notSat.length === 1 ? "was" : "were"} not sat, so this sitting covers part of the ` +
-    "instrument. A composite needs every scored track — the weights are shares of the whole " +
+    `${opening} A composite needs every scored track — the weights are shares of the whole ` +
     "instrument and the band ranks you against peers who sat all of it — so none is coming " +
     "for this sitting."
   );
@@ -202,16 +219,32 @@ export function reportGate(input: GateInput): GateView {
        the candidate's unfinished work. Which silence it is — no `scores` in
        the answer, or no answer at all — is the panel below's to say; this
        page has one read and does not guess at its reason. */
+    /* WHAT THE SERVICE MANAGED TO SAY, AND NOT ONE WORD MORE.
+       Three different facts, and each has to be said as itself:
+        - it answered and named a score — never deny it, it is printed below;
+        - it answered and named none — say that, and no more;
+        - it was never asked — a read cannot fire without an identity, and
+          the static export has no service at all, so "it returned nothing or
+          could not be reached" would describe a request nobody made.
+       `finalized !== true` alone is NOT a witness that no score exists: a
+       body with `finalized: false` can still carry a scored track. */
+    const serverScored = (input.scores?.tracks ?? []).some((t) => t.state === "scored");
+    const serviceSaid =
+      input.scores !== null
+        ? serverScored
+          ? "The exam service has not recorded this sitting as finished. What it has issued is " +
+            "below."
+          : "The exam service has not recorded this sitting as finished, and it has issued no " +
+            "scores of record for it."
+        : input.asked === false
+          ? "No score of record was read here: this page never asked the exam service for one."
+          : "The exam service issued nothing this page could read: it returned no scores, or " +
+            "it could not be reached. What it did answer is below.";
     return {
       headline: "Your sitting is finished",
       lede:
         "This browser's log says the run ended, and you sat all four tracks. " +
-        `${scored.length} of 4 tracks carry a score here. ` +
-        (input.scores === null
-          ? "The exam service issued nothing this page could read: it returned no scores, or " +
-            "it could not be reached. What it did answer is below."
-          : "The exam service has not recorded this sitting as finished, so it has issued no " +
-            "scores of record for it."),
+        `${scored.length} of 4 tracks carry a score here. ${serviceSaid}`,
       cta: null,
       scored,
     };

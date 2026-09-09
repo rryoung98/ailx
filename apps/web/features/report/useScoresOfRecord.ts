@@ -54,6 +54,13 @@ export interface ScoresView {
   readonly bounded: boolean;
   /** True while the first read of a hosted sitting is still in flight. */
   readonly reading: boolean;
+  /**
+   * True once a request has actually gone out for this attempt. It stays
+   * FALSE in the static export, and while the identity is pending — the read
+   * cannot fire without one — so a page that says nothing came back can tell
+   * that apart from never having asked (TEN-128).
+   */
+  readonly asked: boolean;
   /** Tracks that went from "being judged" to scored while this page was open. */
   readonly arrived: readonly TrackId[];
   readonly checkAgain: () => void;
@@ -65,6 +72,7 @@ const IDLE: ScoresView = {
   failure: null,
   bounded: false,
   reading: false,
+  asked: false,
   arrived: [],
   checkAgain: () => undefined,
 };
@@ -88,20 +96,25 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    * it is still reading rather than claiming there is nothing of record.
    */
   const identityStatus = useIdentity().status;
-  /** True once the identity has stayed `pending` past `IDENTITY_WAIT_MS`. */
+  /**
+   * True once the identity has stayed `pending` past `IDENTITY_WAIT_MS`.
+   * LATCHED: it is set once and never cleared. An identity that resolves
+   * afterwards would otherwise put the page back into `reading`, so the
+   * candidate would watch the one link they had appear and then vanish.
+   */
   const [identityWaited, setIdentityWaited] = useState(false);
+  /** True once a request has really gone out. Latched for the same reason. */
+  const [asked, setAsked] = useState(false);
 
   useEffect(() => {
-    if (!live || identityStatus !== "pending") {
-      setIdentityWaited(false);
-      return;
-    }
+    if (!live || identityStatus !== "pending" || identityWaited) return;
     const timer = window.setTimeout(() => setIdentityWaited(true), IDENTITY_WAIT_MS);
     return () => window.clearTimeout(timer);
-  }, [live, identityStatus]);
+  }, [live, identityStatus, identityWaited]);
 
   useEffect(() => {
     if (!live || identityStatus === "pending") return;
+    setAsked(true);
     let cancelled = false;
     let timer = 0;
     const startedAt = Date.now();
@@ -172,6 +185,7 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
     // identity stuck at `pending` used to leave the report with no scores
     // and no link at all (TEN-128).
     reading: scores === undefined && failure === null && !identityWaited,
+    asked,
     arrived,
     checkAgain,
   };

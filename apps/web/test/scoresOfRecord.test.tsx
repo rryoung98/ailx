@@ -116,13 +116,14 @@ interface Mounted {
  * so a read that never answers is a dead end. This harness renders the gate
  * the page renders, from the hook the page calls (TEN-128).
  */
-function GateHarness() {
+function GateHarness({ completed = false }: { completed?: boolean }) {
   const view = useScoresOfRecord(ATTEMPT);
   const gate = reportGate({
     localScored: ["t1"],
     scores: view.scores ?? null,
     reading: view.reading,
-    localSitting: { completed: false, sat: ["t1"] },
+    asked: view.asked,
+    localSitting: { completed, sat: completed ? ["t1", "t2", "t3", "t4"] : ["t1"] },
   });
   return createElement(
     "p",
@@ -328,18 +329,23 @@ describe("polling", () => {
 
   /**
    * A failed poll keeps the previous answer, so the GATE must keep its
-   * verdict too: a finalized sitting that loses one read does not go back to
-   * telling the candidate to finish their run (TEN-128).
+   * verdict too. The answer kept here is NOT finalized — the finalize POST
+   * did not land — so the local log is the only witness that the run ended,
+   * and that is the branch TEN-128 left broken: one lost poll used to send a
+   * finished candidate back to "Finish the run to see it."
    */
-  it("does not relock the report when one poll fails", async () => {
+  it("does not relock a finished run when one poll fails", async () => {
     let i = 0;
     vi.stubGlobal("fetch", async () => {
       calls.push({ url: "", headers: {} });
       i += 1;
       if (i >= 2) throw new Error("offline");
-      return new Response(JSON.stringify(body([pending("t3")])), { status: 200 });
+      return new Response(
+        JSON.stringify(body([pending("t3")], { finalized: false })),
+        { status: 200 },
+      );
     });
-    const m = await mount(createElement(GateHarness));
+    const m = await mount(createElement(GateHarness, { completed: true }));
     await m.tick(5000);
     expect(calls.length).toBeGreaterThan(1);
     expect(m.html()).toContain("Your sitting is finished");
@@ -487,6 +493,46 @@ describe("it waits for an identity before the first read", () => {
     // The gate fell back to the local log, so there is a way out again.
     expect(m.html()).toContain("Finish the run to see it");
     expect(m.html()).toContain('data-cta="/exam"');
+    await m.unmount();
+  });
+
+  it("tells a FINISHED sitting that nothing was asked, not that nothing came back", async () => {
+    /* No identity, so no request was ever sent. "It returned no scores, or
+       it could not be reached" would name a request nobody made. */
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount(createElement(GateHarness, { completed: true }));
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(calls).toHaveLength(0);
+    expect(m.html()).toContain("Your sitting is finished");
+    expect(m.html()).toContain("never asked the exam service");
+    expect(m.html()).not.toContain("could not be reached");
+    expect(m.html()).toContain('data-cta=""');
+    await m.unmount();
+  });
+
+  it("does not take the link away again when the identity finally arrives", async () => {
+    /* The bound is LATCHED. An identity that resolves after it would other-
+       wise put the page back into `reading`, and the gate answers `cta: null`
+       while reading — so the one link the candidate had would appear and then
+       vanish under them. */
+    setAuthTokenSource(async () => "jwt-9");
+    // A read that never answers: the only thing under test is what the page
+    // says while it is in flight.
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      return new Promise<Response>(() => undefined);
+    });
+    const m = await mount(createElement(GateHarness));
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(m.html()).toContain('data-cta="/exam"');
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    await m.tick(0);
+    expect(calls).toHaveLength(1);
+    expect(m.html()).toContain('data-cta="/exam"');
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    setAuthTokenSource(null);
     await m.unmount();
   });
 
