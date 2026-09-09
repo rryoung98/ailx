@@ -11,9 +11,7 @@
  */
 
 import type { SharePayload } from "@ailx/report";
-import { z } from "zod";
-import { sharePayloadSchema } from "./gallery.js";
-import { SHARE_STATUSES, type ShareStatus } from "./share-url.js";
+import type { ShareStatus } from "./share-url.js";
 
 export interface ShareRecord {
   id: string;
@@ -68,28 +66,3 @@ export interface PublishResult {
 export function needsHumanApproval(payload: { site: string | null; note?: string | null }): boolean {
   return payload.site !== null || (payload.note ?? null) !== null;
 }
-
-/**
- * The ANONYMOUS read of a share, `GET /share/:token` — what a stranger who
- * holds the token is served, and the only part of a share row a reader
- * without an account may see.
- *
- * A SCHEMA rather than an interface, because `/s/<token>` dereferences the
- * payload during render: an unrecognised body used to throw a TypeError into
- * the root error boundary, on the growth loop's own page, instead of saying
- * the service answered with something unreadable (TEN-216). The payload's
- * deep shape has one parser already (`sharePayloadSchema`), so this delegates
- * to it rather than re-spelling it.
- */
-export const sharedViewSchema = z.strictObject({
-  status: z.enum(SHARE_STATUSES),
-  createdAt: z.string(),
-  views: z.number(),
-  payload: sharePayloadSchema,
-});
-
-/** What `/s/<token>` renders. Inferred, so there is ONE definition. */
-export type SharedView = z.infer<typeof sharedViewSchema>;
-
-/** `GET /share/:token`. */
-export const shareViewResponseSchema = z.strictObject({ share: sharedViewSchema });

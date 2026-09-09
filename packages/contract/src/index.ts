@@ -104,13 +104,15 @@ export {
 } from "./share-url.js";
 export {
   needsHumanApproval,
-  shareViewResponseSchema,
-  sharedViewSchema,
   type OwnerShare,
   type PublishResult,
   type ShareRecord,
-  type SharedView,
 } from "./share.js";
+export {
+  shareViewResponseSchema,
+  sharedViewSchema,
+  type SharedView,
+} from "./share-view.js";
 export {
   credentialViewFrom,
   credentialViewSchema,

@@ -16,7 +16,7 @@ import { credentialViewSchema } from "./credential.js";
 import { galleryListingSchema, parseGalleryQuery } from "./gallery.js";
 import { profileSchema } from "./profile.js";
 import { aggregatesResponseSchema, progressResponseSchema } from "./progress.js";
-import { shareViewResponseSchema } from "./share.js";
+import { shareViewResponseSchema } from "./share-view.js";
 import type { ApiQueryParserName, ApiRouteKey } from "./routes.js";
 
 /**
