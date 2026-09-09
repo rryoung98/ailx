@@ -108,6 +108,30 @@ const packageJsons = files.filter(
 );
 const sources = files.filter((f) => /\.(ts|tsx|mjs|js)$/.test(f) && !f.includes("/node_modules/"));
 
+/**
+ * This file QUOTES the strings it bans — a fixture has to say them to prove
+ * the scan bites — so it names itself out of every source scan below. It is
+ * the one exemption, and it is spelled once.
+ */
+const GUARD_FILE = "packages/core/test/frontendOnly.test.ts";
+const scanned = sources.filter((f) => f !== GUARD_FILE);
+
+/** Source with comments removed: prose ABOUT a banned import is not one. */
+const code = (text: string): string =>
+  text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+/**
+ * Every server-side Clerk entrypoint a source imports, in any import form.
+ * `@clerk/nextjs` (the browser SDK) is allowed; `@clerk/nextjs/server` and
+ * every `@clerk/backend` path are not.
+ */
+const SERVER_AUTH_IMPORT =
+  /(?:from|import|require)\s*\(?\s*["'](@clerk\/nextjs\/server|@clerk\/backend(?:\/[^"']*)?)["']/g;
+
+function serverAuthImports(src: string): string[] {
+  return [...code(src).matchAll(SERVER_AUTH_IMPORT)].map((m) => m[1]!);
+}
+
 describe("the guard can see the repository", () => {
   // A walk that silently returned nothing would make every assertion below
   // pass over an empty list. Sentinels, not faith.
@@ -117,6 +141,10 @@ describe("the guard can see the repository", () => {
     expect(files).toContain("packages/report/src/index.ts");
     expect(packageJsons.length).toBeGreaterThan(5);
     expect(sources.length).toBeGreaterThan(100);
+    // The one self-exemption must name a file that is really there, or the
+    // scans below would silently include this file's own fixtures.
+    expect(files).toContain(GUARD_FILE);
+    expect(scanned.length).toBe(sources.length - 1);
   });
 });
 
@@ -196,6 +224,51 @@ describe("no second copy of the exam service", () => {
   });
 });
 
+/**
+ * TEN-227: the auth boundary is a rule about IMPORTS, not about a manifest.
+ *
+ * `@clerk/backend` was banned as a declared dependency, and `@clerk/nextjs`
+ * ships it transitively, so `import { auth } from "@clerk/nextjs/server"` put
+ * token verification one import away with nothing failing. AGENTS.md says this
+ * app verifies no token and holds no `CLERK_SECRET_KEY`: the exam service owns
+ * that decision, and a second verifier is a second security posture.
+ */
+describe("no server-side auth is reachable from this repo", () => {
+  it("imports no server-side Clerk entrypoint from any source", () => {
+    const offenders = scanned
+      .map((f) => [f, serverAuthImports(read(f))] as const)
+      .filter(([, hits]) => hits.length > 0)
+      .map(([f, hits]) => `${f} -> ${hits.join(", ")}`);
+    expect(offenders, "the exam service verifies the token, this repo does not").toEqual([]);
+  });
+
+  it("names a server-auth import in a page, whatever spelling it uses", () => {
+    // The fixture is the import the ban could not see.
+    expect(serverAuthImports('import { auth } from "@clerk/nextjs/server";')).toEqual([
+      "@clerk/nextjs/server",
+    ]);
+    expect(serverAuthImports("const { auth } = require('@clerk/nextjs/server')")).toEqual([
+      "@clerk/nextjs/server",
+    ]);
+    expect(serverAuthImports('import { createClerkClient } from "@clerk/backend";')).toEqual([
+      "@clerk/backend",
+    ]);
+    expect(serverAuthImports('export * from "@clerk/backend/internal";')).toEqual([
+      "@clerk/backend/internal",
+    ]);
+    expect(serverAuthImports('await import("@clerk/nextjs/server")')).toEqual([
+      "@clerk/nextjs/server",
+    ]);
+  });
+
+  it("lets the BROWSER SDK through, and does not fire on prose", () => {
+    // `<SignIn />` and `<SignUp />` are the whole point of the hosted build.
+    expect(serverAuthImports('import { SignUp } from "@clerk/nextjs";')).toEqual([]);
+    expect(serverAuthImports('vi.mock("@clerk/nextjs", () => ({}))')).toEqual([]);
+    expect(serverAuthImports("// never import @clerk/nextjs/server here")).toEqual([]);
+  });
+});
+
 describe("no API surface of its own", () => {
   it("has no `app/api/**` in any app", () => {
     const routes = files.filter((f) => /^apps\/[^/]+\/app\/api\//.test(f));
@@ -269,10 +342,6 @@ describe("no provider credential can reach a browser", () => {
       !f.endsWith(".test.ts") &&
       !f.endsWith(".test.tsx"),
   );
-
-  /** Source with comments removed: prose ABOUT a deleted slot is not a slot. */
-  const code = (text: string): string =>
-    text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
   it("reads a real set of sources", () => {
     expect(browserSources.length).toBeGreaterThan(50);
