@@ -469,6 +469,20 @@ describe("when the network fails under it", () => {
   });
 });
 
+describe("focus never falls to <body> mid-round (TEN-223)", () => {
+  it("does not drop focus on <body> when the answered card is unmounted", async () => {
+    await mount(true);
+    const stage = host.querySelector('[class*="stage"]')!;
+    await click(/AI-generated/);
+    expect(stage.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+    await click(/Next card/);
+    expect(host.querySelector('[class*="stage"]')!.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+  });
+
+});
+
 describe("static export build", () => {
   it("plays with no server at all and calls nothing", async () => {
     await mount(false);

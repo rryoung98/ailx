@@ -694,3 +694,29 @@ describe("the daily never touches the credential", () => {
     expect(resolveImport("app/daily/page.tsx", "@ailx/report")).toBeNull();
   });
 });
+
+describe("focus never falls to <body> mid-round (TEN-223)", () => {
+  const stage = (): HTMLElement => container.querySelector('[class*="stage"]') as HTMLElement;
+
+  it("keeps focus in the stage after a call and after Next card", () => {
+    mount();
+    const deck = dailyDeck(DAY, DAILY_POOL);
+    click(byText(deck[0].options[0]));
+    expect(stage().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+    click(byText("Next card"));
+    expect(stage().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+  });
+
+  it("keeps focus in the stage when a card with no picture is skipped", () => {
+    mount();
+    const img = container.querySelector("img");
+    if (img !== null) {
+      act(() => void img.dispatchEvent(new Event("error")));
+      click(byText("Skip this card"));
+      expect(stage().contains(document.activeElement)).toBe(true);
+      expect(document.activeElement?.tagName).toBe("BUTTON");
+    }
+  });
+});

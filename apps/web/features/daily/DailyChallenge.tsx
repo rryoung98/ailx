@@ -44,6 +44,7 @@ import { DAILY_POOL } from "../../lib/instrument/demoItems";
 import { readDailyLedger, recordDailyRoundLocally } from "./dailyState";
 import { funnel } from "../../lib/data/funnel";
 import { assetUrl, basePath } from "../../lib/mode";
+import { useFocusRecovery } from "../../lib/useFocusRecovery";
 import { ShareTargets } from "../../components/ShareTargets";
 import styles from "../../components/PracticeDrill.module.css";
 
@@ -84,6 +85,9 @@ export function DailyChallenge() {
   const [reload, setReload] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [justFinished, setJustFinished] = useState(false);
+  // Called before the controls in the stage are swapped, so focus lands on
+  // the next card's first control instead of on <body>.
+  const { stageRef, recoverFocus } = useFocusRecovery<HTMLDivElement>();
 
   // Mount: the device tells us the day, and the day tells us the deck.
   useEffect(() => {
@@ -132,7 +136,13 @@ export function DailyChallenge() {
     setAnswers(next);
     setStimulusFailed(false);
     setShowing("card");
-    if (next.length < deck.length) return;
+    // The round continues, so the button that was pressed — "Next card", or
+    // "Skip this card" — is replaced by the next card's calls. The finished
+    // round is the other case: it moves focus to its heading instead.
+    if (next.length < deck.length) {
+      recoverFocus();
+      return;
+    }
     const graded = deck.map((card, i) => gradeDailyCard(card, next[i]));
     finish({ day, number, results: graded }, deck.length);
   }
@@ -143,6 +153,7 @@ export function DailyChallenge() {
     // drill uses: a dealt deck nobody touched is not a play (docs/KPI.md).
     if (answers.length === 0) funnel().playStarted("daily");
     setAnswers([...answers, choice]);
+    recoverFocus();
     setShowing("feedback");
   }
 
@@ -190,7 +201,7 @@ export function DailyChallenge() {
   const called = showing === "feedback" ? answers[index - 1] : null;
 
   return (
-    <div className={styles.stage}>
+    <div ref={stageRef} className={styles.stage}>
       <p className={styles.progress}>
         <span aria-hidden style={{ fontSize: "1.2rem", letterSpacing: "0.08em" }}>
           {dailyGrid(results)}

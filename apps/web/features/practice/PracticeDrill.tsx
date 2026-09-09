@@ -55,6 +55,7 @@ import {
   type ClaimOutcome,
 } from "../../lib/data/localPractice";
 import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
+import { useFocusRecovery } from "../../lib/useFocusRecovery";
 
 import styles from "../../components/PracticeDrill.module.css";
 
@@ -219,10 +220,9 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   /** True once a card has been called: an unfinished round is never re-dealt. */
   const roundBegun = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  // Set when a control that had focus is about to be unmounted, so focus
+  // Called when a control that had focus is about to be unmounted, so focus
   // lands on the next card's first control instead of on <body>.
-  const [recoverFocus, setRecoverFocus] = useState(false);
+  const { stageRef, recoverFocus } = useFocusRecovery<HTMLDivElement>();
 
   const deal = useCallback(async () => {
     setPhase("loading");
@@ -304,14 +304,6 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
     if (phase === "done") headingRef.current?.focus();
   }, [phase]);
 
-  // A control that had focus was unmounted (a dropped card, a retried
-  // picture); put focus on the first control of what replaced it.
-  useEffect(() => {
-    if (!recoverFocus) return;
-    stageRef.current?.querySelector("button")?.focus();
-    setRecoverFocus(false);
-  }, [recoverFocus]);
-
   const index = played.length;
   const current = deck[index];
   const last = played[played.length - 1];
@@ -362,13 +354,16 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         },
       },
     ]);
+    // The call button the user just pressed is about to be unmounted with the
+    // rest of the card, exactly as it is on a drop.
+    recoverFocus();
     setPhase("feedback");
   }
 
   /** Give up on a card whose picture never arrived. It is never graded. */
   function drop(): void {
     if (current === undefined) return;
-    setRecoverFocus(true);
+    recoverFocus();
     advance([...played, { item: current, result: null }]);
   }
 
@@ -376,7 +371,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   function retryStimulus(): void {
     setStimulus("pending");
     setReload((n) => n + 1);
-    setRecoverFocus(true);
+    recoverFocus();
     shownAt.current = Date.now();
   }
 
@@ -454,6 +449,8 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   }
 
   function next(): void {
+    // Same as an answer: this button goes with the feedback it sits in.
+    recoverFocus();
     advance(played);
   }
 
