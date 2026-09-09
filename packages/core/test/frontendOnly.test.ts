@@ -30,6 +30,7 @@
  * repo as the source of truth. Between them there is exactly one copy of every
  * security-critical file, and one source of truth for every shared one.
  */
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -710,5 +711,72 @@ describe("no provider credential can reach a browser", () => {
     // anonymous path"). Deleting this would leave the Pages export unable to
     // call a model at all.
     expect(exists("services/openrouter-proxy")).toBe(true);
+  });
+});
+
+/**
+ * Agent and tooling SCRATCH may not be tracked in this repository.
+ *
+ * On 2026-09-09 an automated backlog pass merged `.agent-work/` onto `main`:
+ * 122 files of batch criteria, gate logs, a dump of Linear issue bodies, plans
+ * and model transcripts. No exam content and no key — and every guard in this
+ * repo passed, CORRECTLY. `bundleSecrecy` watches `apps/web/public`;
+ * `public-tree` watches `instruments/`. The files were in neither, because
+ * nothing here asks whether a file should exist AT ALL.
+ *
+ * This is deliberately a PATTERN BAN and not an allowlist of permitted
+ * top-level directories. An allowlist fires on legitimate work — a new
+ * package, a new docs tree — and the person it blocks is doing something
+ * correct and in a hurry, which is exactly the pressure that turns a guard
+ * into a formality (see the sentinel this file's own suite fixed in TEN-225).
+ * A pattern ban never fires on legitimate work, so it is never under pressure
+ * to be loosened, and it is honest about its scope: it catches THIS CLASS of
+ * accident, not "all unaccounted files". The general form — no unaccounted
+ * file anywhere — cannot know intent, becomes a list nobody maintains, and
+ * its green light means nothing within a year.
+ */
+const AGENT_SCRATCH = [
+  /(^|\/)\.agent-work(\/|$)/,
+  /(^|\/)\.claude(\/|$)/,
+  /(^|\/)\.codex(\/|$)/,
+  /(^|\/)\.cursor(\/|$)/,
+  /(^|\/)\.aider[^/]*(\/|$)/,
+  /(^|\/)\.windsurf(\/|$)/,
+  /(^|\/)\.continue(\/|$)/,
+  /(^|\/)\.opencode(\/|$)/,
+];
+
+describe("no agent or tooling scratch is tracked", () => {
+  it("tracks no path matching a known assistant-scratch directory", () => {
+    const tracked = execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
+      .split("\n")
+      .filter(Boolean);
+    const scratch = tracked.filter((f) => AGENT_SCRATCH.some((re) => re.test(f)));
+    expect(scratch, `agent scratch is tracked:\n${scratch.slice(0, 10).join("\n")}`).toEqual([]);
+  });
+
+  it("catches the exact shape that got through, at the root and nested", () => {
+    // The 2026-09-09 incident, and the same directory one level down, which is
+    // how it would arrive next: a per-worktree copy committed from a subdir.
+    for (const planted of [
+      ".agent-work/PLAN.md",
+      "apps/web/.agent-work/gate-d.log",
+      ".claude/settings.json",
+      "packages/core/.cursor/rules",
+    ]) {
+      expect(AGENT_SCRATCH.some((re) => re.test(planted)), planted).toBe(true);
+    }
+  });
+
+  it("does not fire on legitimate paths that merely look close", () => {
+    for (const ok of [
+      "docs/agent-work-notes.md",
+      "packages/core/src/agent.ts",
+      "apps/web/app/claude/page.tsx",
+      ".github/workflows/ci.yml",
+      ".gitignore",
+    ]) {
+      expect(AGENT_SCRATCH.some((re) => re.test(ok)), ok).toBe(false);
+    }
   });
 });
