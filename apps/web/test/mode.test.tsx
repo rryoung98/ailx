@@ -317,6 +317,24 @@ describe("footer rendering", () => {
     host.remove();
   });
 
+  /**
+   * Every surviving spelling of the ONE endpoint slot, in ONE assertion.
+   *
+   * There is one constant now (`@ailx/core`'s `MODEL_ENDPOINT_SLOT`) and the
+   * two track packages re-export it under their own historical name. Three
+   * separate per-package pins would let a t4 drift go red somewhere nobody
+   * reading the footer would look, so they are compared here, together.
+   */
+  it("is the same slot the T1 and T4 runners read", async () => {
+    const { MODEL_ENDPOINT_SLOT } = await import("@ailx/core");
+    const t1 = await import("@ailx/track-t1");
+    const t4 = await import("@ailx/track-t4");
+    expect([t1.LLM_BASE_URL_STORAGE, t4.LLM_BASE_URL_STORAGE]).toEqual([
+      MODEL_ENDPOINT_SLOT,
+      MODEL_ENDPOINT_SLOT,
+    ]);
+  });
+
 
 
 });
