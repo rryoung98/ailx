@@ -140,6 +140,15 @@ async function gatewayCall(
   // its status, the start and finish of a connect, a disconnect. None of them
   // runs a model, and none carries a candidate's work, so a panel waiting on
   // one gets the same bound a page's own data gets (TEN-210).
+  //
+  // TEN-212 bounded these routes here with their own AbortController, before
+  // TEN-210's central deadline landed on main. That second mechanism is gone:
+  // one timeout table, one helper. The one thing it did that this does not is
+  // hold the abort across the BODY read — `fetchWithDeadline` clears its timer
+  // when the response headers arrive, deliberately (see deadline.ts). A
+  // `json()` that stalls after headers is therefore still unbounded, which is
+  // a gap in the shared helper rather than a reason to keep a private timer
+  // in one call site. Filed as its own issue.
   const res = await fetchWithDeadline("read", `${apiBase()}${path}`, {
     ...init,
     cache: "no-store",

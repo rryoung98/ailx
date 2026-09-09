@@ -185,6 +185,10 @@ export function Runner(props: TrackUIProps) {
   // error offers a way forward (retry, or fall back to the offline demo
   // assist) instead of a dead end.
   const [failedPrompt, setFailedPrompt] = useState<string | null>(null);
+  // The cancel control for the call in flight (TEN-212). A model call has a
+  // deadline now, but a candidate on a clock should not have to wait out
+  // someone else's minute before typing something shorter.
+  const assistAbort = useRef<AbortController | null>(null);
   const [selfReport, setSelfReport] = useState(restored?.selfReport ?? "");
   const [submitted, setSubmitted] = useState(false);
   /**
@@ -376,6 +380,8 @@ export function Runner(props: TrackUIProps) {
       setFailedPrompt(null);
       return;
     }
+    const controller = new AbortController();
+    assistAbort.current = controller;
     setAssistBusy(true);
     setAssistError(null);
     setFailedPrompt(null);
@@ -402,7 +408,9 @@ export function Runner(props: TrackUIProps) {
         currentHtml: html,
         userPrompt: p,
       });
-      const text = await requestVibeCompletion(modelFetch, payload, effectiveBase);
+      const text = await requestVibeCompletion(modelFetch, payload, effectiveBase, {
+        signal: controller.signal,
+      });
       const nextHtml = extractHtmlFence(text);
       if (nextHtml === null) {
         setAssistError("The model reply contained no ```html document fence. Try rephrasing.");
@@ -439,9 +447,13 @@ export function Runner(props: TrackUIProps) {
       );
       setFailedPrompt(p);
     } finally {
+      assistAbort.current = null;
       setAssistBusy(false);
     }
   };
+
+  /** Give up on the call in flight. The prompt comes back with it. */
+  const stopAssist = () => assistAbort.current?.abort();
 
   const askAssist = () => {
     const p = assistPrompt.trim();
@@ -649,6 +661,18 @@ export function Runner(props: TrackUIProps) {
           >
             {assistBusy ? "Asking…" : "Send"}
           </button>
+          {/* Only while a real call is in flight: a stall has a 60s deadline
+              (TEN-212), and this is how a candidate on a clock takes that
+              minute back instead of watching a disabled button. */}
+          {assistBusy && realMode && (
+            <button
+              type="button"
+              className="t1-btn ghost"
+              onClick={stopAssist}
+            >
+              Stop
+            </button>
+          )}
         </div>
 
         </>
