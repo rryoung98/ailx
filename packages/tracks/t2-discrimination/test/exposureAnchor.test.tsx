@@ -39,7 +39,12 @@ let root: Root;
 let events: TrackEvent[];
 
 beforeEach(() => {
-  vi.useFakeTimers();
+  // `performance` is faked too: the exposure window is measured in wall clock
+  // (TEN-231), so a test clock that moves timers without moving
+  // `performance.now()` would freeze the countdown it is trying to advance.
+  vi.useFakeTimers({
+    toFake: ["performance", "Date", "setTimeout", "clearTimeout", "setInterval", "clearInterval"],
+  });
   events = [];
   container = document.createElement("div");
   document.body.appendChild(container);
