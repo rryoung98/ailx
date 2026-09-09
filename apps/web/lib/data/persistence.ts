@@ -362,6 +362,19 @@ class ServerMirror {
     };
   }
 
+  /**
+   * Wait for the serialized sync chain, then report where it got to.
+   *
+   * TEN-218 bounded this with a private `withDeadline(inflight, 12s)` and a
+   * `MIRROR_TIMEOUT_MS` of its own, before TEN-210's central deadline landed
+   * on main. Both are gone: one timeout table, one helper. Every request in
+   * a pass now carries `deadline(callClass)`, so the chain a caller (the T1
+   * site upload) awaits settles on its own — a hung POST aborts, the pass
+   * rejects, the failure handler runs, and `flush()` returns a `failed`
+   * status instead of never resolving. The bound is per REQUEST rather than
+   * per flush, which is the one behavioural difference: a pass making
+   * several requests can take the sum of their bounds.
+   */
   async flush(): Promise<SyncStatus> {
     await this.inflight;
     return this.status();

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { append, attestJudgments, SaveConflictError, ATTEMPT_KEY, type SequencedEntry, type SessionConfig } from "@ailx/session";
+import { CALL_TIMEOUT_MS } from "../lib/data/deadline";
 import {
   DEV_USER_KEY,
   DeckMismatchError,
@@ -537,5 +538,64 @@ describe("presented deck vs recorded deck", () => {
 describe("startServerAttempt", () => {
   it("returns null outside server mode — static showcase unchanged", async () => {
     await expect(startServerAttempt("en")).resolves.toBeNull();
+  });
+});
+
+/**
+ * TEN-218 — a mirror POST that HANGS rather than fails.
+ *
+ * `flush()` returns the serialized sync chain, and the T1 upload awaits it.
+ * With no deadline anywhere on the mirror, one request that never settles
+ * never settles the chain either: the candidate finishes the site they just
+ * built and the publish never starts, never fails, and cannot be retried.
+ *
+ * The bound is TEN-210's shared one (`CALL_TIMEOUT_MS.write`), not a private
+ * mirror timeout — this test was retargeted at it when the two fixes met.
+ */
+describe("a mirror request that never answers", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("settles flush() anyway, so what waits on it can proceed", async () => {
+    const storage = fakeStorage();
+    const signals: Array<AbortSignal | null | undefined> = [];
+    // A transport that accepts the connection and never answers — but which
+    // honours `signal`, as every real one does. The deadline is what turns
+    // "never" into a rejection here.
+    const fetchFn = ((_u: unknown, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return new Promise<Response>((_res, rej) => {
+        init?.signal?.addEventListener("abort", () => rej(init.signal?.reason), { once: true });
+      });
+    }) as unknown as typeof fetch;
+    const p = createApiPersistence(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn });
+    p.save(startedLog());
+    const settled = p.flush();
+    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write + 1_000);
+    // Settles with a STATUS rather than never — and the status says the pass
+    // failed, which is what a surface renders a retry from.
+    await expect(settled).resolves.toMatchObject({ failures: 1 });
+    // And the request behind it is bounded too, so the pass itself is not
+    // wedged for the rest of the sitting.
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  /**
+   * The ADJACENT path of the same class: the local write must still be
+   * authoritative while the mirror is stalled, so the candidate keeps working
+   * and the next pass re-sends from `syncedThrough`.
+   */
+  it("keeps saving locally while the mirror is stalled", async () => {
+    const storage = fakeStorage();
+    const fetchFn = ((_u: unknown, init?: RequestInit) =>
+      new Promise<Response>((_res, rej) => {
+        init?.signal?.addEventListener("abort", () => rej(init.signal?.reason), { once: true });
+      })) as unknown as typeof fetch;
+    const p = createApiPersistence(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn });
+    const log = startedLog();
+    p.save(log);
+    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write + 1_000);
+    expect(p.load()?.log).toEqual(log);
   });
 });
