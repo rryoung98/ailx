@@ -278,6 +278,38 @@ describe("the guard can see the repository", () => {
     for (const guard of GUARD_FILES) expect(files, `${guard} is exempted`).toContain(guard);
     expect(scanned.length).toBe(sources.length - GUARD_FILES.length);
   });
+
+  /**
+   * The exemption list must EARN each entry, or it becomes the door every
+   * future finding is walked out through.
+   *
+   * "Not a tests-are-exempt carve-out" was true of the two entries and
+   * enforced by nothing: the only conditions were that the path exists and the
+   * count matches, so anyone could append a test file with a plausible
+   * sentence and silence a real finding, all green. That is the TEN-225
+   * failure mode — a guard degraded into a formality — arriving through the
+   * door this list opened.
+   *
+   * So an entry must actually DO the thing the list exists for: quote a banned
+   * specifier, as a fixture, which is why it cannot be scanned. And because
+   * the exemption is per-FILE across every scan `scanned` feeds — wider than
+   * the stated reason — an entry must also be clean of the OTHER thing those
+   * scans look for. The cost of appending becomes "have a fixture that really
+   * trips the scan", not "write a sentence".
+   */
+  it("exempts only files that really do quote what they ban", () => {
+    for (const guard of GUARD_FILES) {
+      const src = read(guard);
+      expect(
+        serverAuthImports(src).length,
+        `${guard} is exempted from the auth-import scan but quotes no banned specifier — it does not need the exemption`,
+      ).toBeGreaterThan(0);
+      expect(
+        hasUseServerDirective(src),
+        `${guard} is exempted from every source scan, so it may not carry a real 'use server' directive`,
+      ).toBe(false);
+    }
+  });
 });
 
 describe("no second copy of the exam service", () => {
