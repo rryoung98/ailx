@@ -710,13 +710,26 @@ describe("focus never falls to <body> mid-round (TEN-223)", () => {
   });
 
   it("keeps focus in the stage when a card with no picture is skipped", () => {
+    // The deck is dealt deterministically from the fixture day, so WHICH
+    // card carries a picture is a fact about the fixture, not a condition
+    // this test may quietly skip on. A text card has no <img> to break, so
+    // the round is played forward to the first image card and the type is
+    // asserted before anything is broken.
+    const deck = dailyDeck(DAY, DAILY_POOL);
+    const at = deck.findIndex((card) => card.material.kind === "image");
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(at).toBeLessThan(deck.length - 1); // "Skip" must leave a card behind
     mount();
-    const img = container.querySelector("img");
-    if (img !== null) {
-      act(() => void img.dispatchEvent(new Event("error")));
-      click(byText("Skip this card"));
-      expect(stage().contains(document.activeElement)).toBe(true);
-      expect(document.activeElement?.tagName).toBe("BUTTON");
+    for (let i = 0; i < at; i++) {
+      click(byText(deck[i].options[0]));
+      click(byText("Next card"));
     }
+    expect(deck[at].material.kind).toBe("image");
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    act(() => void img!.dispatchEvent(new Event("error")));
+    click(byText("Skip this card"));
+    expect(stage().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
   });
 });
