@@ -1,0 +1,398 @@
+Reading additional input from stdin...
+2026-09-09T20:52:52.124410Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:3845/mcp)")))
+OpenAI Codex v0.153.4
+--------
+workdir: /Users/rickyyoung/GitHub/resilience
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: low
+reasoning summaries: none
+session id: 01a087f1-e1aa-7670-8996-0907d69a49da
+--------
+user
+Review this work plan critically. It plans automated multi-agent work on a 165-issue Linear backlog across three repos. The current repo is /Users/rickyyoung/GitHub/resilience (public frontend, see AGENTS.md).
+
+Judge: (1) is the batching safe against file conflicts, (2) is the "definition of done" a real reward signal or a rubber stamp, (3) what will break when 6 agents run in parallel on one git repo, (4) what is missing. Be blunt and specific. Max 400 words.
+
+PLAN:
+# Linear backlog work plan (165 open issues)
+
+## 1. Where the issues actually live
+Triage of every open Linear issue in team Tenken, by the file paths quoted in the issue body.
+
+| repo | local checkout | issues | note |
+|---|---|---|---|
+| resilience (public frontend) | ~/GitHub/resilience | 48 | the working repo |
+| ailx-backend (private) | ~/GitHub/ailx-backend | 25 | handlers, store, judging, terraform |
+| ailx-admin (ops dashboard) | ~/GitHub/ailx-admin | 22 | /board, /people, /analytics, lib/linearBoard.ts |
+| strategy / research / product decisions | none | 70 | needs a founder decision, not a diff |
+
+Only the first three are code work. The 70 strategy issues (TEN-41, 75-105, 157-179, rename TEN-134..142)
+are excluded from the automated loop: they are positioning, funding, study design and
+naming decisions. They are listed at the end as a human decision queue.
+
+## 2. Frontend batches (this repo), grouped so two workers never touch one file
+
+| batch | issues | main files |
+|---|---|---|
+| A exam-runtime | TEN-207 211 219 224 232 116 118 127 115 | apps/web/app/exam/page.tsx (single owner, sequential) |
+| B transport | TEN-212 213 214 216 217 218 229 230 123 124 122 | apps/web/lib/data/*, lib/auth/identityState.ts |
+| C report-surface | TEN-215 221 233 234 235 120 119 190 181 | app/report, features/report, packages/report |
+| D guards | TEN-225 226 227 228 236 180 | packages/core/test/frontendOnly.test.ts, bundleSecrecy, public-tree |
+| E interaction | TEN-222 223 231 | globals.css, PracticeDrill, t2 Runner |
+| F funnel+copy | TEN-144 150 151 121 | lib/data/funnel.ts, lib/mode.ts, docs/KPI.md |
+| G verify-first | TEN-128 129 132 130 154 | already In Review: confirm state before writing code |
+
+Batch A is the highest-risk cluster: nine issues in one 1000+ line page component. It gets one
+worker and no parallelism.
+
+## 3. Definition of done (the reward signal)
+Every issue body ends with a "How to know it is fixed" line. That line is the per-issue reward.
+The repo gates are the global reward:
+1. `pnpm test` (one vitest for the monorepo, worker pool 4)
+2. `pnpm -r build` (both build modes)
+3. `pnpm lint` (Biome; an error fails, a warning is carried debt)
+4. a NEW test that fails before the fix and passes after it (required, per AGENTS.md)
+
+Score for one attempt: 0 if any gate fails, else 1 per issue whose stated criterion is met by a
+committed test. No partial credit for "looks right".
+
+## 4. Reinforcement loop
+Per batch:
+- roll out: a subagent works the batch on its own branch/worktree
+- evaluate: run the gates + the per-issue criterion
+- reward: pass/fail per issue, plus gate output
+- credit assignment: a failed gate becomes a NEW Linear-shaped task with the exact failure
+- policy update: the failure text is written back into the next batch prompt, and repeated
+  failures become a harness memory so later workers do not repeat them
+- recurse: a worker that cannot close an issue spawns its own child for the narrow blocker
+
+Stop conditions: 3 failed rollouts on one batch, or a batch that needs a product decision.
+Those escalate to the human queue instead of looping.
+
+## 5. Order
+1. Batch G (verify what is already fixed) - cheapest, prevents duplicate work
+2. Batches D, F, E in parallel (small, low conflict)
+3. Batches B and C in parallel
+4. Batch A alone
+5. ailx-backend and ailx-admin repos, same loop, after the frontend gates are green
+
+## 6. Human decision queue (not automated)
+TEN-41 founder decision; TEN-171/172/174/175/177 pivot; TEN-159/160/161/162/164/165/167/169/170
+instrument validity; TEN-93/94/96/97/102 go-to-market; TEN-134..142 the Foray rename window.
+2026-09-09T20:52:52.380631Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:3845/mcp)")))
+2026-09-09T20:52:53.862059Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:3845/mcp)")))
+warning: Skill descriptions were shortened to fit the skills context budget. Codex can still see every skill, but some descriptions are shorter. Disable unused skills or plugins to leave more room for the rest.
+codex
+I’ll check the repo’s build and contribution rules against the plan. I’m using the unslop skill to keep the critique direct.
+exec
+/bin/zsh -lc 'cat /Users/rickyyoung/.agents/skills/pstack-unslop/SKILL.md CONTRIBUTING.md apps/web/AGENTS.md package.json' in /Users/rickyyoung/GitHub/resilience
+ succeeded in 0ms:
+---
+name: unslop
+description: Cut AI tells from any writing. Must always apply.
+---
+
+# Unslop
+
+Edit text to remove AI patterns and add human voice.
+
+## Process
+
+1. Scan for the patterns below.
+2. Rewrite. Preserve meaning, match intended tone.
+3. Add soul (see next section).
+4. Self-audit: "What makes this obviously AI generated?" Fix remaining tells.
+
+## Adding soul
+
+Removing patterns is half the job. Sterile, voiceless writing is just as obvious.
+
+- **Have opinions.** React to facts instead of neutrally listing pros and cons.
+- **Vary rhythm.** Short sentences. Then longer ones that take their time. Mix it up.
+- **Acknowledge complexity.** "Impressive but also kind of unsettling" beats "impressive."
+- **Use "I" when it fits.** First person isn't unprofessional.
+- **Let some mess in.** Perfect structure looks machine-made.
+- **Be specific.** Not "this is concerning" but "there's something unsettling about agents churning away at 3am."
+
+## Patterns to detect and fix
+
+### Content
+
+1. **Puffery.** "pivotal moment", "testament to", "evolving landscape", "setting the stage for", "indelible mark", "deeply rooted". Cut puffery, state what happened.
+2. **Name-dropping.** Listing media outlets without context. Pick one, say what was said.
+3. **Superficial -ing phrases.** "highlighting...", "ensuring...", "reflecting...", "showcasing...", "fostering...". Delete or expand with real sources.
+4. **Promotional language.** "nestled", "vibrant", "breathtaking", "groundbreaking", "renowned", "stunning", "must-visit". Use neutral descriptions.
+5. **Vague attributions.** "Experts believe", "Industry reports suggest", "Some critics argue". Name the source or delete.
+6. **Formulaic challenges.** "Despite challenges... continues to thrive." Replace with specific facts.
+
+### Language
+
+7. **AI vocabulary.** Additionally, crucial, delve, enduring, enhance, fostering, garner, interplay, intricate, landscape (abstract), pivotal, showcase, tapestry (abstract), testament, underscore, vibrant. Replace with plain words.
+8. **Fancy ways to say "is".** "serves as", "stands as", "boasts", "features". Just say "is" or "has".
+9. **"Not just X, but Y."** State the point directly instead.
+10. **Rule of three.** Forcing ideas into groups of three. Use the natural number.
+11. **Synonym cycling.** Protagonist, main character, central figure, hero all in one paragraph. Pick one, repeat it.
+12. **False ranges.** "from X to Y" where X and Y aren't on a meaningful scale. List topics directly.
+
+### Style
+
+13. **Em dash overuse.** Avoid em dashes entirely. Use periods or commas only (no parentheses, no en dashes, no hyphen-as-dash substitutes). Em dashes are an AI tell, and reaching for parentheses instead just trades one tell for another. If a thought needs separation, end the sentence or use a comma.
+14. **Colon overuse.** Colons are fine before a list or example. Not as mid-sentence connectors. "If you're coming from traditional automation: instead of registering event handlers, you describe conditions" adds nothing with the colon. Rewrite to let the point stand on its own without comparison framing. "Describing when the scheduler should fire works best as plain English." Same meaning, no crutch punctuation.
+15. **Boldface overuse.** Don't bold every proper noun or acronym.
+16. **Inline-header lists.** The tell is a bold label and colon that restates the line: "**Performance:** Performance improved...". Convert those to prose. A bold lead-in that ends in a period, names the item, and is followed by genuinely new detail ("**Schema in TypeScript.** Tables live in one file.") is fine, not a tell.
+17. **Title case headings.** Use sentence case.
+18. **Decorative emojis.** Remove from headings and bullets.
+19. **Curly quotes.** Replace with straight quotes.
+
+### Communication artifacts
+
+20. **Chatbot phrases.** "I hope this helps!", "Let me know if...", "Of course!", "Certainly!", "Found the smoking gun!" Remove.
+21. **Cutoff disclaimers.** "While specific details are limited..." Find sources or remove.
+22. **Sycophantic tone.** "Great question! You're absolutely right!" Respond directly.
+
+### Filler
+
+23. **Filler phrases.** "In order to" becomes "To". "Due to the fact that" becomes "Because". "It is important to note that" gets deleted.
+24. **Excessive hedging.** "could potentially possibly be argued that it might" becomes "may".
+25. **Generic conclusions.** "The future looks bright." State specific plans or facts.
+
+### Jargon
+
+26. **Abstract metaphor nouns.** Substrate, wedge, vector, locus, vantage, nexus, primitive (as noun), harness (as metaphor), surface (as in "API surface"), bedrock, scaffolding (as metaphor), modality, paradigm, gold-plating, ratchet (as metaphor), evacuate (for moving code), endgame, north star, flywheel. These read as technical but usually have a plainer concrete word. "Substrate" becomes "base". "Wedge in" becomes "add". "Vector" becomes "way" or "method". "Gold-plating" becomes "more than the job needs". "Ratchet" becomes the mechanism's real name or "a limit that only tightens". "Evacuate" becomes "move out". "Endgame" becomes "the last phase". Pick the concrete word.
+
+### Plain speech
+
+27. **Say what it does, not how it feels.** "the database stays close at hand", "SQL you can read", "types that follow your schema" name a feeling. The fix names the mechanism or a number: "`.toSQL()` returns the exact string sent to the database", "a column rename fails the build". Ask what the sentence tells the reader to do or know, then write that. If you can't restate it as a concrete instruction, fact, or number, cut it. One more check: if the sentence could appear unchanged in another project's docs, it says nothing about this one. Cut it.
+28. **Shorten or split dense sentences.** If the reader has to backtrack to parse a sentence, break it in two or drop clauses. One idea per sentence.
+29. **Active voice.** Prefer it. Catch "is/are/was/were + past participle" and name the actor: "queries are validated" becomes "the compiler validates queries", "the file is parsed by the loader" becomes "the loader parses the file". Passive is fine only when the actor is unknown or genuinely doesn't matter.
+30. **Cut adverbs, or use a stronger verb.** "runs quickly" becomes "is fast" or the number. "significantly improves" becomes the measured delta. An adverb propping up a weak verb means the verb is wrong.
+31. **Prefer the plain word.** "utilize" becomes "use", "leverage" becomes "use", "facilitate" becomes "help", "numerous" becomes "many", "in the event that" becomes "if". The fancier synonym is rarely clearer.
+# Contributing
+
+Branch → PR → green CI → merge → auto-deploy. `main` is protected; push it through a PR.
+
+## Branch and PR
+
+- Branch off `main`, named `w/<topic>`. A Linear id is a fine topic: `w/ten-156`.
+- Open the PR against `main`. Nobody pushes `main` directly.
+- Keep commits small. Commit titles are not linted — the history is mixed and a
+  regex gate would fail real PRs — so write a title a reviewer can read.
+
+## The merge gate
+
+`.github/workflows/ci.yml` runs three jobs, and **their names are the branch
+protection contract**: `lint`, `verify`, `e2e`. Renaming one silently ungates the
+repository.
+
+| job | what it is |
+|---|---|
+| `lint` | Biome over the tree. No `needs:` — a lint error should not wait 20 minutes behind a build. Errors fail; the `warn` rules in `biome.jsonc` are carried debt (`docs/DEBT.md`). |
+| `verify` | install, `pnpm -r build`, the `AILX_BACKEND=1` server build, `pnpm test:coverage`. |
+| `e2e` | Playwright against a running exam service. `needs: verify`. |
+
+**A new gate is a SIBLING of `e2e` with `needs: verify`, never a chain after
+Playwright.** The two are independent and must fail independently. Chaining a
+third job behind `e2e` hides it whenever the browser suite is red or skipped.
+
+`codeql` and Dependabot run outside the merge gate.
+
+On merge, `pages` runs only after `ci` succeeds on that commit: it rebuilds the
+static export, stamps `/version.json`, deploys to GitHub Pages, and tags the
+commit `build-<UTC date>-<short sha>`. Nothing is published to a registry.
+
+## `pnpm -r build` IS the typecheck
+
+There is deliberately no `type-check` script. Every package's `build` is
+`tsc -p tsconfig.json`, and `next build` typechecks `apps/web`. A standalone
+`tsc --noEmit` pass would compile the same sources twice for the same
+diagnostics. The comment that says so lives on the build step in
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml); do not add the script.
+
+## Before you push
+
+```sh
+pnpm install
+AILX_TEST_FORKS=2 pnpm test    # one vitest for the whole monorepo
+pnpm -r build                  # the typecheck
+```
+
+Run the static build and the `AILX_BACKEND=1` build **sequentially**, with
+`rm -rf apps/web/.next` between them. Two concurrent `next build`s into the same
+`.next` fail with errors that name nothing real.
+
+### Local hooks
+
+`lefthook.yml` installs two hooks with `pnpm exec lefthook install`:
+
+- **pre-commit** — Biome on the staged files. Fast enough to keep.
+- **pre-push** — `pnpm test`. Skip it on a draft with `LEFTHOOK=0 git push`.
+
+`pnpm -r build` is not a hook. It is CI's `verify` job, and a twenty-minute hook
+is a hook people learn to skip.
+
+## Shared packages flow one way
+
+`core`, `contract`, `report` and `session` are **edited here** and synced into
+the private `ailx-backend` repository, which vendors a copy and compares it byte
+for byte on every PR (`pnpm sync:shared:check` there). Never fix one of these
+packages in the backend repo and copy it back.
+
+## This tree is a frontend
+
+The exam service — HTTP handlers, the append-only store, auth, and the
+operational item bank — lives in the private `ailx-backend` repository. So a PR
+here may not add:
+
+- an `app/api/**` route (there is exactly one route handler, `app/s/[token]/card.png`, allowed by name);
+- a `pg`, `node-pg-migrate` or `@clerk/backend` dependency, a `db/` directory or a server request adapter;
+- any operational bank content: keyed items, judge prompts, rubric marking detail, T1/T3/T4 `form.json`.
+
+Two tests enforce it, and they are not advisory:
+
+- `packages/core/test/frontendOnly.test.ts` — the dependency, route and import rules above, and it also fails if something a browser legitimately needs goes missing.
+- `packages/content-tools/test/public-tree.test.ts` — the content tree. `instruments/demo-2026.1` is the only instrument here, and it must stay redacted.
+
+`apps/web/test/bundleSecrecy.test.ts` guards `apps/web/public/**`: every file
+there must be named by a committed manifest or by a frozen list in that test.
+
+## Environment
+
+`apps/web/.env.example` lists what the frontend reads. Secrets for the exam
+service, the bank and Clerk belong in the private repo — never in this tree.
+# AGENTS.md — `apps/web`
+
+The Next.js frontend. Read the root [`AGENTS.md`](../../AGENTS.md) first: the
+repository split, the commands and the core invariants are there, and they still
+apply. Read [`FRONTEND.md`](../../FRONTEND.md) before touching this code.
+
+## Two build modes
+
+This app builds twice, and drift between the two is invisible unless both run.
+
+- Unset — the static export for GitHub Pages. No API surface at all. Output in `apps/web/out`.
+- `AILX_BACKEND=1` — adds `page.api.tsx` / `route.api.ts` to `pageExtensions`, i.e. the seven database-reading PAGES and the one Open Graph card route. Client chunks in `apps/web/.next/static`.
+
+- Run the static build and `AILX_BACKEND=1 pnpm --filter @ailx/web build` SEQUENTIALLY. Two concurrent `next build`s into `apps/web/.next` fail with a bogus "Cannot find module for page". Also run `rm -rf apps/web/.next` between the builds. A build over the OTHER mode's leftover output failed twice on 2026-09-01. One failure reported a prerender "Cannot read properties of undefined (reading 'call')". The other reported a missing `next-font-manifest.json`. Neither error names the real cause.
+- A green `next build` is NOT a green deploy. Vercel traces server files AFTER the build prints "Done", and that step is where every Production deployment failed until 2026-09-03 (docs/DEPLOY.md §6.1). Prove a deploy locally with `cd apps/web && rm -rf .next .vercel/output && AILX_BACKEND=1 npx vercel build --prod`. `.github/workflows/deploy-status.yml` fails a run when Vercel reports a failed Production deployment, so a dead staging site is visible without anyone looking.
+
+## `next dev`
+
+Never run `next dev` in `apps/web` while anyone is testing. It leaves unminified dev chunks in `.next/static`, and `test/bundleSecrecy.test.ts` greps that exact directory. The failure is a false positive, but it is indistinguishable from a real leak until you know.
+
+## Bundle secrecy
+
+`test/bundleSecrecy.test.ts` greps the BUILT client assets of both modes for
+operational answer-key material, and it guards `apps/web/public/**`: every file
+there must be named by a committed manifest (the released-practice snapshot, the
+practice corpus, the character manifest) or by one of two frozen lists in that
+test. An asset cannot arrive unremarked. It scanned only build output until
+TEN-117, which is how 50 undealt `t2-media` files came to ship.
+
+The sister gate is `test/bundleBudget.test.ts` — total client JS, the shared
+bytes, and eight named pages, budgeted in BOTH modes. It skips the mode it
+cannot see, so it is free in a run with no build output. Re-measure by running
+either build and reading the failure, which prints measured bytes next to the
+budget. See [`docs/DEPS.md`](../../docs/DEPS.md).
+
+## Playwright
+
+`pnpm --filter @ailx/web e2e` — Playwright (FRONTEND.md §6). This command is deliberately outside `pnpm test`. It boots the frontend but needs a RUNNING EXAM SERVICE. Set `AILX_E2E_API_BASE` to a throw-away `services/api` from the private repo (never staging — every spec appends rows). It has no default, on purpose. Guessing localhost makes a suite that seeds nothing look like it passed. Only the seeding specs skip without it; the measurement specs still run. See `apps/web/e2e/README.md`.
+
+The e2e suite always boots its own server. `AILX_E2E_REUSE_SERVER=1` reuses whatever is already on the port for a fast inner loop — and then YOU own what is on that port. It is opt-in because a next-server orphaned by a dead agent once held 3210 for a day and the suite silently tested it, green.
+
+## Frontend environment (`apps/web`)
+
+This app is a frontend. The exam service owns the database, the auth mode, the
+snapshot store, the reviewer allowlist, the connection pool and the GitHub export.
+See the PRIVATE repo's README §3. If you want to set `DATABASE_URL` here, run
+`services/api` instead.
+
+- `AILX_BACKEND=1` — add `page.api.tsx` / `route.api.ts` to `pageExtensions`, i.e. build the
+  seven database-reading PAGES and the one Open Graph card route. Unset = the static Pages
+  export, which has none of them. It no longer compiles any API route, because there are none.
+- `NEXT_PUBLIC_AILX_API_BASE` — the exam service's absolute origin (Cloud Run). Read in exactly
+  ONE place, `apps/web/lib/mode.ts` (`apiBase()`, `siteApiRoot()`, `siteHref()`); a test fails
+  the build if a second module reads it. Unset, the app has no backend and the pages that need
+  one say so honestly. Cross-origin the `ailx_dev_user` cookie is NOT sent — identity rides the
+  header from `apps/web/lib/data/authHeaders.ts`. See docs/ARCHITECTURE.md §10.1.
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — Clerk's publishable key. Publishable BY DESIGN (it is
+  baked into the client bundle) but it still goes in env, not the tree: see `apps/web/.env.example`.
+  Read in exactly ONE place, `apps/web/lib/mode.ts` (`isClerkEnabled()`), and by Clerk's own SDK.
+  Mounting needs BOTH this key and `AILX_BACKEND=1`, so a hosted deploy without it keeps working on
+  the asserted dev identity — every page that only READS an identity does — and the static export
+  never mounts a provider at all: `next.config.mjs` even resolves `@clerk/nextjs` to a stub there,
+  so the Pages bundle carries no auth SDK. That sentence used to stop one clause too early. Nothing
+  removes the ROUTES, so `/sign-in` and `/sign-up` compile whenever `AILX_BACKEND=1`, and they
+  render Clerk components that call `useSession` and throw without a provider: a keyless deploy
+  worked everywhere except the two screens that exist to serve the missing thing (TEN-155). So both
+  routes now 404 unless `isClerkEnabled()`, the nav link is gated on the same predicate, and
+  `test/clerkMount.test.tsx` pins the pair — a deploy that forgets the key must degrade, never
+  crash.
+  There is deliberately no `CLERK_SECRET_KEY` here: this app verifies no token. It sends the JWT to
+  the exam service, which is the only thing that checks it. See docs/ARCHITECTURE.md §10.2.
+- `NEXT_PUBLIC_BASE_PATH` — GitHub Pages subpath prefix.
+- `AILX_PUBLIC_ORIGIN` — the origin browsers actually reach, e.g. `https://ailx.example`. Used by
+  `generateMetadata` for absolute Open Graph URLs. Must be a bare absolute http(s) origin.
+- `AILX_TRUST_PROXY=1` — fall back to `x-forwarded-proto`/`x-forwarded-host` when
+  `AILX_PUBLIC_ORIGIN` is unset. Only when a trusted proxy always overwrites those headers;
+  otherwise they are attacker-controlled (host-header injection).
+- `AILX_E2E_API_BASE` — Playwright only: the exam service the suite drives. No default, and no
+  staging (every spec appends rows). `AILX_E2E_BASE_URL` / `AILX_E2E_PORT` pick the frontend
+  under test.
+{
+  "name": "ailx",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run --workspace vitest-workspace.ts",
+    "test:coverage": "vitest run --workspace vitest-workspace.ts --coverage",
+    "test:reap": "pgrep -P 1 -f vitest | xargs kill 2>/dev/null; true",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.11",
+    "@vitest/coverage-v8": "^2.1.0",
+    "jsdom": "^25.0.1",
+    "lefthook": "^2.1.12",
+    "vitest": "^2.1.0"
+  }
+}
+
+codex
+I would not launch this as written. Worktrees are a sound starting point, but the plan overstates conflict safety and understates verification.
+
+1. **The batching does not prove file independence.** B’s `lib/data/*` includes F’s `lib/data/funnel.ts`. Those run in different waves, so that overlap is manageable only after integration. “Main files” excludes shared tests, imports, manifests, snapshots, configuration and lockfiles. D’s guards constrain every other batch, even without overlapping edits. Build an issue dependency map and explicit file ownership, with a coordinator approving scope expansion. Separate files can still implement incompatible assumptions.
+
+2. **The reward is vulnerable to self-grading.** The implementer can write a test that confirms its own mistaken interpretation. Freeze acceptance criteria before implementation; require independent review and evidence that the test fails on the baseline for the intended reason. Protect guards against weakening. AGENTS.md requires coverage, not literally a new regression test for every issue.
+
+   The gates are also wrong. `pnpm -r build` does **not** build both modes. [Repository instructions](/Users/rickyyoung/GitHub/resilience/apps/web/AGENTS.md) require a separate hosted build, sequentially, cleaning `.next` between modes. Run tests **after** both builds; otherwise bundle checks can skip missing artifacts. The plan omits coverage and the required `e2e` gate.
+
+3. **Six agents need six isolated worktrees, not six branches in one checkout.** A shared checkout means shared HEAD, index, files and build output: agents can commit each other’s changes, erase edits or test another worker’s code. Worktrees resolve those particular hazards, but still need unique branches, ports and disposable backend databases. Six four-fork test runs mean up to 24 Vitest workers, plus builds. Cap verification concurrency separately. Recursive children must inherit that cap. Give one coordinator merge ownership and rerun gates on each integrated result.
+
+4. **The inventory and execution controls are incomplete.** Frontend batches total **47**, not 48. The displayed human queue contains 26 distinct IDs, not 70. Reconcile an exhaustive issue manifest before scheduling. File paths quoted in tickets are insufficient ownership evidence. Shared packages must flow frontend → backend through verified sync; “backend after frontend” ignores API dependencies.
+
+   Add baseline-failure classification, bounded child depth and total cost, cancellation/process cleanup, PR review, rollback and deployment checks. A failed gate is initially evidence about the current attempt, not automatically a new backlog task. Close issues only against reviewed, integrated commit evidence.
+tokens used
+20,267
+I would not launch this as written. Worktrees are a sound starting point, but the plan overstates conflict safety and understates verification.
+
+1. **The batching does not prove file independence.** B’s `lib/data/*` includes F’s `lib/data/funnel.ts`. Those run in different waves, so that overlap is manageable only after integration. “Main files” excludes shared tests, imports, manifests, snapshots, configuration and lockfiles. D’s guards constrain every other batch, even without overlapping edits. Build an issue dependency map and explicit file ownership, with a coordinator approving scope expansion. Separate files can still implement incompatible assumptions.
+
+2. **The reward is vulnerable to self-grading.** The implementer can write a test that confirms its own mistaken interpretation. Freeze acceptance criteria before implementation; require independent review and evidence that the test fails on the baseline for the intended reason. Protect guards against weakening. AGENTS.md requires coverage, not literally a new regression test for every issue.
+
+   The gates are also wrong. `pnpm -r build` does **not** build both modes. [Repository instructions](/Users/rickyyoung/GitHub/resilience/apps/web/AGENTS.md) require a separate hosted build, sequentially, cleaning `.next` between modes. Run tests **after** both builds; otherwise bundle checks can skip missing artifacts. The plan omits coverage and the required `e2e` gate.
+
+3. **Six agents need six isolated worktrees, not six branches in one checkout.** A shared checkout means shared HEAD, index, files and build output: agents can commit each other’s changes, erase edits or test another worker’s code. Worktrees resolve those particular hazards, but still need unique branches, ports and disposable backend databases. Six four-fork test runs mean up to 24 Vitest workers, plus builds. Cap verification concurrency separately. Recursive children must inherit that cap. Give one coordinator merge ownership and rerun gates on each integrated result.
+
+4. **The inventory and execution controls are incomplete.** Frontend batches total **47**, not 48. The displayed human queue contains 26 distinct IDs, not 70. Reconcile an exhaustive issue manifest before scheduling. File paths quoted in tickets are insufficient ownership evidence. Shared packages must flow frontend → backend through verified sync; “backend after frontend” ignores API dependencies.
+
+   Add baseline-failure classification, bounded child depth and total cost, cancellation/process cleanup, PR review, rollback and deployment checks. A failed gate is initially evidence about the current attempt, not automatically a new backlog task. Close issues only against reviewed, integrated commit evidence.

@@ -93,12 +93,27 @@ const BANNED_PACKAGES: readonly string[] = ["@ailx/backend", "@ailx/instrument"]
  * which are the short, stable list.
  */
 const BROWSER_AUTH_MODULES: readonly RegExp[] = [
-  /^@clerk\/nextjs$/, // the subpath `@clerk/nextjs/server` is NOT this
+  // `@clerk/nextjs@7.9.2` publishes `.`, `./types`, `./errors`, `./legacy`,
+  // `./server`, `./internal`, `./webhooks` and `./experimental`. Two of those
+  // subpaths are browser halves — `./errors` is the client-component helper
+  // for a failed sign-in — and the rest, `./server` first among them, are not.
+  /^@clerk\/nextjs(\/(errors|types))?$/,
+  /^@clerk\/elements(\/.*)?$/, // headless browser UI, no secret key
   /^@clerk\/(clerk-react|clerk-js|themes|localizations|types|shared)(\/.*)?$/,
 ];
 
+/**
+ * `@clerk/backend` is banned by LITERAL as well as by capability. The rule
+ * above is deny-by-default with an allowlist, and one over-wide entry in that
+ * allowlist would unban the whole namespace without a single failure. The
+ * literal is checked FIRST, so the package that verifies a token with
+ * `CLERK_SECRET_KEY` cannot be let in by accident.
+ */
+const SERVER_AUTH_LITERALS: readonly RegExp[] = [/^@clerk\/backend(\/.*)?$/];
+
 const isServerAuthModule = (spec: string): boolean =>
-  /^@clerk\//.test(spec) && !BROWSER_AUTH_MODULES.some((re) => re.test(spec));
+  SERVER_AUTH_LITERALS.some((re) => re.test(spec)) ||
+  (/^@clerk\//.test(spec) && !BROWSER_AUTH_MODULES.some((re) => re.test(spec)));
 
 /**
  * A DATABASE is banned by CAPABILITY, not by name (TEN-226).
@@ -409,6 +424,90 @@ describe("no server-side auth is reachable from this repo", () => {
     expect(serverAuthImports('import type { UserResource } from "@clerk/types";')).toEqual([]);
     expect(serverAuthImports('vi.mock("@clerk/nextjs", () => ({}))')).toEqual([]);
     expect(serverAuthImports("// never import @clerk/nextjs/server here")).toEqual([]);
+  });
+
+  /**
+   * `@clerk/nextjs` is ONE package with EIGHT published entrypoints, and the
+   * capability rule cannot guess which half a subpath is. Checked against the
+   * registry rather than reasoned about: `@clerk/nextjs@7.9.2` publishes `.`,
+   * `./types`, `./errors`, `./legacy`, `./server`, `./internal`, `./webhooks`
+   * and `./experimental`. `./errors` is the documented CLIENT-component helper
+   * for rendering a failed sign-in and `./types` is types — both are browser
+   * halves, and the exact `/^@clerk\/nextjs$/` denied both. A legitimate
+   * browser import would have failed the build with a message about
+   * server-side token verification, which says nothing to whoever hit it.
+   *
+   * So the split is asserted subpath by subpath, allowed AND denied, because
+   * the boundary is now the only thing between a real browser package and a
+   * failed build. It is pinned, not implied.
+   */
+  it("splits @clerk/nextjs by its published subpaths, browser half from server half", () => {
+    // ALLOWED: the browser halves.
+    expect(
+      serverAuthImports('import { isClerkAPIResponseError } from "@clerk/nextjs/errors";'),
+    ).toEqual([]);
+    expect(serverAuthImports('import type { SessionResource } from "@clerk/nextjs/types";')).toEqual(
+      [],
+    );
+
+    // DENIED: every remaining published subpath, each named.
+    expect(serverAuthImports('import { auth } from "@clerk/nextjs/server";')).toEqual([
+      "@clerk/nextjs/server",
+    ]);
+    expect(serverAuthImports('import { x } from "@clerk/nextjs/internal";')).toEqual([
+      "@clerk/nextjs/internal",
+    ]);
+    expect(serverAuthImports('import { verifyWebhook } from "@clerk/nextjs/webhooks";')).toEqual([
+      "@clerk/nextjs/webhooks",
+    ]);
+    expect(serverAuthImports('import { x } from "@clerk/nextjs/experimental";')).toEqual([
+      "@clerk/nextjs/experimental",
+    ]);
+    // `./legacy` re-exports the old default-export surface, server half and
+    // all, so it stays denied with the rest.
+    expect(serverAuthImports('import { x } from "@clerk/nextjs/legacy";')).toEqual([
+      "@clerk/nextjs/legacy",
+    ]);
+  });
+
+  it("lets @clerk/elements through and keeps @clerk/testing out, for stated reasons", () => {
+    // `@clerk/elements` is unstyled BROWSER UI — headless sign-in/sign-up
+    // components that render in a client component and hold no secret key.
+    expect(serverAuthImports('import * as SignIn from "@clerk/elements/sign-in";')).toEqual([]);
+    expect(serverAuthImports('import * as Common from "@clerk/elements/common";')).toEqual([]);
+    expect(bannedDependencies({ dependencies: { "@clerk/elements": "1" } })).toEqual([]);
+
+    // `@clerk/testing` STAYS DENIED, and here is why, in words, because the
+    // Playwright/Clerk e2e work will hit this and a bare failure teaches
+    // nothing: it is a TEST-HARNESS package, not a browser package. Its
+    // Playwright helper `clerkSetup` mints a testing token from the Clerk
+    // BACKEND API with `CLERK_SECRET_KEY`, so it pulls the server-side half
+    // into this repo through a devDependency. If e2e needs it, it belongs in
+    // the exam service repo that already holds the secret key — not here.
+    expect(serverAuthImports('import { clerkSetup } from "@clerk/testing/playwright";')).toEqual([
+      "@clerk/testing/playwright",
+    ]);
+    expect(bannedDependencies({ devDependencies: { "@clerk/testing": "1" } })).toEqual([
+      "@clerk/testing",
+    ]);
+  });
+
+  /**
+   * The browser allowlist is a deny-by-default with an escape hatch, so ONE
+   * over-wide entry in it — a stray `/^@clerk\//` — would unban the whole
+   * namespace silently and nothing here would fail. `@clerk/backend` is
+   * therefore ALSO a literal, checked BEFORE the allowlist is consulted. It
+   * costs nothing and it fails loudly.
+   */
+  it("bans @clerk/backend by literal as well as by capability", () => {
+    expect(SERVER_AUTH_LITERALS.some((re) => re.test("@clerk/backend"))).toBe(true);
+    expect(SERVER_AUTH_LITERALS.some((re) => re.test("@clerk/backend/internal"))).toBe(true);
+    expect(serverAuthImports('import { createClerkClient } from "@clerk/backend";')).toEqual([
+      "@clerk/backend",
+    ]);
+    expect(bannedDependencies({ dependencies: { "@clerk/backend": "2" } })).toEqual([
+      "@clerk/backend",
+    ]);
   });
 });
 

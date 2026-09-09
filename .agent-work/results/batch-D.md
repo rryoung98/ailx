@@ -288,3 +288,70 @@ GATES: GREEN (d2)
 
 `pnpm test`: 236 files passed, 3376 tests passed, 5 skipped — three more tests than the `d` run,
 one new fixture per finding.
+
+## Review round 2 (PR #68)
+
+### Finding 4 — the capability rule was too tight, and the message it would print was wrong
+
+The reviewer stopped reasoning about the Clerk namespace and read the REGISTRY.
+`npm view @clerk/nextjs@7.9.2 exports` publishes EIGHT entrypoints:
+
+```
+".", "./types", "./errors", "./legacy", "./server", "./internal", "./webhooks", "./experimental"
+```
+
+The TEN-227 allowlist entry was the exact `/^@clerk\/nextjs$/`, so `@clerk/nextjs/errors` — the
+documented CLIENT-component helper for rendering a failed sign-in — and `@clerk/nextjs/types` were
+DENIED. A legitimate browser import would have failed the build under the heading
+"no server-side auth is reachable from this repo", telling whoever hit it that they were verifying
+a token with a secret key. They were rendering an error message. `@clerk/elements`, headless
+browser UI, was denied the same way.
+
+Deny-by-default is right; the allowlist under it was one package-name short of the truth.
+
+Baseline (assertions written first, run against `f2efc07`):
+
+```
+FAIL  test/frontendOnly.test.ts > no server-side auth is reachable from this repo >
+      splits @clerk/nextjs by its published subpaths, browser half from server half
+AssertionError: expected [ '@clerk/nextjs/errors' ] to deeply equal []
+
+FAIL  test/frontendOnly.test.ts > no server-side auth is reachable from this repo >
+      lets @clerk/elements through and keeps @clerk/testing out, for stated reasons
+AssertionError: expected [ '@clerk/elements/sign-in' ] to deeply equal []
+```
+
+**Now ALLOWED**, each pinned by an assertion: `@clerk/nextjs`, `@clerk/nextjs/errors`,
+`@clerk/nextjs/types`, `@clerk/elements` and its subpaths, plus the unchanged
+`clerk-react`/`clerk-js`/`themes`/`localizations`/`types`/`shared`.
+
+**Still DENIED**, each pinned by its own assertion rather than left implied:
+`@clerk/nextjs/server`, `/internal`, `/webhooks`, `/experimental`, `/legacy` (it re-exports the old
+default surface, server half and all), and every framework binding from round 1.
+
+`@clerk/testing` stays denied and the test now says WHY in words, because the Playwright/Clerk e2e
+work will hit it and a bare failure teaches nothing: it is a TEST-HARNESS package. `clerkSetup`
+mints a testing token from the Clerk Backend API with `CLERK_SECRET_KEY`, so it drags the
+server-side half in through a devDependency. If e2e needs it, it belongs in the repo that already
+holds the key.
+
+`@clerk/backend` is now a LITERAL anchor (`SERVER_AUTH_LITERALS`) checked BEFORE the allowlist is
+consulted, in both scans. The allowlist is the only thing between a real browser package and a
+failed build; one over-wide entry in it — a stray `/^@clerk\//` — would unban the whole namespace
+with nothing failing. The literal costs nothing and fails loudly.
+
+Nothing else was loosened.
+
+### Gate
+
+`bash .agent-work/gates.sh d3`
+
+**GREEN** — `.agent-work/gate-d3.log`:
+
+```
+=== static export build
+=== hosted build (AILX_BACKEND=1)
+=== test
+=== lint
+GATES: GREEN (d3)
+```
