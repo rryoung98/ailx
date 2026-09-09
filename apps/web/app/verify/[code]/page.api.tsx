@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { apiPath } from "@ailx/contract";
 import { credentialViewFrom } from "../../../features/verify/credentialView";
-import { serverApiBase } from "../../../lib/server/page";
+import { serverRead } from "../../../lib/server/page";
 import { VerifyView } from "../../../features/verify/VerifyView";
 
 /**
@@ -31,10 +31,11 @@ export async function generateMetadata({ params }: VerifyParams): Promise<Metada
   const robots = { index: false, follow: false };
   let credential = null;
   try {
-    const res = await fetch(`${await serverApiBase()}${apiPath("credentialView", { code })}`, {
-      cache: "no-store",
-    });
-    credential = res.status === 200 ? credentialViewFrom(await res.json()) : null;
+    // BOUNDED: a service that accepts the connection and never answers used
+    // to burn the whole function budget here, so the verifier got a platform
+    // 504 rather than the fallback below (TEN-213).
+    const res = await serverRead(apiPath("credentialView", { code }));
+    credential = res !== null && res.status === 200 ? credentialViewFrom(await res.json()) : null;
   } catch {
     // Unreachable service: the PAGE says so out loud. A tab title cannot,
     // so it falls back to the same wording an unknown code gets rather than

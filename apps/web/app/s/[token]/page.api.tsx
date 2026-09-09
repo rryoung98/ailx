@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { apiPath, shareCardPath, shareUrlPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
-import { pageOrigin, serverApiBase } from "../../../lib/server/page";
+import { pageOrigin, serverRead } from "../../../lib/server/page";
 import { ShareView, type SharedView } from "../../../features/share/ShareView";
 
 /**
@@ -26,11 +26,12 @@ type ShareParams = { params: Promise<{ token: string }> };
 
 /** The same anonymous read the page makes. Never counts a view (see below). */
 async function readShare(token: string): Promise<SharedView | null> {
+  // BOUNDED. A service that hangs used to run out the function budget and
+  // hand the visitor a platform 504 instead of this page's own sentence
+  // (TEN-213); `serverRead` carries the deadline for all three server reads.
+  const res = await serverRead(apiPath("shareView", { token }));
+  if (res === null || res.status !== 200) return null;
   try {
-    const res = await fetch(`${await serverApiBase()}${apiPath("shareView", { token })}`, {
-      cache: "no-store",
-    });
-    if (res.status !== 200) return null;
     const body = (await res.json()) as { share?: SharedView };
     return body.share ?? null;
   } catch {

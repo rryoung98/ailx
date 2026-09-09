@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { apiPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
-import { pageOrigin, serverApiBase } from "../../../../lib/server/page";
+import { pageOrigin, serverRead } from "../../../../lib/server/page";
 import { characterDataUrl } from "../../../../lib/server/portrait";
 import {
   SHARE_CARD_HEIGHT,
@@ -42,11 +42,11 @@ export async function GET(
     new Response("not found", { status: 404, headers: { "content-type": "text/plain" } });
   try {
     // Over HTTP to the exam service, exactly as the page does — this app has
-    // no store to read and no handler to call.
-    const res = await fetch(`${await serverApiBase()}${apiPath("shareView", { token })}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return notFound();
+    // no store to read and no handler to call. BOUNDED, because a hang here
+    // used to burn the function budget and break the preview in every social
+    // cache that fetched during the window (TEN-213).
+    const res = await serverRead(apiPath("shareView", { token }));
+    if (res === null || !res.ok) return notFound();
     const payload = ((await res.json()) as { share: { payload: SharePayload } }).share.payload;
     // The character is loaded HERE, not inside the card tree, so the tree
     // stays pure and a failed read degrades to a portrait-less card.
