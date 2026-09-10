@@ -83,7 +83,17 @@ import { fileURLToPath } from "node:url";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 
-/** Measured on `w/deps`, both builds run clean. See the header for the two margins. */
+/**
+ * Measured on `w/deps`, both builds run clean. See the header for the two margins.
+ *
+ * THE MARGINS ARE THE GATE, and until 2026-09-09 nothing pinned them. Every
+ * budget in this file is `baseline × margin`, so editing `1.02` to `1.12` raises
+ * all of them at once, moves the half-mark up so the alarm goes QUIET, and
+ * passes every other assertion here — one character, no measurement, no run id,
+ * no decomposition. The header's five honesty conditions were all about
+ * BASELINES, which left the hole exactly where the cheapest dishonest edit
+ * lives. They are pinned below, and widening one is the sixth condition.
+ */
 const PAGE_MARGIN = 1.05;
 const TOTAL_MARGIN = 1.02;
 const budget = (measured: number, margin: number): number => Math.round(measured * margin);
@@ -172,6 +182,33 @@ function scriptsOf(html: string, mode: Mode): string[] {
   return [...srcs];
 }
 
+describe("the margins are the gate", () => {
+  /**
+   * Every budget here is `baseline × margin`, so the margins are the only
+   * numbers that move ALL of them. Widening one raises every budget, lifts the
+   * half-mark so the alarm stops speaking, and breaks nothing else — the
+   * cheapest dishonest edit in the file, and the one the baseline conditions in
+   * the header did not cover.
+   *
+   * Pinned here so a widening cannot be quiet. Changing a margin is a decision
+   * about what this repo will ship to a candidate on a slow connection, and it
+   * belongs in front of a reviewer with a reason, exactly like a re-baseline.
+   */
+  it("pins the two margins, so widening one cannot be silent", () => {
+    expect(TOTAL_MARGIN, "widening the total margin raises every total budget").toBe(1.02);
+    expect(PAGE_MARGIN, "widening the page margin raises every page budget").toBe(1.05);
+  });
+
+  it("keeps the half-mark strictly inside the budget for any margin", () => {
+    // The alarm is only useful while it fires BEFORE the gate does.
+    for (const mode of MODES) {
+      const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
+      expect(half, `${mode.name} half-mark`).toBeGreaterThan(mode.allJsGzip);
+      expect(half, `${mode.name} half-mark`).toBeLessThan(budget(mode.allJsGzip, TOTAL_MARGIN));
+    }
+  });
+});
+
 for (const mode of MODES) {
   const present = existsSync(mode.marker) && existsSync(mode.staticDir);
   const run = present ? describe : describe.skip;
@@ -212,16 +249,26 @@ for (const mode of MODES) {
      */
     it("warns once the build has spent HALF its tolerance", () => {
       const measured = jsFiles.reduce((n, f) => n + gz(f), 0);
+      const cap = budget(mode.allJsGzip, TOTAL_MARGIN);
       const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
+      const spent = Math.round(((measured - mode.allJsGzip) / (cap - mode.allJsGzip)) * 100);
+      // UNCONDITIONAL, because a warning that only speaks when unhappy cannot be
+      // told from one that never ran. Silence must carry evidence too.
+      console.log(
+        `[bundle] tolerance ${mode.name}: ${spent}% spent ` +
+          `(${measured} B, baseline ${mode.allJsGzip}, half-mark ${half}, budget ${cap})`,
+      );
       if (measured > half) {
         console.log(
           `[bundle] WARNING ${mode.name}: ${measured} B gzip has spent over HALF the ` +
-            `tolerance (half-mark ${half}, budget ${budget(mode.allJsGzip, TOTAL_MARGIN)}). ` +
+            `tolerance (half-mark ${half}, budget ${cap}). ` +
             "Re-baseline from a green CI run on main, or find the growth — see TEN-274.",
         );
       }
-      // Deliberately no assertion: this reports, the budget below judges.
-      expect(half).toBeLessThan(budget(mode.allJsGzip, TOTAL_MARGIN));
+      // Deliberately no assertion on `measured`: this reports, the budget below
+      // judges. The assertion is on the MARGINS, which are the real gate — see
+      // "the margins are the gate" below.
+      expect(half).toBeLessThan(cap);
     });
 
     it("ships no more client JS in total than budgeted", () => {
