@@ -95,6 +95,39 @@ jobs:
           AILX_TEST_FORKS: "8"
         run: pnpm test:coverage
 
+      # THE BUNDLE DELTA, IN FRONT OF A REVIEWER (TEN-274).
+      #
+      # `bundleBudget.test.ts` already prints every measurement on SUCCESS as
+      # well as failure, prefixed `[bundle]` — but only into a test log nobody
+      # opens on a green run. That is how `main` accumulated bundle growth one
+      # honest PR at a time with every single PR passing: nothing was hidden,
+      # nothing was surfaced either.
+      #
+      # A budget whose remedy is "update the number" is only a defect when the
+      # increase is invisible at review time. This step is the cheap half of
+      # the fix: it costs one re-run of a 0.4s test against build output that
+      # already exists, needs no agreement about what the right total is, and
+      # it measures IN CI — the only place the budget's own header says counts
+      # (a laptop baseline once read 34 kB smaller, TEN-90).
+      #
+      # `if: always()` because a RED budget is exactly when the reader needs
+      # the number, and `continue-on-error` because this step reports, it does
+      # not judge: the test above is the gate.
+      - name: Bundle sizes
+        if: always()
+        continue-on-error: true
+        run: |
+          pnpm --filter @ailx/web exec vitest run test/bundleBudget.test.ts 2>&1 | tee /tmp/bundle.log || true
+          {
+            echo "### Bundle sizes (gzip)"
+            echo
+            echo "Measured in CI, from this job's own two builds."
+            echo
+            echo '```'
+            grep -F '[bundle]' /tmp/bundle.log || echo "no [bundle] lines — did both builds run?"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # The report a reviewer actually reads, rendered from coverage/ by the
       # workflow token alone: no third-party account, no secret, works the day
       # this merges. Skipped on fork PRs, whose token cannot comment.
