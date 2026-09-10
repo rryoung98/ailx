@@ -59,6 +59,21 @@
  * `[bundle]`. To re-baseline: read the numbers out of a green CI run on `main`,
  * put them here, and say in the commit message which run they came from.
  * Raising one is allowed and expected — with the measurement and the reason.
+ *
+ * ONE TEST FOR WHETHER A RAISE IS HONEST, added 2026-09-09 after this gate came
+ * 92 bytes from failing on already-shipped work: RE-BASELINE ONLY WHEN EVERY
+ * COMPONENT OF THE DELTA IS UNDERSTOOD AND INTENDED. In likelihood order, a
+ * raise is NOT honest when the numbers came from a laptop (see TEN-90 above);
+ * when a PAGE budget is raised to absorb an unexplained page regression — the
+ * TEN-216 report.html jump was found by bisecting and fixed by moving an
+ * import, and the number was never the remedy; when the raise shares a commit
+ * with the change that needed it; when the delta was not decomposed; or when
+ * it is the second raise on one branch.
+ *
+ * A baseline is a statement about what is SHIPPED. `main` is a fact and a PR
+ * head is a proposal, which is why the procedure above says main: baselining on
+ * a branch turns one accepted delta into a permanent entitlement for everyone
+ * after it.
  */
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -99,7 +114,7 @@ const MODES: Mode[] = [
     // basePath is `/ailx` on Pages, so the href is `/ailx/_next/static/...`.
     resolve: (src) => join(webRoot, "out", src.slice(src.indexOf("/_next/") + 1)),
     marker: join(webRoot, "out/_next/static"),
-    allJsGzip: 693_550,
+    allJsGzip: 707_329,
     sharedGzip: 178_261,
     pages: {
       "report.html": 297_237,
@@ -168,6 +183,39 @@ for (const mode of MODES) {
       // A budget over an empty tree passes on anything. Sentinels, not faith.
       expect(jsFiles.length, `no JS under ${mode.staticDir}`).toBeGreaterThan(10);
       expect(htmlFiles.length, `no prerendered HTML under ${mode.htmlRoot}`).toBeGreaterThan(5);
+    });
+
+    /**
+     * HALF-TOLERANCE ALARM, and it is the point of this file more than the
+     * budget below is.
+     *
+     * `measured + 2%` is a TOLERANCE around a measurement, not a limit. Read
+     * only as pass/fail it can never say "too much" — only "more than the last
+     * time someone looked". The proof is dated: on 2026-09-09 `main` measured
+     * 707329 B against a 707421 B budget in CI (run 34424902483). NO SINGLE PR
+     * HAD EVER FAILED THIS GATE, and it stood 92 bytes from red on work that
+     * was already shipped. The drift was not hidden; nothing surfaced it.
+     *
+     * So this fires at HALF the tolerance — a warning with a name, long before
+     * an unlucky branch is blocked by drift it did not cause. It is deliberately
+     * a SOFT signal: it prints and does not fail, because a hard failure at 1%
+     * is the same guard one notch tighter and would be suspended the first time
+     * a feature legitimately lands. The durable fix is to fail on the DELTA
+     * against main's last CI total, which attributes growth to its author and
+     * does not depend on the floor at all (TEN-274).
+     */
+    it("warns once the build has spent HALF its tolerance", () => {
+      const measured = jsFiles.reduce((n, f) => n + gz(f), 0);
+      const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
+      if (measured > half) {
+        console.log(
+          `[bundle] WARNING ${mode.name}: ${measured} B gzip has spent over HALF the ` +
+            `tolerance (half-mark ${half}, budget ${budget(mode.allJsGzip, TOTAL_MARGIN)}). ` +
+            "Re-baseline from a green CI run on main, or find the growth — see TEN-274.",
+        );
+      }
+      // Deliberately no assertion: this reports, the budget below judges.
+      expect(half).toBeLessThan(budget(mode.allJsGzip, TOTAL_MARGIN));
     });
 
     it("ships no more client JS in total than budgeted", () => {
