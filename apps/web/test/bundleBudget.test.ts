@@ -182,6 +182,42 @@ function scriptsOf(html: string, mode: Mode): string[] {
   return [...srcs];
 }
 
+/**
+ * ONE LINE PER MODE, EVERY RUN, OUTSIDE THE PER-MODE SKIP.
+ *
+ * The first version of this lived inside the per-mode `describe`, which is
+ * `describe.skip` when a build is absent — so in the one case it was written for
+ * (telling "under half the tolerance" from "never measured") it printed nothing
+ * at all. The sentence "silence carries evidence" was true about intent and
+ * false about mechanism, and the mechanism was a `describe.skip` three lines up.
+ *
+ * So it lives here, at module level, and it says the missing case OUT LOUD. A
+ * run that measured nothing now looks different from a run that measured and was
+ * content.
+ */
+describe("every run says where the tolerance stands", () => {
+  it("prints a line per mode, measured or not", () => {
+    for (const mode of MODES) {
+      const cap = budget(mode.allJsGzip, TOTAL_MARGIN);
+      const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
+      const measurable = existsSync(mode.marker) && existsSync(mode.staticDir);
+      if (!measurable) {
+        console.log(
+          `[bundle] tolerance ${mode.name}: NOT MEASURED — no build output at ${mode.staticDir}`,
+        );
+        continue;
+      }
+      const measured = walk(mode.staticDir, /\.js$/).reduce((n, f) => n + gz(f), 0);
+      const spent = Math.round(((measured - mode.allJsGzip) / (cap - mode.allJsGzip)) * 100);
+      console.log(
+        `[bundle] tolerance ${mode.name}: ${spent}% spent ` +
+          `(${measured} B, baseline ${mode.allJsGzip}, half-mark ${half}, budget ${cap})`,
+      );
+    }
+    expect(MODES.length).toBe(2);
+  });
+});
+
 describe("the margins are the gate", () => {
   /**
    * Every budget here is `baseline × margin`, so the margins are the only
@@ -196,7 +232,17 @@ describe("the margins are the gate", () => {
    */
   it("pins the two margins, so widening one cannot be silent", () => {
     expect(TOTAL_MARGIN, "widening the total margin raises every total budget").toBe(1.02);
-    expect(PAGE_MARGIN, "widening the page margin raises every page budget").toBe(1.05);
+    expect(PAGE_MARGIN, "widening the page margin raises every page AND shared budget").toBe(1.05);
+  });
+
+  it("pins what budget() DOES with a margin, not only the margin", () => {
+    // The pins above fix the INPUTS. `budget` consumes them, and until this test
+    // it was free: `(m, margin) => Math.round(m * margin * 1.05)` keeps
+    // TOTAL_MARGIN at 1.02, keeps half < budget, passes both pins above, and
+    // raises the static budget to 757549. Pin the function too.
+    expect(budget(1000, TOTAL_MARGIN), "budget() must be baseline x margin, nothing more").toBe(1020);
+    expect(budget(1000, PAGE_MARGIN), "budget() must be baseline x margin, nothing more").toBe(1050);
+    expect(budget(707_329, TOTAL_MARGIN)).toBe(721_476);
   });
 
   it("keeps the half-mark strictly inside the budget for any margin", () => {
@@ -251,13 +297,6 @@ for (const mode of MODES) {
       const measured = jsFiles.reduce((n, f) => n + gz(f), 0);
       const cap = budget(mode.allJsGzip, TOTAL_MARGIN);
       const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
-      const spent = Math.round(((measured - mode.allJsGzip) / (cap - mode.allJsGzip)) * 100);
-      // UNCONDITIONAL, because a warning that only speaks when unhappy cannot be
-      // told from one that never ran. Silence must carry evidence too.
-      console.log(
-        `[bundle] tolerance ${mode.name}: ${spent}% spent ` +
-          `(${measured} B, baseline ${mode.allJsGzip}, half-mark ${half}, budget ${cap})`,
-      );
       if (measured > half) {
         console.log(
           `[bundle] WARNING ${mode.name}: ${measured} B gzip has spent over HALF the ` +
