@@ -16,11 +16,17 @@
  *    being safe in a unit test is not the same as the page being safe.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
-import ts from "typescript";
-import { BROWSER_ROOTS } from "./helpers/browserSources";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  MODULE_GRAPH,
+  WEB_ROOT,
+  parseImports,
+  parseSpecifiers,
+  reachable,
+  resolveImport,
+  type ParsedImport,
+} from "./helpers/moduleGraph";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -39,144 +45,12 @@ import { DailyChallenge } from "../features/daily/DailyChallenge";
 import { DAILY_POOL } from "../lib/instrument/demoItems";
 import { ATTEMPT_KEY, LOCAL_PRACTICE_KEY } from "./helpers/keys";
 
-const WEB_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-
 /**
- * The app's own import graph, over every directory in BROWSER_ROOTS:
- * `app/`, `components/`, `features/` and `lib/`.
- *
- * Specifiers come from the TypeScript parser — `import`, `export … from` and
- * dynamic `import()` — so one written in a comment or a string is not one, and
- * the shape of the file does not matter. Only RELATIVE specifiers are
- * resolved; a package name is a leaf, which is what a guard over this app's
- * own modules wants.
+ * The import graph this file's guards walk — the parser, the resolver, the
+ * `@/` alias, the transitive closure — lives in `helpers/moduleGraph.ts`.
+ * It grew here (TEN-52) and moved out when a second guard needed it
+ * (`reportZodImports.test.ts`, TEN-216): one walk, not two that drift.
  */
-function sourceFiles(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    if (statSync(full).isDirectory()) sourceFiles(full, out);
-    // Keys are "/"-spelled whatever the platform, so a test can name one.
-    // `.js`/`.jsx` are read too: next.config.mjs keeps them in pageExtensions,
-    // so a page written in JavaScript is a page.
-    else if (/\.(ts|tsx|js|jsx|mjs)$/.test(name)) out.push(relative(WEB_ROOT, full).split(sep).join("/"));
-  }
-  return out;
-}
-
-/** One import: where it points, and the names it brings in ("" when none). */
-interface ParsedImport {
-  specifier: string;
-  bindings: string;
-  /** The names taken from the module; "*" when the whole namespace is taken. */
-  names: string[];
-}
-
-/**
- * The names an import clause takes FROM the module, one per binding.
- *
- * `{ a as b }` yields "a", because "a" is what the package handed over. A
- * clause that takes the whole namespace — `import * as c`, `export * from`,
- * a bare side-effect import, a dynamic `import()` — yields "*", so a check
- * over an allowlist of names cannot be dodged by taking everything at once.
- */
-function clauseNames(clause: ts.ImportClause | ts.NamedExportBindings | undefined): string[] {
-  if (!clause) return ["*"];
-  const named = ts.isImportClause(clause) ? clause.namedBindings : clause;
-  const out: string[] = [];
-  if (ts.isImportClause(clause) && clause.name) out.push("default");
-  if (!named) return out.length > 0 ? out : ["*"];
-  if (ts.isNamespaceImport(named) || ts.isNamespaceExport(named)) return [...out, "*"];
-  for (const element of named.elements) out.push((element.propertyName ?? element.name).text);
-  return out;
-}
-
-function parseImports(source: string, name = "in.tsx"): ParsedImport[] {
-  const file = ts.createSourceFile(name, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX);
-  const out: ParsedImport[] = [];
-  const visit = (node: ts.Node): void => {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      node.moduleSpecifier &&
-      ts.isStringLiteralLike(node.moduleSpecifier)
-    ) {
-      const clause = ts.isImportDeclaration(node) ? node.importClause : node.exportClause;
-      out.push({
-        specifier: node.moduleSpecifier.text,
-        bindings: clause?.getText() ?? "",
-        names: clauseNames(clause),
-      });
-    }
-    if (
-      ts.isCallExpression(node) &&
-      (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) && node.expression.text === "require")) &&
-      node.arguments[0] &&
-      ts.isStringLiteralLike(node.arguments[0])
-    ) {
-      // A dynamic import and a require() both hand over the whole module
-      // namespace. require() is read because the graph covers .js and .mjs
-      // files, where it is how a module is reached.
-      out.push({ specifier: node.arguments[0].text, bindings: "", names: ["*"] });
-    }
-    // `import x = require("y")`, which TypeScript still compiles.
-    if (
-      ts.isImportEqualsDeclaration(node) &&
-      ts.isExternalModuleReference(node.moduleReference) &&
-      ts.isStringLiteralLike(node.moduleReference.expression)
-    ) {
-      out.push({ specifier: node.moduleReference.expression.text, bindings: "", names: ["*"] });
-    }
-    node.forEachChild(visit);
-  };
-  visit(file);
-  return out;
-}
-
-const parseSpecifiers = (source: string): string[] => parseImports(source).map((i) => i.specifier);
-
-const fileImports = (rel: string): ParsedImport[] =>
-  parseImports(readFileSync(join(WEB_ROOT, rel), "utf8"), rel);
-
-/**
- * A specifier as a path under `apps/web`, or null if it is a package. Both
- * spellings of an app module resolve: relative, and the `@/*` alias that
- * `apps/web/tsconfig.json` points at this same root.
- */
-function resolveImport(from: string, spec: string): string | null {
-  if (!spec.startsWith(".") && !spec.startsWith("@/")) return null;
-  const base = spec.startsWith("@/")
-    ? join(WEB_ROOT, spec.slice(2))
-    : join(WEB_ROOT, dirname(from), spec);
-  for (const candidate of [base, `${base}.ts`, `${base}.tsx`, join(base, "index.ts"), join(base, "index.tsx")]) {
-    if (existsSync(candidate) && statSync(candidate).isFile()) {
-      return relative(WEB_ROOT, candidate).split(sep).join("/");
-    }
-  }
-  return null;
-}
-
-const MODULE_GRAPH = new Map<string, { imports: ParsedImport[]; files: string[] }>(
-  BROWSER_ROOTS.flatMap((root) => sourceFiles(join(WEB_ROOT, root))).map((rel) => {
-    const imports = fileImports(rel);
-    const files = imports
-      .map((i) => resolveImport(rel, i.specifier))
-      .filter((f): f is string => f !== null);
-    return [rel, { imports, files }];
-  }),
-);
-
-/** Everything `start` imports, transitively, `start` included. */
-function reachable(start: string): Set<string> {
-  const seen = new Set<string>();
-  const stack = [start];
-  while (stack.length > 0) {
-    const current = stack.pop()!;
-    if (seen.has(current)) continue;
-    seen.add(current);
-    for (const next of MODULE_GRAPH.get(current)?.files ?? []) stack.push(next);
-  }
-  return seen;
-}
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
