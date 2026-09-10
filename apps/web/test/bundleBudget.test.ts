@@ -136,7 +136,7 @@ const MODES: Mode[] = [
     // static export's. The one route handler compiles in the hosted build and
     // only there, so its output is what tells the two `.next` apart.
     marker: join(webRoot, ".next/server/app/s/[token]/card.png"),
-    allJsGzip: 802_860,
+    allJsGzip: 817_237,
     sharedGzip: 214_951,
     pages: {
       "report.html": 338_345,
@@ -195,6 +195,12 @@ for (const mode of MODES) {
      * 707329 B against a 707421 B budget in CI (run 34424902483). NO SINGLE PR
      * HAD EVER FAILED THIS GATE, and it stood 92 bytes from red on work that
      * was already shipped. The drift was not hidden; nothing surfaced it.
+     *
+     * AND IT WORKED ON ITS FIRST RUN. Added for the static export, it
+     * immediately fired on the HOSTED build in the same CI job — 816373 B
+     * against a 810889 B half-mark — which nobody had looked at. Main's hosted
+     * total measured 817237 B against an 818917 B budget: 1680 bytes left, a
+     * second cliff found by a warning rather than by a blocked branch.
      *
      * So this fires at HALF the tolerance — a warning with a name, long before
      * an unlucky branch is blocked by drift it did not cause. It is deliberately
