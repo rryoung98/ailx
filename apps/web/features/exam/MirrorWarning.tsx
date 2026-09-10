@@ -33,6 +33,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { getAttemptPersistence } from "../../lib/data/persistence";
+import { PersistWarning } from "./PersistWarning";
 
 /** Module-level so the reference is stable across renders. */
 function subscribe(onChange: () => void): () => void {
@@ -62,24 +63,14 @@ export const MIRROR_WARNING_COPY =
 
 export function MirrorWarning() {
   const stalled = useSyncExternalStore(subscribe, notLanded, () => false);
-  if (!stalled) return null;
+  // The banner itself is `PersistWarning`: same box, same tone, same shape of
+  // sentence. A second copy of that markup is bytes the browser downloads
+  // twice for no difference a candidate can see.
   return (
-    <div
-      role="alert"
-      data-testid="mirror-warning"
-      style={{
-        background: "var(--card)",
-        border: "1px solid var(--bad)",
-        borderLeft: "4px solid var(--bad)",
-        color: "var(--bad)",
-        padding: "0.6rem 0.9rem",
-        borderRadius: 8,
-        margin: "0.6rem auto",
-        maxWidth: 980,
-        fontSize: "0.85rem",
-      }}
-    >
-      ⚠ {MIRROR_WARNING_LABEL}: {MIRROR_WARNING_COPY}
-    </div>
+    <PersistWarning
+      warning={stalled ? MIRROR_WARNING_COPY : null}
+      label={MIRROR_WARNING_LABEL}
+      testId="mirror-warning"
+    />
   );
 }
