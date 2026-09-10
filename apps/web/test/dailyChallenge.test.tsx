@@ -694,3 +694,42 @@ describe("the daily never touches the credential", () => {
     expect(resolveImport("app/daily/page.tsx", "@ailx/report")).toBeNull();
   });
 });
+
+describe("focus never falls to <body> mid-round (TEN-223)", () => {
+  const stage = (): HTMLElement => container.querySelector('[class*="stage"]') as HTMLElement;
+
+  it("keeps focus in the stage after a call and after Next card", () => {
+    mount();
+    const deck = dailyDeck(DAY, DAILY_POOL);
+    click(byText(deck[0].options[0]));
+    expect(stage().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+    click(byText("Next card"));
+    expect(stage().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+  });
+
+  it("keeps focus in the stage when a card with no picture is skipped", () => {
+    // The deck is dealt deterministically from the fixture day, so WHICH
+    // card carries a picture is a fact about the fixture, not a condition
+    // this test may quietly skip on. A text card has no <img> to break, so
+    // the round is played forward to the first image card and the type is
+    // asserted before anything is broken.
+    const deck = dailyDeck(DAY, DAILY_POOL);
+    const at = deck.findIndex((card) => card.material.kind === "image");
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(at).toBeLessThan(deck.length - 1); // "Skip" must leave a card behind
+    mount();
+    for (let i = 0; i < at; i++) {
+      click(byText(deck[i].options[0]));
+      click(byText("Next card"));
+    }
+    expect(deck[at].material.kind).toBe("image");
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    act(() => void img!.dispatchEvent(new Event("error")));
+    click(byText("Skip this card"));
+    expect(stage().contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+  });
+});

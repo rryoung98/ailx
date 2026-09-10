@@ -469,6 +469,96 @@ describe("when the network fails under it", () => {
   });
 });
 
+/**
+ * What this block claims, and the ONE control it does not claim it for.
+ *
+ * Claimed: every swap that UNMOUNTS the control the user just pressed —
+ * answering a card, "Next card", "Another round", "Try again" after a failed
+ * deal, and the "Dealing a round…" wait in between — leaves focus inside the
+ * drill rather than on `<body>` (TEN-223).
+ *
+ * NOT claimed, and known to be FALSE today: "Try sending it again". That
+ * button is not replaced, it is DISABLED in place while the send is in
+ * flight ("Sending…"), and the browser blurs a control it disables — so
+ * focus reaches `<body>` before anything unmounts, which is earlier than
+ * `useFocusRecovery` can see. The repair is a UX decision (move focus to the
+ * status line? keep the button enabled and guard the handler?), so it is
+ * deferred as TEN-265 rather than fixed here. A green run of this block is
+ * NOT evidence about that button.
+ */
+describe("focus never falls to <body> mid-round, except the send retry (TEN-223, TEN-265)", () => {
+  it("does not drop focus on <body> when the answered card is unmounted", async () => {
+    await mount(true);
+    const stage = host.querySelector('[class*="stage"]')!;
+    await click(/AI-generated/);
+    expect(stage.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+    await click(/Next card/);
+    expect(host.querySelector('[class*="stage"]')!.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+  });
+
+  /**
+   * The re-deal is the same defect on a longer path. "Another round" unmounts
+   * the whole finished round, and what replaces it — "Dealing a round…" —
+   * holds no control at all, so focus has to survive BOTH steps: the wait,
+   * and the card that ends it. Otherwise a keyboard user is back at the top
+   * of the document with a round already dealt in front of them.
+   */
+  it("does not drop focus on <body> when 'Another round' re-deals", async () => {
+    await mount(false);
+    await playThrough();
+    await click(/Another round/);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(host.contains(document.activeElement)).toBe(true);
+    // ...and it is the new card's own first call once the deal has landed.
+    expect(host.textContent).toContain(`Card 1 of ${PRACTICE_DECK_SIZE}`);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+    expect(host.querySelector('[class*="stage"]')!.contains(document.activeElement)).toBe(true);
+  });
+
+  it("does not drop focus on <body> when 'Try again' re-deals after a failed deal", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await mount(true);
+    expect(host.textContent).toMatch(/could not deal a round/i);
+    installFetch(); // the network comes back
+    await click(/Try again/);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(host.textContent).toContain(`Card 1 of ${PRACTICE_DECK_SIZE}`);
+    expect(document.activeElement?.tagName).toBe("BUTTON");
+    expect(host.querySelector('[class*="stage"]')!.contains(document.activeElement)).toBe(true);
+  });
+
+  /**
+   * The wait itself, held open: with the deal in flight the drill shows only
+   * "Dealing a round…", so focus has to be ON that line — the case the first
+   * fix missed, because a deal that returns instantly hides it.
+   */
+  it("holds focus on the 'Dealing a round…' line while the deal is in flight", async () => {
+    await mount(true);
+    await playThrough();
+    vi.stubGlobal("fetch", () => new Promise(() => {})); // a deal that never lands
+    await click(/Another round/);
+    expect(host.textContent).toContain("Dealing a round");
+    expect(document.activeElement).not.toBe(document.body);
+    expect(host.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(host.firstElementChild);
+  });
+
+  /**
+   * The FIRST deal is not a re-deal: nobody pressed anything, the drill is
+   * embedded in the landing hero, and stealing focus onto a call button as
+   * the page settles would be a defect of its own.
+   */
+  it("takes no focus at all on the first deal", async () => {
+    await mount(false);
+    expect(host.textContent).toContain(`Card 1 of ${PRACTICE_DECK_SIZE}`);
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
 describe("static export build", () => {
   it("plays with no server at all and calls nothing", async () => {
     await mount(false);

@@ -55,6 +55,7 @@ import {
   type ClaimOutcome,
 } from "../../lib/data/localPractice";
 import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
+import { useFocusRecovery } from "../../lib/useFocusRecovery";
 
 import styles from "../../components/PracticeDrill.module.css";
 
@@ -219,12 +220,27 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   /** True once a card has been called: an unfinished round is never re-dealt. */
   const roundBegun = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  // Set when a control that had focus is about to be unmounted, so focus
+  // Called when a control that had focus is about to be unmounted, so focus
   // lands on the next card's first control instead of on <body>.
-  const [recoverFocus, setRecoverFocus] = useState(false);
+  const { stageRef, recoverFocus } = useFocusRecovery<HTMLDivElement>();
 
-  const deal = useCallback(async () => {
+  /**
+   * Deal a round.
+   *
+   * `resumeFocus` is true when a PERSON asked for this deal — "Another round"
+   * at the end, "Try again" after a failed one — because the button they
+   * pressed is unmounted by the deal itself, twice: first for "Dealing a
+   * round…", which holds no control at all, and then for the card that
+   * replaces it. Both steps have to put focus somewhere, or a keyboard user
+   * is dropped on <body> with a round already running (TEN-223).
+   *
+   * It is FALSE on the first deal and on a re-deal the drill decides for
+   * itself (an identity arriving from another tab). Nobody pressed anything,
+   * the drill is embedded in the landing hero, and taking focus as the page
+   * settles would be a defect of its own.
+   */
+  const deal = useCallback(async (resumeFocus = false) => {
+    if (resumeFocus) recoverFocus();
     setPhase("loading");
     setPlayed([]);
     setQualification(null);
@@ -270,7 +286,11 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
       setDealTimedOut(isTimeout(err));
       setPhase("error");
     }
-  }, [recorded]);
+    // The "Dealing a round…" line is being replaced in turn, so the focus it
+    // was holding moves on to whatever the deal produced — the first call of
+    // the new card, or the "Try again" of the failure.
+    if (resumeFocus) recoverFocus();
+  }, [recorded, recoverFocus]);
 
   useEffect(() => {
     // Deal nothing while Clerk is still answering: a round dealt now would be
@@ -303,14 +323,6 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   useEffect(() => {
     if (phase === "done") headingRef.current?.focus();
   }, [phase]);
-
-  // A control that had focus was unmounted (a dropped card, a retried
-  // picture); put focus on the first control of what replaced it.
-  useEffect(() => {
-    if (!recoverFocus) return;
-    stageRef.current?.querySelector("button")?.focus();
-    setRecoverFocus(false);
-  }, [recoverFocus]);
 
   const index = played.length;
   const current = deck[index];
@@ -362,13 +374,16 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         },
       },
     ]);
+    // The call button the user just pressed is about to be unmounted with the
+    // rest of the card, exactly as it is on a drop.
+    recoverFocus();
     setPhase("feedback");
   }
 
   /** Give up on a card whose picture never arrived. It is never graded. */
   function drop(): void {
     if (current === undefined) return;
-    setRecoverFocus(true);
+    recoverFocus();
     advance([...played, { item: current, result: null }]);
   }
 
@@ -376,7 +391,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   function retryStimulus(): void {
     setStimulus("pending");
     setReload((n) => n + 1);
-    setRecoverFocus(true);
+    recoverFocus();
     shownAt.current = Date.now();
   }
 
@@ -454,21 +469,31 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   }
 
   function next(): void {
+    // Same as an answer: this button goes with the feedback it sits in.
+    recoverFocus();
     advance(played);
   }
 
   if (phase === "error") {
     return (
-      <div className={styles.stage}>
+      <div ref={stageRef} className={styles.stage}>
         <p role="alert">{dealTimedOut ? DEAL_TIMED_OUT : DEAL_FAILED}</p>
-        <button type="button" className={styles.restart} onClick={() => void deal()}>
+        <button type="button" className={styles.restart} onClick={() => void deal(true)}>
           Try again
         </button>
       </div>
     );
   }
 
-  if (phase === "loading") return <p className="muted">Dealing a round…</p>;
+  // `tabIndex={-1}` because this is a stage with nothing focusable in it: a
+  // re-deal has just unmounted the button that was pressed, and this line is
+  // where focus waits until the card arrives.
+  if (phase === "loading")
+    return (
+      <div ref={stageRef} tabIndex={-1}>
+        <p className="muted">Dealing a round&hellip;</p>
+      </div>
+    );
 
   if (phase === "done") {
     return (
@@ -568,7 +593,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
           </div>
         ) : null}
         <p className={styles.after}>
-          <button type="button" className={styles.restart} onClick={() => void deal()}>
+          <button type="button" className={styles.restart} onClick={() => void deal(true)}>
             Another round
           </button>
           {/* The end of a round is where somebody actually wants to see the

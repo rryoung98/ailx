@@ -910,9 +910,14 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
   from { opacity: 1; transform: none; }
   to { opacity: 0; transform: translateY(-2.2em); }
 }
+/* `visibility` is why these end hidden rather than merely transparent: an
+   opacity-0 subtree is still hit-tested and still in the tab order, and the
+   hero stage stays pinned over the viewport for the rest of the scrub. It
+   interpolates discretely and stays `visible` until the final stop, so the
+   fade itself is unchanged. */
 @keyframes heroFadeOut {
   from { opacity: 1; transform: none; }
-  to { opacity: 0; transform: translateY(-1.4rem); }
+  to { opacity: 0; transform: translateY(-1.4rem); visibility: hidden; }
 }
 @keyframes heroPhaseB {
   0% { opacity: 0; transform: translateY(2.4rem); }
@@ -922,7 +927,7 @@ a.pill-cta { color: #ffffff; text-decoration: none; }
 }
 @keyframes heroSettle {
   from { opacity: 1; transform: none; }
-  to { opacity: 0; transform: translateY(-5vh) scale(0.92); }
+  to { opacity: 0; transform: translateY(-5vh) scale(0.92); visibility: hidden; }
 }
 @keyframes heroDriftSlow {
   from { transform: translateY(9vh) rotate(-4deg); }
