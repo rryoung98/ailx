@@ -16,8 +16,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { T1_LIMITS } from "@ailx/contract";
 import { ATTEMPT_KEY, append } from "@ailx/session";
-import { CALL_TIMEOUT_MS } from "../lib/data/deadline";
-import { getAttemptPersistence } from "../lib/data/persistence";
+import { MIRROR_WAIT_MS, getAttemptPersistence } from "../lib/data/persistence";
 import {
   DIRECT_UPLOAD_MIN_BYTES,
   PLATFORM_TOO_LARGE_MESSAGE,
@@ -490,9 +489,10 @@ describe("a mirror that hangs does not swallow the publish", () => {
       getAttemptPersistence().load();
       const pending = submitT1Site(ATTEMPT, { html: "<h1>site</h1>", promptLog: [], selfReport: "" })!;
       expect(pending).not.toBeNull();
-      // The shared bound from TEN-210, not a private mirror timeout: the mirror
-      // POST is a `write`, and the upload behind it is bounded in its own turn.
-      await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write + CALL_TIMEOUT_MS.upload + 1_000);
+      // `MIRROR_WAIT_MS` is the bound on WAITING for the mirror, and it is
+      // shorter than the shared request deadline on purpose: the publish
+      // proceeds rather than sitting behind a socket that has not given up.
+      await vi.advanceTimersByTimeAsync(MIRROR_WAIT_MS + 1_000);
       const r = await pending;
       expect(r.ok).toBe(false);
       // `unavailable` is the kind the exam page renders WITH a "Retry upload"

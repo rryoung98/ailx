@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { append, attestJudgments, SaveConflictError, ATTEMPT_KEY, type SequencedEntry, type SessionConfig } from "@ailx/session";
 import { CALL_TIMEOUT_MS } from "../lib/data/deadline";
+import { append, attestJudgments, SaveConflictError, ATTEMPT_KEY, type SequencedEntry, type SessionConfig } from "@ailx/session";
 import {
   DEV_USER_KEY,
   DeckMismatchError,
   ServiceShapeError,
   createApiPersistence,
   createLocalPersistence,
+  MIRROR_WAIT_MS,
   createServerAttempt,
   fetchPresentedDeck,
   startServerAttempt,
@@ -553,8 +554,9 @@ describe("startServerAttempt", () => {
  * never settles the chain either: the candidate finishes the site they just
  * built and the publish never starts, never fails, and cannot be retried.
  *
- * The bound is TEN-210's shared one (`CALL_TIMEOUT_MS.write`), not a private
- * mirror timeout — this test was retargeted at it when the two fixes met.
+ * TWO bounds are in play and this test is about the second one. TEN-210's
+ * shared `deadline(callClass)` bounds each REQUEST; `MIRROR_WAIT_MS` bounds
+ * the WAIT, and it is shorter, so `flush()` abandons before the socket does.
  */
 describe("a mirror request that never answers", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -575,13 +577,16 @@ describe("a mirror request that never answers", () => {
     const p = createApiPersistence(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn });
     p.save(startedLog());
     const settled = p.flush();
-    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write + 1_000);
-    // Settles with a STATUS rather than never — and the status says the pass
-    // failed, which is what a surface renders a retry from.
-    await expect(settled).resolves.toMatchObject({ failures: 1 });
+    await vi.advanceTimersByTimeAsync(MIRROR_WAIT_MS + 1_000);
+    // Settles with a STATUS rather than never, and the status does NOT claim
+    // the work landed — the caller proceeds, the mirror keeps trying.
+    await expect(settled).resolves.toMatchObject({ phase: "pending", finalized: false });
     // And the request behind it is bounded too, so the pass itself is not
     // wedged for the rest of the sitting.
     expect(signals[0]).toBeInstanceOf(AbortSignal);
+    // ...and the socket behind it is bounded too, by the SHARED deadline, so
+    // the pass itself is not wedged for the rest of the sitting.
+    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write);
     expect(signals[0]?.aborted).toBe(true);
   });
 

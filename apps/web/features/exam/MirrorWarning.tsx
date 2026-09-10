@@ -17,13 +17,42 @@
  * exam page renders this chrome from five phase branches and threading one
  * more piece of state through all five is how the five drift.
  *
- * The subscription is the mirror's OWN status (`useSyncStatus`, TEN-206), not
- * a second store of the same fact: `failures > 0` means a pass has failed and
- * nothing has landed since, which is exactly the claim this sentence makes.
- * It stays up through the bounded retries (`pending`) as well as after they
- * run out (`failed`), because the candidate's situation is the same in both.
+ * The subscription is the mirror's OWN status (`subscribe`/`status`,
+ * TEN-206), not a second store of the same fact: `failures > 0` means a pass
+ * has failed and nothing has landed since, which is exactly the claim this
+ * sentence makes. It stays up through the bounded retries as well as after
+ * they run out, because the candidate's situation is the same in both.
+ *
+ * `useSyncExternalStore` rather than `useSyncStatus`, and the difference is
+ * not style: the mirror can publish a status DURING the exam page's own
+ * render (a save on a commit path), and a `useState` subscriber setting state
+ * there is the "Cannot update a component while rendering a different
+ * component" warning. The snapshot is therefore a BOOLEAN, not the status
+ * object — `status()` builds a fresh object every call, and an unstable
+ * snapshot re-renders for ever.
  */
-import { useSyncStatus } from "../../lib/data/useSyncStatus";
+import { useSyncExternalStore } from "react";
+import { getAttemptPersistence } from "../../lib/data/persistence";
+
+/** Module-level so the reference is stable across renders. */
+function subscribe(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  try {
+    return getAttemptPersistence().subscribe(() => onChange());
+  } catch {
+    return () => {};
+  }
+}
+
+/** True when a pass has failed and nothing has landed since. */
+function notLanded(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return getAttemptPersistence().status().failures > 0;
+  } catch {
+    return false;
+  }
+}
 
 export const MIRROR_WARNING_LABEL = "Not saved to the exam service";
 export const MIRROR_WARNING_COPY =
@@ -32,8 +61,8 @@ export const MIRROR_WARNING_COPY =
   + "Do not clear this browser's data, and do not finish the run in a different browser.";
 
 export function MirrorWarning() {
-  const { status } = useSyncStatus();
-  if (status.failures === 0) return null;
+  const stalled = useSyncExternalStore(subscribe, notLanded, () => false);
+  if (!stalled) return null;
   return (
     <div
       role="alert"

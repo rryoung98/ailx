@@ -196,6 +196,46 @@ function writeSyncState(storage: StorageLike, clientAttemptId: string, state: Sy
 }
 
 /**
+ * How long anything WAITING on the mirror may wait for it — the bound on
+ * `flush()`, and on nothing else.
+ *
+ * The REQUESTS are bounded by TEN-210's shared table (`deadline(callClass)`),
+ * which is where a socket's bound belongs. This number is a different claim:
+ * a pass is several requests, and the T1 upload that awaits `flush()` must
+ * not be parked for their sum. Without it one stalled POST never settled the
+ * serialized chain, and the publish never began, never failed and could not
+ * be retried (TEN-218).
+ */
+export const MIRROR_WAIT_MS = 12_000;
+
+/**
+ * A promise, or an ABANDONMENT. Used for `flush()` only.
+ *
+ * It RESOLVES when the time is up — it does not reject — because the caller's
+ * next move is to proceed, not to fail: the pass keeps its own abort and
+ * retries from `syncedThrough`, and `flush()` returns the status so the
+ * caller can see it has not landed. `withDeadline` in `lib/data/deadline.ts`
+ * is the rejecting version of the same shape; this one is named differently
+ * on purpose, because importing the wrong one here would silently turn a
+ * proceeding publish into a failing one.
+ */
+function settleWithin(work: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    void work.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+    );
+  });
+}
+
+/**
  * Single GET path: same auth header, same error rule as {@link postJson}, and
  * the same BOUND. Every request through this module carries a deadline from
  * `lib/data/deadline.ts` — before TEN-210 none of them did, so a stalled
@@ -363,20 +403,22 @@ class ServerMirror {
   }
 
   /**
-   * Wait for the serialized sync chain, then report where it got to.
+   * Wait for the serialized sync chain — but NOT for ever — then report where
+   * it got to.
    *
-   * TEN-218 bounded this with a private `withDeadline(inflight, 12s)` and a
-   * `MIRROR_TIMEOUT_MS` of its own, before TEN-210's central deadline landed
-   * on main. Both are gone: one timeout table, one helper. Every request in
-   * a pass now carries `deadline(callClass)`, so the chain a caller (the T1
-   * site upload) awaits settles on its own — a hung POST aborts, the pass
-   * rejects, the failure handler runs, and `flush()` returns a `failed`
-   * status instead of never resolving. The bound is per REQUEST rather than
-   * per flush, which is the one behavioural difference: a pass making
-   * several requests can take the sum of their bounds.
+   * Two bounds, and they are not the same bound. Every request in a pass
+   * carries `deadline(callClass)` from TEN-210, which stops the SOCKET. This
+   * one stops the WAIT: a pass can make several bounded requests, and a
+   * caller of `flush()` (the T1 site upload) must not be parked for their
+   * sum. It ABANDONS rather than rejects — see {@link settleWithin} — so the
+   * upload proceeds and the mirror keeps retrying behind it (TEN-218).
+   *
+   * Deliberately NOT `withDeadline` from `lib/data/deadline.ts`: that one
+   * REJECTS, which would turn "the publish starts anyway" into "the publish
+   * fails". Same idea, opposite answer, so it has a different name here.
    */
   async flush(): Promise<SyncStatus> {
-    await this.inflight;
+    await settleWithin(this.inflight, MIRROR_WAIT_MS);
     return this.status();
   }
 
