@@ -12,7 +12,21 @@ pre-commit:
 
 # The whole test suite, once, before the branch leaves the machine. Skip it
 # while iterating on a draft with `LEFTHOOK=0 git push`.
+#
+# CI IS THE AUTHORITY; THIS HOOK IS A COURTESY. It runs on whatever else the
+# machine happens to be doing, so it can fail for reasons that have nothing to
+# do with the code — observed 2026-09-09: this hook failed while a full gate
+# run held the cores, and `pnpm test` on the IDENTICAL tree passed 3457/3462
+# moments later. A red here is a reason to look, never a verdict.
+#
+# `AILX_TEST_FORKS=2` rather than the default 4, for that exact reason: the
+# hook is the run most likely to be sharing a machine with a build, another
+# worktree, or an editor's own typecheck. Fewer forks is slower and steadier,
+# and a gate people re-run on a coin flip is a gate they stop believing — which
+# is how a real failure eventually gets waved through.
 pre-push:
   commands:
     test:
+      env:
+        AILX_TEST_FORKS: "2"
       run: pnpm test
