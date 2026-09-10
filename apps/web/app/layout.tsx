@@ -7,11 +7,12 @@ const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable",
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
 import { TOTAL_POINTS } from "@ailx/core";
+import { FooterMode } from "../components/FooterMode";
 import { FunnelVisit } from "../components/FunnelVisit";
 import { Loader } from "../components/Loader";
 import { NavLink } from "../components/ui/NavLink";
 import { NavStrip } from "../components/ui/NavStrip";
-import { assetUrl, footerModeCopy, isClerkEnabled, isServerMode } from "../lib/mode";
+import { assetUrl, isClerkEnabled, isServerMode } from "../lib/mode";
 import { AuthShell } from "../lib/auth/AuthShell";
 import { QueryProvider } from "../lib/QueryProvider";
 import { AuthNav } from "../lib/auth/AuthNav";
@@ -97,7 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <footer className="site-footer">
             <div className="container">
-              <p>{footerModeCopy()}</p>
+              <FooterMode />
               {/* The positioning line stays. It is eleven words, docs/POSITIONING.md
                   owns it, and test/copyBan.test.tsx pins it deliberately. */}
               <p>Foray plays like a game and is built like an instrument.</p>

@@ -25,6 +25,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useIdentity } from "../../lib/auth/identityState";
 import {
   DAILY_PITCH,
   DAILY_STREAK_MEANING,
@@ -78,6 +79,10 @@ function Grid({ results }: { results: readonly DailyResult[] }) {
 }
 
 export function DailyChallenge() {
+  // The round needs no identity and never will (see the header). The RESULT
+  // screen says one sentence about accounts, so it has to know whether the
+  // reader has one (TEN-151).
+  const identity = useIdentity();
   const [today, setToday] = useState<Today | null>(null);
   const [answers, setAnswers] = useState<Array<number | null>>([]);
   const [showing, setShowing] = useState<"card" | "feedback">("card");
@@ -190,7 +195,11 @@ export function DailyChallenge() {
         <DailyShareRow number={number} results={results} streak={streak.current} />
         <p className="small faint" style={{ maxWidth: "58ch" }}>
           The next five arrive at your own midnight. Your streak lives on this device only:
-          clear your browser data and it is gone. There is no account to lose it to.{" "}
+          clear your browser data and it is gone.
+          {/* Said only to a reader who really has no account (TEN-151). The
+              sentence before it stays either way: the streak is browser state
+              in every build, and signing in does not move it. */}
+          {identity.status === "signed-in" ? null : " There is no account to lose it to."}{" "}
           <Link href="/practice">Practise the tells →</Link>
         </p>
       </div>

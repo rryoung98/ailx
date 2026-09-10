@@ -7,8 +7,9 @@
  * OpenAI-compatible ENDPOINT — the exam service's model gateway, the capped
  * shared-demo proxy, or a local server — read from the SAME slot T1 uses
  * (LLM_BASE_URL_STORAGE), so connecting once connects both tracks. The
- * constant is a small local duplicate on purpose: the track packages do not
- * depend on each other.
+ * constant is `@ailx/core`'s and is re-exported here: the track packages do
+ * not depend on each other, but both depend on core, and a duplicated string
+ * is how the footer came to read a slot it never heard change.
  *
  * Everything here is pure / DOM-free (fetch is injected) so the request
  * builder, response parser and error mapping are unit-testable without
@@ -16,8 +17,12 @@
  * consumes the stored artifact.
  */
 
-/** Same slot as T1: the persisted OpenAI-compatible endpoint. */
-export const LLM_BASE_URL_STORAGE = "foray:llm-base-url";
+/**
+ * Same slot as T1, and now literally the same constant: `@ailx/core` spells
+ * it once (`connection.ts`) and both tracks re-export it under the name
+ * their callers already use.
+ */
+export { MODEL_ENDPOINT_SLOT as LLM_BASE_URL_STORAGE } from "@ailx/core";
 
 /**
  * Normalize an endpoint (trim, strip trailing slashes). Empty stays EMPTY —

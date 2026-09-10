@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TrackEvent } from "@ailx/core";
+import { MODEL_ENDPOINT_SLOT } from "@ailx/core";
 import {
   append, project,
   SaveConflictError,
@@ -34,7 +35,7 @@ import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META
 import { Annotation } from "../../components/ui/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/ConnectPanel";
 import { modelGatewayFetch } from "../../lib/data/modelGateway";
-import { hasModelEndpoint, LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
+import { hasModelEndpoint } from "@ailx/track-t1";
 import { PersistWarning } from "../../features/exam/PersistWarning";
 import { StorageStop } from "../../features/exam/StorageStop";
 import { carriedOnCopy, storageStopCopy } from "../../features/exam/storageStopCopy";
@@ -43,6 +44,7 @@ import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
 import { PillCTA } from "../../components/ui/PillCTA";
 import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
+import { useIdentity } from "../../lib/auth/identityState";
 import { eventLogCopy, examAccessCopy, isServerMode } from "../../lib/mode";
 import { funnel } from "../../lib/data/funnel";
 import { completionSummary, SERVICE_SCORES_THIS_TRACK, trackList } from "../../lib/instrument/scoreSources";
@@ -112,6 +114,10 @@ function fmt(sec: number): string {
 }
 
 export default function ExamPage() {
+  // Who is reading this page — the access pill beside the start gate is a
+  // sentence about THEM, and it used to be a sentence about the build
+  // (TEN-151).
+  const identity = useIdentity();
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -245,7 +251,7 @@ export default function ExamPage() {
   useEffect(() => {
     const read = () => {
       try {
-        setConnected(hasModelEndpoint(window.localStorage.getItem(LLM_BASE_URL_STORAGE)));
+        setConnected(hasModelEndpoint(window.localStorage.getItem(MODEL_ENDPOINT_SLOT)));
       } catch {
         setConnected(false);
       }
@@ -791,7 +797,7 @@ export default function ExamPage() {
             T1 to T4 in order, each on its own clock. Pause between moves, never
             mid-swipe. {eventLogCopy()}
           </p>
-          <div style={{ textAlign: "right" }}><Annotation side="left">{examAccessCopy()}</Annotation></div>
+          <div style={{ textAlign: "right" }}><Annotation side="left">{examAccessCopy(identity.status)}</Annotation></div>
           {/* AI connection FIRST — users must see it before the Start pill
               (it was previously buried below the fold). */}
           <ConnectPanel attention={connectAttention} />

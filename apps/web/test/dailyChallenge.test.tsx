@@ -415,8 +415,64 @@ describe("the daily never touches the credential", () => {
   /** The daily page and everything it imports, transitively. */
   const DAILY_CLOSURE = [...reachable("app/daily/page.tsx")];
 
-  /** Packages that score a sitting, or that carry an identity. */
-  const BANNED_PACKAGES = /^(@ailx\/core|@clerk)/;
+  /**
+   * Packages that score a sitting, and packages that AUTHENTICATE one.
+   *
+   * The second half is a CAPABILITY ban, not a vendor ban. It read
+   * `@clerk` alone, which kept the promise for the one SDK this app happens
+   * to mount and let `next-auth`, `@auth0/*` or `firebase/auth` walk through
+   * untouched — the by-name defect TEN-227 accepted as real in this series.
+   * What the daily may not have is ANY library that can establish, verify or
+   * carry a session: it plays identically for a signed-in and an anonymous
+   * reader, and it ships in a static export that has no service to
+   * authenticate against.
+   *
+   * Anchored at the start of the specifier and closed at a package boundary
+   * (`/` or end), so `next-auth/providers/github` is caught and a package
+   * merely NAMED like one (`firebaseui-lookalike`) is not silently swept in.
+   */
+  const AUTH_SDK = new RegExp(
+    "^(?:" +
+      [
+        "@clerk(?:-[a-z0-9-]+)?", // @clerk/nextjs, @clerk/backend
+        "next-auth",
+        "@next-auth",
+        "@auth",
+        "auth0",
+        "@auth0",
+        "firebase",
+        "@firebase",
+        "firebase-admin",
+        "@supabase",
+        "@aws-amplify",
+        "aws-amplify",
+        "@workos-inc",
+        "@okta",
+        "@azure/msal-[a-z0-9-]+",
+        "@descope",
+        "@stytch",
+        "@magic-sdk",
+        "@privy-io",
+        "@logto",
+        "lucia",
+        "@lucia-auth",
+        "oslo",
+        "better-auth",
+        "@better-auth",
+        "iron-session",
+        "passport",
+        "passport-[a-z0-9-]+",
+        "@passport-next",
+        "jsonwebtoken",
+        "jose",
+        "jwt-decode",
+        "cookies-next",
+        "next-firebase-auth",
+      ].join("|") +
+      ")(?:/|$)",
+  );
+  /** Packages that score a sitting. */
+  const BANNED_PACKAGES = /^@ailx\/core/;
   /** Binding names that score, judge, rank or touch the credential. */
   const BANNED_BINDINGS = /credential|composite|judg|scor|percentile|band/i;
   /**
@@ -463,6 +519,9 @@ describe("the daily never touches the credential", () => {
     const offences: string[] = [];
     for (const i of packages) {
       if (BANNED_PACKAGES.test(i.specifier)) offences.push(`banned package: ${i.specifier}`);
+      // By capability: an auth SDK is banned whatever the vendor is called,
+      // and a type-only import of one is still the dependency arriving.
+      if (AUTH_SDK.test(i.specifier)) offences.push(`auth SDK: ${i.specifier}`);
       // A package is a leaf, so the NAMES it brings in matter too: @ailx/report
       // holds the daily rules and a credential helper in one barrel, and
       // @ailx/track-t2 holds the item pool and a scorer.
@@ -589,9 +648,34 @@ describe("the daily never touches the credential", () => {
     ["a dynamic report import", 'const r = await import("@ailx/report");'],
     ["a scorer from core", 'import { round3 } from "@ailx/core";'],
     ["a judge helper from report", 'import { judgeDemo } from "@ailx/report";'],
+    // The ban must be by CAPABILITY, not by vendor name. Clerk is the SDK
+    // this app mounts today; the guard's promise is "no auth SDK reaches the
+    // daily", and a promise kept for one vendor is the by-name defect
+    // TEN-227 accepted as real in this same series.
     ["an identity SDK", 'import { useUser } from "@clerk/nextjs";'],
+    ["the Clerk server SDK", 'import { verifyToken } from "@clerk/backend";'],
+    ["NextAuth", 'import { getServerSession } from "next-auth";'],
+    ["a NextAuth submodule", 'import GitHub from "next-auth/providers/github";'],
+    ["Auth0", 'import { getSession } from "@auth0/nextjs-auth0";'],
+    ["Firebase auth", 'import { getAuth } from "firebase/auth";'],
+    ["Supabase auth", 'import { createServerClient } from "@supabase/ssr";'],
+    ["a session cookie library", 'import { getIronSession } from "iron-session";'],
+    ["Lucia", 'import { Lucia } from "lucia";'],
+    ["a type-only auth import", 'import type { Session } from "next-auth";'],
   ])("fails on %s", (_case, source) => {
     expect(forbiddenImports(parseImports(source))).not.toEqual([]);
+  });
+
+  it.each([
+    ["a plain react import", 'import { useState } from "react";'],
+    ["a package merely NAMED like an auth SDK", 'import { x } from "firebaseui-lookalike";'],
+    ["a package whose name starts with a banned one", 'import { x } from "lucia-chess";'],
+    ["the daily's own rules", 'import { dailyRules } from "@ailx/report";'],
+  ])("stays quiet on %s", (_case, source) => {
+    // The capability ban must be a ban on a capability, not on a prefix: if
+    // every one of these were red too, the mutations above would prove
+    // nothing.
+    expect(forbiddenImports(parseImports(source))).toEqual([]);
   });
 
   it("stays quiet on the funnel imports the daily actually has", () => {
@@ -644,8 +728,24 @@ describe("the daily never touches the credential", () => {
     expect(DAILY_MODULES.filter((m) => reachable("app/daily/page.tsx").has(m))).toEqual(DAILY_MODULES);
   });
 
-  it("reaches no identity, so a signed-in player's daily is the same daily", () => {
-    expect(DAILY_CLOSURE.filter((f) => /^lib\/auth/.test(f))).toEqual([]);
+  it("reaches ONE read-only identity status and nothing else under lib/auth", () => {
+    // It reached nothing at all until TEN-151, and the reason was right: a
+    // signed-in player's daily must be the same daily. What broke that rule
+    // in practice was the opposite of an identity read — the result screen
+    // told every player "There is no account to lose it to", including the
+    // ones who have one.
+    //
+    // So the allowance is exactly one module, and it is the SDK-free status
+    // store: it carries a status, never an account id, never a token, and it
+    // decides ONE sentence of copy. Everything the original guard was for is
+    // still asserted, and by the assertion that actually does the work: the
+    // closure-wide ban in "imports nothing from the exam, scoring or
+    // credential path" runs over EVERY module the daily page reaches,
+    // identityState.ts included, and it now bans an auth SDK by capability
+    // rather than by vendor. No scoring module (above), no request during a
+    // round (above), and the round itself is proved identical for both
+    // readers in test/identityCopy.test.tsx.
+    expect(DAILY_CLOSURE.filter((f) => /^lib\/auth/.test(f))).toEqual(["lib/auth/identityState.ts"]);
   });
 
   it("reads imports with the compiler, so no string can hide one", () => {
