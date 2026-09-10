@@ -27,7 +27,7 @@
  *    is not used about these runs, because that document forbids it.
  */
 import Link from "next/link";
-import { apiPath } from "@ailx/contract";
+import { API_RESPONSE_SCHEMAS, apiPath } from "@ailx/contract";
 import { TRACK_META, type WorldAggregates } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { PageError, PageLoading } from "../../components/PageNotice";
@@ -101,6 +101,9 @@ export function WorldView() {
   // this browser already has and mints none.
   const result = useService<{ aggregates: WorldAggregates }>(apiPath("aggregates"), {
     identity: "optional",
+    // VALIDATED: every figure on this page is read out of the body during
+    // render, so an unknown shape was a TypeError, not a sentence (TEN-216).
+    schema: API_RESPONSE_SCHEMAS.aggregates,
   });
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title={TITLE} />;

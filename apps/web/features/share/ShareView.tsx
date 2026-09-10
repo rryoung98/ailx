@@ -19,8 +19,8 @@
  */
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { apiPath, shareUrlPath } from "@ailx/contract";
-import { shareMinutes, type SharePayload } from "@ailx/report";
+import { API_RESPONSE_SCHEMAS, apiPath, shareUrlPath, type SharedView } from "@ailx/contract";
+import { shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPortrait";
 import { FunnelStep } from "../../components/FunnelStep";
@@ -31,12 +31,13 @@ import { ShareViewCount } from "../../components/ShareViewCount";
 import { TrackRadar } from "../../components/TrackRadar";
 import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
 
-export interface SharedView {
-  status: string;
-  createdAt: string;
-  views: number;
-  payload: SharePayload;
-}
+/**
+ * The shape of the anonymous share read. It is a SCHEMA in `@ailx/contract`
+ * now (`sharedViewSchema`), because the seam validates a body from the route
+ * table and an interface here would be a second definition of the same wire
+ * shape (TEN-216). Re-exported so the page and its metadata keep one import.
+ */
+export type { SharedView };
 
 export function ShareView() {
   const params = useParams<{ token: string }>();
@@ -45,7 +46,10 @@ export function ShareView() {
   // same way for everyone who holds one. Anonymous, said out loud.
   const result = useService<{ share: SharedView }>(
     token === null ? null : apiPath("shareView", { token }),
-    { identity: "anonymous" },
+    // VALIDATED: the payload is dereferenced all the way down by the card
+    // below, so an unknown shape was a crash on the growth loop's own page
+    // rather than the sentence written for it (TEN-216).
+    { identity: "anonymous", schema: API_RESPONSE_SCHEMAS.shareView },
   );
   if (result.state === "loading") return <PageLoading title="Opening this card" />;
   if (result.state === "error") return <PageError title="Opening this card" message={result.message} />;

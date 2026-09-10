@@ -196,6 +196,46 @@ function writeSyncState(storage: StorageLike, clientAttemptId: string, state: Sy
 }
 
 /**
+ * How long anything WAITING on the mirror may wait for it — the bound on
+ * `flush()`, and on nothing else.
+ *
+ * The REQUESTS are bounded by TEN-210's shared table (`deadline(callClass)`),
+ * which is where a socket's bound belongs. This number is a different claim:
+ * a pass is several requests, and the T1 upload that awaits `flush()` must
+ * not be parked for their sum. Without it one stalled POST never settled the
+ * serialized chain, and the publish never began, never failed and could not
+ * be retried (TEN-218).
+ */
+export const MIRROR_WAIT_MS = 12_000;
+
+/**
+ * A promise, or an ABANDONMENT. Used for `flush()` only.
+ *
+ * It RESOLVES when the time is up — it does not reject — because the caller's
+ * next move is to proceed, not to fail: the pass keeps its own abort and
+ * retries from `syncedThrough`, and `flush()` returns the status so the
+ * caller can see it has not landed. `withDeadline` in `lib/data/deadline.ts`
+ * is the rejecting version of the same shape; this one is named differently
+ * on purpose, because importing the wrong one here would silently turn a
+ * proceeding publish into a failing one.
+ */
+function settleWithin(work: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    void work.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+    );
+  });
+}
+
+/**
  * Single GET path: same auth header, same error rule as {@link postJson}, and
  * the same BOUND. Every request through this module carries a deadline from
  * `lib/data/deadline.ts` — before TEN-210 none of them did, so a stalled
@@ -362,8 +402,23 @@ class ServerMirror {
     };
   }
 
+  /**
+   * Wait for the serialized sync chain — but NOT for ever — then report where
+   * it got to.
+   *
+   * Two bounds, and they are not the same bound. Every request in a pass
+   * carries `deadline(callClass)` from TEN-210, which stops the SOCKET. This
+   * one stops the WAIT: a pass can make several bounded requests, and a
+   * caller of `flush()` (the T1 site upload) must not be parked for their
+   * sum. It ABANDONS rather than rejects — see {@link settleWithin} — so the
+   * upload proceeds and the mirror keeps retrying behind it (TEN-218).
+   *
+   * Deliberately NOT `withDeadline` from `lib/data/deadline.ts`: that one
+   * REJECTS, which would turn "the publish starts anyway" into "the publish
+   * fails". Same idea, opposite answer, so it has a different name here.
+   */
   async flush(): Promise<SyncStatus> {
-    await this.inflight;
+    await settleWithin(this.inflight, MIRROR_WAIT_MS);
     return this.status();
   }
 
@@ -409,7 +464,7 @@ class ServerMirror {
 
     if (!state.serverAttemptId) {
       const created = await this.post(apiPath("createAttempt"), {});
-      state.serverAttemptId = (created.attempt as { id: string }).id;
+      state.serverAttemptId = createdAttemptId(created, apiPath("createAttempt"));
       this.write(clientAttemptId, state);
     }
     for (let i = state.syncedThrough; i < log.length; i++) {
@@ -496,6 +551,40 @@ export function createApiPersistence(
   };
 }
 
+/**
+ * The service answered, and what it said is not the shape this build knows.
+ *
+ * TYPED, because the two create paths have different readers: the start path
+ * puts the message in front of the candidate, and the mirror hands it to
+ * `onSyncError`. Both used to dereference the body and produce
+ * `Cannot read properties of undefined` — a raw TypeError shown to a person
+ * (TEN-230). An `id` that is present but not a NON-EMPTY STRING is refused
+ * here too, because it would otherwise throw one route later, inside
+ * `apiPath()`, on every sync pass for the rest of the sitting.
+ */
+export class ServiceShapeError extends Error {
+  constructor(path: string, what: string) {
+    super(`the exam service answered ${path} with something this build cannot read: ${what}`);
+    this.name = "ServiceShapeError";
+  }
+}
+
+/**
+ * The server attempt id out of a create response. One reader, two call sites
+ * (the mirror and the pre-created start), so they cannot disagree.
+ */
+function createdAttemptId(created: Record<string, unknown>, path: string): string {
+  const attempt = created.attempt;
+  if (typeof attempt !== "object" || attempt === null) {
+    throw new ServiceShapeError(path, "no `attempt` object in the body");
+  }
+  const id = (attempt as { id?: unknown }).id;
+  if (typeof id !== "string" || id === "") {
+    throw new ServiceShapeError(path, "`attempt.id` is not a non-empty string");
+  }
+  return id;
+}
+
 /** One track's exposure record, as POST /attempts returns it. */
 interface DeckRecord {
   trackId: string;
@@ -574,7 +663,7 @@ export async function createServerAttempt(
   locale: string,
 ): Promise<string> {
   const created = await postJson(storage, opts, apiPath("createAttempt"), { locale, decks: true });
-  const id = (created.attempt as { id: string }).id;
+  const id = createdAttemptId(created, apiPath("createAttempt"));
   const recorded = readDecks(created);
   writeSyncState(storage, id, {
     serverAttemptId: id,
@@ -833,6 +922,15 @@ export async function startServerAttempt(locale: string): Promise<string | null>
  */
 const byStorage = new WeakMap<object, AttemptPersistence>();
 
+/**
+ * TEN-123 wanted a "not saved" indicator and added a module-level
+ * `mirrorSyncState` plus an `onSyncOk` callback to drive it. Both are gone:
+ * the mirror already publishes its own state (`status()` / `subscribe()`,
+ * TEN-206), so a second store of the same fact is one more thing that can
+ * disagree with the completion screen. `MirrorWarning` reads `useSyncStatus`
+ * instead, and `failures > 0` is the same claim the callback pair made —
+ * a pass has failed and nothing has landed since.
+ */
 export function browserApiOptions(): ApiPersistenceOptions {
   return {
     baseUrl: apiBase(),

@@ -41,6 +41,7 @@ import {
 } from "./helpers/clientPage";
 import { setAuthTokenSource } from "../lib/data/authHeaders";
 import { publishIdentity, resetIdentity } from "../lib/auth/identityState";
+import { SERVICE_INVALID_COPY } from "../lib/data/serviceFetch";
 import { ProgressView } from "../features/progress/ProgressView";
 import { metadata } from "../app/progress/page.api";
 
@@ -399,5 +400,24 @@ describe("a signed-in candidate is never told they are a stranger", () => {
     expect(host.innerHTML).toContain("day streak");
     await act(async () => root.unmount());
     host.remove();
+  });
+});
+
+/**
+ * TEN-216 — a 200 in a shape this build does not know.
+ *
+ * The body was CAST and then dereferenced during render, so wire drift
+ * between this repo and the private service (AGENTS.md guarantees they deploy
+ * on separate clocks) threw a TypeError into the root error boundary. The
+ * seam validates the body now, and the page says the true thing: the service
+ * answered with something it could not read.
+ */
+describe("a 200 whose body is not the shape /progress promises", () => {
+  it("says the answer was unreadable rather than throwing into the boundary", async () => {
+    const { streak: _streak, ...withoutStreak } = report({ days: busyDays });
+    payload = withoutStreak as ProgressReport;
+    const html = await markup();
+    expect(html).toContain(SERVICE_INVALID_COPY);
+    expect(html).not.toContain("day streak");
   });
 });

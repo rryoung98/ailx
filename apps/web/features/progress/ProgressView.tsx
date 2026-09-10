@@ -54,7 +54,7 @@ import {
   type SittingPoint,
   type StreakSummary,
 } from "@ailx/report";
-import { apiPath } from "@ailx/contract";
+import { API_RESPONSE_SCHEMAS, apiPath } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 import { hasAuthTokenSource } from "../../lib/data/authHeaders";
 import { useLocalStreak } from "../../lib/data/localPractice";
@@ -329,12 +329,19 @@ export function ProgressView() {
   // derivation both repos share.
   const result = useService<{ progress: ProgressReport; claimedDays?: string[] }>(apiPath("progress"), {
     identity: "required",
+    // VALIDATED. This page dereferences the report all the way down during
+    // render, so a 200 in a shape this build does not know used to throw a
+    // TypeError into the root error boundary rather than say so (TEN-216).
+    schema: API_RESPONSE_SCHEMAS.progress,
   });
   if (result.state === "loading") {
     return <PageLoading eyebrow={EYEBROW} title={PAGE_TITLE} />;
   }
   if (result.state === "error") {
-    return <PageError eyebrow={EYEBROW} title={PAGE_TITLE} />;
+    // The state's OWN sentence: "we could not reach it" and "it answered with
+    // something unreadable" are different facts, and this page used to print
+    // the first for both (TEN-216).
+    return <PageError eyebrow={EYEBROW} title={PAGE_TITLE} message={result.message} />;
   }
   // Say something TRUE for the deployment that is actually running. Under dev
   // auth there are no accounts and no sign-in to send anyone to, and identity

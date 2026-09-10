@@ -198,7 +198,18 @@ export async function serviceFetch<T>(
       signal: bound.signal,
     });
     if (res.status !== 200) return { state: "missing", status: res.status, ...(await refusal(res)) };
-    const body: unknown = await res.json();
+    // Its OWN try, because a captive portal's HTML on a 200 is the service
+    // answering with something unreadable, not a connection this reader can
+    // fix. Sharing the outer catch printed "check your connection" for a call
+    // that landed (TEN-229).
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      if (opts.signal?.aborted === true) return { state: "loading" };
+      console.error(`AILX: ${path} answered 200 with a body that is not JSON`);
+      return { state: "error", message: SERVICE_INVALID_COPY };
+    }
     if (opts.schema === undefined) return { state: "ready", data: body as T };
     const parsed = opts.schema.safeParse(body);
     if (parsed.success) return { state: "ready", data: parsed.data };

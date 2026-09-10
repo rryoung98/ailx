@@ -108,7 +108,24 @@ export {
   type PublishResult,
   type ShareRecord,
 } from "./share.js";
-export { type CredentialRecord, type OwnerCredential } from "./credential.js";
+export {
+  shareViewResponseSchema,
+  sharedViewSchema,
+  type SharedView,
+} from "./share-view.js";
+export {
+  credentialViewFrom,
+  credentialViewSchema,
+  type CredentialRecord,
+  type CredentialView,
+  type OwnerCredential,
+} from "./credential.js";
+export {
+  aggregatesResponseSchema,
+  progressReportSchema,
+  progressResponseSchema,
+  worldAggregatesSchema,
+} from "./progress.js";
 export {
   PROFILE_READING_HISTORY,
   READING_SOURCES,

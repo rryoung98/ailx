@@ -113,11 +113,22 @@ describe("the seam still offers the work to the server", () => {
     p.save(started());
     await p.flush();
     calls.length = 0;
-    // Another tab writes past us: our log is a divergent branch of the same
-    // attempt, and pushing it at the server would be worse than losing it.
+    // Another tab writes past us AND has work we do not have: our log is a
+    // divergent branch of the same attempt, and pushing it at the server
+    // would be worse than losing it.
+    //
+    // The stored log carries an entry of its own (TEN-124). A stored log that
+    // is a PREFIX of ours is absorbed rather than refused, because our write
+    // loses none of it — `packages/session/test/saveConflictRecovery.test.ts`
+    // owns that half — so a fixture that only bumped `rev` would no longer be
+    // testing a conflict at all.
     storage.setItem(
       ATTEMPT_KEY,
-      JSON.stringify({ formatVersion: 1, rev: 99, log: started() }),
+      JSON.stringify({
+        formatVersion: 1,
+        rev: 99,
+        log: append(started(), { type: "track_started", trackId: "t2", ts: 1_500 }),
+      }),
     );
     expect(() => p.save(append(started(), { type: "track_started", trackId: "t1", ts: 2_000 }))).toThrow(
       SaveConflictError,

@@ -140,8 +140,22 @@ describe("response-schema coupling", () => {
     expect(API_RESPONSE_SCHEMAS.gallery.safeParse(nulled).success).toBe(false);
   });
 
-  it("covers two routes of the manifest, and says so rather than implying more", () => {
-    expect(Object.keys(API_RESPONSE_SCHEMAS)).toEqual(["gallery", "profile"]);
+  /**
+   * SIX now: the four routes a page dereferences during render were added in
+   * TEN-216, because a cast plus a render is a TypeError in the root error
+   * boundary the first time the two repos disagree. The table is still
+   * PARTIAL and the list is spelled out, so a seventh entry is a decision
+   * somebody made rather than a drift.
+   */
+  it("covers six routes of the manifest, and says so rather than implying more", () => {
+    expect(Object.keys(API_RESPONSE_SCHEMAS).sort()).toEqual([
+      "aggregates",
+      "credentialView",
+      "gallery",
+      "profile",
+      "progress",
+      "shareView",
+    ]);
     expect(Object.keys(API_ROUTES).length).toBeGreaterThan(30);
   });
 });

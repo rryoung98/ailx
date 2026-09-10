@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { TrackEvent } from "@ailx/core";
 import { MODEL_ENDPOINT_SLOT } from "@ailx/core";
 import {
@@ -16,7 +16,14 @@ import {
 import { useSyncStatus } from "../../lib/data/useSyncStatus";
 import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
 import { withDeadline } from "../../lib/data/deadline";
-import { fetchHostedTrackConfig } from "../../lib/instrument/hostedDeck";
+import {
+  discardTranscriptTurns,
+  fetchHostedTrackConfig,
+  outstandingTranscriptTurns,
+  resumeTranscriptTurns,
+  subscribeTranscriptTurns,
+  turnsOutstandingCopy,
+} from "../../lib/instrument/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/data/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
@@ -36,6 +43,7 @@ import { Annotation } from "../../components/ui/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/ConnectPanel";
 import { modelGatewayFetch } from "../../lib/data/modelGateway";
 import { hasModelEndpoint } from "@ailx/track-t1";
+import { MirrorWarning } from "../../features/exam/MirrorWarning";
 import { PersistWarning } from "../../features/exam/PersistWarning";
 import { StorageStop } from "../../features/exam/StorageStop";
 import { carriedOnCopy, storageStopCopy } from "../../features/exam/storageStopCopy";
@@ -118,6 +126,16 @@ export default function ExamPage() {
   // sentence about THEM, and it used to be a sentence about the build
   // (TEN-151).
   const identity = useIdentity();
+  /**
+   * T3 transcript turns still in this browser. Read here rather than passed
+   * down, because the answer outlives the T3 track mount and the finalize
+   * button is on a different screen (TEN-122).
+   */
+  const outstandingTurns = useSyncExternalStore(
+    subscribeTranscriptTurns,
+    outstandingTranscriptTurns,
+    () => 0,
+  );
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -219,6 +237,14 @@ export default function ExamPage() {
     if (started?.type === "attempt_started") {
       const sub = loadSiteSubmission(window.localStorage, started.attemptId);
       if (sub) setSiteStatus({ state: "live", url: sub.url });
+      /**
+       * T3 turns this browser had not managed to send before the reload are
+       * taken up again HERE rather than at the T3 mount: a candidate who
+       * refreshes on the finish screen never mounts T3 again, and that is the
+       * one screen where an outstanding turn decides something (TEN-122).
+       * A no-op when nothing is stored, which is every static-demo run.
+       */
+      resumeTranscriptTurns(started.attemptId);
     }
     /**
      * A stored log that did not load clean says WHICH thing happened: a log
@@ -764,6 +790,10 @@ export default function ExamPage() {
     if (cur?.attemptId) {
       clearAllCheckpoints(window.localStorage, cur.attemptId);
       clearSiteSubmission(window.localStorage, cur.attemptId);
+      // The discarded run's un-landed T3 turns go with it. Left behind they
+      // would keep posting a run nobody is sitting, and keep the notice up
+      // and Finish shut on the run that replaces it.
+      discardTranscriptTurns(cur.attemptId);
     }
     getAttemptPersistence().clear();
     siteRetryRef.current = null;
@@ -775,6 +805,7 @@ export default function ExamPage() {
     return <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
       <div className="container"><p className="muted">Loading your run…</p></div></main>;
   }
 
@@ -789,6 +820,7 @@ export default function ExamPage() {
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · Foray 2026.1</div>
@@ -881,6 +913,7 @@ export default function ExamPage() {
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
           <h1>Run complete</h1>
           {/* Derived, never asserted (TEN-129). The old line said "All four
@@ -917,6 +950,7 @@ export default function ExamPage() {
         <main className="page">
           <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
           <TimeUpNotice
             trackId={justFinished}
             budgetSeconds={state.config!.budgets[justFinished]}
@@ -937,6 +971,7 @@ export default function ExamPage() {
       <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">run {state.attemptId}</div>
           <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
@@ -999,12 +1034,27 @@ export default function ExamPage() {
                here rather than hanging on a track it cannot offer — and the
                button says which sitting it is closing, because a run that
                finishes two of four tracks is not a full one. */
-            <button className="btn primary" onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}>
+            /* BLOCKED while a T3 transcript turn is still in this browser.
+               Finalizing is the moment the service stops accepting evidence,
+               and those rows are what its T3 score reads for stances — so
+               finishing with one outstanding is a score computed from less
+               than the candidate did (TEN-122). The wait is visible and it
+               ends by itself. */
+            <button
+              className="btn primary"
+              disabled={outstandingTurns > 0}
+              onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}
+            >
               {lockedPending.length > 0
                 ? `Finish here with ${trackList(done)}`
                 : "Finish run"}
             </button>
           )}
+          {outstandingTurns > 0 ? (
+            <p className="small muted" data-testid="turns-outstanding" style={{ margin: "0.6rem 0 0" }}>
+              {turnsOutstandingCopy(outstandingTurns)}
+            </p>
+          ) : null}
           <span style={{ marginLeft: "0.8rem" }}>
             <ResetButton onReset={resetAttempt} />
           </span>
@@ -1082,6 +1132,7 @@ export default function ExamPage() {
     <main className="page">
       <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
+      <MirrorWarning />
       {/* Full-width workspace while a track is live: the runners are
           two-pane environments and need the room (~1400px). */}
       <div className="container" style={{ maxWidth: 1400 }}>
