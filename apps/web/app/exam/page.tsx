@@ -17,8 +17,10 @@ import { useSyncStatus } from "../../lib/data/useSyncStatus";
 import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
 import { withDeadline } from "../../lib/data/deadline";
 import {
+  discardTranscriptTurns,
   fetchHostedTrackConfig,
   outstandingTranscriptTurns,
+  resumeTranscriptTurns,
   subscribeTranscriptTurns,
   turnsOutstandingCopy,
 } from "../../lib/instrument/hostedDeck";
@@ -235,6 +237,14 @@ export default function ExamPage() {
     if (started?.type === "attempt_started") {
       const sub = loadSiteSubmission(window.localStorage, started.attemptId);
       if (sub) setSiteStatus({ state: "live", url: sub.url });
+      /**
+       * T3 turns this browser had not managed to send before the reload are
+       * taken up again HERE rather than at the T3 mount: a candidate who
+       * refreshes on the finish screen never mounts T3 again, and that is the
+       * one screen where an outstanding turn decides something (TEN-122).
+       * A no-op when nothing is stored, which is every static-demo run.
+       */
+      resumeTranscriptTurns(started.attemptId);
     }
     /**
      * A stored log that did not load clean says WHICH thing happened: a log
@@ -780,6 +790,10 @@ export default function ExamPage() {
     if (cur?.attemptId) {
       clearAllCheckpoints(window.localStorage, cur.attemptId);
       clearSiteSubmission(window.localStorage, cur.attemptId);
+      // The discarded run's un-landed T3 turns go with it. Left behind they
+      // would keep posting a run nobody is sitting, and keep the notice up
+      // and Finish shut on the run that replaces it.
+      discardTranscriptTurns(cur.attemptId);
     }
     getAttemptPersistence().clear();
     siteRetryRef.current = null;
