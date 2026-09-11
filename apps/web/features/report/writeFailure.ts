@@ -20,6 +20,19 @@
  * rendered here. The panels own their own reassurance sentence ("Your sitting
  * is saved", "Your link is untouched") because it is a different fact in each
  * of them, and it is passed in rather than guessed at.
+ *
+ * WHY `ShareToGallery` IS OUTSIDE THIS, and it is deliberate rather than
+ * unfinished. It keeps its own `failureCopy` for two structural reasons, and
+ * unifying them would silently lose both:
+ *
+ *  - the gallery write returns NO READABLE BODY on success, so it has no
+ *    `unreadable` case at all — the fourth kind here does not exist there;
+ *  - its 429 is a DAILY CAP, not a rate limit that expires in a moment, so its
+ *    sentence names tomorrow and this module's does not.
+ *
+ * If the two are ever merged, those two facts are what must survive. This note
+ * exists because the next reader will otherwise see two vocabularies for one
+ * job and tidy one away.
  */
 import { isTimeout } from "../../lib/data/deadline";
 import { refusalReason } from "../../lib/data/serviceFetch";
@@ -54,8 +67,17 @@ export type WriteFailure =
  * request: 401 (we do not know you), 403 (not yours), 404 (no such attempt),
  * 409 (already done). Retrying those produces the same status, so the panel
  * must not offer it.
+ *
+ * `unreadable` IS NOT RETRYABLE, and it used to be: `kind !== "refused"`
+ * returned true for it, while the sentence beside the button said "that is our
+ * bug, not your connection". Both cannot be right. A 2xx whose body is the
+ * wrong SHAPE is a deployment disagreeing with this build, so pressing again
+ * returns the same body — the button would invite a candidate to retry a thing
+ * that cannot change until someone ships. `timeout` and `unreachable` stay
+ * retryable because the world may differ a second later; a shape does not.
  */
 export function mayRetry(failure: WriteFailure): boolean {
+  if (failure.kind === "unreadable") return false;
   if (failure.kind !== "refused") return true;
   const { status } = failure;
   return status === 408 || status === 429 || status >= 500;
