@@ -18,7 +18,10 @@ import { createRoot, type Root } from "react-dom/client";
 import {
   CLAIM_PROMISE,
   FAMILY_META,
+  LOCAL_PRACTICE_BASIS,
   LOCAL_PRACTICE_KEY,
+  LOCAL_PRACTICE_ALL_CLAIMED,
+  LOCAL_PRACTICE_PARTLY_CLAIMED,
   PRACTICE_BANK,
   PRACTICE_DECK_SIZE,
   PRACTICE_MIN_ELAPSED_MS,
@@ -765,6 +768,51 @@ describe("the landing taster (TEN-156)", () => {
     const claim = posted.find((p) => p.url.endsWith("/api/practice/claim"));
     expect(claim, "a claim POST").toBeTruthy();
     expect((claim!.body as { days: Array<{ answered: number }> }).days[0].answered).toBe(PRACTICE_DECK_SIZE);
+  });
+
+  it("does not say a handed-over day is kept in this browser and on no account", async () => {
+    // The taster round is browser-dealt, so the panel prints "kept in this
+    // browser … no account". The claim then puts that very day on the
+    // account, and the receipt below says so. Both sentences on one screen is
+    // the TEN-132 contradiction, one surface over (adversarial review of #66).
+    await mount(true, false, { taster: true });
+    await playSlowly();
+    await act(async () => {});
+    expect(host.textContent).toContain("now on your account");
+    expect(host.textContent).not.toContain(LOCAL_PRACTICE_BASIS);
+    // Every day this browser holds is claimed — a one-round browser is the
+    // commonest case — so "the rest are kept here alone" would be about
+    // nothing at all.
+    expect(host.textContent).toContain(LOCAL_PRACTICE_ALL_CLAIMED);
+    expect(host.textContent).not.toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
+  });
+
+  it("still says where the day is when there is no account to hand it to", async () => {
+    await mount(true, true, { taster: true });
+    await signedOut();
+    await playSlowly();
+    await act(async () => {});
+    expect(host.textContent).toContain(LOCAL_PRACTICE_BASIS);
+  });
+
+  it("remembers a claim made before this page was open", async () => {
+    // The receipt lives in memory and dies with the page; the ledger's
+    // `claimed` flag does not. A browser that claimed yesterday and reloads
+    // must not be told again that its days are on no account.
+    store.set(
+      LOCAL_PRACTICE_KEY,
+      JSON.stringify({
+        days: [{ day: daysAgo(3), sessions: 1, answered: 6, correct: 5, claimed: true }],
+      }),
+    );
+    await mount(true, true, { taster: true });
+    await signedOut();
+    await playSlowly();
+    await act(async () => {});
+    // Today's round is browser-kept and says so; the older day is on an
+    // account, so the blanket "no account" sentence may not be printed.
+    expect(host.textContent).toContain(LOCAL_PRACTICE_PARTLY_CLAIMED);
+    expect(host.textContent).not.toContain(LOCAL_PRACTICE_BASIS);
   });
 
   it("claims nothing for a visitor with no identity to claim onto", async () => {

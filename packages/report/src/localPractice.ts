@@ -272,6 +272,35 @@ export const LOCAL_PRACTICE_BASIS =
   + "to another browser or another device.";
 
 /**
+ * What to say instead of `LOCAL_PRACTICE_BASIS` when SOME of the days on
+ * screen have already been handed to an account. "Not on our servers. No
+ * account" is false of a claimed day: `claimed: true` is only ever written
+ * from a 200 that NAMED the day, so an account holds it.
+ *
+ * Said on both surfaces that draw browser-held days — the drill panel and
+ * /progress when the service did not answer — because one wrong sentence
+ * fixed on one page is a wrong sentence still shipping on the other, which is
+ * exactly how TEN-132 came back.
+ */
+export const LOCAL_PRACTICE_PARTLY_CLAIMED =
+  "Some of these days are on an account already: this browser handed them over, and they are "
+  + "in both places now. The rest are kept in this browser alone — no account, and nothing "
+  + "about you leaves this device. Clearing your site data ends what is kept here.";
+
+/**
+ * And when EVERY day on screen has been handed over, which is the commonest
+ * case of the two: the landing taster is dealt in the browser and claimed the
+ * moment the round ends, so a browser one round old has a ledger that is
+ * entirely claimed. "The rest are kept in this browser alone" would then
+ * describe an empty set — a sentence about nothing, printed as if it were
+ * about something.
+ */
+export const LOCAL_PRACTICE_ALL_CLAIMED =
+  "These days are on an account already — this browser handed them over. What is kept here is "
+  + "its own copy, and nothing about you leaves this device: clearing your site data ends the "
+  + "copy, and the account keeps its record.";
+
+/**
  * What signing in actually buys. Three true things, in the order they matter,
  * and nothing about what you would LOSE — a streak already earned is not a
  * hostage, and this list may never be rewritten to imply it is.

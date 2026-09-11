@@ -30,7 +30,9 @@ import { apiPath } from "@ailx/contract";
 import {
   CLAIM_PROMISE,
   FAMILY_META,
+  LOCAL_PRACTICE_ALL_CLAIMED,
   LOCAL_PRACTICE_BASIS,
+  LOCAL_PRACTICE_PARTLY_CLAIMED,
   PRACTICE_OPTIONS,
   SIGNAL_CHOICE,
   SIGN_IN_VALUE_SHORT,
@@ -47,11 +49,13 @@ import { hasIdentity, useIdentity } from "../../lib/auth/identityState";
 import { funnel } from "../../lib/data/funnel";
 import {
   claimLocalPractice,
+  ledgerClaimedShare,
   localStreakSummary,
   readLastClaim,
   recordLocalPracticeRound,
   subscribeLocalPractice,
   utcOffsetMinutes,
+  type ClaimedShare,
   type ClaimOutcome,
 } from "../../lib/data/localPractice";
 import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
@@ -196,6 +200,23 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   const [qualification, setQualification] = useState<PracticeQualification | null>(null);
   /** What the sign-in claim did, if it happened while this page was open. */
   const [claim, setClaim] = useState<ClaimOutcome | null>(null);
+  /**
+   * How much of this browser's ledger has already been handed over. The
+   * sentence under the counters is about "your practice days", plural and
+   * durable, so the answer must be too: the in-memory claim receipt dies with
+   * the page and knows only about today, while the ledger's `claimed` flag
+   * survives a reload and covers every day behind the numbers on screen.
+   *
+   * Read in the subscribe effect below, never per render — the ledger is
+   * storage, and the panel re-renders on every card.
+   *
+   * This is the WHOLE ledger. /progress asks the same question about the days
+   * it is drawing, having already dropped the ones an account holds, so the
+   * two surfaces can print different sentences from one ledger. That is the
+   * two sets differing, not the copy drifting: making them agree would put a
+   * false sentence back on one of them.
+   */
+  const [handedOver, setHandedOver] = useState<ClaimedShare>("none");
   const [submitFailed, setSubmitFailed] = useState(false);
   /** Whether the failure on screen is "too slow", for both the deal and the send. */
   const [dealTimedOut, setDealTimedOut] = useState(false);
@@ -312,6 +333,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   useEffect(() => {
     const refresh = () => {
       setClaim(readLastClaim());
+      setHandedOver(ledgerClaimedShare(window.localStorage));
       if (recorded) return;
       setStreak(localStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes()));
     };
@@ -556,8 +578,21 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
             The ROUND's own truth, not the next round's: a taster round is
             dealt in this browser and the answer to "where is this day?" was
             settled when it was dealt, even though the drill is recorded from
-            the moment it was engaged. */}
-        {roundRecorded.current ? null : <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>}
+            the moment it was engaged.
+
+            ...unless the claim has since handed that very day over. Then
+            "kept in this browser … no account" is false, and the receipt
+            below it says the opposite on the same screen — the TEN-132
+            contradiction, one surface over. */}
+        {roundRecorded.current ? null : (
+          <p className="small faint">
+            {handedOver === "none"
+              ? LOCAL_PRACTICE_BASIS
+              : handedOver === "all"
+                ? LOCAL_PRACTICE_ALL_CLAIMED
+                : LOCAL_PRACTICE_PARTLY_CLAIMED}
+          </p>
+        )}
         {/* The ask, and only here: after a round, never in front of one. It
             names what an account is for and what happens to these days, and
             it is absent from the static export, which has no sign-in page to
