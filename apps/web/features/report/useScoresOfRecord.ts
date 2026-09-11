@@ -115,6 +115,27 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    * Bounding the CLAIM in time rather than the identity covers both: a
    * pending identity and a slow first read leave the page saying it has not
    * heard, which is true of each, instead of saying it is still reading.
+   *
+   * WHICH DEPLOYMENTS REACH WHICH BRANCH, because the race is not the whole
+   * story and the answer differs by build:
+   *
+   *  - STATIC EXPORT (no Clerk): `armDeadline` returns early on
+   *    `!isClerkEnabled()`, so no identity is ever published. The latch here
+   *    is the ONLY thing that ends `reading`, and the gate falls back to this
+   *    browser's own log. That is the case `stops calling itself reading when
+   *    no answer ever comes` pins, and it is why this latch is not deletable
+   *    in favour of `identityState`'s deadline.
+   *  - HOSTED, Clerk publishes in time: normal path, read fires with a Bearer.
+   *  - HOSTED, Clerk never publishes: `identityState` publishes the asserted
+   *    DEV identity at `IDENTITY_DEADLINE_MS` and a read fires WITHOUT a
+   *    bearer token. `identityState`'s own comment says "the service accepts
+   *    it" — that was true when it was written and is NOT true of a Clerk
+   *    deployment now: the exam service refuses dev auth outright on anything
+   *    `publiclyReachable` can see (ailx-backend `7bb2407`, TEN-237). So that
+   *    read 401s, and this page reports `{kind:"missing", status:401}` about a
+   *    request that was never going to land. Filed separately — the repair
+   *    belongs in `identityState`, not here, because the wrong FALLBACK is the
+   *    defect and every caller of it is affected, not just this page.
    */
   const [identityWaited, setIdentityWaited] = useState(false);
   /** True once a request has really gone out. Latched for the same reason. */

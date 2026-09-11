@@ -530,6 +530,45 @@ describe("it waits for an identity before the first read", () => {
     await m.unmount();
   });
 
+  /**
+   * THE TEN-128 GUARANTEE, ON THE DEPLOYMENT WHERE IT CAN STILL BITE.
+   *
+   * The original form of this test held the identity `pending` for ever and
+   * asserted `reading` went false anyway. That state is no longer reachable:
+   * `readIdentity` resolves a build with no Clerk BY CONSTRUCTION
+   * (`identityState.ts:151` — the static export is `anonymous`, a hosted build
+   * without a key is the asserted dev id), and a build that does mount Clerk is
+   * bounded by `IDENTITY_DEADLINE_MS`. Every deployment now answers.
+   *
+   * What is still reachable, and is the same dead end, is an identity that
+   * resolves and a first READ that never answers. The latch must end `reading`
+   * on that path too, or the candidate is back on "Checking what the exam
+   * service has issued…" with no scores and no link — which is what TEN-128
+   * was filed for. That is the guarantee, and it does not depend on who
+   * resolves first.
+   */
+  it("stops calling itself reading when the first read never answers, and gives the link back", async () => {
+    // A read that goes out and never answers — not a read that never fires.
+    vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries((init?.headers ?? {}) as Record<string, string>)) {
+        headers[k.toLowerCase()] = v;
+      }
+      calls.push({ url: String(url), headers });
+      return new Promise<Response>(() => {});
+    });
+    const m = await mount(createElement(GateHarness));
+    expect(m.html()).toContain("Checking what the exam service has issued");
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    // The request DID go out — this is not the "we never asked" case.
+    expect(calls.length).toBeGreaterThan(0);
+    // ...and it has not answered. The page must stop claiming to be reading.
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    // The way out is back: the gate fell through to this browser's own log.
+    expect(m.html()).toContain('data-cta="/exam"');
+    await m.unmount();
+  });
+
   it("tells a FINISHED sitting what came back, not that it is still reading", async () => {
     /* The same eight seconds, on the branch that matters most: a finished
        sitting must never be left on "Checking…" with no link (TEN-128). The
