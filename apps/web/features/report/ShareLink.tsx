@@ -23,7 +23,8 @@ import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 import { useIdentity } from "../../lib/auth/identityState";
 import { serviceHeaders } from "../../lib/data/traceparent";
-import { deadline, isTimeout } from "../../lib/data/deadline";
+import { deadline } from "../../lib/data/deadline";
+import { mayRetry, refusedBy, threwAs, UNREADABLE, writeFailureCopy, type WriteFailure } from "./writeFailure";
 import {
   DEFAULT_SHARE_SECTIONS,
   SHARE_NOTE_MAX,
@@ -116,16 +117,14 @@ function PublishControl({
   status,
   needsHuman,
   busy,
-  failed,
-  timedOut,
+  failure,
   onPublish,
 }: {
   status: ShareStatus;
   needsHuman: boolean;
   busy: boolean;
-  failed: boolean;
-  /** Whether that failure was us giving up waiting, which reads differently. */
-  timedOut: boolean;
+  /** The LAST failure, or null. It says which kind, not merely that there was one. */
+  failure: WriteFailure | null;
   onPublish: () => void;
 }) {
   if (status === "revoked" || status === "rejected") return null;
@@ -148,7 +147,13 @@ function PublishControl({
   return (
     <div style={{ display: "grid", gap: "0.4rem" }} data-testid="publish-state">
       <div>
-        <button type="button" className="btn small-btn" onClick={onPublish} disabled={busy}>
+        <button
+          type="button"
+          className="btn small-btn"
+          onClick={onPublish}
+          /* A refusal that will not change is not offered again (TEN-234). */
+          disabled={busy || (failure !== null && !mayRetry(failure))}
+        >
           {busy ? "Submitting…" : "Publish to the gallery"}
         </button>
       </div>
@@ -157,11 +162,9 @@ function PublishControl({
           ? "Your card carries your own work, so a person reads it before it is listed."
           : "Your card carries no words of your own, so it is listed as soon as you press this."}
       </p>
-      {failed ? (
+      {failure !== null ? (
         <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
-          {timedOut
-            ? "The gallery did not answer in time, so nothing was submitted. It is slow rather than down — your link is untouched, so try again."
-            : "That did not reach the gallery. Your link is untouched. Try again in a moment."}
+          {writeFailureCopy(failure, "Your link is untouched.", "the gallery")}
         </p>
       ) : null}
     </div>
@@ -186,11 +189,14 @@ export function ShareLink({
   const [note, setNote] = useState("");
   const [hasSite, setHasSite] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [publishFailed, setPublishFailed] = useState(false);
-  /** Whether the failure on screen is "too slow" rather than "did not land". */
-  const [timedOut, setTimedOut] = useState(false);
+  /**
+   * WHAT THE LAST FAILURE WAS, not merely that there was one (TEN-234). A
+   * refusal carries its status and the service's own sentence, and decides
+   * whether the button is offered again.
+   */
+  const [failure, setFailure] = useState<WriteFailure | null>(null);
   /** The same fact for the publish button, which has a failure line of its own. */
-  const [publishTimedOut, setPublishTimedOut] = useState(false);
+  const [publishFailure, setPublishFailure] = useState<WriteFailure | null>(null);
 
   const serverId = useCallback(
     () => getServerAttemptId(window.localStorage, attemptId) ?? attemptId,
@@ -258,7 +264,7 @@ export function ShareLink({
         setPhase("live");
       } catch (err) {
         if (!live) return;
-        setTimedOut(isTimeout(err));
+        setFailure(threwAs(err));
         setPhase("error");
       }
     })();
@@ -285,22 +291,34 @@ export function ShareLink({
 
   const create = async () => {
     setPhase("busy");
-    setTimedOut(false);
+    setFailure(null);
     try {
       const res = await request("createShare", {
         sections: { ...sections, site: sections.site && hasSite },
         note: sections.note ? note : "",
       });
-      if (!res.ok) throw new Error(String(res.status));
+      /* A REFUSAL IS AN ANSWER, READ RATHER THAN THROWN (TEN-234). The old
+         `throw new Error(String(res.status))` put the status into a message
+         nobody read, and landed in the same catch as an offline fetch. */
+      if (!res.ok) {
+        setFailure(await refusedBy(res));
+        setPhase("error");
+        return;
+      }
       const created = ownerShare(await res.json());
-      if (created === null) throw new Error("no share in the response");
+      /* A 2xx carrying no share is our bug, not the reader's connection. */
+      if (created === null) {
+        setFailure(UNREADABLE);
+        setPhase("error");
+        return;
+      }
       setShare(created);
       setPhase("live");
       // A link now exists. The TOKEN never leaves with this event: it is a
       // capability, and a capability in a metrics table is a leak.
       funnel().step("share_created");
     } catch (err) {
-      setTimedOut(isTimeout(err));
+      setFailure(threwAs(err));
       setPhase("error");
     }
   };
@@ -313,16 +331,21 @@ export function ShareLink({
    */
   const publish = async () => {
     setPublishing(true);
-    setPublishFailed(false);
-    setPublishTimedOut(false);
+    setPublishFailure(null);
     try {
       const res = await request("publishShare");
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        setPublishFailure(await refusedBy(res));
+        return;
+      }
       const published = ownerShare(await res.json());
-      if (published !== null) setShare(published);
+      if (published === null) {
+        setPublishFailure(UNREADABLE);
+        return;
+      }
+      setShare(published);
     } catch (err) {
-      setPublishTimedOut(isTimeout(err));
-      setPublishFailed(true);
+      setPublishFailure(threwAs(err));
     } finally {
       setPublishing(false);
     }
@@ -330,14 +353,18 @@ export function ShareLink({
 
   const revoke = async () => {
     setPhase("busy");
-    setTimedOut(false);
+    setFailure(null);
     try {
       const res = await request("revokeShare");
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        setFailure(await refusedBy(res));
+        setPhase("error");
+        return;
+      }
       setShare(null);
       setPhase("none");
     } catch (err) {
-      setTimedOut(isTimeout(err));
+      setFailure(threwAs(err));
       setPhase("error");
     }
   };
@@ -407,7 +434,13 @@ export function ShareLink({
             </p>
           ) : null}
           <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>
-            <button type="button" className="btn primary" onClick={create} disabled={phase === "busy"}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={create}
+              /* A refusal that will not change is not offered again (TEN-234). */
+              disabled={phase === "busy" || (failure !== null && !mayRetry(failure))}
+            >
               {phase === "busy" ? "Working…" : "Create a share link"}
             </button>
           </div>
@@ -454,8 +487,7 @@ export function ShareLink({
             status={share.status}
             needsHuman={needsHumanApproval(share.payload)}
             busy={publishing}
-            failed={publishFailed}
-            timedOut={publishTimedOut}
+            failure={publishFailure}
             onPublish={publish}
           />
           {share.status === "rejected" ? (
@@ -471,11 +503,9 @@ export function ShareLink({
         </div>
       ) : null}
 
-      {phase === "error" ? (
+      {phase === "error" && failure !== null ? (
         <p className="small" style={{ color: "var(--bad)" }} role="alert">
-          {timedOut
-            ? "The exam service did not answer in time. It is slow rather than down — your run is saved, so try again."
-            : "That did not work. Your run is saved. Try again in a moment."}
+          {writeFailureCopy(failure, "Your run is saved.", "the exam service")}
         </p>
       ) : null}
       <p className="faint small" style={{ marginBottom: 0 }}>

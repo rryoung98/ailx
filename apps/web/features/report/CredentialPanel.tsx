@@ -40,7 +40,8 @@ import { API_ROUTES, apiPath, type OwnerCredential } from "@ailx/contract";
 import type { TrackId } from "@ailx/session";
 import { useIdentity } from "../../lib/auth/identityState";
 import { serviceHeaders } from "../../lib/data/traceparent";
-import { deadline, isTimeout } from "../../lib/data/deadline";
+import { deadline } from "../../lib/data/deadline";
+import { mayRetry, refusedBy, threwAs, UNREADABLE, writeFailureCopy, type WriteFailure } from "./writeFailure";
 import { CREDENTIAL_LIMITS, isFullSitting, linkedInAddUrl, TRACK_META } from "@ailx/report";
 import { basePath, isServerMode } from "../../lib/mode";
 import { browserApiOptions, getServerAttemptId } from "../../lib/data/persistence";
@@ -84,8 +85,12 @@ export function CredentialPanel({
   const [phase, setPhase] = useState<Phase>("loading");
   const [credential, setCredential] = useState<OwnerCredential | null>(null);
   const [copied, setCopied] = useState(false);
-  /** Whether the failure on screen is "too slow" rather than "did not land". */
-  const [timedOut, setTimedOut] = useState(false);
+  /**
+   * WHAT THE LAST FAILURE WAS, not merely that there was one (TEN-234). A
+   * refusal carries its status and the service's own sentence, and decides
+   * whether the button is offered again at all.
+   */
+  const [failure, setFailure] = useState<WriteFailure | null>(null);
 
   const request = useCallback(
     async (route: CredentialRoute): Promise<Response> => {
@@ -152,7 +157,7 @@ export function CredentialPanel({
         setPhase("live");
       } catch (err) {
         if (!live) return;
-        setTimedOut(isTimeout(err));
+        setFailure(threwAs(err));
         setPhase("error");
       }
     })();
@@ -184,21 +189,37 @@ export function CredentialPanel({
 
   const act = async (route: "issueCredential" | "revokeCredential") => {
     setPhase("busy");
-    setTimedOut(false);
+    setFailure(null);
     try {
       const res = await request(route);
-      if (!res.ok) throw new Error(String(res.status));
+      /* A REFUSAL IS AN ANSWER, AND IT IS READ HERE RATHER THAN THROWN
+         (TEN-234). `throw new Error(String(res.status))` put the status into
+         a message nobody read and landed in the same catch as an offline
+         fetch, so the panel could only ever say one thing. */
+      if (!res.ok) {
+        setFailure(await refusedBy(res));
+        setPhase("error");
+        return;
+      }
       if (route === "revokeCredential") {
         setCredential(null);
         setPhase("none");
         return;
       }
       const issued = ownerCredential(await res.json());
-      if (issued === null) throw new Error("no credential in the response");
+      /* A 2xx WITH NO CREDENTIAL IN IT IS OUR BUG, NOT THE NETWORK'S. It
+         used to be thrown into the same catch as an offline fetch, so the
+         panel told the candidate to check their connection about a call that
+         landed (the same confusion TEN-229 fixed for reads). */
+      if (issued === null) {
+        setFailure(UNREADABLE);
+        setPhase("error");
+        return;
+      }
       setCredential(issued);
       setPhase("live");
     } catch (err) {
-      setTimedOut(isTimeout(err));
+      setFailure(threwAs(err));
       setPhase("error");
     }
   };
@@ -249,15 +270,17 @@ export function CredentialPanel({
               type="button"
               className="btn primary"
               onClick={() => act("issueCredential")}
-              disabled={phase === "busy"}
+              /* A REFUSAL THAT WILL NOT CHANGE IS NOT OFFERED AGAIN
+                 (TEN-234). A 403 or a 409 answers the same way every time,
+                 and a live button beside a sentence saying so is still an
+                 invitation to press it. */
+              disabled={phase === "busy" || (failure !== null && !mayRetry(failure))}
             >
               {phase === "busy" ? "Working…" : "Issue my credential"}
             </button>
-            {phase === "error" ? (
+            {phase === "error" && failure !== null ? (
               <span className="small" style={{ marginLeft: "0.6rem", color: "var(--bad)" }} role="alert">
-                {timedOut
-                  ? "The exam service did not answer in time, so nothing was issued. It is slow rather than down — your sitting is saved, so try again."
-                  : "That did not reach the exam service. Your sitting is saved. Try again in a moment."}
+                {writeFailureCopy(failure, "Your sitting is saved.", "the exam service")}
               </span>
             ) : null}
           </p>
