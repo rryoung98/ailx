@@ -117,8 +117,13 @@ interface Mounted {
  * so a read that never answers is a dead end. This harness renders the gate
  * the page renders, from the hook the page calls (TEN-128).
  */
-function GateHarness({ completed = false }: { completed?: boolean }) {
-  const view = useScoresOfRecord(ATTEMPT);
+function GateHarness({
+  completed = false,
+  attemptId = ATTEMPT,
+}: { completed?: boolean; attemptId?: string | null }) {
+  // `attemptId: null` is the static export and the no-attempt case: the hook
+  // is not `live`, so it must ask nothing and claim no read.
+  const view = useScoresOfRecord(attemptId);
   const gate = reportGate({
     localScored: ["t1"],
     scores: view.scores,
@@ -547,6 +552,31 @@ describe("it waits for an identity before the first read", () => {
    * was filed for. That is the guarantee, and it does not depend on who
    * resolves first.
    */
+  /**
+   * THE HOOK'S CONTRIBUTION TO THE "NEVER ASKED" GATE CELL.
+   *
+   * `reportGateStates` pins the WORDING for `asked=false, reading=false,
+   * scores=undefined, completed=true` — the "we never asked" lede — and that
+   * row is reachable only because this hook produces it when there is nothing
+   * to read from: the static export, or no attempt id. Nothing pinned THAT,
+   * so the gate's most-quoted cell rested on an untested contribution.
+   *
+   * This is the guarantee that survived TEN-214. A hosted build can no longer
+   * sit on `pending` for ever, so "no identity, therefore no request" is
+   * unreachable there — but `!live` still yields it, and that is the case the
+   * static export actually runs.
+   */
+  it("asks nothing and claims no read when there is nothing to read from", async () => {
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount(createElement(GateHarness, { attemptId: null }));
+    expect(calls).toHaveLength(0);
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(calls).toHaveLength(0);
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    await m.unmount();
+  });
+
   it("stops calling itself reading when the first read never answers, and gives the link back", async () => {
     // A read that goes out and never answers — not a read that never fires.
     vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {

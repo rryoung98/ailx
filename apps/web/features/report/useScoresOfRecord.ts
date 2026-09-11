@@ -136,6 +136,18 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    *    request that was never going to land. Filed separately — the repair
    *    belongs in `identityState`, not here, because the wrong FALLBACK is the
    *    defect and every caller of it is affected, not just this page.
+   *
+   * THE SEPARATION THAT SETTLES IT, and it is one sentence:
+   * **TEN-214's deadline exists to end the WAIT, not to authorise a REQUEST.**
+   * Ending the wait is right and this page depends on it. Firing a read under
+   * an identity the candidate does not have is a consequence neither PR
+   * designed: against a Clerk service that read 401s, and against a
+   * dev-accepting service it SUCCEEDS AS A DIFFERENT PARTICIPANT and then
+   * 404s on an attempt that account does not own. Both are transient —
+   * `identityStatus` is a dep of the read effect, so asserted -> signed-in
+   * fires a second, real read — and both beat a permanent dead end. But the
+   * honest description of the 8-second answer is "an answer about a request
+   * made under a fallback identity", not simply "an answer".
    */
   const [identityWaited, setIdentityWaited] = useState(false);
   /** True once a request has really gone out. Latched for the same reason. */
