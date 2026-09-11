@@ -12,10 +12,11 @@
  * every body below is a fixture of the documented wire shape.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, createElement } from "react";
+import { act, createElement, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ScoresOfRecordView } from "../features/report/ScoresOfRecordPanel";
-import { useScoresOfRecord } from "../features/report/useScoresOfRecord";
+import { reportGate } from "../features/report/reportGate";
+import { IDENTITY_WAIT_MS, useScoresOfRecord } from "../features/report/useScoresOfRecord";
 import { installMemoryStorage } from "./helpers/clientPage";
 import { setAuthTokenSource } from "../lib/data/authHeaders";
 import { publishIdentity, resetIdentity } from "../lib/auth/identityState";
@@ -23,6 +24,7 @@ import {
   BOUND_COPY,
   NO_SCORES_COPY,
   OPEN_SITTING_COPY,
+  READ_ERROR_COPY,
   parseAttemptScores,
   pollDelayMs,
   stateCopy,
@@ -108,14 +110,38 @@ interface Mounted {
   unmount: () => Promise<void>;
 }
 
+/**
+ * WHAT THE REPORT'S GATE MAKES OF THE SAME READ.
+ *
+ * `reading` hides every link on the report (the gate returns `cta: null`),
+ * so a read that never answers is a dead end. This harness renders the gate
+ * the page renders, from the hook the page calls (TEN-128).
+ */
+function GateHarness({ completed = false }: { completed?: boolean }) {
+  const view = useScoresOfRecord(ATTEMPT);
+  const gate = reportGate({
+    localScored: ["t1"],
+    scores: view.scores,
+    reading: view.reading,
+    asked: view.asked,
+    readFailed: view.failure !== null,
+    localSitting: { completed, sat: completed ? ["t1", "t2", "t3", "t4"] : ["t1"] },
+  });
+  return createElement(
+    "p",
+    { "data-testid": "gate", "data-cta": gate.cta?.href ?? "" },
+    `${gate.headline} ${gate.lede}`,
+  );
+}
+
 /** Mount for real and keep it mounted: polling is what is under test. */
-async function mount(): Promise<Mounted> {
+async function mount(element: ReactElement = createElement(Harness)): Promise<Mounted> {
   const host = document.createElement("div");
   document.body.appendChild(host);
   let root: Root;
   await act(async () => {
     root = createRoot(host);
-    root.render(createElement(Harness));
+    root.render(element);
   });
   const settle = async () => {
     for (let i = 0; i < 4; i += 1) await act(async () => { await Promise.resolve(); });
@@ -303,6 +329,33 @@ describe("polling", () => {
     await m.unmount();
   });
 
+  /**
+   * A failed poll keeps the previous answer, so the GATE must keep its
+   * verdict too. The answer kept here is NOT finalized — the finalize POST
+   * did not land — so the local log is the only witness that the run ended,
+   * and that is the branch TEN-128 left broken: one lost poll used to send a
+   * finished candidate back to "Finish the run to see it."
+   */
+  it("does not relock a finished run when one poll fails", async () => {
+    let i = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      i += 1;
+      if (i >= 2) throw new Error("offline");
+      return new Response(
+        JSON.stringify(body([pending("t3")], { finalized: false })),
+        { status: 200 },
+      );
+    });
+    const m = await mount(createElement(GateHarness, { completed: true }));
+    await m.tick(5000);
+    expect(calls.length).toBeGreaterThan(1);
+    expect(m.html()).toContain("Your sitting is finished");
+    expect(m.html()).not.toContain("Finish the run to see it");
+    expect(m.html()).toContain('data-cta=""');
+    await m.unmount();
+  });
+
   it("stops polling when the component goes away", async () => {
     stubReads([body([pending("t3")])]);
     const m = await mount();
@@ -323,6 +376,31 @@ describe("the bound", () => {
     // Bounded means STOPPED: no further read happens on its own.
     await m.tick(120_000);
     expect(calls).toHaveLength(seen);
+    await m.unmount();
+  });
+
+  it("does not blame the PREVIOUS read while a retry is in flight", async () => {
+    /* `failure` is what went wrong on the LAST read. Left standing across
+       "Check again", the page said the read did not land while a fresh one
+       was still out — a sentence about a request that had not answered. */
+    let i = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      i += 1;
+      if (i > 1) throw new Error("offline");
+      return new Response(JSON.stringify(body([pending("t3")])), { status: 200 });
+    });
+    const m = await mount();
+    await m.tick(181_000);
+    expect(m.html()).toContain(READ_ERROR_COPY);
+    // The retry never answers: what is under test is what the page says
+    // while it is out.
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      return new Promise<Response>(() => undefined);
+    });
+    await m.click("scores-bound");
+    expect(m.html()).not.toContain(READ_ERROR_COPY);
     await m.unmount();
   });
 
@@ -423,6 +501,92 @@ describe("it waits for an identity before the first read", () => {
     expect(calls).toHaveLength(0);
     expect(window.localStorage.getItem("foray:dev-user")).toBeNull();
     expect(m.html()).not.toContain(NO_SCORES_COPY);
+    await m.unmount();
+  });
+
+  /**
+   * A Clerk that mounts but never publishes leaves the identity PENDING for
+   * ever (`identityState`), so this hook fired no read and `reading` stayed
+   * true — and the report's gate answers `cta: null` while reading. The
+   * candidate saw "Checking what the exam service has issued…", no scores
+   * and no link at all: a dead end with no exit (TEN-128).
+   */
+  it("stops calling itself reading when the identity never arrives", async () => {
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount(createElement(GateHarness));
+    expect(m.html()).toContain("Checking what the exam service has issued");
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(calls).toHaveLength(0);
+    // The gate fell back to the local log, so there is a way out again.
+    expect(m.html()).toContain("Finish the run to see it");
+    expect(m.html()).toContain('data-cta="/exam"');
+    await m.unmount();
+  });
+
+  it("tells a FINISHED sitting that nothing was asked, not that nothing came back", async () => {
+    /* No identity, so no request was ever sent. "It returned no scores, or
+       it could not be reached" would name a request nobody made. */
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount(createElement(GateHarness, { completed: true }));
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(calls).toHaveLength(0);
+    expect(m.html()).toContain("Your sitting is finished");
+    expect(m.html()).toContain("never asked the exam service");
+    expect(m.html()).not.toContain("did not land");
+    expect(m.html()).toContain('data-cta=""');
+    await m.unmount();
+  });
+
+  it("does not take the link away again when the identity finally arrives", async () => {
+    /* The bound is LATCHED. An identity that resolves after it would other-
+       wise put the page back into `reading`, and the gate answers `cta: null`
+       while reading — so the one link the candidate had would appear and then
+       vanish under them. */
+    setAuthTokenSource(async () => "jwt-9");
+    // A read that never answers: the only thing under test is what the page
+    // says while it is in flight.
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      return new Promise<Response>(() => undefined);
+    });
+    const m = await mount(createElement(GateHarness));
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(m.html()).toContain('data-cta="/exam"');
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    await m.tick(0);
+    expect(calls).toHaveLength(1);
+    expect(m.html()).toContain('data-cta="/exam"');
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    setAuthTokenSource(null);
+    await m.unmount();
+  });
+
+  it("does not describe a read that has not answered yet", async () => {
+    /* THE WINDOW THE TWO LATCHES OPEN. Once `identityWaited` has latched,
+       `reading` is false for ever — so an identity that resolves afterwards
+       leaves `asked = true`, `reading = false` and `scores === undefined`
+       WHILE THE REQUEST IS STILL IN FLIGHT. A finished sitting was told the
+       service "returned no scores, or it could not be reached" about a
+       request that had not answered. Neither half is true yet. */
+    setAuthTokenSource(async () => "jwt-9");
+    vi.stubGlobal("fetch", async () => {
+      calls.push({ url: "", headers: {} });
+      return new Promise<Response>(() => undefined);
+    });
+    const m = await mount(createElement(GateHarness, { completed: true }));
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    await act(async () => {
+      publishIdentity({ status: "signed-in", userId: "user_1" });
+    });
+    await m.tick(0);
+    expect(calls).toHaveLength(1);
+    expect(m.html()).toContain("Your sitting is finished");
+    expect(m.html()).toContain("has not answered this page yet");
+    expect(m.html()).not.toContain("did not land");
+    expect(m.html()).not.toContain("never asked");
+    setAuthTokenSource(null);
     await m.unmount();
   });
 

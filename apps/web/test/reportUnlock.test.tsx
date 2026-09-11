@@ -24,7 +24,7 @@ import { renderClient } from "./helpers/clientPage";
 const ATTEMPT = "856b850c-51ac-4a1a-82a5-24deb8df66ae";
 
 /** A hosted sitting: T1 and T4 scored here, T2 and T3 the service's. */
-function hostedLog(): SequencedEntry[] {
+function scoredLog(): SequencedEntry[] {
   let log = buildSampleAttemptLog();
   let t = log[log.length - 1].ts;
   for (const c of log.filter(
@@ -35,7 +35,13 @@ function hostedLog(): SequencedEntry[] {
     t += 1_000;
     log = append(log, trackScoredEntry(trackId, scoreTrack(trackId, c.artifact), t));
   }
-  return append(log, { type: "attempt_completed", ts: t + 1_000 });
+  return log;
+}
+
+/** The run as it ended: the log says the sitting is over. */
+function hostedLog(): SequencedEntry[] {
+  const log = scoredLog();
+  return append(log, { type: "attempt_completed", ts: log[log.length - 1].ts + 1_000 });
 }
 
 const scored = (trackId: string, scaled: number) => ({
@@ -112,11 +118,54 @@ describe("a finalized sitting the service has scored", () => {
   });
 });
 
-describe("a sitting the service still calls open", () => {
+describe("a sitting that really is still open", () => {
   it("keeps the lock and the way back into the run", async () => {
+    /* The log carries no `attempt_completed`, so this run is UNFINISHED and
+       /exam still has something to give. This test used to run on the
+       FINISHED log, which is the case TEN-128 was about. */
+    saveAttempt(window.localStorage, scoredLog());
     serviceAnswers({ finalized: false, pending: false, pollAfterMs: null, tracks: [] });
     const html = await reportHtml();
     expect(html).toContain("Finish the run to see it");
     expect(html).toContain("Continue →");
+  });
+});
+
+/**
+ * THE SAME CLOSED LOOP, WITH THE SERVICE SILENT (TEN-128, round two).
+ *
+ * The first fix read the service's answer. When there is no answer — the
+ * read fails, the candidate is offline, or the deployed service is too old
+ * to send `scores` — the page fell back to "3 of 4 tracks scored. Finish the
+ * run to see it." and a Continue into /exam, which says the run is complete
+ * and links back here. The run ended in this browser; that is a witness of
+ * its own.
+ */
+describe("a finished sitting the exam service did not answer", () => {
+  it("does not tell a finished candidate to finish their run", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("offline");
+    });
+    const html = await reportHtml();
+    expect(html).toContain("Your sitting is finished");
+    expect(html).not.toContain("Finish the run to see it");
+    expect(html).not.toContain("Continue →");
+  });
+
+  it("says the service issued nothing here rather than leaving a hole", async () => {
+    serviceAnswers(undefined);
+    const html = await reportHtml();
+    expect(html).toContain("Your sitting is finished");
+    expect(html).toMatch(/exam service/i);
+    expect(html).not.toContain("Continue →");
+  });
+
+  it("treats a finished run whose finalize failed as finished", async () => {
+    /* Finalize did not land, so the service still calls the attempt open and
+       retries only on the next commit. /exam is a dead end either way. */
+    serviceAnswers({ finalized: false, pending: false, pollAfterMs: null, tracks: [] });
+    const html = await reportHtml();
+    expect(html).toContain("Your sitting is finished");
+    expect(html).not.toContain("Continue →");
   });
 });

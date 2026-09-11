@@ -27,6 +27,22 @@ import {
   type AttemptScores,
 } from "./scoresOfRecord";
 
+/**
+ * HOW LONG THIS PAGE WAITS FOR AN IDENTITY BEFORE IT STOPS SAYING IT IS
+ * READING.
+ *
+ * The read cannot fire while the identity is `pending` — a request sent
+ * before `ClerkTokenBridge` registers carries no token and the service
+ * refuses it, and a 401 does not fix itself on a retry. But a Clerk that
+ * mounts and never publishes leaves the identity pending for ever, and
+ * `reading` hid every link on the report while it lasted: "Checking what the
+ * exam service has issued…", no scores, no way out (TEN-128). After this
+ * wait the page stops CALLING it a read; the effect still fires the moment an
+ * identity arrives, so nothing is given up, and the gate falls back to this
+ * browser's own log meanwhile.
+ */
+export const IDENTITY_WAIT_MS = 8_000;
+
 /** What went wrong on the LAST read. The previous answer stays on screen. */
 export type ReadFailure = { kind: "missing"; status: number } | { kind: "error" };
 
@@ -38,6 +54,13 @@ export interface ScoresView {
   readonly bounded: boolean;
   /** True while the first read of a hosted sitting is still in flight. */
   readonly reading: boolean;
+  /**
+   * True once a request has actually gone out for this attempt. It stays
+   * FALSE in the static export, and while the identity is pending — the read
+   * cannot fire without one — so a page that says nothing came back can tell
+   * that apart from never having asked (TEN-128).
+   */
+  readonly asked: boolean;
   /** Tracks that went from "being judged" to scored while this page was open. */
   readonly arrived: readonly TrackId[];
   readonly checkAgain: () => void;
@@ -49,6 +72,7 @@ const IDLE: ScoresView = {
   failure: null,
   bounded: false,
   reading: false,
+  asked: false,
   arrived: [],
   checkAgain: () => undefined,
 };
@@ -72,9 +96,25 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    * it is still reading rather than claiming there is nothing of record.
    */
   const identityStatus = useIdentity().status;
+  /**
+   * True once the identity has stayed `pending` past `IDENTITY_WAIT_MS`.
+   * LATCHED: it is set once and never cleared. An identity that resolves
+   * afterwards would otherwise put the page back into `reading`, so the
+   * candidate would watch the one link they had appear and then vanish.
+   */
+  const [identityWaited, setIdentityWaited] = useState(false);
+  /** True once a request has really gone out. Latched for the same reason. */
+  const [asked, setAsked] = useState(false);
+
+  useEffect(() => {
+    if (!live || identityStatus !== "pending" || identityWaited) return;
+    const timer = window.setTimeout(() => setIdentityWaited(true), IDENTITY_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [live, identityStatus, identityWaited]);
 
   useEffect(() => {
     if (!live || identityStatus === "pending") return;
+    setAsked(true);
     let cancelled = false;
     let timer = 0;
     const startedAt = Date.now();
@@ -131,6 +171,21 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
 
   const checkAgain = useCallback(() => {
     setBounded(false);
+    /* The PREVIOUS read's failure is not this one's. Left standing, the
+       report said "the last read did not land" while a retry was in flight,
+       which describes a request that has not answered yet — the same
+       confusion `scores ?? null` caused (TEN-128). The last good ANSWER
+       stays: only the failure is cleared.
+
+       WHY THAT IS SAFE, AND WHAT IT DEPENDS ON. Clearing the failure makes
+       `reading` true again while the retry is out, and the gate offers no
+       link while reading — so an UNFINISHED sitting loses its Continue for
+       the length of the retry. Acceptable because the candidate pressed the
+       button, and because it is BOUNDED: `serviceFetch` wraps every read in
+       `deadline("read")`, 10 s (`lib/data/deadline.ts`), so even a retry
+       that never answers resolves into a failure and the link comes back.
+       Remove that deadline and the link goes for ever. */
+    setFailure(null);
     setRound((r) => r + 1);
   }, []);
 
@@ -141,7 +196,11 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
     bounded,
     // "Reading" is the state before the first answer of ANY kind: a page that
     // called this a lock would tell a finished candidate to finish their run.
-    reading: scores === undefined && failure === null,
+    // It is BOUNDED, because a read that never starts is not a read: an
+    // identity stuck at `pending` used to leave the report with no scores
+    // and no link at all (TEN-128).
+    reading: scores === undefined && failure === null && !identityWaited,
+    asked,
     arrived,
     checkAgain,
   };
