@@ -287,6 +287,13 @@ let outstandingTurns = 0;
 const turnListeners = new Set<() => void>();
 /** False once a write to localStorage has failed: the queue is memory-only. */
 let turnsPersisted = true;
+/**
+ * True once a stored queue came back unreadable in this page load (TEN-272).
+ * A separate fact from `turnsPersisted`: that one is about a write this
+ * browser refused, this one is about work that WAS written and cannot now be
+ * accounted for.
+ */
+let turnsUnreadable = false;
 
 export function outstandingTranscriptTurns(): number {
   return outstandingTurns;
@@ -309,6 +316,16 @@ export function transcriptTurnsSurviveReload(): boolean {
   return turnsPersisted;
 }
 
+/**
+ * Did a stored queue come back unreadable in this page load?
+ *
+ * The answer the finish screen needs and could not get: an empty queue and an
+ * unaccountable one both counted 0, so Finish opened on both (TEN-272).
+ */
+export function transcriptTurnsUnreadable(): boolean {
+  return turnsUnreadable;
+}
+
 /** Shape check for a queue read back out of localStorage (never trusted). */
 function isPendingTurn(value: unknown): value is PendingTurn {
   if (typeof value !== "object" || value === null) return false;
@@ -323,18 +340,50 @@ function isPendingTurn(value: unknown): value is PendingTurn {
   );
 }
 
-function readPendingTurns(attemptId: string): PendingTurn[] {
+/**
+ * WHAT CAME BACK OUT OF STORAGE, AND WHETHER IT WAS ALL OF IT (TEN-272).
+ *
+ * "Nothing was stored" and "something was stored that could not be read" are
+ * different facts, and this used to answer both with `[]`. The second one
+ * then produced the exact failure the persisted queue was written to prevent:
+ * outstanding 0, no notice on screen, Finish open, and a stance that never
+ * reached the service — with the sentence that promised the resume no longer
+ * displayed, so nothing contradicted it.
+ */
+interface StoredTurns {
+  readonly turns: PendingTurn[];
+  /**
+   * True when the key held SOMETHING this build could not take up: a value
+   * that will not parse, a value that is not a list, or a row the shape check
+   * refused. It is not a count — the whole point is that we cannot say how
+   * much work is unaccounted for.
+   */
+  readonly unreadable: boolean;
+}
+
+function readPendingTurns(attemptId: string): StoredTurns {
+  let raw: string | null;
   try {
-    const raw = window.localStorage.getItem(transcriptTurnsKey(attemptId));
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    // A row that does not validate is DROPPED rather than posted: it came back
-    // through localStorage, which any tab or extension can rewrite, and the
-    // service would refuse it anyway. The rows that do validate still go.
-    return Array.isArray(parsed) ? parsed.filter(isPendingTurn) : [];
+    raw = window.localStorage.getItem(transcriptTurnsKey(attemptId));
   } catch {
-    return [];
+    // Storage revoked between the write and this read. Something WAS stored
+    // (the write side says so) and we can no longer see it.
+    return { turns: [], unreadable: true };
   }
+  if (raw === null || raw === "") return { turns: [], unreadable: false };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { turns: [], unreadable: true };
+  }
+  if (!Array.isArray(parsed)) return { turns: [], unreadable: true };
+  // A row that does not validate is DROPPED rather than posted: it came back
+  // through localStorage, which any tab or extension can rewrite, and the
+  // service would refuse it anyway. The rows that do validate still go — and
+  // the dropped ones are now SAID, rather than being silently absent.
+  const turns = parsed.filter(isPendingTurn);
+  return { turns, unreadable: turns.length !== parsed.length };
 }
 
 function writePendingTurns(attemptId: string, turns: readonly PendingTurn[]): void {
@@ -358,8 +407,17 @@ function writePendingTurns(attemptId: string, turns: readonly PendingTurn[]): vo
 function queueFor(attemptId: string): TurnQueue {
   let q = queues.get(attemptId);
   if (!q) {
-    q = { pending: readPendingTurns(attemptId), draining: false, epoch: 0 };
+    const stored = readPendingTurns(attemptId);
+    q = { pending: stored.turns, draining: false, epoch: 0 };
     queues.set(attemptId, q);
+    /* LATCHED FOR THE PAGE LOAD, and deliberately not cleared by a later
+       successful write: the next write overwrites the key, so the evidence
+       goes, and the fact that some work could not be accounted for does
+       not stop being true because newer work was stored on top of it. */
+    if (stored.unreadable && !turnsUnreadable) {
+      turnsUnreadable = true;
+      for (const listener of turnListeners) listener();
+    }
     recountTurns();
   }
   return q;
@@ -401,6 +459,23 @@ export function turnsOutstandingCopy(n: number, survivesReload = transcriptTurns
 }
 
 /**
+ * WHAT A CANDIDATE IS TOLD WHEN THE STORED QUEUE WILL NOT READ BACK.
+ *
+ * Its own sentence, because it is its own fact. `turnsOutstandingCopy` can
+ * say "Foray is still sending them" — it knows what they are. Here we do
+ * not: something was stored under this run's key and this build could not
+ * take it up, so the honest claim is that there MAY be work we can no longer
+ * account for, and the only thing that can settle it is the exam service's
+ * own record of the sitting.
+ */
+export const TURNS_UNREADABLE_COPY =
+  "Foray saved some T3 turns in this browser and could not read them back, so it cannot tell "
+  + "whether every challenge you made reached the exam service. Finishing is held here rather "
+  + "than closing the sitting on a record we cannot account for. Reopening your run in the "
+  + "browser you sat it in is the best chance of recovering them; if this is that browser, "
+  + "contact us before you finish.";
+
+/**
  * The turns queued for an attempt that is being THROWN AWAY.
  *
  * `Discard this run` clears the log, the checkpoints and the site submission;
@@ -420,6 +495,9 @@ export function discardTranscriptTurns(attemptId: string): void {
   } catch {
     // Nothing to remove from a storage that will not answer.
   }
+  /* The run is gone, so an unreadable queue that belonged to it is no longer
+     something to hold the NEXT run's Finish button shut for. */
+  turnsUnreadable = false;
   recountTurns();
 }
 
@@ -451,6 +529,8 @@ export function resetTranscriptTurns(): void {
   for (const q of queues.values()) q.epoch += 1;
   queues.clear();
   turnsPersisted = true;
+  // A page load starts with no opinion about a queue it has not read yet.
+  turnsUnreadable = false;
   recountTurns();
 }
 
