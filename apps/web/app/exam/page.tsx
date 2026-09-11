@@ -206,6 +206,13 @@ export default function ExamPage() {
   const siteRetryRef = useRef<{ attemptId: string; artifact: unknown } | null>(null);
   const logRef = useRef<SequencedEntry[] | null>(null);
   const startingRef = useRef(false); // run-start in flight (server attempt pre-creation)
+  /**
+   * The same fact as `startingRef`, in state so the pill can SAY it (TEN-211).
+   * The ref is what drops a repeat tap; the ref alone changed nothing on
+   * screen, so the candidate pressed Start and watched a dead button for as
+   * long as the `write` bound allows.
+   */
+  const [starting, setStarting] = useState(false);
   logRef.current = log;
   /**
    * Has the SERVICE recorded this sitting as finished? Only that step issues
@@ -898,6 +905,7 @@ export default function ExamPage() {
               }
               if (startingRef.current) return; // ignore double-clicks mid-await
               startingRef.current = true;
+              setStarting(true);
               try {
                 // Server mode: adopt the pre-created SERVER attempt id so the
                 // per-attempt T2 deck is keyed to (and recorded against) it.
@@ -924,10 +932,12 @@ export default function ExamPage() {
                 funnel().step("sitting_started");
               } finally {
                 startingRef.current = false;
+                setStarting(false);
               }
             }}
+            busy={starting}
           >
-            {startGate.startLabel}
+            {starting ? "Starting your run…" : startGate.startLabel}
           </PillCTA>
         </div>
       </main>
