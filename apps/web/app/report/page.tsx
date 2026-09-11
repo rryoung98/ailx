@@ -63,6 +63,7 @@ import { SiteExportPanel } from "../../features/report/SiteExportPanel";
 import { WithheldItems } from "../../features/report/WithheldItems";
 import { downloadBlob } from "../../features/report/siteExport";
 import { ShareLink } from "../../features/report/ShareLink";
+import { ShareToGallery } from "../../features/report/ShareToGallery";
 import { ScoresOfRecordView } from "../../features/report/ScoresOfRecordPanel";
 import { CompositeCard } from "../../features/report/CompositeCard";
 import { localCompositeView, serviceCompositeView } from "../../features/report/compositeView";
@@ -71,64 +72,6 @@ import { useScoresOfRecord } from "../../features/report/useScoresOfRecord";
 import { useSyncStatus } from "../../lib/data/useSyncStatus";
 import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
 import { reportGate, sittingShape } from "../../features/report/reportGate";
-
-const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
-
-/**
- * Opt-in share of the T4 chosen set to the public community wall.
- * Uploads ONLY on click: recompressed finals + direction note + model id.
- * Votes there are a human aesthetic signal, never part of the score.
- */
-function ShareToGallery({ artifact }: { artifact: unknown }) {
-  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
-  const a = artifact as {
-    finals?: { images?: { dataUri?: string; asset?: string; prompt?: string; modelId?: string }[] };
-    chosenSet?: number[];
-    note?: string;
-  } | null;
-  const chosen = (a?.chosenSet ?? []).map((i) => a?.finals?.images?.[i]).filter((f) => f?.dataUri);
-  if (chosen.length === 0) return null;
-  const share = async () => {
-    setState("busy");
-    try {
-      const { recompressDataUri } = await import("@ailx/track-t4");
-      const images = await Promise.all(
-        chosen.slice(0, 3).map(async (f) => {
-          const uri = f!.dataUri!;
-          return uri.length > 440 * 1024 ? await recompressDataUri(uri, 440 * 1024) : uri;
-        }),
-      );
-      const res = await fetch(GALLERY_API, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          images,
-          note: (a?.note ?? "").slice(0, 800),
-          model: chosen[0]?.modelId ?? "",
-        }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      setState("done");
-    } catch {
-      setState("error");
-    }
-  };
-  return (
-    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: "0.6rem", flexWrap: "wrap" }}>
-      {state === "done" ? (
-        <Link className="btn small-btn" href="/wall">On the wall — see the sets →</Link>
-      ) : (
-        <button className="btn small-btn" onClick={share} disabled={state === "busy"}>
-          {state === "busy" ? "Sharing…" : "Share this set to the community wall"}
-        </button>
-      )}
-      {state === "error" ? <span className="small faint">Could not share — try again later.</span> : null}
-      <span className="small faint">
-        Opt-in and public. Uploads the chosen finals + direction note, nothing else.
-      </span>
-    </div>
-  );
-}
 
 /**
  * Live sandboxed snapshot of the T1 submission (server mode only — static

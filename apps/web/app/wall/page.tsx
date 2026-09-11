@@ -16,8 +16,7 @@ import { readMigratedItem } from "@ailx/core";
 import Link from "next/link";
 import { Annotation } from "../../components/ui/Annotation";
 import { fetchWithDeadline, isTimeout } from "../../lib/data/deadline";
-
-const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
+import { DEMO_GALLERY_API as GALLERY_API } from "../../lib/data/demoProxy";
 
 interface Sub {
   id: string;
