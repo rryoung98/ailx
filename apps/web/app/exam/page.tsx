@@ -753,6 +753,66 @@ export default function ExamPage() {
     ]);
   }, [storageStop, commitIfLegal, stamp]);
 
+  /**
+   * THE PAGE IS GOING AWAY MID-TRACK (TEN-232). The budget is wall clock from
+   * `runningSince`, so a laptop that slept, a tab the OS killed or a phone
+   * that backgrounded the browser came back to a track that was already over
+   * — while this page tells the candidate "Only working time is charged".
+   *
+   * WHAT AN UNATTENDED GAP COSTS, decided in the open: nothing. The clock
+   * stops here and the candidate restarts it themselves from the ordinary
+   * pause veil. That is not a new exploit — pausing by hand is already free
+   * and unlimited — it only stops charging for time nobody was working.
+   *
+   * Written STRAIGHT through `append` + `save` rather than `commit`, because
+   * a React state update is not guaranteed to flush before the page is gone,
+   * and the stored log is the only copy the next load reads. `setLog` follows
+   * for the case the page survives (a bfcache restore, a cancelled
+   * navigation), so the two never disagree.
+   *
+   * LIMIT, stated: a browser that dies without firing `pagehide` (a power
+   * cut, a kill -9) still comes back to a spent clock. This covers the
+   * ordinary closes, sleeps and backgroundings, not that.
+   */
+  const pauseForUnload = useCallback(() => {
+    const cur = logRef.current;
+    if (!cur) return;
+    const proj = project(cur);
+    if (proj.phase !== "in_track" || !proj.currentTrack) return;
+    const t = proj.currentTrack;
+    const ts = stamp();
+    let next = cur;
+    try {
+      next = append(next, {
+        type: "track_event", trackId: t, ts,
+        event: {
+          verb: "page_hidden",
+          object: `track:${t}`,
+          context: { track: t, clock: "held" },
+          clientTs: new Date().toISOString(),
+        },
+      });
+      next = append(next, { type: "paused", ts });
+    } catch {
+      // An exhausted budget legitimately refuses further track events. The
+      // pause is the point, so keep whatever was accepted.
+    }
+    if (next === cur) return;
+    logRef.current = next;
+    try {
+      getAttemptPersistence().save(next);
+    } catch {
+      // The store is full or locked down: TEN-208 owns that conversation,
+      // and there is no screen left to have it on.
+    }
+    setLog(next);
+  }, [stamp]);
+
+  useEffect(() => {
+    window.addEventListener("pagehide", pauseForUnload);
+    return () => window.removeEventListener("pagehide", pauseForUnload);
+  }, [pauseForUnload]);
+
   /** Release a hold the stop placed, and only that one. */
   const releaseStorageHold = useCallback(() => {
     if (!storageHeldRef.current) return;
