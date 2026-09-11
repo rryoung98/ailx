@@ -117,8 +117,13 @@ interface Mounted {
  * so a read that never answers is a dead end. This harness renders the gate
  * the page renders, from the hook the page calls (TEN-128).
  */
-function GateHarness({ completed = false }: { completed?: boolean }) {
-  const view = useScoresOfRecord(ATTEMPT);
+function GateHarness({
+  completed = false,
+  attemptId = ATTEMPT,
+}: { completed?: boolean; attemptId?: string | null }) {
+  // `attemptId: null` is the static export and the no-attempt case: the hook
+  // is not `live`, so it must ask nothing and claim no read.
+  const view = useScoresOfRecord(attemptId);
   const gate = reportGate({
     localScored: ["t1"],
     scores: view.scores,
@@ -505,34 +510,108 @@ describe("it waits for an identity before the first read", () => {
   });
 
   /**
-   * A Clerk that mounts but never publishes leaves the identity PENDING for
-   * ever (`identityState`), so this hook fired no read and `reading` stayed
-   * true — and the report's gate answers `cta: null` while reading. The
-   * candidate saw "Checking what the exam service has issued…", no scores
-   * and no link at all: a dead end with no exit (TEN-128).
+   * A Clerk that mounts but never publishes used to leave the identity
+   * PENDING for ever, so this hook fired no read and `reading` stayed true —
+   * and the report's gate answers `cta: null` while reading. The candidate
+   * saw "Checking what the exam service has issued…", no scores and no link
+   * at all: a dead end with no exit (TEN-128).
+   *
+   * `pending` IS NOW BOUNDED AT THE SOURCE. `identityState` publishes the
+   * asserted dev identity after `IDENTITY_DEADLINE_MS` (TEN-214, #72), which
+   * is the same eight seconds. So a Clerk that never answers no longer means
+   * no request: one goes out, carrying the dev header the service accepts.
+   * What is asserted here is what the candidate gets either way — an answer
+   * on the page instead of a permanent "Checking…".
    */
-  it("stops calling itself reading when the identity never arrives", async () => {
+  it("asks with the asserted dev identity once the wait is over, rather than waiting for ever", async () => {
     stubReads([body([scored("t2", 60)])]);
     const m = await mount(createElement(GateHarness));
     expect(m.html()).toContain("Checking what the exam service has issued");
+    expect(calls).toHaveLength(0);
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].headers["x-ailx-dev-user"]).toBeTypeOf("string");
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    await m.unmount();
+  });
+
+  /**
+   * THE TEN-128 GUARANTEE, ON THE DEPLOYMENT WHERE IT CAN STILL BITE.
+   *
+   * The original form of this test held the identity `pending` for ever and
+   * asserted `reading` went false anyway. That state is no longer reachable:
+   * `readIdentity` resolves a build with no Clerk BY CONSTRUCTION
+   * (`identityState.ts:151` — the static export is `anonymous`, a hosted build
+   * without a key is the asserted dev id), and a build that does mount Clerk is
+   * bounded by `IDENTITY_DEADLINE_MS`. Every deployment now answers.
+   *
+   * What is still reachable, and is the same dead end, is an identity that
+   * resolves and a first READ that never answers. The latch must end `reading`
+   * on that path too, or the candidate is back on "Checking what the exam
+   * service has issued…" with no scores and no link — which is what TEN-128
+   * was filed for. That is the guarantee, and it does not depend on who
+   * resolves first.
+   */
+  /**
+   * THE HOOK'S CONTRIBUTION TO THE "NEVER ASKED" GATE CELL.
+   *
+   * `reportGateStates` pins the WORDING for `asked=false, reading=false,
+   * scores=undefined, completed=true` — the "we never asked" lede — and that
+   * row is reachable only because this hook produces it when there is nothing
+   * to read from: the static export, or no attempt id. Nothing pinned THAT,
+   * so the gate's most-quoted cell rested on an untested contribution.
+   *
+   * This is the guarantee that survived TEN-214. A hosted build can no longer
+   * sit on `pending` for ever, so "no identity, therefore no request" is
+   * unreachable there — but `!live` still yields it, and that is the case the
+   * static export actually runs.
+   */
+  it("asks nothing and claims no read when there is nothing to read from", async () => {
+    stubReads([body([scored("t2", 60)])]);
+    const m = await mount(createElement(GateHarness, { attemptId: null }));
+    expect(calls).toHaveLength(0);
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
     await m.tick(IDENTITY_WAIT_MS + 1);
     expect(calls).toHaveLength(0);
-    // The gate fell back to the local log, so there is a way out again.
-    expect(m.html()).toContain("Finish the run to see it");
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    await m.unmount();
+  });
+
+  it("stops calling itself reading when the first read never answers, and gives the link back", async () => {
+    // A read that goes out and never answers — not a read that never fires.
+    vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries((init?.headers ?? {}) as Record<string, string>)) {
+        headers[k.toLowerCase()] = v;
+      }
+      calls.push({ url: String(url), headers });
+      return new Promise<Response>(() => {});
+    });
+    const m = await mount(createElement(GateHarness));
+    expect(m.html()).toContain("Checking what the exam service has issued");
+    await m.tick(IDENTITY_WAIT_MS + 1);
+    // The request DID go out — this is not the "we never asked" case.
+    expect(calls.length).toBeGreaterThan(0);
+    // ...and it has not answered. The page must stop claiming to be reading.
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    // The way out is back: the gate fell through to this browser's own log.
     expect(m.html()).toContain('data-cta="/exam"');
     await m.unmount();
   });
 
-  it("tells a FINISHED sitting that nothing was asked, not that nothing came back", async () => {
-    /* No identity, so no request was ever sent. "It returned no scores, or
-       it could not be reached" would name a request nobody made. */
+  it("tells a FINISHED sitting what came back, not that it is still reading", async () => {
+    /* The same eight seconds, on the branch that matters most: a finished
+       sitting must never be left on "Checking…" with no link (TEN-128). The
+       "we never asked" lede is still the honest answer where no read CAN
+       fire — the static export — and `reportGateStates.test.ts` pins its
+       wording there. */
     stubReads([body([scored("t2", 60)])]);
     const m = await mount(createElement(GateHarness, { completed: true }));
     await m.tick(IDENTITY_WAIT_MS + 1);
-    expect(calls).toHaveLength(0);
+    expect(calls).toHaveLength(1);
     expect(m.html()).toContain("Your sitting is finished");
-    expect(m.html()).toContain("never asked the exam service");
-    expect(m.html()).not.toContain("did not land");
+    expect(m.html()).not.toContain("Checking what the exam service has issued");
+    expect(m.html()).not.toContain("never asked the exam service");
     expect(m.html()).toContain('data-cta=""');
     await m.unmount();
   });
@@ -556,7 +635,11 @@ describe("it waits for an identity before the first read", () => {
       publishIdentity({ status: "signed-in", userId: "user_1" });
     });
     await m.tick(0);
-    expect(calls).toHaveLength(1);
+    /* TWO reads, and both are wanted: the first went out on the asserted dev
+       identity the wait resolves to (TEN-214), and a real account is a
+       DIFFERENT caller, so the answer to the first says nothing about the
+       second. What must not change is the link. */
+    expect(calls).toHaveLength(2);
     expect(m.html()).toContain('data-cta="/exam"');
     expect(m.html()).not.toContain("Checking what the exam service has issued");
     setAuthTokenSource(null);
@@ -581,7 +664,9 @@ describe("it waits for an identity before the first read", () => {
       publishIdentity({ status: "signed-in", userId: "user_1" });
     });
     await m.tick(0);
-    expect(calls).toHaveLength(1);
+    // Again two: the asserted dev identity, then the account. Neither has
+    // answered, and that is the whole point of the sentence below.
+    expect(calls).toHaveLength(2);
     expect(m.html()).toContain("Your sitting is finished");
     expect(m.html()).toContain("has not answered this page yet");
     expect(m.html()).not.toContain("did not land");
