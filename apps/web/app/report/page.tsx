@@ -207,7 +207,24 @@ export default function ReportPage() {
    * dealt in the first place, so a deck that lost an item still reports the
    * length it was sat at (TEN-68).
    */
-  const [review, setReview] = useState<ServerReview | null>(null);
+  /**
+   * THREE ANSWERS, NOT TWO (TEN-221).
+   *
+   *  - `pending` — nothing read yet, or there was nothing to read: the
+   *    static demo, a sitting still in its sitting phase, a run the service
+   *    never saw. None of those is a failure and none may be worded as one.
+   *  - a `ServerReview` — the keys and the withheld list for the deck sat.
+   *  - `failed` — the read LANDED badly or did not land at all.
+   *
+   * `failed` used to be `null`, which is the same value as "nothing to
+   * read". The calibration section then fell back to this build's BUNDLED
+   * practice keys, which match no operational item id, so every bin was
+   * empty and the section rendered nothing — an error state drawn as an
+   * empty one, with the TEN-68 withheld disclosure gone with it.
+   */
+  const [review, setReview] = useState<ServerReview | "failed" | null>(null);
+  /** The review as a value, or null when there is no review to read from. */
+  const reviewKeys = review === "failed" || review === null ? null : review;
   const reportAttemptId = state?.attemptId;
   /**
    * THE ONE READ OF THE SERVICE'S SCORES. The gate below and the panel at the
@@ -236,8 +253,13 @@ export default function ReportPage() {
         if (!cancelled && r) setReview(r);
       })
       // A report that cannot reach the server still renders everything that
-      // does not need a key; it must not blank the page.
-      .catch((err: unknown) => console.warn("[ailx report] review keys unavailable", err));
+      // does not need a key; it must not blank the page. What it may NOT do
+      // is stay silent: the T2 card says the key could not be read, and
+      // draws nothing that would depend on having it (TEN-221).
+      .catch((err: unknown) => {
+        console.warn("[ailx report] review keys unavailable", err);
+        if (!cancelled) setReview("failed");
+      });
     return () => {
       cancelled = true;
     };
@@ -251,9 +273,9 @@ export default function ReportPage() {
     // deck actually sat.
     return calibrationBins(
       t2ResponsesFromArtifact(state.tracks.t2.artifact),
-      { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(review?.keys ?? {}) },
+      { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(reviewKeys?.keys ?? {}) },
     );
-  }, [state, review]);
+  }, [state, reviewKeys]);
 
   if (!hydrated) {
     return <main className="page"><div className="container"><p className="muted">Loading…</p></div></main>;
@@ -483,7 +505,21 @@ export default function ReportPage() {
               {t === "t3" && <RelianceCard raw={score.raw} />}
               {t === "t1" && !sample && <SiteLiveLink attemptId={state.attemptId ?? undefined} />}
               {t === "t4" && !sample && <ShareToGallery artifact={ts.artifact} />}
-              {t === "t2" && calBins.some((b) => b.n > 0) && (
+              {/* THE FAILED REVIEW READ SAYS SO, AND DRAWS NOTHING (TEN-221).
+                  Both blocks below need the key for the deck that was
+                  actually sat. Without it the curve would be drawn from this
+                  build's bundled practice keys — a different deck — and the
+                  item-count check would claim a deck length nobody read. An
+                  error state is not an empty state, so this branch replaces
+                  both rather than hiding with them. */}
+              {t === "t2" && review === "failed" ? (
+                <p className="small" style={{ margin: "1rem 0 0" }} data-testid="t2-review-failed" role="status">
+                  The answer key for this deck could not be read from the Foray service, so the
+                  calibration curve and the item-count check are not shown. Your answers and this
+                  score are unaffected — reload to try again.
+                </p>
+              ) : null}
+              {t === "t2" && review !== "failed" && calBins.some((b) => b.n > 0) && (
                 <>
                   <h4 style={{ margin: "1rem 0 0", fontSize: "0.9rem" }}>Calibration — confidence vs observed accuracy</h4>
                   <CalibrationCurve bins={calBins} />
@@ -491,8 +527,8 @@ export default function ReportPage() {
               )}
               {/* An item the bank lost after the sitting is still an item the
                   candidate sat, and the count says so (TEN-68). */}
-              {t === "t2" && review ? (
-                <WithheldItems dealt={review.dealt} withheld={review.withheld} />
+              {t === "t2" && reviewKeys !== null ? (
+                <WithheldItems dealt={reviewKeys.dealt} withheld={reviewKeys.withheld} />
               ) : null}
               <p className="faint small mono" style={{ marginBottom: 0 }}>
                 rubric {ts.rubricVersion?.slice(0, 12)}… · scoring {ts.scoringDigest?.slice(0, 12)}… ·{" "}
