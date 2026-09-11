@@ -140,6 +140,8 @@ export default function ExamPage() {
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
+  /** Retry trigger for the runner's dynamic import (TEN-207). */
+  const [moduleEpoch, setModuleEpoch] = useState(0);
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
   /** Heading for the banner above — names WHICH persistence problem it is. */
   const [persistLabel, setPersistLabel] = useState<string>("Persistence warning");
@@ -378,6 +380,7 @@ export default function ExamPage() {
 
   // Load the Runner for the active track through the registry.
   const activeTrack = state?.phase === "in_track" || state?.phase === "paused" ? state.currentTrack : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: moduleEpoch is the RETRY trigger, not a value this effect reads
   useEffect(() => {
     let cancelled = false;
     setMod(null);
@@ -388,7 +391,7 @@ export default function ExamPage() {
       loadTrackModule(activeTrack).then((m) => { if (!cancelled) setMod(m); });
     }
     return () => { cancelled = true; };
-  }, [activeTrack]);
+  }, [activeTrack, moduleEpoch]);
 
   // Rehydration source for the active track: last stored checkpoint (F2).
   const attemptId = state?.attemptId;
@@ -439,9 +442,21 @@ export default function ExamPage() {
       ? hostedTrack.config
       : undefined;
   const deckPending = hostedConfig === undefined && deckError === null;
+  /**
+   * THE RUNNER CHUNK DID NOT LOAD (TEN-207). `loadTrackModule` catches a
+   * failed dynamic import — a 404 on a hashed chunk from a tab left open
+   * across a deploy, a dropped connection, a blocking extension — and hands
+   * back `PlaceholderRunner` with `placeholder: true`. This page used to
+   * mount it: four grey demo buttons in place of a real timed track, and the
+   * `{demo: true}` artifact they submit scored as the candidate's work. It is
+   * refused here for the same reason a contradicted deck is (DeckMismatchError
+   * in lib/data/persistence.ts): presenting one instrument as another is not
+   * a measurement. Our fault, so it shows a retry and the clock is held.
+   */
+  const runnerUnavailable = mod !== null && mod.placeholder;
   /** Is there something on screen the candidate can actually work on? */
   const contentPresentable =
-    activeTrack !== undefined && mod !== null && !deckPending && deckError === null;
+    activeTrack !== undefined && mod !== null && !runnerUnavailable && !deckPending && deckError === null;
 
   const initialCheckpoint = useMemo(() => {
     if (!attemptId || !activeTrack || typeof window === "undefined") return undefined;
@@ -1173,14 +1188,19 @@ export default function ExamPage() {
           {/* F2: the Runner stays MOUNTED while paused — a veil covers it so
               content is hidden but in-progress state survives. */}
           {deckError ? (
-            <div role="alert" style={{ display: "grid", gap: "0.8rem", padding: "1rem" }}>
-              <p className="muted" style={{ margin: 0 }} data-testid="deck-error">{deckError}</p>
-              <div>
-                <button className="btn" onClick={() => setDeckEpoch((n) => n + 1)}>
-                  Retry loading your deck
-                </button>
-              </div>
-            </div>
+            <ContentFailure
+              testId="deck-error"
+              message={deckError}
+              retryLabel="Retry loading your deck"
+              onRetry={() => setDeckEpoch((n) => n + 1)}
+            />
+          ) : runnerUnavailable ? (
+            <ContentFailure
+              testId="runner-error"
+              message={`your ${t.toUpperCase()} workspace could not be loaded in this browser. Nothing has been scored and the clock is held. Retry, or reload the page if this browser has been open since before an update.`}
+              retryLabel="Retry loading your track"
+              onRetry={() => setModuleEpoch((n) => n + 1)}
+            />
           ) : mod && !deckPending ? (
             <div aria-hidden={veiled} style={veiled ? { visibility: "hidden" } : undefined}>
               {/* P0-1: a runner throw must never white-screen a timed run.
@@ -1231,6 +1251,27 @@ export default function ExamPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * A thing the candidate needs is not here, and that is OUR fault: the deck
+ * the server dealt (TEN-116) or the runner chunk itself (TEN-207). One panel
+ * for both, because the candidate's situation is the same one — nothing to
+ * work on, nothing scored, a clock that is held, and one button that tries
+ * again. `testId` names WHICH failure it is, so a test cannot pass by finding
+ * the other.
+ */
+function ContentFailure({
+  testId, message, retryLabel, onRetry,
+}: { testId: string; message: string; retryLabel: string; onRetry: () => void }) {
+  return (
+    <div role="alert" style={{ display: "grid", gap: "0.8rem", padding: "1rem" }}>
+      <p className="muted" style={{ margin: 0 }} data-testid={testId}>{message}</p>
+      <div>
+        <button className="btn" onClick={onRetry}>{retryLabel}</button>
+      </div>
+    </div>
   );
 }
 
