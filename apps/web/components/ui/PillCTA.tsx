@@ -37,11 +37,20 @@ export function PillCTA({
   href,
   onClick,
   disabled,
+  busy,
   children,
 }: {
   href?: string;
   onClick?: () => void;
   disabled?: boolean;
+  /**
+   * The action this pill started has not finished (TEN-211). The pill is the
+   * first thing a candidate does, and a request behind it can take as long as
+   * the write bound allows; without this the press changed nothing on screen
+   * and a repeat tap was dropped in silence. `aria-busy` says it to a screen
+   * reader; the caller says it in the label.
+   */
+  busy?: boolean;
   children: React.ReactNode;
 }) {
   const [overlapping, setOverlapping] = useState(false);
@@ -132,6 +141,7 @@ export function PillCTA({
       className={`${cls}${disabled ? " disabled" : ""}`}
      
       aria-disabled={disabled || undefined}
+      aria-busy={busy || undefined}
       aria-hidden={cleared || undefined}
       tabIndex={cleared ? -1 : undefined}
       onClick={onClick}
