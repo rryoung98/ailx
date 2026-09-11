@@ -17,6 +17,7 @@
  * anyway. Those are different facts with different consequences, and reading
  * the wrong one costs a sitting.
  */
+import { useEffect, useRef } from "react";
 import type { StorageStopCopy } from "./storageStopCopy";
 
 export function StorageStop({
@@ -30,6 +31,15 @@ export function StorageStop({
   onRetry: () => void;
   onContinue: () => void;
 }) {
+  /**
+   * A modal that covers the whole workspace has to LAND focus inside itself,
+   * or a keyboard and screen-reader candidate is told nothing and can tab
+   * about behind a veil (the same class as TEN-224, found on this control
+   * while fixing that one). The heading, not a button: the two choices here
+   * have consequences, and the first thing to be read is which they are.
+   */
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { headingRef.current?.focus(); }, []);
   return (
     <div
       role="alertdialog"
@@ -57,7 +67,7 @@ export function StorageStop({
           gap: "0.9rem",
         }}
       >
-        <h2 style={{ margin: 0 }}>{copy.heading}</h2>
+        <h2 ref={headingRef} tabIndex={-1} style={{ margin: 0, outline: "none" }}>{copy.heading}</h2>
         {copy.body.map((line) => (
           <p key={line} className="small" style={{ margin: 0 }}>
             {line}

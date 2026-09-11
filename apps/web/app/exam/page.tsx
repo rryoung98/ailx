@@ -808,6 +808,63 @@ export default function ExamPage() {
       />
     );
 
+  /**
+   * The track whose time-up notice is on screen, if any.
+   *
+   * Read from the LOG, not from the run order: since TEN-149 a candidate may
+   * sit the model-free tracks first and the rest after connecting, so "the
+   * last completed track in T1→T4 order" is no longer the track that just
+   * finished. Derived up here because the FOCUS effect below has to know
+   * which view is showing, and it may not run after an early return.
+   */
+  const timedOutTrack = useMemo(() => {
+    if (state?.phase !== "between_tracks") return undefined;
+    const justFinished = [...(log ?? [])]
+      .reverse()
+      .find((e): e is Extract<SequencedEntry, { type: "track_completed" }> => e.type === "track_completed")
+      ?.trackId;
+    if (!justFinished) return undefined;
+    return state.tracks[justFinished].timedOut && timeUpAck !== justFinished ? justFinished : undefined;
+  }, [log, state, timeUpAck]);
+
+  /**
+   * WHICH WHOLE-PAGE VIEW IS ON SCREEN (TEN-224). Five of them come out of
+   * this one component, so swapping one for another is a view change with no
+   * route change and Next's App Router focus handling never sees it. A
+   * screen-reader candidate pressed Start, heard nothing, and tabbed from the
+   * top of the document on a clock that was already running.
+   *
+   * A pause is NOT a view change: `in_track` and `paused` render the same
+   * view, and the pause dialog owns focus while it is open. Arriving is not
+   * one either — the first view a browser sees is a page load, and moving
+   * focus at load is the anti-pattern this is the cure for.
+   */
+  const view = !state
+    ? "start"
+    : state.phase === "completed"
+      ? "complete"
+      : state.phase === "between_tracks"
+        ? (timedOutTrack ? `time-up:${timedOutTrack}` : "between")
+        : `track:${state.currentTrack}`;
+  const phaseHeadingRef = useRef<HTMLHeadingElement>(null);
+  const lastViewRef = useRef<string | null>(null);
+  const stopShowingRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated) return;
+    const prevView = lastViewRef.current;
+    const prevStop = stopShowingRef.current;
+    lastViewRef.current = view;
+    stopShowingRef.current = storageStop !== null;
+    // The storage stop covers the whole workspace and lands its own focus.
+    // The view BEHIND it must not pull focus back out — and when the stop
+    // closes, the heading takes it rather than letting it fall to <body>.
+    if (storageStop !== null) return;
+    if (prevView === null) return;
+    // The time-up notice lands its own heading (it always did), so this ref
+    // is unattached there and nothing here overrides it.
+    if (prevView !== view || prevStop) phaseHeadingRef.current?.focus();
+  }, [view, hydrated, storageStop]);
+
   const retryRunner = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
     // Only auto-resume a pause WE forced; a candidate-initiated pause stands.
@@ -858,7 +915,7 @@ export default function ExamPage() {
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · Foray 2026.1</div>
-          <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
+          <h1 ref={phaseHeadingRef} tabIndex={-1} style={{ outline: "none" }}>Four tracks. One <span className="script-accent">run</span>.</h1>
           <p className="lede">
             T1 to T4 in order, each on its own clock. Pause between moves, never
             mid-swipe. {eventLogCopy()}
@@ -952,7 +1009,7 @@ export default function ExamPage() {
       {storageOverlay}
       <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
-          <h1>Run complete</h1>
+          <h1 ref={phaseHeadingRef} tabIndex={-1} style={{ outline: "none" }}>Run complete</h1>
           {/* Derived, never asserted (TEN-129). The old line said "All four
               tracks are scored" on a run where the service had scored none of
               them yet, on the same screen as the error saying so. */}
@@ -972,27 +1029,19 @@ export default function ExamPage() {
   if (state.phase === "between_tracks") {
     // A track that ended on the timer says so, explicitly, at the moment it
     // happens. It used to teleport the candidate to the track list, which
-    // reads as a crash rather than a timeout.
-    //
-    // Read from the LOG, not from the run order: since TEN-149 a candidate
-    // may sit the model-free tracks first and the rest after connecting, so
-    // "the last completed track in T1→T4 order" is no longer the track that
-    // just finished. The log says which one did.
-    const justFinished = [...(log ?? [])]
-      .reverse()
-      .find((e): e is Extract<SequencedEntry, { type: "track_completed" }> => e.type === "track_completed")
-      ?.trackId;
-    if (justFinished && state.tracks[justFinished].timedOut && timeUpAck !== justFinished) {
+    // reads as a crash rather than a timeout. WHICH track that is comes from
+    // `timedOutTrack` above, because the focus effect needs the same answer.
+    if (timedOutTrack) {
       return (
         <main className="page">
           <PersistWarning warning={persistWarning} label={persistLabel} />
       {storageOverlay}
       <MirrorWarning />
           <TimeUpNotice
-            trackId={justFinished}
-            budgetSeconds={state.config!.budgets[justFinished]}
-            serviceScored={state.tracks[justFinished].score === undefined}
-            onContinue={() => setTimeUpAck(justFinished)}
+            trackId={timedOutTrack}
+            budgetSeconds={state.config!.budgets[timedOutTrack]}
+            serviceScored={state.tracks[timedOutTrack].score === undefined}
+            onContinue={() => setTimeUpAck(timedOutTrack)}
           />
         </main>
       );
@@ -1011,7 +1060,9 @@ export default function ExamPage() {
       <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">run {state.attemptId}</div>
-          <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
+          <h1 ref={phaseHeadingRef} tabIndex={-1} style={{ outline: "none" }}>
+            {done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}
+          </h1>
           <ul className="checklist" style={{ margin: "1.5rem 0" }}>
             {TRACK_LIST.map((t) => {
               const ts = state.tracks[t.id];
@@ -1188,7 +1239,7 @@ export default function ExamPage() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.6rem" }}>
           <div>
-            <h1 className="eyebrow" style={{ margin: 0 }}>{meta.code} · {meta.name}</h1>
+            <h1 className="eyebrow" ref={phaseHeadingRef} tabIndex={-1} style={{ margin: 0, outline: "none" }}>{meta.code} · {meta.name}</h1>
             <div className="faint small mono">plugin {meta.pluginId} · 100 pts</div>
           </div>
           <div style={{ display: "flex", gap: "0.9rem", alignItems: "center" }}>
