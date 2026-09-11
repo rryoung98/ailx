@@ -54,10 +54,18 @@ describe("checkpoint store (F2)", () => {
     expect(s.map.size).toBe(0);
   });
 
-  it("swallows storage quota errors instead of crashing the exam", () => {
+  it("REPORTS a storage quota error instead of crashing the exam, or swallowing it", () => {
     const s = memStorage();
     s.setItem = () => { throw new Error("QuotaExceededError"); };
+    // Never throws: a full store must not take the runner down mid-track.
     expect(() => saveCheckpoint(s, "att-1", "t1", { big: "x" })).not.toThrow();
+    // And never silent: on timeout this checkpoint is the artifact of
+    // record, so the host has to be able to tell the candidate (TEN-219).
+    expect(saveCheckpoint(s, "att-1", "t1", { big: "x" })).toEqual({
+      ok: false,
+      reason: "QuotaExceededError",
+    });
+    expect(saveCheckpoint(memStorage(), "att-1", "t1", { ok: 1 })).toEqual({ ok: true });
   });
 });
 

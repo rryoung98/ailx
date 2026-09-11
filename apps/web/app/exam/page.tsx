@@ -341,6 +341,23 @@ export default function ExamPage() {
     return Math.max(Date.now(), last);
   }, []);
 
+  /**
+   * THE STORE REFUSED A WRITE. One answer for every writer (TEN-208, TEN-219),
+   * because the candidate's situation does not depend on which key failed: the
+   * browser is full, and carrying on means working for something that reaches
+   * no store. Shown once as a stop that holds the clock; after the candidate
+   * has chosen to carry on it is a banner, because repeating the stop on every
+   * entry is not new information.
+   */
+  const storeRefused = useCallback((reason: string) => {
+    if (!storageStopAckRef.current) {
+      setStorageStop(reason);
+      return;
+    }
+    setPersistLabel("Not saved in this browser");
+    setPersistWarning(carriedOnCopy(reason));
+  }, []);
+
   const commit = useCallback((entries: readonly (Parameters<typeof append>[1])[]) => {
     setLog((prev) => {
       let next = prev ?? [];
@@ -365,18 +382,13 @@ export default function ExamPage() {
         if (err instanceof SaveConflictError) {
           setPersistLabel("Persistence warning");
           setPersistWarning(err instanceof Error ? err.message : String(err));
-        } else if (!storageStopAckRef.current) {
-          setStorageStop(err instanceof Error ? err.message : String(err));
         } else {
-          // The candidate was shown the stop and chose to carry on. Nagging
-          // them on every entry is not new information; the banner is.
-          setPersistLabel("Not saved in this browser");
-          setPersistWarning(carriedOnCopy(err instanceof Error ? err.message : String(err)));
+          storeRefused(err instanceof Error ? err.message : String(err));
         }
       }
       return next;
     });
-  }, []);
+  }, [storeRefused]);
 
   // Load the Runner for the active track through the registry.
   const activeTrack = state?.phase === "in_track" || state?.phase === "paused" ? state.currentTrack : undefined;
@@ -1120,8 +1132,16 @@ export default function ExamPage() {
     // F2: the runner rehydrates from the last checkpoint and persists every
     // meaningful mutation back through onCheckpoint.
     checkpoint: initialCheckpoint,
+    /**
+     * A checkpoint that does not reach the store is the artifact the timeout
+     * watchdog will score (TEN-219). The refusal gets the same stop as a
+     * refused log entry: the clock is held and the candidate decides,
+     * instead of working on for a score computed from stale work.
+     */
     onCheckpoint: (cp: unknown) => {
-      if (state.attemptId) saveCheckpoint(window.localStorage, state.attemptId, t, cp);
+      if (!state.attemptId) return;
+      const written = saveCheckpoint(window.localStorage, state.attemptId, t, cp);
+      if (!written.ok) storeRefused(written.reason);
     },
     // The host attaches WHO is asking. It has no provider key to attach, in
     // either build: hosted, the gateway spends a key it holds sealed against
