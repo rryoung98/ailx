@@ -19,8 +19,9 @@
  */
 import { TOTAL_POINTS } from "@ailx/core";
 import { CUTLINE_BANDS } from "@ailx/contract";
+import { formatTrackScore } from "@ailx/report";
 import { useEffect, useState } from "react";
-import { TrackRadar } from "../../components/TrackRadar";
+import { TrackRadar, trackFillPercent } from "../../components/TrackRadar";
 import type { CompositeCardView } from "./compositeView";
 
 /**
@@ -177,8 +178,15 @@ export function CompositeCard({ view }: { view: CompositeCardView }) {
         {view.bars.map((b) => (
           <div className="row" key={b.trackId}>
             <span className="mono" style={{ color: "var(--accent)" }}>{b.trackId.toUpperCase()}</span>
-            <div className="meter"><div style={{ width: `${Math.max(0, Math.min(100, b.value))}%` }} /></div>
-            <span className="mono" style={{ textAlign: "right" }}>{b.value.toFixed(1)}</span>
+            {/* Each bar against ITS OWN track's maximum, with the
+                denominator beside the number. A /100 axis clipped every T3
+                over 100 and stopped a perfect T2 ever filling (TEN-120). */}
+            <div className="meter">
+              <div style={{ width: `${trackFillPercent(b.trackId, b.value)}%` }} />
+            </div>
+            <span className="mono" style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+              {formatTrackScore({ scaled: b.value }, undefined, b.trackId)}
+            </span>
           </div>
         ))}
       </div>
