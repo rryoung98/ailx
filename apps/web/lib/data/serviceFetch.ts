@@ -153,8 +153,13 @@ const REASON_MAX = 200;
  * reader. Whitespace is collapsed because the service's query errors are
  * multi-line, and a body that will not even parse is simply no reason: the
  * status alone is still an honest thing to say.
+ *
+ * Exported because the WRITE panels need the same quoting rule (TEN-234):
+ * issue, revoke, create and publish do not go through `serviceFetch`, and a
+ * second reader of the same envelope would be a second chance to disagree
+ * about what may be put in front of a candidate.
  */
-async function refusal(res: Response): Promise<{ reason?: string }> {
+export async function refusalReason(res: Response): Promise<{ reason?: string }> {
   try {
     const parsed = parseApiError(await res.json());
     if (parsed === null) return {};
@@ -197,7 +202,7 @@ export async function serviceFetch<T>(
       cache: "no-store",
       signal: bound.signal,
     });
-    if (res.status !== 200) return { state: "missing", status: res.status, ...(await refusal(res)) };
+    if (res.status !== 200) return { state: "missing", status: res.status, ...(await refusalReason(res)) };
     // Its OWN try, because a captive portal's HTML on a 200 is the service
     // answering with something unreadable, not a connection this reader can
     // fix. Sharing the outer catch printed "check your connection" for a call

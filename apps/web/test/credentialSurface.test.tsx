@@ -280,9 +280,13 @@ describe("CredentialPanel in server mode", () => {
     /* The old wording told the candidate to "finish and score every track
        first". A PARTIAL sitting is finished and gets a credential of its own
        (docs/CREDENTIAL.md §6), and no candidate scores a track, so the
-       sentence blamed them for a service that did not answer. */
+       sentence blamed them for a service that did not answer.
+
+       A 400 is a REFUSAL, and since TEN-234 it is worded as one: the service
+       was reached, so "that did not reach the exam service" would be the
+       opposite error. The status is printed either way. */
     const alert = container.querySelector('[role="alert"]')!.textContent ?? "";
-    expect(alert).toContain("did not reach the exam service");
+    expect(alert).toContain("was reached and refused this (HTTP 400)");
     expect(alert).not.toContain("every track");
   });
 });

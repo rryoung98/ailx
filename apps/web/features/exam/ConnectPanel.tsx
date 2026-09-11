@@ -23,6 +23,7 @@
  *    static tier issues no score of record, so it does not need a credential.
  */
 import { useMutation } from "@tanstack/react-query";
+import { SHARED_DEMO_MODEL_BASE } from "../../lib/data/demoProxy";
 import { CONNECTION_CHANGED_EVENT, MODEL_ENDPOINT_SLOT, readMigratedItem, removeMigratedItem } from "@ailx/core";
 import { useCallback, useEffect, useState } from "react";
 import { useIdentity } from "../../lib/auth/identityState";
@@ -59,8 +60,10 @@ function announceChange() {
   }
 }
 
-/** Capped proxy that fronts the operator's OpenRouter key (shared demo). */
-export const SHARED_DEMO_BASE_URL = "https://ailx-shared-demo.vercel.app/api/v1";
+/** Capped proxy that fronts the operator's OpenRouter key (shared demo).
+    The ORIGIN is not spelled here: it is the same deployment the community
+    wall runs on, and it was typed out in three files (TEN-235). */
+export const SHARED_DEMO_BASE_URL = SHARED_DEMO_MODEL_BASE;
 
 /**
  * What a connected candidate is told, in the hosted build.

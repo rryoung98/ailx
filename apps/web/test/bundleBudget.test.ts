@@ -127,7 +127,7 @@ const MODES: Mode[] = [
     allJsGzip: 707_329,
     sharedGzip: 178_261,
     pages: {
-      "report.html": 297_237,
+      "report.html": 311_014,
       "exam.html": 278_801,
       "validate.html": 270_265,
       "wall.html": 240_018,
@@ -149,7 +149,7 @@ const MODES: Mode[] = [
     allJsGzip: 817_237,
     sharedGzip: 214_951,
     pages: {
-      "report.html": 338_345,
+      "report.html": 353_611,
       "exam.html": 322_133,
       "validate.html": 308_275,
       "wall.html": 276_634,
@@ -293,6 +293,49 @@ for (const mode of MODES) {
      * against main's last CI total, which attributes growth to its author and
      * does not depend on the floor at all (TEN-274).
      */
+    it("warns once a PAGE has spent half its own tolerance", () => {
+      /**
+       * THE ALARM WATCHED TWO NUMBERS AND IGNORED SIXTEEN.
+       *
+       * Every half-mark added with the total alarm was computed from
+       * `mode.allJsGzip` with `TOTAL_MARGIN` — so the two TOTALS were watched
+       * and the eight pages per mode were not. That is exactly how
+       * `report.html` reached 92.7% of its page margin on `main` (311014 of a
+       * 312099 budget, 1085 B left; hosted 90.2%, 1651 B left) with NO single
+       * PR ever failing it: nothing was looking.
+       *
+       * The page margin is wider (5% against 2%), which makes silence here
+       * cheaper to accumulate, not dearer — a page can absorb several
+       * kilobytes before anything objects, and then one ordinary PR pays for
+       * all of it.
+       *
+       * Soft, like the total alarm and for the same reason: a hard failure at
+       * half is the same guard one notch tighter, and would be suspended the
+       * first time a page legitimately grows. And unconditional per page, so a
+       * page that is FINE is also on the record — silence must not be
+       * indistinguishable from "not measured".
+       */
+      for (const [file, baseline] of Object.entries(mode.pages)) {
+        const cap = budget(baseline, PAGE_MARGIN);
+        const half = Math.round(baseline * (1 + (PAGE_MARGIN - 1) / 2));
+        const html = htmlFiles.find((f) => f.endsWith(`/${file}`));
+        if (html === undefined) continue; // the per-page budget below fails loudly for a missing page
+        const scripts = scriptsOf(html, mode).filter((f) => existsSync(f));
+        const measured = scripts.reduce((n, f) => n + gz(f), 0);
+        const spent = Math.round(((measured - baseline) / (cap - baseline)) * 100);
+        console.log(`[bundle] tolerance ${mode.name} ${file}: ${spent}% spent (${measured} B, baseline ${baseline}, half-mark ${half}, budget ${cap})`);
+        if (measured > half) {
+          console.log(
+            `[bundle] WARNING ${mode.name} ${file}: ${measured} B gzip has spent over HALF its page ` +
+              `tolerance (half-mark ${half}, budget ${cap}). Find the growth, or re-baseline from a ` +
+              "green CI run on main — see TEN-274.",
+          );
+        }
+      }
+      // Reports; the page budgets below judge.
+      expect(Object.keys(mode.pages).length).toBeGreaterThan(5);
+    });
+
     it("warns once the build has spent HALF its tolerance", () => {
       const measured = jsFiles.reduce((n, f) => n + gz(f), 0);
       const cap = budget(mode.allJsGzip, TOTAL_MARGIN);

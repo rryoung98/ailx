@@ -22,7 +22,9 @@ import {
   outstandingTranscriptTurns,
   resumeTranscriptTurns,
   subscribeTranscriptTurns,
+  transcriptTurnsUnreadable,
   turnsOutstandingCopy,
+  TURNS_UNREADABLE_COPY,
 } from "../../lib/instrument/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/data/siteUpload";
 import {
@@ -135,6 +137,18 @@ export default function ExamPage() {
     subscribeTranscriptTurns,
     outstandingTranscriptTurns,
     () => 0,
+  );
+  /**
+   * A stored T3 queue that would not read back (TEN-272). A SECOND fact, not
+   * a bigger count: `outstandingTurns` is 0 in this case — there is nothing
+   * left to send — and Finish must still not open, because "nothing to send"
+   * and "we cannot account for what there was" are different sentences and
+   * only one of them is true.
+   */
+  const turnsUnreadable = useSyncExternalStore(
+    subscribeTranscriptTurns,
+    transcriptTurnsUnreadable,
+    () => false,
   );
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -1190,7 +1204,7 @@ export default function ExamPage() {
                ends by itself. */
             <button
               className="btn primary"
-              disabled={outstandingTurns > 0}
+              disabled={outstandingTurns > 0 || turnsUnreadable}
               onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}
             >
               {lockedPending.length > 0
@@ -1201,6 +1215,11 @@ export default function ExamPage() {
           {outstandingTurns > 0 ? (
             <p className="small muted" data-testid="turns-outstanding" style={{ margin: "0.6rem 0 0" }}>
               {turnsOutstandingCopy(outstandingTurns)}
+            </p>
+          ) : null}
+          {turnsUnreadable ? (
+            <p className="small" data-testid="turns-unreadable" role="alert" style={{ margin: "0.6rem 0 0", color: "var(--bad)" }}>
+              {TURNS_UNREADABLE_COPY}
             </p>
           ) : null}
           <span style={{ marginLeft: "0.8rem" }}>

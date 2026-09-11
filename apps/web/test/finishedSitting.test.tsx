@@ -172,11 +172,16 @@ describe("a finished PARTIAL sitting", () => {
     saveAttempt(window.localStorage, partialLog(["t2", "t3"]));
   });
 
-  it("offers the credential and the share the service was willing to issue", async () => {
+  it("offers the credential, and no share link the payload cannot carry", async () => {
+    /* The credential names a partial sitting and /verify confirms it. A
+       share CARD cannot: it needs a band, a player type and four track
+       scores, and `buildSharePayload` returns null without them (TEN-233).
+       So one is offered and the other says why it is not. */
     serviceAnswers(PARTIAL_SCORES);
     const html = await reportHtml();
     expect(html).toContain("Issue my credential");
-    expect(html).toContain("Create a share link");
+    expect(html).not.toContain("Create a share link");
+    expect(html).toContain("there is no card to make");
   });
 
   it("treats the 404 as 'none yet' and never as an error", async () => {
@@ -194,7 +199,8 @@ describe("a finished PARTIAL sitting", () => {
     const html = await reportHtml();
     expect(html).toContain("covers part of the instrument");
     expect(html).toContain("partial sitting");
-    expect(html).toContain("no four-letter type");
+    // The credential's own wording for the same fact: one axis per track.
+    expect(html).toContain("no four-letter code");
   });
 
   it("keeps the composite's withheld reason on the screen", async () => {
@@ -307,15 +313,14 @@ describe("the share panel for a partial sitting", () => {
   });
   afterEach(() => container.remove());
 
-  it("promises no type, character or band it does not have", async () => {
+  it("promises no card it cannot build (TEN-233)", async () => {
     serviceAnswers(PARTIAL_SCORES);
     await mount(createElement(ShareLink, { attemptId: ATTEMPT, sat: ["t2", "t3"] }));
     const text = container.textContent ?? "";
-    expect(text).toContain("Send someone this sitting");
-    expect(text).toContain("no four-letter type, no character and no band");
-    expect(container.querySelector('[data-testid="share-card-copy"]')!.textContent).toContain(
-      "the tracks you sat (T2 · T3)",
-    );
+    expect(text).toContain("No card for a part-sitting");
+    expect(text).toContain("there is no card to make");
+    expect(text).not.toContain("Create a share link");
+    expect(container.querySelector('[data-testid="share-card-copy"]')).toBeNull();
   });
 
   it("keeps the type wording for a full sitting", async () => {
