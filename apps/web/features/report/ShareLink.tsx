@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
+import { useIdentity } from "../../lib/auth/identityState";
 import { serviceHeaders } from "../../lib/data/traceparent";
 import { deadline, isTimeout } from "../../lib/data/deadline";
 import {
@@ -226,8 +227,20 @@ export function ShareLink({
     [serverId],
   );
 
+  /**
+   * THE READ MAY NOT FIRE WHILE THE IDENTITY IS PENDING (TEN-215).
+   *
+   * The same race the credential panel has, with the same consequence: a
+   * read sent before `ClerkTokenBridge` registers carries no Bearer token,
+   * the service answers 401, and 401 and 404 read alike below — so an owner
+   * who already has an unlisted link was shown the create form instead of
+   * the link they hold. `pending` is bounded by `IDENTITY_DEADLINE_MS`
+   * (`lib/auth/identityState.ts`, TEN-214), so this waits and never hangs.
+   */
+  const identityStatus = useIdentity().status;
+
   useEffect(() => {
-    if (!isServerMode()) return;
+    if (!isServerMode() || identityStatus === "pending") return;
     setHasSite(loadSiteSubmission(window.localStorage, attemptId) !== null);
     let live = true;
     void (async () => {
@@ -252,7 +265,7 @@ export function ShareLink({
     return () => {
       live = false;
     };
-  }, [attemptId, request]);
+  }, [attemptId, request, identityStatus]);
 
   if (!isServerMode()) return null;
 

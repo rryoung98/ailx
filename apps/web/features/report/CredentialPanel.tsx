@@ -38,6 +38,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_ROUTES, apiPath, type OwnerCredential } from "@ailx/contract";
 import type { TrackId } from "@ailx/session";
+import { useIdentity } from "../../lib/auth/identityState";
 import { serviceHeaders } from "../../lib/data/traceparent";
 import { deadline, isTimeout } from "../../lib/data/deadline";
 import { CREDENTIAL_LIMITS, isFullSitting, linkedInAddUrl, TRACK_META } from "@ailx/report";
@@ -114,8 +115,25 @@ export function CredentialPanel({
     [attemptId],
   );
 
+  /**
+   * THE READ MAY NOT FIRE WHILE THE IDENTITY IS PENDING (TEN-215).
+   *
+   * `ClerkTokenBridge` registers the token source in an effect, so a read
+   * fired on mount carries no Bearer token. The service answers 401, `held`
+   * becomes null, and 404 and 401 are the same answer to the code below —
+   * so a candidate who ALREADY HOLDS a credential was offered a fresh one
+   * and shown no Revoke control. The sibling read states the same rule
+   * (`useScoresOfRecord`, TEN-152).
+   *
+   * `pending` is BOUNDED elsewhere, so this is a wait and not a dead end: a
+   * Clerk that never publishes is resolved to the asserted dev identity
+   * after `IDENTITY_DEADLINE_MS` (`lib/auth/identityState.ts`, TEN-214), and
+   * the read fires then. This panel needs no latch of its own.
+   */
+  const identityStatus = useIdentity().status;
+
   useEffect(() => {
-    if (!isServerMode()) return;
+    if (!isServerMode() || identityStatus === "pending") return;
     let live = true;
     void (async () => {
       try {
@@ -141,7 +159,7 @@ export function CredentialPanel({
     return () => {
       live = false;
     };
-  }, [request]);
+  }, [request, identityStatus]);
 
   if (!isServerMode()) return null;
 
