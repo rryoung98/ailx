@@ -74,7 +74,20 @@ export const progressReportSchema = z.strictObject({
     .nullable(),
   sittings: z.array(sittingSchema),
   improvements: z.array(improvementSchema),
-  basis: z.string(),
+  /**
+   * LEGACY, OPTIONAL, and ignored. `@ailx/report` stopped building `basis` in
+   * `f484f76` (#66), but this schema is `strictObject`, so an unknown key is a
+   * REJECTION — and a deployment built before that commit still sends one.
+   * Declared here so a stale service is READ rather than refused during a
+   * rollout; the value is not used.
+   *
+   * It was required between #72 and #66, which is how `main` went red: #72
+   * added the required key, #66 removed the field that fed it, each branch was
+   * green alone, and neither CI run ever saw the other's change. `satisfies
+   * z.ZodType<ProgressReport>` cannot catch this — an extra REQUIRED key only
+   * narrows the parsed output, and a narrower output is still assignable.
+   */
+  basis: z.string().optional(),
   notEnoughYet: z.strictObject({ practice: z.boolean(), sittings: z.boolean() }),
 }) satisfies z.ZodType<ProgressReport>;
 
