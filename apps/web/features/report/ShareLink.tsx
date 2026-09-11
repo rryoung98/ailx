@@ -198,6 +198,23 @@ export function ShareLink({
   /** The same fact for the publish button, which has a failure line of its own. */
   const [publishFailure, setPublishFailure] = useState<WriteFailure | null>(null);
 
+  /**
+   * A SITTING OVER PART OF THE INSTRUMENT HAS NO CARD TO SHARE (TEN-233).
+   *
+   * `SharePayload` requires a band, a player type and all four track scores,
+   * and `buildSharePayload` returns null for a run that is not fully scored
+   * — so the create was refused by the service, and `ShareView` renders every
+   * field unconditionally, so a token that did exist would throw at a
+   * stranger. The panel used to offer the button anyway and describe a card
+   * carrying "the tracks you sat", which is not a shape this product has.
+   *
+   * So the offer is withdrawn HERE rather than at the call site: the panel is
+   * the one thing that knows what a card carries, and a second caller cannot
+   * get it wrong.
+   */
+  const partial = sat !== undefined && sat.length > 0 && sat.length < TRACK_IDS.length;
+  const satList = (sat ?? []).map((t) => t.toUpperCase()).join(" · ");
+
   const serverId = useCallback(
     () => getServerAttemptId(window.localStorage, attemptId) ?? attemptId,
     [attemptId],
@@ -246,7 +263,9 @@ export function ShareLink({
   const identityStatus = useIdentity().status;
 
   useEffect(() => {
-    if (!isServerMode() || identityStatus === "pending") return;
+    // Nothing to look for on a partial sitting: no link can exist, so asking
+    // would be a request made only to be ignored.
+    if (!isServerMode() || partial || identityStatus === "pending") return;
     setHasSite(loadSiteSubmission(window.localStorage, attemptId) !== null);
     let live = true;
     void (async () => {
@@ -271,23 +290,14 @@ export function ShareLink({
     return () => {
       live = false;
     };
-  }, [attemptId, request, identityStatus]);
+  }, [attemptId, request, identityStatus, partial]);
 
   if (!isServerMode()) return null;
 
   const url =
     share === null ? null : `${window.location.origin}${shareUrlPath(share.token, basePath())}`;
 
-  /* A PARTIAL SITTING HAS NO TYPE TO SEND. The card's type, shape and band
-     are read over the whole instrument; a sitting that covered part of it has
-     no four-letter code, no character and no band, so this panel says what
-     the link DOES carry rather than promising three things that are not
-     there (docs/CREDENTIAL.md §6 makes the same point for the credential). */
-  const partial = sat !== undefined && sat.length > 0 && sat.length < TRACK_IDS.length;
-  const satList = (sat ?? []).map((t) => t.toUpperCase()).join(" · ");
-  const cardCopy = partial
-    ? `the tracks you sat (${satList}) and how far you got in each`
-    : "your type, your four-track shape and your band";
+  const cardCopy = "your type, your four-track shape and your band";
 
   const create = async () => {
     setPhase("busy");
@@ -376,20 +386,26 @@ export function ShareLink({
     <section className="card" aria-labelledby="share-heading" style={{ marginBottom: "2rem" }}>
       <p className="eyebrow" style={{ margin: 0 }}>share · private until you say so</p>
       <h2 id="share-heading" style={{ margin: "0.2rem 0 0.4rem" }}>
-        {partial ? "Send someone this sitting" : "Send someone your player type"}
+        {partial ? "No card for a part-sitting" : "Send someone your player type"}
       </h2>
-      <p className="muted small" style={{ maxWidth: "62ch" }} data-testid="share-card-copy">
-        Creates an unlisted link with {cardCopy}, plus whatever you tick below. Never your
-        answers, the items you saw, or anything that could identify you. It is unlisted and not
-        indexed. Revoke it and it stops working everywhere, at once.
-      </p>
       {partial ? (
-        <p className="small" style={{ maxWidth: "62ch" }} data-testid="share-partial-notice">
-          You sat {satList} of the four tracks, so this card carries no four-letter type, no
-          character and no band. Those are read over the whole instrument.
+        <p className="muted small" style={{ maxWidth: "62ch" }} data-testid="share-not-offered">
+          A share card carries your four-letter type, your character and your band, and all three
+          are read over the whole instrument. You sat {satList}, so this sitting has none of them
+          and there is no card to make — a link would be a page with holes in it. Sit the tracks
+          you have not, and the card is here. Your credential above already names this sitting,
+          and it is the thing a stranger can check.
         </p>
-      ) : null}
+      ) : (
+        <p className="muted small" style={{ maxWidth: "62ch" }} data-testid="share-card-copy">
+          Creates an unlisted link with {cardCopy}, plus whatever you tick below. Never your
+          answers, the items you saw, or anything that could identify you. It is unlisted and not
+          indexed. Revoke it and it stops working everywhere, at once.
+        </p>
+      )}
 
+      {partial ? null : (
+        <>
       {phase === "loading" ? <p className="faint small" role="status">Checking…</p> : null}
 
       {phase === "none" || phase === "busy" || phase === "error" ? (
@@ -512,6 +528,8 @@ export function ShareLink({
         Anyone with the link can open it, no account needed. Foray serves the page and its preview
         image from {assetUrl("/s/…")}, so a reader can see where the card came from.
       </p>
+        </>
+      )}
     </section>
   );
 }
