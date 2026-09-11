@@ -28,8 +28,7 @@ import {
 } from "./scoresOfRecord";
 
 /**
- * HOW LONG THIS PAGE WAITS FOR AN IDENTITY BEFORE IT STOPS SAYING IT IS
- * READING.
+ * HOW LONG THIS PAGE WAITS BEFORE IT STOPS SAYING IT IS READING.
  *
  * The read cannot fire while the identity is `pending` — a request sent
  * before `ClerkTokenBridge` registers carries no token and the service
@@ -97,20 +96,35 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    */
   const identityStatus = useIdentity().status;
   /**
-   * True once the identity has stayed `pending` past `IDENTITY_WAIT_MS`.
-   * LATCHED: it is set once and never cleared. An identity that resolves
-   * afterwards would otherwise put the page back into `reading`, so the
-   * candidate would watch the one link they had appear and then vanish.
+   * True once this page has waited `IDENTITY_WAIT_MS` for an ANSWER OF ANY
+   * KIND — an identity, or the first read that identity allows.
+   *
+   * LATCHED: set once and never cleared. An answer that arrives afterwards
+   * would otherwise put the page back into `reading`, so the candidate would
+   * watch the one link they had appear and then vanish.
+   *
+   * IT IS NOT CONDITIONAL ON `pending`, AND THAT IS THE POINT. It was, and
+   * two 8-second timers then raced: `identityState` resolves a Clerk that
+   * never publishes to the asserted dev identity after `IDENTITY_DEADLINE_MS`
+   * (TEN-214, #72), which is the SAME 8 seconds. The identity moved off
+   * `pending` first, this effect's cleanup cleared its own timer before it
+   * could fire, the latch never closed — and `reading` stayed true through a
+   * first read that had not answered. That is the TEN-128 dead end again:
+   * "Checking what the exam service has issued…", no scores, no link.
+   *
+   * Bounding the CLAIM in time rather than the identity covers both: a
+   * pending identity and a slow first read leave the page saying it has not
+   * heard, which is true of each, instead of saying it is still reading.
    */
   const [identityWaited, setIdentityWaited] = useState(false);
   /** True once a request has really gone out. Latched for the same reason. */
   const [asked, setAsked] = useState(false);
 
   useEffect(() => {
-    if (!live || identityStatus !== "pending" || identityWaited) return;
+    if (!live || identityWaited) return;
     const timer = window.setTimeout(() => setIdentityWaited(true), IDENTITY_WAIT_MS);
     return () => window.clearTimeout(timer);
-  }, [live, identityStatus, identityWaited]);
+  }, [live, identityWaited]);
 
   useEffect(() => {
     if (!live || identityStatus === "pending") return;
