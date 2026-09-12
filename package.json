@@ -17,7 +17,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",
     "@vitest/coverage-v8": "^2.1.0",
-    "jsdom": "^25.0.1",
+    "jsdom": "^30.0.1",
     "lefthook": "^2.1.12",
     "vitest": "^2.1.0"
   }
