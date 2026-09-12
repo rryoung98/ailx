@@ -1,11 +1,19 @@
 # Contributing
 
-Branch → PR → green CI → merge → auto-deploy. `main` is protected; push it through a PR.
+Feature branch → PR to `staging` → test the staging site → PR to `main`.
+Use PRs for both shared branches; do not push either branch directly.
 
 ## Branch and PR
 
-- Branch off `main`, named `w/<topic>`. A Linear id is a fine topic: `w/ten-156`.
-- Open the PR against `main`. Nobody pushes `main` directly.
+- Branch off `staging`, named `w/<topic>`. A Linear id is a fine topic: `w/ten-156`.
+- Open feature PRs against `staging`. Merge only after the CI gate passes.
+- Review the deployed change at `https://ailx-staging.vercel.app`.
+- Promote with a PR from `staging` to `main` after staging review and green CI.
+  Use a **merge commit**, not squash or rebase, for this promotion. Keep the
+  shared ancestry so the next promotion contains only new changes. Do not
+  delete `staging` after merging.
+- `main` is the production branch for `https://foray.tenken.co`. The two
+  Vercel projects and their branch settings are in [docs/DEPLOY.md](docs/DEPLOY.md#current-frontend-routing).
 - Keep commits small. Commit titles are not linted — the history is mixed and a
   regex gate would fail real PRs — so write a title a reviewer can read.
 
@@ -27,9 +35,13 @@ third job behind `e2e` hides it whenever the browser suite is red or skipped.
 
 `codeql` and Dependabot run outside the merge gate.
 
-On merge, `pages` runs only after `ci` succeeds on that commit: it rebuilds the
-static export, stamps `/version.json`, deploys to GitHub Pages, and tags the
-commit `build-<UTC date>-<short sha>`. Nothing is published to a registry.
+CI also runs on pushes to `staging` and `main`. Vercel deploys each project
+from its configured branch; these deploys do not wait for the push CI run.
+
+On `main`, `pages` runs after push CI succeeds on that commit. It publishes
+the redirect to `foray.tenken.co`, stamps `/version.json`, and tags the commit
+`build-<UTC date>-<short sha>`. Manual Pages runs are also restricted to `main`;
+`staging` never publishes Pages. Nothing is published to a registry.
 
 ## `pnpm -r build` IS the typecheck
 

@@ -1,5 +1,40 @@
 # DEPLOY.md — hosted Foray (Vercel serverless)
 
+## Current frontend routing
+
+The approved split uses two Vercel projects. Platform setup and verification
+are separate from merging this document; this table does not confirm cutover.
+
+| Frontend | Vercel project | Production branch setting | Stable URL |
+| --- | --- | --- | --- |
+| Staging | `ailx-staging` | `staging` | `https://ailx-staging.vercel.app` |
+| Production | `foray-production` | `main` | `https://foray.tenken.co` |
+
+Vercel calls each project's stable deployment “Production”, including the
+staging project's stable URL. A feature-branch Preview URL is not the stable
+staging site. Feature PRs target `staging`; reviewed changes reach `main`
+through a merge-commit promotion PR. See [CONTRIBUTING.md](../CONTRIBUTING.md).
+GitHub Pages remains a `main`-only redirect to `foray.tenken.co`.
+
+Both projects build `apps/web` with `AILX_BACKEND=1`. The frontend calls the
+private exam service through `NEXT_PUBLIC_AILX_API_BASE`. Frontend variables
+are listed in [apps/web/AGENTS.md](../apps/web/AGENTS.md#frontend-environment-appsweb).
+Do not copy database credentials, `CLERK_SECRET_KEY`, or service auth settings
+into either frontend project. This split changes no authentication policy.
+Both frontends still use the same exam service at
+`https://ailx-backend-932932410694.us-central1.run.app` and the same Clerk
+instance. Separate Vercel projects isolate frontend deployments, not backend
+data or identity. Do not run destructive tests against either site.
+Google IAP and a frontend move to Cloud Run are deferred.
+
+## Historical combined-host deployment notes
+
+The sections below record the earlier combined frontend/service deployment.
+They are not setup instructions for the current frontend projects. The exam
+service, database, auth verification, and snapshot storage now belong to the
+private `ailx-backend` repository. Use the frontend variable list above rather
+than the historical service-variable table below.
+
 The default build has not changed. Run `pnpm -r build` without `AILX_BACKEND`
 to produce the GitHub Pages **static export** (`output: "export"`, no API
 surface, no database). This document covers the *other* mode. It sets
