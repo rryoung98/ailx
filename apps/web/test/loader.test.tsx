@@ -105,7 +105,11 @@ describe("Loader behavior", () => {
     const cover = h.querySelector('[data-testid="loader"]')!;
     const e = new Event("animationend", { bubbles: true });
     Object.assign(e, { animationName: WIPE_ANIMATION });
-    act(() => { cover.dispatchEvent(e); });
+    act(() => { 
+      cover.dispatchEvent(e);
+      // jsdom 30 needs a microtask tick for React state updates to flush
+      vi.advanceTimersByTime(0);
+    });
     expect(h.querySelector('[data-testid="loader"]')).toBeNull();
   });
 
