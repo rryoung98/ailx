@@ -104,15 +104,15 @@ describe("the daily result screen", () => {
   it("does not tell a signed-in player there is no account", () => {
     mount(DailyChallenge, SIGNED_IN);
     playDaily();
-    expect(text()).not.toContain("There is no account to lose it to");
+    expect(text()).not.toContain("No account is needed to play");
     // The true half stays: the streak really is in this browser either way.
-    expect(text()).toContain("this device only");
+    expect(text()).toContain("saved only in this browser");
   });
 
   it("still says it to a player who has no account", () => {
     mount(DailyChallenge, ANONYMOUS);
     playDaily();
-    expect(text()).toContain("There is no account to lose it to");
+    expect(text()).toContain("No account is needed to play");
   });
 });
 

@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 /**
- * De-exam copy ban (gamify pass): product surfaces must use game
- * vocabulary — no 'exam', 'examination', 'sit the', 'attempt', or
- * 'candidate' in RENDERED text. URLs (/exam) and data-contract keys are
- * frozen and exempt; /methodology and /validate keep instrument framing
- * and are excluded from this gate.
+ * Plain product copy: address the reader directly, without administrative
+ * labels such as "candidate" or "attempt". "Exam" is allowed: it tells the
+ * reader what the longer timed activity is. Routes and data keys are unchanged.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
@@ -17,7 +15,7 @@ import RootLayout, { metadata } from "../app/layout";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-const BANNED = /\b(exams?|examinations?|attempts?|candidates?)\b|sit the/i;
+const BANNED = /\b(attempts?|candidates?)\b|sit the/i;
 
 let root: Root | null = null;
 let host: HTMLElement | null = null;
@@ -61,20 +59,24 @@ function expectClean(text: string, surface: string) {
   expect(m, `${surface} rendered banned copy: "${m?.[0]}" near "${text.slice(Math.max(0, (m?.index ?? 0) - 40), (m?.index ?? 0) + 40)}"`).toBeNull();
 }
 
-describe("game vocabulary on product surfaces", () => {
-  it("landing page copy is exam-free", async () => {
+describe("plain vocabulary on product surfaces", () => {
+  it("landing page addresses the reader directly", async () => {
     expectClean(await renderedText(createElement(Home)), "landing");
   });
 
-  it("play page (fresh, no run) copy is exam-free", async () => {
-    expectClean(await renderedText(createElement(ExamPage)), "/exam UI");
+  it("play page avoids administrative labels", async () => {
+    const text = await renderedText(createElement(ExamPage));
+    expectClean(text, "/exam UI");
+    expect(text).toContain("Demo scores are not official results");
+    expect(text).toContain("saved AI judgments");
+    expect(text).toContain("judge again may give a different result");
   });
 
-  it("report page (no run) copy is exam-free", async () => {
+  it("report page avoids administrative labels", async () => {
     expectClean(await renderedText(createElement(ReportPage)), "/report UI");
   });
 
-  it("nav, footer, and OG metadata are exam-free", () => {
+  it("nav, footer, and metadata use plain language", () => {
     // The layout renders <html>; walk its static element tree for text.
     const texts: string[] = [];
     const walk = (node: ReactNode): void => {
@@ -90,7 +92,7 @@ describe("game vocabulary on product surfaces", () => {
     expectClean(String(metadata.description), "metadata description");
   });
 
-  it("footer states the game/instrument positioning line", () => {
+  it("footer states the public purpose and content limits", () => {
     const texts: string[] = [];
     const walk = (node: ReactNode): void => {
       if (Array.isArray(node)) { node.forEach(walk); return; }
@@ -100,7 +102,9 @@ describe("game vocabulary on product surfaces", () => {
       if (props?.children !== undefined) walk(props.children);
     };
     walk(RootLayout({ children: null }) as ReactElement);
-    expect(texts.join(" ")).toContain("Foray plays like a game and is built like an instrument.");
+    expect(texts.join(" ")).toContain("Practical AI literacy, open to everyone.");
+    expect(texts.join(" ")).toContain("exam questions are private");
+    expect(texts.join(" ")).not.toContain("item banks are public");
   });
 
   it("nav pill plays the free drill, and the graded run keeps its own slot", () => {

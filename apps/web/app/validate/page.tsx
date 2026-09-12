@@ -36,18 +36,16 @@ export default function ValidatePage() {
             <div className="page-hero-scrim" />
           </div>
           <div className="page-hero-copy">
-            <div className="eyebrow">Dogfood · validate Foray quickly</div>
-            <h1>Live validation of the <span className="script-accent">scoring</span> path</h1>
+            <div className="eyebrow">Foray · scoring checks</div>
+            <h1>Check the <span className="script-accent">scoring</span> code</h1>
             <Annotation>runs in your browser</Annotation>
           </div>
         </div>
         <p className="lede">
-          These checks run in your browser, against the same code that scores a run. All four
-          REAL track plugin score() functions replay pinned golden artifacts and judgments inside
-          the purity harness. A full fixture run is scored through the same registry path the
-          live game uses. They also check content addressing, rubric-version hashing and
-          composite reproducibility. No network, no server: what passes here reproduces on any
-          machine running the same JavaScript runtime.
+          These checks run the scoring code for all four tracks on fixed examples with known
+          results. They check that the scores repeat, that changes to questions and rubrics get
+          new IDs, and that the combined score stays consistent. The checks run in your browser
+          without network requests. They test the code, not your AI skills.
         </p>
 
         {results && (
@@ -56,7 +54,7 @@ export default function ValidatePage() {
               {allPass ? `ALL ${total} CHECKS PASS` : `${passed} / ${total} CHECKS PASS`}
             </span>
             <span className="faint small mono">ran {ranAt}</span>
-            <button className="btn" onClick={runNow}>Re-run</button>
+            <button className="btn" onClick={runNow}>Run again</button>
           </div>
         )}
 
@@ -74,25 +72,23 @@ export default function ValidatePage() {
         </ul>
 
         <Reveal as="section">
-        <h2>What this demonstrates</h2>
+        <h2>What passing means</h2>
         <p className="muted" style={{ maxWidth: "44rem" }}>
-          Any score, once issued, can be recomputed byte by byte from stored inputs (spec §14).
-          Every track&apos;s real <code>score()</code> runs here under a harness where the clock,
-          randomness, the network and deferred scheduling all throw. Item banks are
-          content-addressed, so an edited item becomes a new item. Judge prompts hash into{" "}
-          <code>rubric_version</code>. Golden fixtures fail the build on any drift. CI runs the
-          same checks in Vitest; this page runs them in your browser.
+          Each track's <code>score()</code> runs with checks that block the clock, randomness,
+          network calls, and timers. The results must match saved examples. Automated build tests
+          run the same checks. Passing means these examples produce the expected scores here.
+          It does not prove that scores measure real-world skill or that model judges are accurate.
+          Re-scoring uses saved judgments; asking a model to judge again may give a different result.
         </p>
         <p className="faint small" style={{ maxWidth: "44rem" }}>
-          Two limits, so the green badges are not read for more than they say. The harness traps
-          globals. It is not a sandbox, so it cannot see a reference captured before the call or
-          a module-load import. And these checks prove replay on <em>this</em> runtime only:
-          scoring is not yet proven byte-identical across JavaScript engine versions, because a
-          score record stores no runtime version. See{" "}
-          <Link href="/methodology">Methodology §14</Link>.
+          The checks have limits. They block common global functions, but are not a sandbox.
+          They can miss references saved before a check or code imported when a module loads.
+          They also check only this JavaScript runtime. Identical results across engine versions
+          are not yet proven, and score records do not store the runtime version. See{" "}
+          <Link href="/methodology">how scores can be checked later</Link>.
         </p>
         <p>
-          <Link className="btn primary" href="/exam">Now play it yourself →</Link>{" "}
+          <Link className="btn primary" href="/exam">Try the tasks →</Link>{" "}
           <Link className="btn" href="/methodology">Methodology</Link>
         </p>
         </Reveal>

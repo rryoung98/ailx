@@ -100,7 +100,7 @@ describe("the hero is playable", () => {
     expect(links[0].className).toContain("primary");
     expect(links[1].className).not.toContain("primary");
     // ...and the graded run is still obvious: it is in the first screenful.
-    expect(links[1].textContent).toContain("credential");
+    expect(links[1].textContent).toContain("full exam");
   });
 
   it("the first link on the page is never the graded run", async () => {

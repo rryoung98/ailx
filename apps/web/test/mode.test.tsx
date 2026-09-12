@@ -41,7 +41,7 @@ describe("footerModeCopy", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
     const copy = footerModeCopy(null);
     expect(copy).toContain("static demo build");
-    expect(copy).toContain("deterministic simulator");
+    expect(copy).toContain("instead of live AI");
     expect(copy).toMatch(/runs in this browser/i);
   });
 

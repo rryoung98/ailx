@@ -1017,8 +1017,9 @@ export default function ExamPage() {
           </ul>
           <Reveal as="section">
           <p className="small faint">
-            <span className="badge demo">demo</span> Deterministic scoring: the real track
-            plugins score your stored artifacts and judgments. Same play, same score, forever.
+            <span className="badge demo">demo</span> Demo scores are not official results.
+            Re-scoring uses your saved work and saved AI judgments to reproduce the score.
+            Asking AI to judge again may give a different result.
           </p>
           </Reveal>
           {startGate.startNote ? (

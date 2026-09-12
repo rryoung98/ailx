@@ -76,7 +76,7 @@ const EYEBROW = "YOUR PROGRESS";
  * in @ailx/report carries the argument and the sources). What the page can
  * honestly show is what a person did.
  */
-const PAGE_TITLE = "What you actually did.";
+const PAGE_TITLE = "Your practice and exam history.";
 
 /** One colour per track, from the token palette — no new hexes. */
 const TRACK_STROKE: Readonly<Record<TrackId, string>> = {
@@ -246,7 +246,7 @@ function LocalStreak({ held }: { held: HeldHere }) {
             No figure above counts these days: the exam service has not shown them back as
             yours, so this browser is the only place they are held.{" "}
             {held.partial
-              ? "The days it has already handed over are in the figures above, and are not counted again here — so this is what is left, not a streak. "
+              ? "The days it has already handed over are in the figures above, and are not counted again here. This is what is left, not a streak. "
               : ""}
             {LOCAL_PRACTICE_BASIS}
           </>
@@ -283,10 +283,10 @@ function Streak({ streak, held }: { streak: ProgressReport["streak"]; held: Held
           </p>
           <p className="muted" style={{ maxWidth: "58ch" }}>
             {streak.current === 0
-              ? `Your streak has lapsed. Your best of ${streak.best} day${streak.best === 1 ? "" : "s"} stands — a break costs the run, never the record. One round starts a new one.`
+              ? `Your streak has lapsed. Your best of ${streak.best} day${streak.best === 1 ? "" : "s"} still stands. Finish a practice round to start a new streak.`
               : streak.practisedToday
-                ? "Today is in."
-                : "Today is still open. One round keeps the streak."}
+                ? "Today's practice is recorded."
+                : "You have not practised today. You can play another round whenever you like."}
           </p>
         </>
       ) : held !== null ? (
@@ -302,11 +302,10 @@ function Streak({ streak, held }: { streak: ProgressReport["streak"]; held: Held
       )}
       {held === null ? null : <LocalStreak held={held} />}
       <p className="small faint" style={{ maxWidth: "62ch" }}>
-        A day counts when you finish a whole round of {PRACTICE_MIN_ANSWERS} cards, in your own
-        local day, at a speed that means you read them. A streak survives one missed day, and
-        again once {REST_WINDOW_DAYS} days have passed. It rewards a habit; it does not punish a
-        life.{" "}
-        {streak.restDayAvailable ? "You have a rest day in hand right now." : null}
+        A day counts when you answer {PRACTICE_MIN_ANSWERS} cards in your own
+        local day and take at least 15 seconds. A streak survives one missed day, and
+        again once {REST_WINDOW_DAYS} days have passed.{" "}
+        {streak.restDayAvailable ? "You have a rest day available." : null}
       </p>
     </>
   );
@@ -321,22 +320,21 @@ function Unrecognised({ accounts, held }: { accounts: boolean; held: HeldHere | 
       <p className="eyebrow">{EYEBROW}</p>
       <h1 style={{ maxWidth: "20ch" }}>
         {accounts
-          ? "We do not know who you are."
+          ? "Sign in to see your history."
           : held === null
             ? "Nothing has been played in this browser."
             : "Your practice is in this browser only."}
       </h1>
       <p className="lede">
-        This page is one person&rsquo;s history, so only that person is shown it.{" "}
+        Your account history is private.{" "}
         {accounts ? (
           <>
             Sign in and come back, or{" "}
-            <Link href="/practice">play a round of practice</Link> — the drill works either
-            way. {CLAIM_PROMISE}
+            <Link href="/practice">play a round of practice</Link> without signing in. {CLAIM_PROMISE}
           </>
         ) : (
           <>
-            This deployment has no accounts. Your history belongs to the browser you played
+            This version has no accounts. Your history belongs to the browser you played
             in, and the first finished round of practice creates it.{" "}
             <Link href="/practice">Play a round</Link> and this page fills in. Another
             browser, or a private window, starts from empty.
@@ -411,11 +409,10 @@ export function ProgressView() {
   return (
     <main className="page">
       <div className="container">
-        <p className="eyebrow">YOUR PROGRESS · DERIVED FROM WHAT YOU DID</p>
+        <p className="eyebrow">YOUR PROGRESS</p>
         <h1 style={{ maxWidth: "22ch" }}>{PAGE_TITLE}</h1>
         <p className="lede">
-          Your practice days, your sittings, and what changed between them. Nothing compares you
-          to anybody. Nothing here measures ability; it is a record of what you did.
+          See your practice days and completed exams. These records do not measure your ability or compare you with other people.
         </p>
 
         <section aria-labelledby="streak">
@@ -436,15 +433,14 @@ export function ProgressView() {
           <h2 id="accuracy">Practice accuracy</h2>
           {progress.notEnoughYet.practice || scoredDays.length < MIN_TREND_DAYS ? (
             <p className="muted" style={{ maxWidth: "58ch" }}>
-              Not enough yet. A trend line needs {MIN_TREND_DAYS} days of practice behind it.
-              Drawn over {scoredDays.length}, it would be decoration, not a measurement.
+              Not enough yet. The chart appears after {MIN_TREND_DAYS} days of practice. You have {scoredDays.length} so far.
             </p>
           ) : (
             <>
               <AccuracyChart days={scoredDays} />
               <table className="trend-table">
                 <caption className="small faint">
-                  Every practice day, as the server graded it.
+                  Your recorded practice days.
                   {claimedDays.size > 0 ? ` ${CLAIMED_DAYS_BASIS}` : ""}
                 </caption>
                 <thead>
@@ -492,19 +488,18 @@ export function ProgressView() {
         </section>
 
         <section aria-labelledby="sittings">
-          <h2 id="sittings">Your sittings</h2>
+          <h2 id="sittings">Your completed exams</h2>
           {progress.notEnoughYet.sittings ? (
             <p className="muted" style={{ maxWidth: "58ch" }}>
               {progress.sittings.length === 0
-                ? "You have no completed run yet. One full sitting of all four tracks draws a shape here."
-                : "One sitting so far. A second gives this page something to compare."}
+                ? "You have no completed run yet. Finish all four parts of the exam to add a result."
+                : "One sitting so far. Finish a second exam to see the chart."}
             </p>
           ) : (
             <SittingsChart sittings={progress.sittings} />
           )}
           <p className="small faint" style={{ maxWidth: "62ch" }}>
-            Each run&rsquo;s own scorers over its stored event log: a measurement of the run,
-            not a judged result, and not comparable to anyone else&rsquo;s.
+            These figures come from each run's saved answers and scoring rules. They are not a judged result and cannot be compared with other people's results.
           </p>
         </section>
 
@@ -512,11 +507,10 @@ export function ProgressView() {
           {/* "What moved", never "what improved". A negative delta is as
               legitimate an entry as a positive one, and for the practice
               subject neither direction is an ability finding. */}
-          <h2 id="moved">What moved</h2>
+          <h2 id="moved">What changed</h2>
           {progress.improvements.length === 0 ? (
             <p className="muted" style={{ maxWidth: "58ch" }}>
-              Nothing has moved enough to report. That is a real answer, not a number invented
-              to fill the space.
+              No changes large enough to report yet.
             </p>
           ) : (
             <ul className={styles.moves}>
@@ -541,7 +535,7 @@ export function ProgressView() {
               The service's copy is vendored and redeploys on its own clock,
               and the sentence it was still sending claimed practice answers
               were "graded on the server" (TEN-132). */}
-          {PROGRESS_BASIS} <Link href="/methodology">How the instrument scores →</Link>
+          {PROGRESS_BASIS} <Link href="/methodology">How scoring works →</Link>
         </p>
         {accounts ? null : <ForgetBrowser />}
       </div>

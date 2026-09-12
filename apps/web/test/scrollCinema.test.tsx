@@ -52,9 +52,9 @@ describe("pinned scrubbed hero structure", () => {
     const phaseB = h.querySelector(".hero-phase-b");
     expect(phaseB).not.toBeNull();
     expect(phaseB!.getAttribute("aria-hidden")).toBe("true");
-    expect(phaseB!.textContent).toContain("Benchmarks are a hundred numbers.");
-    expect(phaseB!.textContent).toContain("one score");
-    expect(phaseB!.querySelector(".script-accent")?.textContent).toBe("one");
+    expect(phaseB!.textContent).toContain("Understand what AI can do.");
+    expect(phaseB!.textContent).toContain("Decide how you use it.");
+    expect(phaseB!.querySelector(".script-accent")?.textContent).toBe("you");
   });
 
   it("nests the sticky stage inside the scrub wrapper, hero phase A inside the stage", async () => {

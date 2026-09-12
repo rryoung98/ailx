@@ -154,7 +154,7 @@ describe("who it is for", () => {
     // signal that accounts exist on this deployment.
     status = 401;
     const html = await markup();
-    expect(html).toContain("We do not know who you are");
+    expect(html).toContain("Sign in to see your history");
     expect(html).toContain("Sign in and come back");
   });
 
@@ -203,7 +203,7 @@ describe("the streak", () => {
     const html = await markup();
     expect(payload.streak.current).toBe(0);
     expect(payload.streak.best).toBe(3);
-    expect(html).toContain("a break costs the run, never the record");
+    expect(html).toContain("still stands. Finish a practice round");
     expect(html).not.toMatch(/lost|failed|penalt/i);
   });
 
@@ -211,7 +211,7 @@ describe("the streak", () => {
     const html = await markup();
     expect(html).toMatch(/survives one missed day/i);
     expect(html).toMatch(/your own\s*local day/i);
-    expect(html).toMatch(/rewards? a habit/i);
+    expect(html).toContain("take at least 15 seconds");
   });
 
   it("tells a player with nothing yet what one round is worth", async () => {
@@ -271,7 +271,7 @@ describe("what it draws", () => {
 
   it("reports what moved, in both directions, with the raw numbers", async () => {
     const html = await markup();
-    expect(html).toContain("What moved");
+    expect(html).toContain("What changed");
     expect(html).toContain("+20");
     expect(html).toContain("40 → 60");
   });
@@ -279,7 +279,7 @@ describe("what it draws", () => {
   it("says nothing moved rather than inventing a figure", async () => {
     payload = report();
     const html = await markup();
-    expect(html).toContain("Nothing has moved enough to report");
+    expect(html).toContain("No changes large enough to report yet");
   });
 });
 
@@ -294,7 +294,7 @@ describe("honesty", () => {
 
   it("labels sitting values as the run's own scorers, not a judged result", async () => {
     const html = await markup();
-    expect(html).toMatch(/own scorers over its stored event log/);
+    expect(html).toMatch(/saved answers and scoring rules/);
     expect(html).toMatch(/not a judged result/);
   });
 
@@ -375,7 +375,7 @@ describe("a signed-in candidate is never told they are a stranger", () => {
     const html = await renderClient(createElement(ProgressView));
     expect(calls).toHaveLength(0);
     expect(window.localStorage.getItem("foray:dev-user")).toBeNull();
-    expect(html).not.toContain("We do not know who you are");
+    expect(html).not.toContain("Sign in to see your history");
     expect(html).toContain("Loading");
   });
 
@@ -396,7 +396,7 @@ describe("a signed-in candidate is never told they are a stranger", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].headers.authorization).toBe("Bearer jwt-123");
     expect(calls[0].headers[DEV_USER_HEADER]).toBeUndefined();
-    expect(host.innerHTML).not.toContain("We do not know who you are");
+    expect(host.innerHTML).not.toContain("Sign in to see your history");
     expect(host.innerHTML).toContain("day streak");
     await act(async () => root.unmount());
     host.remove();
