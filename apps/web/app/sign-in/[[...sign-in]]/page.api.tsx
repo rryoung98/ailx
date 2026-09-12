@@ -15,19 +15,19 @@
  * convention keeps it out of the static export, but a hosted build with no
  * `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` — which is what `vercel env pull`
  * produces, and what any deploy that forgets the key has — compiled it all the
- * same. `isClerkEnabled()` is false there, so no `<ClerkProvider>` is mounted,
+ * same. `isServerMode()` is false there, so no `<ClerkProvider>` is mounted,
  * and `<SignIn>` calls `useSession`, which THROWS: the one screen that would
  * tell you the key is missing was the one screen that crashed. A 404 is the
  * true answer — on that deployment there is no sign-in.
  */
 import { notFound } from "next/navigation";
 import { SignIn } from "@clerk/nextjs";
-import { isClerkEnabled } from "../../../lib/mode";
+import { isServerMode } from "../../../lib/mode";
 
 export const metadata = { title: "Sign in — Foray" };
 
 export default function SignInPage() {
-  if (!isClerkEnabled()) notFound();
+  if (!isServerMode()) notFound();
   return (
     <main className="container" style={{ display: "grid", justifyContent: "center", padding: "3rem 0" }}>
       <SignIn path="/sign-in" signUpUrl="/sign-up" fallbackRedirectUrl="/" />

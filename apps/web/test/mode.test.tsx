@@ -135,10 +135,11 @@ describe("accessCopy", () => {
     expect(accessCopy()).toContain("no account");
   });
 
-  it("keeps it in a hosted build that mounts no auth", () => {
+  it("says an account is needed in the hosted build even without a key", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
-    expect(accessCopy()).toContain("no account");
+    expect(accessCopy()).toContain("needs an account");
+    expect(accessCopy()).toContain("free to play");
   });
 
   it("drops it where a sitting needs one, and still says the play is free", () => {
@@ -182,9 +183,8 @@ describe("examAccessCopy", () => {
     expect(examAccessCopy("pending")).toBe("a scored run needs an account");
   });
 
-  it("still says no accounts where there are none, whoever is reading", () => {
-    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
-    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+  it("says no accounts only in the static export", () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
     for (const status of ["pending", "anonymous", "asserted", "signed-in"] as const) {
       expect(examAccessCopy(status), status).toBe("no accounts — just play");
     }

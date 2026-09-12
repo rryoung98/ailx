@@ -5,8 +5,8 @@
  * it must not carry an auth SDK it can never use: `next.config.mjs` aliases
  * `@clerk/nextjs` to THIS module whenever AILX_BACKEND is unset, so the export
  * resolves the imports below instead of ~100 kB of provider it would never
- * mount. Nothing here ever renders in that build either — `isClerkEnabled()`
- * is false without a server build — so these are shapes, not behaviour.
+ * mount. Nothing here ever renders in that build either — `isServerMode()`
+ * is false without a backend — so these are shapes, not behaviour.
  *
  * Keep the export list equal to what `lib/auth/*` actually imports; a missing
  * name is a static-export build failure, and `test/clerkMount.test.tsx` pins

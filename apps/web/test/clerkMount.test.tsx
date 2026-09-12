@@ -190,15 +190,15 @@ describe("isClerkEnabled", () => {
     expect(isClerkEnabled()).toBe(false);
   });
 
-  it("is false in the hosted build with no key — a keyless deploy still works", () => {
+  it("is true in the hosted build regardless of key presence", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
-    expect(isClerkEnabled()).toBe(false);
+    expect(isClerkEnabled()).toBe(true);
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", undefined as unknown as string);
-    expect(isClerkEnabled()).toBe(false);
+    expect(isClerkEnabled()).toBe(true);
   });
 
-  it("is true only in the hosted build with a key", () => {
+  it("is true in the hosted build with a key", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_x");
     expect(isClerkEnabled()).toBe(true);
@@ -266,11 +266,10 @@ describe("one place imports the SDK, one place reads the key", () => {
     expect(offenders, `import an auth SDK: ${offenders.join(", ")}`).toEqual([]);
   });
 
-  it("only lib/mode.ts reads NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", () => {
+  it("no app code reads NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY — Clerk's SDK reads it itself", () => {
     const offenders = appAndLib
       .filter((f) => readFileSync(f, "utf8").includes("process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"))
-      .map((f) => relative(webDir, f))
-      .filter((f) => f !== join("lib", "mode.ts"));
+      .map((f) => relative(webDir, f));
     expect(offenders).toEqual([]);
   });
 
@@ -304,12 +303,12 @@ describe("one place imports the SDK, one place reads the key", () => {
     expect(removed, `removed in Core 3: ${removed.join(", ")}`).toEqual([]);
   });
 
-  it("the nav link is gated on the KEY, not on the build (TEN-155)", () => {
+  it("the nav link is gated on server mode", () => {
     // The link must not point at a route this deployment cannot render. Read
     // from the source because `app/layout.tsx` is a server component that
     // pulls fonts and global CSS; the guard is one line and this pins it.
     const layout = readFileSync(join(webDir, "app", "layout.tsx"), "utf8");
-    expect(layout).toMatch(/isClerkEnabled\(\)\s*&&\s*<AuthNav\s*\/>/);
+    expect(layout).toMatch(/isServerMode\(\)\s*&&\s*<AuthNav\s*\/>/);
   });
 
   it("the sign-in surface exists only in the hosted build, by name", () => {
@@ -322,29 +321,21 @@ describe("one place imports the SDK, one place reads the key", () => {
 
 // ---- the two routes that only exist to serve an account -----------------
 
-describe("the sign-in routes, on a hosted build with no key (TEN-155)", () => {
-  /**
-   * The trap this pins: `AILX_BACKEND=1` with no publishable key compiles
-   * BOTH routes, `isClerkEnabled()` is false so no provider is mounted, and
-   * `<SignIn>` calls `useSession`, which throws. The screen that exists to
-   * tell you the key is missing was the screen that crashed, and AGENTS.md
-   * claimed such a deploy "keeps working".
-   */
+describe("the sign-in routes", () => {
   async function pages() {
     const signIn = (await import("../app/sign-in/[[...sign-in]]/page.api")).default;
     const signUp = (await import("../app/sign-up/[[...sign-up]]/page.api")).default;
     return { signIn, signUp };
   }
 
-  it("404 rather than render a Clerk component with no provider", async () => {
-    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
-    vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "");
+  it("404 in the static export — no auth there at all", async () => {
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
     const { signIn, signUp } = await pages();
     expect(() => signIn()).toThrow(/NEXT_NOT_FOUND/);
     expect(() => signUp()).toThrow(/NEXT_NOT_FOUND/);
   });
 
-  it("still render where Clerk really is mounted", async () => {
+  it("render in the hosted build (Clerk is always mounted there)", async () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", "pk_test_x");
     const { signIn, signUp } = await pages();
