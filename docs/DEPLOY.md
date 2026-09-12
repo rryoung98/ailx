@@ -2,8 +2,9 @@
 
 ## Current frontend routing
 
-The approved split uses two Vercel projects. Platform setup and verification
-are separate from merging this document; this table does not confirm cutover.
+The frontend uses two Vercel projects. The routing below was verified on
+2026-09-12 after the production domain cutover and CORS checks. The stable
+staging deployment is READY and its URL returns HTTP 200 without sign-in.
 
 | Frontend | Vercel project | Production branch setting | Stable URL |
 | --- | --- | --- | --- |
