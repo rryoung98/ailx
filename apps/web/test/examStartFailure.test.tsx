@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ATTEMPT_KEY } from "@ailx/session";
+import { CALL_TIMEOUT_MS } from "../lib/data/deadline";
 import { withQueryClient } from "./helpers/clientPage";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -122,5 +123,57 @@ describe("static mode is unchanged: there is no service to fail", () => {
     await clickStart();
     expect(host!.querySelector('[data-testid="persist-warning"]')).toBeNull();
     expect(host!.textContent).toContain("Ready");
+  });
+});
+
+/**
+ * TEN-211: a create that never answers.
+ *
+ * `startServerAttempt` is one POST, bounded by the `write` class in
+ * lib/data/deadline.ts (TEN-210) — the page carries no timer of its own. What
+ * was still missing is the OTHER half of the report: nothing on screen changed
+ * while the request was in flight, a repeat tap was dropped by a ref, and the
+ * candidate pressed Start and watched a dead button.
+ */
+describe("hosted mode: the create hangs", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    // A socket that opens and never answers. It honours the abort signal,
+    // as a real fetch does — that signal is the bound under test.
+    vi.spyOn(window, "fetch").mockImplementation(((_url: unknown, init?: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject((init.signal as AbortSignal).reason as Error);
+        });
+      })) as unknown as typeof fetch);
+  });
+
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("says the start is in flight instead of leaving a dead button", async () => {
+    await mountExam();
+    await clickStart();
+    const pill = [...host!.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
+    expect(pill.getAttribute("aria-busy")).toBe("true");
+    expect(pill.textContent).toContain("Starting your run");
+    // Nothing has been recorded, and no clock is running.
+    expect(window.localStorage.getItem(ATTEMPT_KEY)).toBeNull();
+  });
+
+  it("fails with the start copy once the write bound is spent, and the pill is live again", async () => {
+    await mountExam();
+    await clickStart();
+    expect(host!.querySelector('[data-testid="persist-warning"]')).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write + 10); });
+    for (let i = 0; i < 5; i++) await act(async () => { await Promise.resolve(); });
+    const alert = host!.querySelector('[data-testid="persist-warning"]');
+    expect(alert, "a hang must end in the start-failure copy").not.toBeNull();
+    expect(alert!.textContent).toContain("Your run did not start");
+    expect(alert!.textContent).toContain("did not answer in 15s");
+    const pill = [...host!.querySelectorAll("button")].find((b) => b.classList.contains("pill-cta"))!;
+    expect(pill.getAttribute("aria-busy")).toBeNull();
+    expect(pill.textContent).toContain("Start your run");
+    expect(window.localStorage.getItem(ATTEMPT_KEY)).toBeNull();
   });
 });

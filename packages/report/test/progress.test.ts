@@ -278,12 +278,28 @@ describe("progressReport", () => {
     expect(r.practiceAccuracy).toBeNull();
     expect(r.improvements).toEqual([]);
     expect(r.notEnoughYet).toEqual({ practice: true, sittings: true });
-    expect(r.basis).toBe(PROGRESS_BASIS);
+  });
+
+  it("carries no basis string: the renderer holds the wording, not the report", () => {
+    // A `basis` field was shipped in every response and read by nobody. A
+    // string the page ignores cannot go stale loudly, so it is gone and
+    // /progress prints the constant this repo holds (TEN-132).
+    expect(progressReport({ days: [], sittings: [], today: TODAY, trackName })).not.toHaveProperty(
+      "basis",
+    );
   });
 
   it("states the basis and never implies a judged result", () => {
     expect(PROGRESS_BASIS).toMatch(/No percentile, no composite/i);
     expect(PROGRESS_BASIS).toMatch(/judging pipeline is not built/i);
+  });
+
+  it("does not make signing in the rule the drill applies", () => {
+    // The drill records for any identity the service accepts, not only an
+    // account (`PracticeDrill.tsx`, `hasIdentity`). Copy saying "signed in"
+    // would describe a narrower rule than the code (TEN-132).
+    expect(PROGRESS_BASIS).not.toMatch(/signed in/i);
+    expect(PROGRESS_BASIS).toMatch(/link to your identity/i);
   });
 
   it("withholds an accuracy trend below the answer floor", () => {

@@ -72,18 +72,18 @@ export interface FamilyMeta {
 export const FAMILY_META: Readonly<Record<ArtefactFamily, FamilyMeta>> = {
   physics: {
     family: "physics",
-    name: "Physics violation",
-    blurb: "Light, shadow, reflection, scale or gravity doing something the world does not do.",
+    name: "Light and physics",
+    blurb: "Look for shadows, reflections, sizes or movement that do not fit the scene.",
   },
   function: {
     family: "function",
-    name: "Functional implausibility",
-    blurb: "A thing assembled, joined or shaped in a way that could not actually work.",
+    name: "Objects that would not work",
+    blurb: "Look for parts joined or shaped in ways that would stop an object working.",
   },
   social: {
     family: "social",
-    name: "Sociocultural error",
-    blurb: "A detail wrong for the place, period, role or institution being shown.",
+    name: "Details that do not fit",
+    blurb: "Look for details that do not fit the place, time or cultural setting.",
   },
 };
 
@@ -226,11 +226,8 @@ export const PRACTICE_EFFICACY_NOTE_SHORT =
 
 /** The long form. Built from the short one so the two can never drift apart. */
 export const PRACTICE_EFFICACY_NOTE =
-  `${PRACTICE_EFFICACY_NOTE_SHORT} The best-powered trial of practice like this one — gamified `
-  + "drilling, immediate feedback, 1,200 people — found no advantage over doing nothing, "
-  + "immediately or two weeks later, and the study behind our own artefact families never "
-  + "measured the same person improving. Play it because the tells are interesting. We are "
-  + "running the test that would settle it, and we will publish the answer whichever way it goes.";
+  `${PRACTICE_EFFICACY_NOTE_SHORT} Use the feedback to review examples and the clues you missed. `
+  + "Research on similar practice has not shown lasting gains. Foray itself has not been tested for this.";
 
 const BY_ID: ReadonlyMap<string, PracticeItem> = new Map(PRACTICE_BANK.map((i) => [i.id, i]));
 

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { apiPath, REJECT_REASON_MAX } from "@ailx/contract";
 import { serviceHeaders } from "../../lib/data/traceparent";
+import { fetchWithDeadline, isTimeout } from "../../lib/data/deadline";
 import { apiBase } from "../../lib/mode";
 
 
@@ -36,7 +37,11 @@ export function ReviewActions({ shareId, name }: { shareId: string; name: string
       // The dev identity rides the HEADER, never the cookie: this POST may
       // cross an origin (the exam service), where a SameSite=Lax cookie is
       // not sent at all. Same id either way — see lib/persistence devUser.
-      const res = await fetch(`${apiBase()}${apiPath("reviewDecision")}`, {
+      // `write`: a decision is a row in an audit trail, so it gets the write
+      // bound rather than a read's — and a bound at all, because a reviewer
+      // watching a button say "Approving…" for ever cannot tell whether the
+      // decision landed (TEN-210).
+      const res = await fetchWithDeadline("write", `${apiBase()}${apiPath("reviewDecision")}`, {
         method: "POST",
         headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({ shareId, decision, reason }),
@@ -47,8 +52,12 @@ export function ReviewActions({ shareId, name }: { shareId: string; name: string
         return;
       }
       router.refresh();
-    } catch {
-      setError("The decision did not reach the server. Nothing changed.");
+    } catch (err) {
+      setError(
+        isTimeout(err)
+          ? "The server did not answer in time, so the decision is not recorded. It is slow rather than down — try again."
+          : "The decision did not reach the server. Nothing changed.",
+      );
       setBusy(null);
     }
   }

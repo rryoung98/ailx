@@ -392,7 +392,19 @@ export function replayTrackScore(
   return { status: "byte-identical", recomputed: rec.score };
 }
 
-/** Back-compat convenience: score only. Same fail-closed semantics. */
-export function scoreTrackArtifact(trackId: TrackId, artifact: unknown, attemptId?: string): TrackScoreValue {
-  return scoreTrack(trackId, artifact, attemptId).score;
+/**
+ * Convenience: score only. Same fail-closed semantics as {@link scoreTrack}.
+ *
+ * The options come BY NAME (TEN-260). This function used to take a positional
+ * `attemptId` third and hand it to `scoreTrack`'s third parameter, which is
+ * the `locale` — both strings, so the slip was silent, and a T2 run was
+ * scored against the default deck instead of the rotated one the candidate
+ * actually sat. A named key cannot be given to the wrong parameter.
+ */
+export function scoreTrackArtifact(
+  trackId: TrackId,
+  artifact: unknown,
+  opts: { locale?: string; attemptId?: string } = {},
+): TrackScoreValue {
+  return scoreTrack(trackId, artifact, opts.locale ?? "en", opts.attemptId).score;
 }

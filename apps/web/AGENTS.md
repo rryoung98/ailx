@@ -75,6 +75,11 @@ See the PRIVATE repo's README §3. If you want to set `DATABASE_URL` here, run
 - `AILX_TRUST_PROXY=1` — fall back to `x-forwarded-proto`/`x-forwarded-host` when
   `AILX_PUBLIC_ORIGIN` is unset. Only when a trusted proxy always overwrites those headers;
   otherwise they are attacker-controlled (host-header injection).
+- `AILX_SERVER_READ_TIMEOUT_MS` — deadline for the three SERVER reads of the exam service
+  (`/s/<token>` and `/verify/<code>` metadata, and the share card route). Default 4000, which is
+  inside the 10 s Hobby / 15 s Pro function limit; a value that is not a positive number is
+  ignored. Unset is the normal case — it exists so a deployment with a different function limit
+  can move the deadline instead of returning the platform's 504 (TEN-213).
 - `AILX_E2E_API_BASE` — Playwright only: the exam service the suite drives. No default, and no
   staging (every spec appends rows). `AILX_E2E_BASE_URL` / `AILX_E2E_PORT` pick the frontend
   under test.

@@ -56,10 +56,24 @@ Run the static build and the `AILX_BACKEND=1` build **sequentially**, with
 `lefthook.yml` installs two hooks with `pnpm exec lefthook install`:
 
 - **pre-commit** — Biome on the staged files. Fast enough to keep.
-- **pre-push** — `pnpm test`. Skip it on a draft with `LEFTHOOK=0 git push`.
+- **pre-push** — `pnpm test` at `AILX_TEST_FORKS=2`. Skip it on a draft with
+  `LEFTHOOK=0 git push`.
 
 `pnpm -r build` is not a hook. It is CI's `verify` job, and a twenty-minute hook
 is a hook people learn to skip.
+
+**CI is the authority. The pre-push hook is a courtesy.** It runs on whatever
+else your machine is doing, so it can fail for reasons that have nothing to do
+with your code: on 2026-09-09 it failed while a full gate run held the cores,
+and `pnpm test` on the identical tree passed 3457/3462 moments later. That is
+why it runs at 2 forks rather than the default 4 — the hook is the run most
+likely to be sharing a machine with a build, another worktree, or an editor's
+own typecheck.
+
+So: **a red hook is a reason to look, never a verdict.** If it fails, re-run it
+alone before you believe it, and if it passes alone, say so in the PR rather
+than staying quiet. A gate people re-run on a coin flip is a gate they stop
+believing, and that is how a real failure eventually gets waved through.
 
 ## Shared packages flow one way
 

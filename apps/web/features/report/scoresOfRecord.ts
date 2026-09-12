@@ -22,7 +22,13 @@ import { parseAttemptComposite, type AttemptComposite } from "@ailx/contract";
 import { TRACK_IDS, type TrackId } from "@ailx/session";
 
 /** Why a sat track carries no score of record. Never a zero. */
-export type UnscoredReason = "showcase" | "no_deck" | "instrument_mismatch" | "no_score";
+export type UnscoredReason =
+  | "showcase"
+  | "no_deck"
+  | "instrument_mismatch"
+  | "no_score"
+  /** The judging pass RAN and refused. Terminal: never "not run yet". */
+  | "judging_failed";
 
 /** Why the service says the track was not sat. */
 export type NotSatReason = "incomplete" | "unevidenced";
@@ -126,6 +132,7 @@ const UNSCORED_REASONS: readonly UnscoredReason[] = [
   "no_deck",
   "instrument_mismatch",
   "no_score",
+  "judging_failed",
 ];
 
 /**
@@ -227,6 +234,11 @@ export function stateCopy(record: TrackScoreRecord): string {
           return "The score cannot be shown. It was issued under a different version of the instrument, so it says nothing about this one. The stored score and its inputs are intact.";
         case "no_score":
           return "No score. The exam service issued none for this track.";
+        case "judging_failed":
+          // Distinct from `no_score` on purpose: the pass ran, so no number is
+          // coming for this sitting and nothing is worth waiting for. The
+          // service's own `detail` is rendered beside this line.
+          return "No score. The judging pass ran and could not produce one; the reason is below.";
       }
   }
 }

@@ -1,0 +1,76 @@
+"use client";
+/**
+ * The mirror is not writing — said out loud, for as long as it is true.
+ *
+ * `onSyncError` was declared by the persistence layer and never passed, so a
+ * hosted sitting whose event log never reached the exam service looked
+ * exactly like one that did: the candidate found out when the report could
+ * not find their attempt (TEN-123). FRONTEND.md §1 is explicit — offline goes
+ * to VISIBLE STATE.
+ *
+ * It is deliberately NOT dismissable. A candidate cannot fix this and has
+ * nothing to decide; what they need is for the sentence to still be there
+ * when the run ends. It clears itself on the next pass that lands, which is
+ * the only honest way for it to go away.
+ *
+ * It subscribes to the layer itself rather than taking a prop, because the
+ * exam page renders this chrome from five phase branches and threading one
+ * more piece of state through all five is how the five drift.
+ *
+ * The subscription is the mirror's OWN status (`subscribe`/`status`,
+ * TEN-206), not a second store of the same fact: `failures > 0` means a pass
+ * has failed and nothing has landed since, which is exactly the claim this
+ * sentence makes. It stays up through the bounded retries as well as after
+ * they run out, because the candidate's situation is the same in both.
+ *
+ * `useSyncExternalStore` rather than `useSyncStatus`, and the difference is
+ * not style: the mirror can publish a status DURING the exam page's own
+ * render (a save on a commit path), and a `useState` subscriber setting state
+ * there is the "Cannot update a component while rendering a different
+ * component" warning. The snapshot is therefore a BOOLEAN, not the status
+ * object — `status()` builds a fresh object every call, and an unstable
+ * snapshot re-renders for ever.
+ */
+import { useSyncExternalStore } from "react";
+import { getAttemptPersistence } from "../../lib/data/persistence";
+import { PersistWarning } from "./PersistWarning";
+
+/** Module-level so the reference is stable across renders. */
+function subscribe(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  try {
+    return getAttemptPersistence().subscribe(() => onChange());
+  } catch {
+    return () => {};
+  }
+}
+
+/** True when a pass has failed and nothing has landed since. */
+function notLanded(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return getAttemptPersistence().status().failures > 0;
+  } catch {
+    return false;
+  }
+}
+
+export const MIRROR_WARNING_LABEL = "Not saved to the exam service";
+export const MIRROR_WARNING_COPY =
+  "Your work is saved in this browser, and the exam service has not confirmed the latest of it. "
+  + "Keep going — Foray keeps trying, and this notice goes away by itself the moment a save lands. "
+  + "Do not clear this browser's data, and do not finish the run in a different browser.";
+
+export function MirrorWarning() {
+  const stalled = useSyncExternalStore(subscribe, notLanded, () => false);
+  // The banner itself is `PersistWarning`: same box, same tone, same shape of
+  // sentence. A second copy of that markup is bytes the browser downloads
+  // twice for no difference a candidate can see.
+  return (
+    <PersistWarning
+      warning={stalled ? MIRROR_WARNING_COPY : null}
+      label={MIRROR_WARNING_LABEL}
+      testId="mirror-warning"
+    />
+  );
+}

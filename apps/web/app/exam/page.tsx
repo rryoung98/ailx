@@ -1,17 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { TrackEvent } from "@ailx/core";
+import { MODEL_ENDPOINT_SLOT } from "@ailx/core";
 import {
   append, project,
+  SaveConflictError,
   secondsRemaining, sha256Hex,
   type SequencedEntry, type SessionConfig, type TrackId,
 } from "@ailx/session";
 import {
   DeckMismatchError, getAttemptPersistence, startServerAttempt,
 } from "../../lib/data/persistence";
-import { fetchHostedTrackConfig } from "../../lib/instrument/hostedDeck";
+import { useSyncStatus } from "../../lib/data/useSyncStatus";
+import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
+import { withDeadline } from "../../lib/data/deadline";
+import {
+  discardTranscriptTurns,
+  fetchHostedTrackConfig,
+  outstandingTranscriptTurns,
+  resumeTranscriptTurns,
+  subscribeTranscriptTurns,
+  transcriptTurnsUnreadable,
+  turnsOutstandingCopy,
+  TURNS_UNREADABLE_COPY,
+} from "../../lib/instrument/hostedDeck";
 import { clearSiteSubmission, loadSiteSubmission, submitT1Site, type SiteUploadFailureKind } from "../../lib/data/siteUpload";
 import {
   clearAllCheckpoints, clearCheckpoint, loadCheckpoint, saveCheckpoint,
@@ -30,13 +44,18 @@ import { DEMO_SCORE_NOTE, formatTrackScore, isDemoScored, TRACK_LIST, TRACK_META
 import { Annotation } from "../../components/ui/Annotation";
 import { ConnectPanel, CONNECTION_CHANGED_EVENT } from "../../features/exam/ConnectPanel";
 import { modelGatewayFetch } from "../../lib/data/modelGateway";
-import { hasModelEndpoint, LLM_BASE_URL_STORAGE } from "@ailx/track-t1";
+import { hasModelEndpoint } from "@ailx/track-t1";
+import { MirrorWarning } from "../../features/exam/MirrorWarning";
 import { PersistWarning } from "../../features/exam/PersistWarning";
+import { StorageStop } from "../../features/exam/StorageStop";
+import { carriedOnCopy, storageStopCopy } from "../../features/exam/storageStopCopy";
+import { persistNotice } from "../../features/exam/persistNotice";
 import { RunnerErrorBoundary } from "../../features/exam/RunnerErrorBoundary";
 import { PillCTA } from "../../components/ui/PillCTA";
 import { Reveal } from "../../components/ui/Reveal";
 import { SiteLink } from "../../components/ui/SiteLink";
-import { eventLogCopy, examAccessCopy } from "../../lib/mode";
+import { useIdentity } from "../../lib/auth/identityState";
+import { eventLogCopy, examAccessCopy, isServerMode } from "../../lib/mode";
 import { funnel } from "../../lib/data/funnel";
 import { completionSummary, SERVICE_SCORES_THIS_TRACK, trackList } from "../../lib/instrument/scoreSources";
 
@@ -65,30 +84,20 @@ type SiteStatus =
   | { state: "live"; url: string }
   | { state: "error"; kind: SiteUploadFailureKind; message: string };
 
-/**
- * How long a hosted content fetch may hang before it becomes a visible
- * failure with a retry. The clock is held while it runs (see the content
- * hold below), so this costs the candidate nothing — it exists so a dead
- * socket ends in an answer instead of an empty screen (TEN-116).
- */
-const CONTENT_FETCH_TIMEOUT_MS = 20_000;
-
 /** How long content may take to appear before the clock is held for it. */
 const CONTENT_HOLD_GRACE_MS = 1_000;
 
-/** Reject with a plain Error when `p` has not settled in `ms`. */
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const id = window.setTimeout(
-      () => reject(new Error(`the exam service did not answer in ${Math.round(ms / 1000)}s`)),
-      ms,
-    );
-    p.then(
-      (v) => { window.clearTimeout(id); resolve(v); },
-      (err: unknown) => { window.clearTimeout(id); reject(err); },
-    );
-  });
-}
+/*
+ * The hosted content fetch used to be bounded by a `withTimeout` helper and a
+ * `CONTENT_FETCH_TIMEOUT_MS` constant written here — the ONLY bound anywhere
+ * in `apps/web` before TEN-210, and a bound on exactly one call. Both are
+ * gone: the number is now the `content` class in `lib/data/deadline.ts`, with
+ * every other class beside it, and `withDeadline` is the same wrapper for the
+ * same reason (this seam call is several requests, so there is no single
+ * signal to hand it). The clock is held while it runs, so waiting costs the
+ * candidate nothing; the bound exists so a dead socket ends in a retry button
+ * instead of an empty screen (TEN-116).
+ */
 
 /**
  * What a candidate is told when the exam service will not open their run
@@ -115,11 +124,41 @@ function fmt(sec: number): string {
 }
 
 export default function ExamPage() {
+  // Who is reading this page — the access pill beside the start gate is a
+  // sentence about THEM, and it used to be a sentence about the build
+  // (TEN-151).
+  const identity = useIdentity();
+  /**
+   * T3 transcript turns still in this browser. Read here rather than passed
+   * down, because the answer outlives the T3 track mount and the finalize
+   * button is on a different screen (TEN-122).
+   */
+  const outstandingTurns = useSyncExternalStore(
+    subscribeTranscriptTurns,
+    outstandingTranscriptTurns,
+    () => 0,
+  );
+  /**
+   * A stored T3 queue that would not read back (TEN-272). A SECOND fact, not
+   * a bigger count: `outstandingTurns` is 0 in this case — there is nothing
+   * left to send — and Finish must still not open, because "nothing to send"
+   * and "we cannot account for what there was" are different sentences and
+   * only one of them is true.
+   */
+  const turnsUnreadable = useSyncExternalStore(
+    subscribeTranscriptTurns,
+    transcriptTurnsUnreadable,
+    () => false,
+  );
   const [log, setLog] = useState<SequencedEntry[] | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [mod, setMod] = useState<TrackModule | null>(null);
+  /** Retry trigger for the runner's dynamic import (TEN-207). */
+  const [moduleEpoch, setModuleEpoch] = useState(0);
   const [persistWarning, setPersistWarning] = useState<string | null>(null);
+  /** Heading for the banner above — names WHICH persistence problem it is. */
+  const [persistLabel, setPersistLabel] = useState<string>("Persistence warning");
   /**
    * Runner crash handling (P0-1). The clock is the candidate's, not ours:
    * a fault in OUR code pauses the track so the crash is never charged to
@@ -181,7 +220,35 @@ export default function ExamPage() {
   const siteRetryRef = useRef<{ attemptId: string; artifact: unknown } | null>(null);
   const logRef = useRef<SequencedEntry[] | null>(null);
   const startingRef = useRef(false); // run-start in flight (server attempt pre-creation)
+  /**
+   * The same fact as `startingRef`, in state so the pill can SAY it (TEN-211).
+   * The ref is what drops a repeat tap; the ref alone changed nothing on
+   * screen, so the candidate pressed Start and watched a dead button for as
+   * long as the `write` bound allows.
+   */
+  const [starting, setStarting] = useState(false);
   logRef.current = log;
+  /**
+   * Has the SERVICE recorded this sitting as finished? Only that step issues
+   * a score (TEN-66), and until TEN-206 a finalize that failed was silent:
+   * the candidate read `Run complete` and then a report with no score, no
+   * reason and no action. No resume pass is fired here — this page owns the
+   * live mirror, so the pass is already running.
+   */
+  const finalizeSync = useSyncStatus();
+  /**
+   * THIS BROWSER WILL NOT STORE ANY MORE OF THE RUN (TEN-208). The reason the
+   * store gave, or null while it is still storing. Not a banner: the clock is
+   * held and the workspace is covered until the candidate has decided, because
+   * the alternative is working — and being charged — for entries that reach no
+   * store at all.
+   */
+  const [storageStop, setStorageStop] = useState<string | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
+  /** True once the candidate has been shown the stop and chosen to carry on. */
+  const storageStopAckRef = useRef(false);
+  /** True while the clock is held BY the stop, so only that hold is released. */
+  const storageHeldRef = useRef(false);
 
   // Hydrate from localStorage (client-only; static export has no SSR data).
   useEffect(() => {
@@ -193,9 +260,25 @@ export default function ExamPage() {
     if (started?.type === "attempt_started") {
       const sub = loadSiteSubmission(window.localStorage, started.attemptId);
       if (sub) setSiteStatus({ state: "live", url: sub.url });
+      /**
+       * T3 turns this browser had not managed to send before the reload are
+       * taken up again HERE rather than at the T3 mount: a candidate who
+       * refreshes on the finish screen never mounts T3 again, and that is the
+       * one screen where an outstanding turn decides something (TEN-122).
+       * A no-op when nothing is stored, which is every static-demo run.
+       */
+      resumeTranscriptTurns(started.attemptId);
     }
-    if (v && v.dropped > 0) {
-      setPersistWarning(`stored run log had ${v.dropped} corrupt trailing entr${v.dropped === 1 ? "y" : "ies"} truncated (${v.reason ?? "unknown"})`);
+    /**
+     * A stored log that did not load clean says WHICH thing happened: a log
+     * that disagrees with its evidence, or a log an older build wrote. Those
+     * used to be the same red banner, and the older-build case is the one
+     * that actually fires (TEN-160).
+     */
+    const notice = persistNotice(v);
+    if (notice) {
+      setPersistWarning(notice.message);
+      setPersistLabel(notice.label);
     }
     setHydrated(true);
   }, []);
@@ -217,7 +300,7 @@ export default function ExamPage() {
   useEffect(() => {
     const read = () => {
       try {
-        setConnected(hasModelEndpoint(window.localStorage.getItem(LLM_BASE_URL_STORAGE)));
+        setConnected(hasModelEndpoint(window.localStorage.getItem(MODEL_ENDPOINT_SLOT)));
       } catch {
         setConnected(false);
       }
@@ -279,6 +362,23 @@ export default function ExamPage() {
     return Math.max(Date.now(), last);
   }, []);
 
+  /**
+   * THE STORE REFUSED A WRITE. One answer for every writer (TEN-208, TEN-219),
+   * because the candidate's situation does not depend on which key failed: the
+   * browser is full, and carrying on means working for something that reaches
+   * no store. Shown once as a stop that holds the clock; after the candidate
+   * has chosen to carry on it is a banner, because repeating the stop on every
+   * entry is not new information.
+   */
+  const storeRefused = useCallback((reason: string) => {
+    if (!storageStopAckRef.current) {
+      setStorageStop(reason);
+      return;
+    }
+    setPersistLabel("Not saved in this browser");
+    setPersistWarning(carriedOnCopy(reason));
+  }, []);
+
   const commit = useCallback((entries: readonly (Parameters<typeof append>[1])[]) => {
     setLog((prev) => {
       let next = prev ?? [];
@@ -287,17 +387,33 @@ export default function ExamPage() {
         getAttemptPersistence().save(next);
         setPersistWarning(null);
       } catch (err) {
-        // Multi-tab conflict or storage quota/security failure: keep the
-        // in-memory log authoritative for this tab and warn loudly instead
-        // of silently overwriting another tab or losing writes (audit B1/M4).
-        setPersistWarning(err instanceof Error ? err.message : String(err));
+        // TWO different failures, and they used to share one banner over a
+        // running clock (TEN-208).
+        //
+        // A CONFLICT is another tab writing the same attempt. This tab's
+        // in-memory log stays authoritative for this tab and the banner is
+        // the right weight: nothing has been lost, and the other tab is
+        // saving.
+        //
+        // ANYTHING ELSE is the store refusing to hold the run — quota, a
+        // locked-down browser. The log only grows, so the next save fails the
+        // same way and every one after it: a banner means the candidate keeps
+        // working, keeps being charged for the time, and none of it is
+        // written. That is a stop, and it is handled below.
+        if (err instanceof SaveConflictError) {
+          setPersistLabel("Persistence warning");
+          setPersistWarning(err instanceof Error ? err.message : String(err));
+        } else {
+          storeRefused(err instanceof Error ? err.message : String(err));
+        }
       }
       return next;
     });
-  }, []);
+  }, [storeRefused]);
 
   // Load the Runner for the active track through the registry.
   const activeTrack = state?.phase === "in_track" || state?.phase === "paused" ? state.currentTrack : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: moduleEpoch is the RETRY trigger, not a value this effect reads
   useEffect(() => {
     let cancelled = false;
     setMod(null);
@@ -308,7 +424,7 @@ export default function ExamPage() {
       loadTrackModule(activeTrack).then((m) => { if (!cancelled) setMod(m); });
     }
     return () => { cancelled = true; };
-  }, [activeTrack]);
+  }, [activeTrack, moduleEpoch]);
 
   // Rehydration source for the active track: last stored checkpoint (F2).
   const attemptId = state?.attemptId;
@@ -327,7 +443,7 @@ export default function ExamPage() {
     if (cur?.attemptId === attemptId && cur.trackId === activeTrack) return;   // already resolved
     let cancelled = false;
     setDeckError(null);
-    withTimeout(fetchHostedTrackConfig(attemptId, activeTrack), CONTENT_FETCH_TIMEOUT_MS)
+    withDeadline("content", fetchHostedTrackConfig(attemptId, activeTrack))
       .then((config) => {
         if (!cancelled) setHostedTrack({ attemptId, trackId: activeTrack, config });
       })
@@ -359,9 +475,21 @@ export default function ExamPage() {
       ? hostedTrack.config
       : undefined;
   const deckPending = hostedConfig === undefined && deckError === null;
+  /**
+   * THE RUNNER CHUNK DID NOT LOAD (TEN-207). `loadTrackModule` catches a
+   * failed dynamic import — a 404 on a hashed chunk from a tab left open
+   * across a deploy, a dropped connection, a blocking extension — and hands
+   * back `PlaceholderRunner` with `placeholder: true`. This page used to
+   * mount it: four grey demo buttons in place of a real timed track, and the
+   * `{demo: true}` artifact they submit scored as the candidate's work. It is
+   * refused here for the same reason a contradicted deck is (DeckMismatchError
+   * in lib/data/persistence.ts): presenting one instrument as another is not
+   * a measurement. Our fault, so it shows a retry and the clock is held.
+   */
+  const runnerUnavailable = mod !== null && mod.placeholder;
   /** Is there something on screen the candidate can actually work on? */
   const contentPresentable =
-    activeTrack !== undefined && mod !== null && !deckPending && deckError === null;
+    activeTrack !== undefined && mod !== null && !runnerUnavailable && !deckPending && deckError === null;
 
   const initialCheckpoint = useMemo(() => {
     if (!attemptId || !activeTrack || typeof window === "undefined") return undefined;
@@ -608,6 +736,209 @@ export default function ExamPage() {
     return () => window.clearTimeout(id);
   }, [contentPresentable, crashed, state, holdContent]);
 
+  /**
+   * STORAGE HOLD (TEN-208). Same shape as the crash hold above and for the
+   * same reason: the failure is ours to deal with, not the candidate's to be
+   * charged for, and an involuntary pause must carry a recorded cause so a
+   * later audit can see why the interval is there. The `paused` entry may
+   * itself fail to save — the store is the thing that is broken — and that is
+   * fine: the in-memory log is what the clock is derived from, and the mirror
+   * has the entry in a hosted run.
+   */
+  useEffect(() => {
+    if (storageStop === null || storageHeldRef.current) return;
+    const cur = logRef.current ? project(logRef.current) : null;
+    if (!cur || cur.phase !== "in_track" || !cur.currentTrack) return;
+    const t = cur.currentTrack;
+    const ts = stamp();
+    storageHeldRef.current = true;
+    commitIfLegal([
+      {
+        type: "track_event", trackId: t, ts,
+        event: {
+          verb: "storage_exhausted",
+          object: `track:${t}`,
+          result: { message: storageStop },
+          context: { track: t, clock: "held" },
+          clientTs: new Date().toISOString(),
+        },
+      },
+      { type: "paused", ts },
+    ]);
+  }, [storageStop, commitIfLegal, stamp]);
+
+  /**
+   * THE PAGE IS GOING AWAY MID-TRACK (TEN-232). The budget is wall clock from
+   * `runningSince`, so a laptop that slept, a tab the OS killed or a phone
+   * that backgrounded the browser came back to a track that was already over
+   * — while this page tells the candidate "Only working time is charged".
+   *
+   * WHAT AN UNATTENDED GAP COSTS, decided in the open: nothing. The clock
+   * stops here and the candidate restarts it themselves from the ordinary
+   * pause veil. That is not a new exploit — pausing by hand is already free
+   * and unlimited — it only stops charging for time nobody was working.
+   *
+   * Written STRAIGHT through `append` + `save` rather than `commit`, because
+   * a React state update is not guaranteed to flush before the page is gone,
+   * and the stored log is the only copy the next load reads. `setLog` follows
+   * for the case the page survives (a bfcache restore, a cancelled
+   * navigation), so the two never disagree.
+   *
+   * LIMIT, stated: a browser that dies without firing `pagehide` (a power
+   * cut, a kill -9) still comes back to a spent clock. This covers the
+   * ordinary closes, sleeps and backgroundings, not that.
+   */
+  const pauseForUnload = useCallback(() => {
+    const cur = logRef.current;
+    if (!cur) return;
+    const proj = project(cur);
+    if (proj.phase !== "in_track" || !proj.currentTrack) return;
+    const t = proj.currentTrack;
+    const ts = stamp();
+    let next = cur;
+    try {
+      next = append(next, {
+        type: "track_event", trackId: t, ts,
+        event: {
+          verb: "page_hidden",
+          object: `track:${t}`,
+          context: { track: t, clock: "held" },
+          clientTs: new Date().toISOString(),
+        },
+      });
+      next = append(next, { type: "paused", ts });
+    } catch {
+      // An exhausted budget legitimately refuses further track events. The
+      // pause is the point, so keep whatever was accepted.
+    }
+    if (next === cur) return;
+    logRef.current = next;
+    try {
+      getAttemptPersistence().save(next);
+    } catch {
+      // The store is full or locked down: TEN-208 owns that conversation,
+      // and there is no screen left to have it on.
+    }
+    setLog(next);
+  }, [stamp]);
+
+  useEffect(() => {
+    window.addEventListener("pagehide", pauseForUnload);
+    return () => window.removeEventListener("pagehide", pauseForUnload);
+  }, [pauseForUnload]);
+
+  /** Release a hold the stop placed, and only that one. */
+  const releaseStorageHold = useCallback(() => {
+    if (!storageHeldRef.current) return;
+    storageHeldRef.current = false;
+    const cur = logRef.current ? project(logRef.current) : null;
+    if (cur?.phase === "paused") commitIfLegal([{ type: "resumed", ts: stamp() }]);
+  }, [commitIfLegal, stamp]);
+
+  /** The candidate cleared space and wants the run written here again. */
+  const retryStorage = useCallback(() => {
+    setStorageBusy(true);
+    try {
+      const cur = logRef.current;
+      if (cur) getAttemptPersistence().save(cur);
+      setStorageStop(null);
+      setPersistWarning(null);
+      releaseStorageHold();
+    } catch (err) {
+      // Still full. Say what it said this time rather than repeating
+      // ourselves: the message is the only thing that has changed.
+      setStorageStop(err instanceof Error ? err.message : String(err));
+    } finally {
+      setStorageBusy(false);
+    }
+  }, [releaseStorageHold]);
+
+  /**
+   * The candidate has read what carrying on costs and wants to carry on.
+   * Acknowledged for the rest of the run: the stop is information, and once
+   * it has been given, repeating it every entry is only in the way.
+   */
+  const continueWithoutStorage = useCallback(() => {
+    storageStopAckRef.current = true;
+    setStorageStop(null);
+    setPersistLabel("Not saved in this browser");
+    setPersistWarning(carriedOnCopy(storageStop ?? "no room left"));
+    releaseStorageHold();
+  }, [releaseStorageHold, storageStop]);
+
+  /**
+   * The stop, ready to render. Fixed and full-screen, so it goes beside the
+   * persistence banner in every phase branch rather than being wired into one
+   * of them: the store can refuse a write on any commit, including the
+   * `attempt_completed` that ends the run.
+   */
+  const storageOverlay =
+    storageStop === null ? null : (
+      <StorageStop
+        copy={storageStopCopy({ mirrored: isServerMode(), reason: storageStop })}
+        busy={storageBusy}
+        onRetry={retryStorage}
+        onContinue={continueWithoutStorage}
+      />
+    );
+
+  /**
+   * The track whose time-up notice is on screen, if any.
+   *
+   * Read from the LOG, not from the run order: since TEN-149 a candidate may
+   * sit the model-free tracks first and the rest after connecting, so "the
+   * last completed track in T1→T4 order" is no longer the track that just
+   * finished. Derived up here because the FOCUS effect below has to know
+   * which view is showing, and it may not run after an early return.
+   */
+  const timedOutTrack = useMemo(() => {
+    if (state?.phase !== "between_tracks") return undefined;
+    const justFinished = [...(log ?? [])]
+      .reverse()
+      .find((e): e is Extract<SequencedEntry, { type: "track_completed" }> => e.type === "track_completed")
+      ?.trackId;
+    if (!justFinished) return undefined;
+    return state.tracks[justFinished].timedOut && timeUpAck !== justFinished ? justFinished : undefined;
+  }, [log, state, timeUpAck]);
+
+  /**
+   * WHICH WHOLE-PAGE VIEW IS ON SCREEN (TEN-224). Five of them come out of
+   * this one component, so swapping one for another is a view change with no
+   * route change and Next's App Router focus handling never sees it. A
+   * screen-reader candidate pressed Start, heard nothing, and tabbed from the
+   * top of the document on a clock that was already running.
+   *
+   * A pause is NOT a view change: `in_track` and `paused` render the same
+   * view, and the pause dialog owns focus while it is open. Arriving is not
+   * one either — the first view a browser sees is a page load, and moving
+   * focus at load is the anti-pattern this is the cure for.
+   */
+  const view = !state
+    ? "start"
+    : state.phase === "completed"
+      ? "complete"
+      : state.phase === "between_tracks"
+        ? (timedOutTrack ? `time-up:${timedOutTrack}` : "between")
+        : `track:${state.currentTrack}`;
+  const phaseHeadingRef = useRef<HTMLHeadingElement>(null);
+  const lastViewRef = useRef<string | null>(null);
+  const stopShowingRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated) return;
+    const prevView = lastViewRef.current;
+    const prevStop = stopShowingRef.current;
+    lastViewRef.current = view;
+    stopShowingRef.current = storageStop !== null;
+    // The storage stop covers the whole workspace and lands its own focus.
+    // The view BEHIND it must not pull focus back out — and when the stop
+    // closes, the heading takes it rather than letting it fall to <body>.
+    if (storageStop !== null) return;
+    if (prevView === null) return;
+    // The time-up notice lands its own heading (it always did), so this ref
+    // is unattached there and nothing here overrides it.
+    if (prevView !== view || prevStop) phaseHeadingRef.current?.focus();
+  }, [view, hydrated, storageStop]);
+
   const retryRunner = useCallback(() => {
     const cur = logRef.current ? project(logRef.current) : null;
     // Only auto-resume a pause WE forced; a candidate-initiated pause stands.
@@ -624,6 +955,10 @@ export default function ExamPage() {
     if (cur?.attemptId) {
       clearAllCheckpoints(window.localStorage, cur.attemptId);
       clearSiteSubmission(window.localStorage, cur.attemptId);
+      // The discarded run's un-landed T3 turns go with it. Left behind they
+      // would keep posting a run nobody is sitting, and keep the notice up
+      // and Finish shut on the run that replaces it.
+      discardTranscriptTurns(cur.attemptId);
     }
     getAttemptPersistence().clear();
     siteRetryRef.current = null;
@@ -633,7 +968,9 @@ export default function ExamPage() {
 
   if (!hydrated) {
     return <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
+      <MirrorWarning />
       <div className="container"><p className="muted">Loading your run…</p></div></main>;
   }
 
@@ -646,16 +983,18 @@ export default function ExamPage() {
     const startGate = runGate({ connected });
     return (
       <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
+      <MirrorWarning />
       <PersistWarning warning={startError} label="Your run did not start" />
         <div className="container" style={{ maxWidth: 820, paddingBottom: "5.5rem" }}>
           <div className="eyebrow">Demo run · Foray 2026.1</div>
-          <h1>Four tracks. One <span className="script-accent">run</span>.</h1>
+          <h1 ref={phaseHeadingRef} tabIndex={-1} style={{ outline: "none" }}>Four tracks. One <span className="script-accent">run</span>.</h1>
           <p className="lede">
             T1 to T4 in order, each on its own clock. Pause between moves, never
             mid-swipe. {eventLogCopy()}
           </p>
-          <div style={{ textAlign: "right" }}><Annotation side="left">{examAccessCopy()}</Annotation></div>
+          <div style={{ textAlign: "right" }}><Annotation side="left">{examAccessCopy(identity.status)}</Annotation></div>
           {/* AI connection FIRST — users must see it before the Start pill
               (it was previously buried below the fold). */}
           <ConnectPanel attention={connectAttention} />
@@ -678,8 +1017,9 @@ export default function ExamPage() {
           </ul>
           <Reveal as="section">
           <p className="small faint">
-            <span className="badge demo">demo</span> Deterministic scoring: the real track
-            plugins score your stored artifacts and judgments. Same play, same score, forever.
+            <span className="badge demo">demo</span> Demo scores are not official results.
+            Re-scoring uses your saved work and saved AI judgments to reproduce the score.
+            Asking AI to judge again may give a different result.
           </p>
           </Reveal>
           {startGate.startNote ? (
@@ -697,6 +1037,7 @@ export default function ExamPage() {
               }
               if (startingRef.current) return; // ignore double-clicks mid-await
               startingRef.current = true;
+              setStarting(true);
               try {
                 // Server mode: adopt the pre-created SERVER attempt id so the
                 // per-attempt T2 deck is keyed to (and recorded against) it.
@@ -723,10 +1064,12 @@ export default function ExamPage() {
                 funnel().step("sitting_started");
               } finally {
                 startingRef.current = false;
+                setStarting(false);
               }
             }}
+            busy={starting}
           >
-            {startGate.startLabel}
+            {starting ? "Starting your run…" : startGate.startLabel}
           </PillCTA>
         </div>
       </main>
@@ -737,13 +1080,16 @@ export default function ExamPage() {
   if (state.phase === "completed") {
     return (
       <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
+      <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
-          <h1>Run complete</h1>
+          <h1 ref={phaseHeadingRef} tabIndex={-1} style={{ outline: "none" }}>Run complete</h1>
           {/* Derived, never asserted (TEN-129). The old line said "All four
               tracks are scored" on a run where the service had scored none of
               them yet, on the same screen as the error saying so. */}
           <p className="lede" data-testid="completion-summary">{completionSummary(state)}</p>
+          <FinalizeNotice status={finalizeSync.status} busy={finalizeSync.busy} onRetry={finalizeSync.retry} />
           <SiteUploadNotice status={siteStatus} onRetry={retrySiteUpload} />
           <p style={{ display: "flex", gap: "0.8rem" }}>
             <Link href="/report" className="btn primary">Open your report →</Link>
@@ -758,25 +1104,19 @@ export default function ExamPage() {
   if (state.phase === "between_tracks") {
     // A track that ended on the timer says so, explicitly, at the moment it
     // happens. It used to teleport the candidate to the track list, which
-    // reads as a crash rather than a timeout.
-    //
-    // Read from the LOG, not from the run order: since TEN-149 a candidate
-    // may sit the model-free tracks first and the rest after connecting, so
-    // "the last completed track in T1→T4 order" is no longer the track that
-    // just finished. The log says which one did.
-    const justFinished = [...(log ?? [])]
-      .reverse()
-      .find((e): e is Extract<SequencedEntry, { type: "track_completed" }> => e.type === "track_completed")
-      ?.trackId;
-    if (justFinished && state.tracks[justFinished].timedOut && timeUpAck !== justFinished) {
+    // reads as a crash rather than a timeout. WHICH track that is comes from
+    // `timedOutTrack` above, because the focus effect needs the same answer.
+    if (timedOutTrack) {
       return (
         <main className="page">
-          <PersistWarning warning={persistWarning} />
+          <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
+      <MirrorWarning />
           <TimeUpNotice
-            trackId={justFinished}
-            budgetSeconds={state.config!.budgets[justFinished]}
-            serviceScored={state.tracks[justFinished].score === undefined}
-            onContinue={() => setTimeUpAck(justFinished)}
+            trackId={timedOutTrack}
+            budgetSeconds={state.config!.budgets[timedOutTrack]}
+            serviceScored={state.tracks[timedOutTrack].score === undefined}
+            onContinue={() => setTimeUpAck(timedOutTrack)}
           />
         </main>
       );
@@ -790,10 +1130,14 @@ export default function ExamPage() {
     const done = state.order.filter((t) => state.tracks[t].status === "completed");
     return (
       <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
+      <MirrorWarning />
         <div className="container" style={{ maxWidth: 820 }}>
           <div className="eyebrow">run {state.attemptId}</div>
-          <h1>{done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}</h1>
+          <h1 ref={phaseHeadingRef} tabIndex={-1} style={{ outline: "none" }}>
+            {done.length === 0 ? "Ready" : `${done.length} of 4 tracks complete`}
+          </h1>
           <ul className="checklist" style={{ margin: "1.5rem 0" }}>
             {TRACK_LIST.map((t) => {
               const ts = state.tracks[t.id];
@@ -853,12 +1197,32 @@ export default function ExamPage() {
                here rather than hanging on a track it cannot offer — and the
                button says which sitting it is closing, because a run that
                finishes two of four tracks is not a full one. */
-            <button className="btn primary" onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}>
+            /* BLOCKED while a T3 transcript turn is still in this browser.
+               Finalizing is the moment the service stops accepting evidence,
+               and those rows are what its T3 score reads for stances — so
+               finishing with one outstanding is a score computed from less
+               than the candidate did (TEN-122). The wait is visible and it
+               ends by itself. */
+            <button
+              className="btn primary"
+              disabled={outstandingTurns > 0 || turnsUnreadable}
+              onClick={() => commit([{ type: "attempt_completed", ts: stamp() }])}
+            >
               {lockedPending.length > 0
                 ? `Finish here with ${trackList(done)}`
                 : "Finish run"}
             </button>
           )}
+          {outstandingTurns > 0 ? (
+            <p className="small muted" data-testid="turns-outstanding" style={{ margin: "0.6rem 0 0" }}>
+              {turnsOutstandingCopy(outstandingTurns)}
+            </p>
+          ) : null}
+          {turnsUnreadable ? (
+            <p className="small" data-testid="turns-unreadable" role="alert" style={{ margin: "0.6rem 0 0", color: "var(--bad)" }}>
+              {TURNS_UNREADABLE_COPY}
+            </p>
+          ) : null}
           <span style={{ marginLeft: "0.8rem" }}>
             <ResetButton onReset={resetAttempt} />
           </span>
@@ -909,8 +1273,16 @@ export default function ExamPage() {
     // F2: the runner rehydrates from the last checkpoint and persists every
     // meaningful mutation back through onCheckpoint.
     checkpoint: initialCheckpoint,
+    /**
+     * A checkpoint that does not reach the store is the artifact the timeout
+     * watchdog will score (TEN-219). The refusal gets the same stop as a
+     * refused log entry: the clock is held and the candidate decides,
+     * instead of working on for a score computed from stale work.
+     */
     onCheckpoint: (cp: unknown) => {
-      if (state.attemptId) saveCheckpoint(window.localStorage, state.attemptId, t, cp);
+      if (!state.attemptId) return;
+      const written = saveCheckpoint(window.localStorage, state.attemptId, t, cp);
+      if (!written.ok) storeRefused(written.reason);
     },
     // The host attaches WHO is asking. It has no provider key to attach, in
     // either build: hosted, the gateway spends a key it holds sealed against
@@ -934,7 +1306,9 @@ export default function ExamPage() {
 
   return (
     <main className="page">
-      <PersistWarning warning={persistWarning} />
+      <PersistWarning warning={persistWarning} label={persistLabel} />
+      {storageOverlay}
+      <MirrorWarning />
       {/* Full-width workspace while a track is live: the runners are
           two-pane environments and need the room (~1400px). */}
       <div className="container" style={{ maxWidth: 1400 }}>
@@ -945,7 +1319,7 @@ export default function ExamPage() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "0.6rem" }}>
           <div>
-            <h1 className="eyebrow" style={{ margin: 0 }}>{meta.code} · {meta.name}</h1>
+            <h1 className="eyebrow" ref={phaseHeadingRef} tabIndex={-1} style={{ margin: 0, outline: "none" }}>{meta.code} · {meta.name}</h1>
             <div className="faint small mono">plugin {meta.pluginId} · 100 pts</div>
           </div>
           <div style={{ display: "flex", gap: "0.9rem", alignItems: "center" }}>
@@ -975,14 +1349,19 @@ export default function ExamPage() {
           {/* F2: the Runner stays MOUNTED while paused — a veil covers it so
               content is hidden but in-progress state survives. */}
           {deckError ? (
-            <div role="alert" style={{ display: "grid", gap: "0.8rem", padding: "1rem" }}>
-              <p className="muted" style={{ margin: 0 }} data-testid="deck-error">{deckError}</p>
-              <div>
-                <button className="btn" onClick={() => setDeckEpoch((n) => n + 1)}>
-                  Retry loading your deck
-                </button>
-              </div>
-            </div>
+            <ContentFailure
+              testId="deck-error"
+              message={deckError}
+              retryLabel="Retry loading your deck"
+              onRetry={() => setDeckEpoch((n) => n + 1)}
+            />
+          ) : runnerUnavailable ? (
+            <ContentFailure
+              testId="runner-error"
+              message={`your ${t.toUpperCase()} workspace could not be loaded in this browser. Nothing has been scored and the clock is held. Retry, or reload the page if this browser has been open since before an update.`}
+              retryLabel="Retry loading your track"
+              onRetry={() => setModuleEpoch((n) => n + 1)}
+            />
           ) : mod && !deckPending ? (
             <div aria-hidden={veiled} style={veiled ? { visibility: "hidden" } : undefined}>
               {/* P0-1: a runner throw must never white-screen a timed run.
@@ -1033,6 +1412,27 @@ export default function ExamPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * A thing the candidate needs is not here, and that is OUR fault: the deck
+ * the server dealt (TEN-116) or the runner chunk itself (TEN-207). One panel
+ * for both, because the candidate's situation is the same one — nothing to
+ * work on, nothing scored, a clock that is held, and one button that tries
+ * again. `testId` names WHICH failure it is, so a test cannot pass by finding
+ * the other.
+ */
+function ContentFailure({
+  testId, message, retryLabel, onRetry,
+}: { testId: string; message: string; retryLabel: string; onRetry: () => void }) {
+  return (
+    <div role="alert" style={{ display: "grid", gap: "0.8rem", padding: "1rem" }}>
+      <p className="muted" style={{ margin: 0 }} data-testid={testId}>{message}</p>
+      <div>
+        <button className="btn" onClick={onRetry}>{retryLabel}</button>
+      </div>
+    </div>
   );
 }
 

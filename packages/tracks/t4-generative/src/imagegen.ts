@@ -7,8 +7,9 @@
  * OpenAI-compatible ENDPOINT — the exam service's model gateway, the capped
  * shared-demo proxy, or a local server — read from the SAME slot T1 uses
  * (LLM_BASE_URL_STORAGE), so connecting once connects both tracks. The
- * constant is a small local duplicate on purpose: the track packages do not
- * depend on each other.
+ * constant is `@ailx/core`'s and is re-exported here: the track packages do
+ * not depend on each other, but both depend on core, and a duplicated string
+ * is how the footer came to read a slot it never heard change.
  *
  * Everything here is pure / DOM-free (fetch is injected) so the request
  * builder, response parser and error mapping are unit-testable without
@@ -16,8 +17,12 @@
  * consumes the stored artifact.
  */
 
-/** Same slot as T1: the persisted OpenAI-compatible endpoint. */
-export const LLM_BASE_URL_STORAGE = "foray:llm-base-url";
+/**
+ * Same slot as T1, and now literally the same constant: `@ailx/core` spells
+ * it once (`connection.ts`) and both tracks re-export it under the name
+ * their callers already use.
+ */
+export { MODEL_ENDPOINT_SLOT as LLM_BASE_URL_STORAGE } from "@ailx/core";
 
 /**
  * Normalize an endpoint (trim, strip trailing slashes). Empty stays EMPTY —
@@ -87,7 +92,9 @@ export type ImageGenErrorKind =
   | "network"
   | "bad-json"
   | "refusal"
-  | "no-image";
+  | "no-image"
+  | "timeout"
+  | "cancelled";
 
 export class ImageGenError extends Error {
   constructor(
@@ -149,6 +156,67 @@ type FetchLike = (url: string, init?: RequestInit) => Promise<{
 }>;
 
 /**
+ * How long one image call may take, and what a stall says (TEN-212).
+ *
+ * Same defect and same shape as T1's assist: the call carried no bound, so an
+ * endpoint that accepted the request and then said nothing left `genBusy`
+ * true for the rest of the track — Generate disabled, clock running, nothing
+ * to press. The deadline is OURS, not the transport's, because a fetch that
+ * never settles never rejects either. Duplicated rather than shared for the
+ * reason at the top of this file: the track packages do not depend on each
+ * other. 90s, because an image is slower than a document rewrite.
+ */
+export const IMAGE_REQUEST_TIMEOUT_MS = 90_000;
+
+/** Said out loud — the alternative is a candidate watching a clock. */
+export const IMAGE_TIMEOUT_MESSAGE =
+  "The model did not answer within 90s — no draft was made. Retry, or use the offline demo model.";
+
+/** A stop the candidate asked for is not a failure and must not read as one. */
+export const IMAGE_CANCELLED_MESSAGE = "You stopped the request — no draft was made.";
+
+/** Deadline and cancel control for one image call. */
+export interface ModelCallOptions {
+  /** The runner's Stop button. */
+  readonly signal?: AbortSignal;
+  /** Override the deadline (tests, and a slower endpoint later). */
+  readonly timeoutMs?: number;
+}
+
+/**
+ * Run `work` under a deadline and the caller's cancel control.
+ *
+ * The race — not the signal — is what ends the wait: an injected fetch (and a
+ * body read) can hang without ever observing an abort. The signal still goes
+ * down so a real request is torn down rather than left in flight against a
+ * candidate we have already answered.
+ */
+async function withDeadline<T>(
+  work: (signal: AbortSignal) => Promise<T>,
+  options: ModelCallOptions | undefined,
+  fail: (kind: "timeout" | "cancelled") => Error,
+): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stalled = new Promise<never>((_resolve, reject) => {
+    const stop = (kind: "timeout" | "cancelled") => {
+      controller.abort();
+      reject(fail(kind));
+    };
+    timer = setTimeout(() => stop("timeout"), options?.timeoutMs ?? IMAGE_REQUEST_TIMEOUT_MS);
+    const outer = options?.signal;
+    if (!outer) return;
+    if (outer.aborted) stop("cancelled");
+    else outer.addEventListener("abort", () => stop("cancelled"), { once: true });
+  });
+  try {
+    return await Promise.race([work(controller.signal), stalled]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Call the image model and return { dataUri, modelId }. fetch is injected
  * for testability; throws ImageGenError with a user-facing message on
  * 401/429/network/shape/refusal failures.
@@ -157,10 +225,30 @@ export async function requestImage(
   fetchImpl: FetchLike,
   payload: ImageChatPayload,
   baseUrl?: string,
+  options?: ModelCallOptions,
+): Promise<GeneratedImage> {
+  return withDeadline(
+    (signal) => callImage(fetchImpl, payload, baseUrl, signal),
+    options,
+    (kind) =>
+      kind === "timeout"
+        ? new ImageGenError(IMAGE_TIMEOUT_MESSAGE, "timeout")
+        : new ImageGenError(IMAGE_CANCELLED_MESSAGE, "cancelled"),
+  );
+}
+
+/** The request itself. Everything that can hang is INSIDE the deadline — the
+ *  body read as much as the round trip, because a provider that stops
+ *  mid-stream stalls `json()` and never the fetch. */
+async function callImage(
+  fetchImpl: FetchLike,
+  payload: ImageChatPayload,
+  baseUrl: string | undefined,
+  signal: AbortSignal,
 ): Promise<GeneratedImage> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
-    res = await fetchImpl(chatCompletionsUrl(baseUrl), buildImageFetchInit(payload));
+    res = await fetchImpl(chatCompletionsUrl(baseUrl), { ...buildImageFetchInit(payload), signal });
   } catch {
     throw new ImageGenError("Network error reaching the image endpoint.", "network");
   }

@@ -33,6 +33,7 @@ import { useQuery } from "@tanstack/react-query";
 import { parseApiError, type ApiPath, type ResponseSchema } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { serviceHeaders, traceHeaders } from "./traceparent";
+import { deadline, isTimeout, TIMEOUT_COPY, type CallClass } from "./deadline";
 import type { IdentityMode } from "./authHeaders";
 import { useIdentity } from "../auth/identityState";
 import { apiBase } from "../mode";
@@ -130,6 +131,15 @@ export interface ServiceOptions<T = unknown> {
    * per-route work and the seam does not pretend otherwise.
    */
   readonly schema?: ResponseSchema<T>;
+  /**
+   * How long this read may take before the page is told the service is too
+   * slow to use. `"read"` (10 s) unless the caller says otherwise — a read
+   * this seam makes is a page's own data by definition. A surface that asks
+   * again on a timer passes `"poll"` so a stalled request cannot outlive its
+   * own interval. The whole table, and the reason for each number, is in
+   * `lib/data/deadline.ts`.
+   */
+  readonly timeout?: CallClass;
 }
 
 /** Longest refusal sentence quoted to a reader. A message, not a document. */
@@ -143,8 +153,13 @@ const REASON_MAX = 200;
  * reader. Whitespace is collapsed because the service's query errors are
  * multi-line, and a body that will not even parse is simply no reason: the
  * status alone is still an honest thing to say.
+ *
+ * Exported because the WRITE panels need the same quoting rule (TEN-234):
+ * issue, revoke, create and publish do not go through `serviceFetch`, and a
+ * second reader of the same envelope would be a second chance to disagree
+ * about what may be put in front of a candidate.
  */
-async function refusal(res: Response): Promise<{ reason?: string }> {
+export async function refusalReason(res: Response): Promise<{ reason?: string }> {
   try {
     const parsed = parseApiError(await res.json());
     if (parsed === null) return {};
@@ -160,6 +175,10 @@ export async function serviceFetch<T>(
   path: ApiPath,
   opts: ServiceOptions<T> = {},
 ): Promise<ServiceState<T>> {
+  // Bounded before anything else, so the deadline covers the identity read as
+  // well as the request: `serviceHeaders` can await a token source, and a
+  // token source that hangs is the same permanent spinner by another route.
+  const bound = deadline(opts.timeout ?? "read", opts.signal);
   try {
     const identity = opts.identity ?? "anonymous";
     const storage = identity === "anonymous" ? null : browserStorage();
@@ -181,10 +200,21 @@ export async function serviceFetch<T>(
     const res = await fetch(`${apiBase()}${path}`, {
       headers,
       cache: "no-store",
-      signal: opts.signal,
+      signal: bound.signal,
     });
-    if (res.status !== 200) return { state: "missing", status: res.status, ...(await refusal(res)) };
-    const body: unknown = await res.json();
+    if (res.status !== 200) return { state: "missing", status: res.status, ...(await refusalReason(res)) };
+    // Its OWN try, because a captive portal's HTML on a 200 is the service
+    // answering with something unreadable, not a connection this reader can
+    // fix. Sharing the outer catch printed "check your connection" for a call
+    // that landed (TEN-229).
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      if (opts.signal?.aborted === true) return { state: "loading" };
+      console.error(`AILX: ${path} answered 200 with a body that is not JSON`);
+      return { state: "error", message: SERVICE_INVALID_COPY };
+    }
     if (opts.schema === undefined) return { state: "ready", data: body as T };
     const parsed = opts.schema.safeParse(body);
     if (parsed.success) return { state: "ready", data: parsed.data };
@@ -192,11 +222,17 @@ export async function serviceFetch<T>(
     // sentence, and the console carries the field that was wrong.
     console.error(`AILX: ${path} answered with an unreadable body`, parsed.error);
     return { state: "error", message: SERVICE_INVALID_COPY };
-  } catch {
+  } catch (err) {
     // Aborted by the query's cleanup: the component is gone, so stay in the
     // state it already had rather than flashing an error on the way out.
     if (opts.signal?.aborted === true) return { state: "loading" };
+    // We stopped waiting. Its own sentence, because "too slow to use" is a
+    // different fact from "could not be reached" and it is the one a reader
+    // can act on by reloading (TEN-210).
+    if (isTimeout(err)) return { state: "error", message: TIMEOUT_COPY };
     return { state: "error", message: SERVICE_ERROR_COPY };
+  } finally {
+    bound.settle();
   }
 }
 
@@ -259,7 +295,7 @@ export function firstValues(params: URLSearchParams | null | undefined): Record<
  */
 export function useService<T>(path: ApiPath | null, opts: ServiceOptions<T> = {}): ServiceState<T> {
   const identity = opts.identity ?? "anonymous";
-  const { schema } = opts;
+  const { schema, timeout } = opts;
   const identityStatus = useIdentity().status;
   const query = useQuery({
     // The key says HOW the read was identified, not who it was — the id is
@@ -268,7 +304,7 @@ export function useService<T>(path: ApiPath | null, opts: ServiceOptions<T> = {}
     // rows being served to the next.
     queryKey: ["service", path, identity],
     enabled: path !== null && identityStatus !== "pending",
-    queryFn: ({ signal }) => serviceFetch<T>(path!, { identity, signal, schema }),
+    queryFn: ({ signal }) => serviceFetch<T>(path!, { identity, signal, schema, timeout }),
   });
   // `serviceFetch` resolves every EXPECTED failure into a state and throws
   // nothing, so `isError` here means something unforeseen threw. Reporting it

@@ -67,8 +67,8 @@ describe("funnel section", () => {
     expect(titles).toEqual([
       "Play one card.",
       "Come back tomorrow.",
-      "Then take the whole thing.",
-      "Keep what it leaves you.",
+      "Try the full exam.",
+      "See what you did.",
     ]);
     // one plain supporting line + one decorative visual per step
     expect(h.querySelectorAll(".wyg-line")).toHaveLength(4);
@@ -94,7 +94,7 @@ describe("funnel section", () => {
     expect(rows[0].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/methodology");
     expect(rows[1].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/validate");
     expect(showcase.querySelector(".showcase-caption")!.textContent).toContain(
-      "demo build of the Foray 2026.1 spec",
+      "Demo results are not official exam scores",
     );
   });
 });
@@ -178,7 +178,9 @@ describe("declauded landing copy", () => {
   it("landing page carries no marketing puffery or stats soup", async () => {
     const h = await render(createElement(Home));
     const text = h.textContent!;
-    for (const banned of ["trilateral", "audit-grade", "specification,"]) {
+    expect(text).toContain("AI is for everyone.");
+    expect(text).toContain("Learn to use it on your terms.");
+    for (const banned of ["trilateral", "audit-grade", "specification,", "psychometrics", "judge governance", "This one rates you", "one score"]) {
       expect(text).not.toContain(banned);
     }
   });

@@ -312,6 +312,33 @@ function assertJudgmentsAttested(
 }
 
 /**
+ * A `track_scored` entry written by a build from BEFORE the attestation
+ * invariant existed (commit 4ad7af6, 2026-09-01), i.e. the pre-TEN-69 shape:
+ * a score with `judgments` but no `judgmentIds` and no `scoredBy`.
+ *
+ * WHY THIS IS A PREDICATE AND NOT A MIGRATION. There is no honest value to
+ * migrate such an entry TO. `scoredBy: "local"` would be a guess, and the
+ * only way to satisfy `judgmentIds` would be to recompute the ids from the
+ * stored rows — which is forging the very claim the ids exist to make, and
+ * would render a mutated row undetectable forever after. So the entry cannot
+ * be carried forward as a score of record, and the log must say WHICH kind of
+ * refusal this was.
+ *
+ * IT IS ALSO NOT A TAMPER LOOPHOLE. Deleting `scoredBy` and `judgmentIds`
+ * from a forged entry buys an attacker nothing, because a pre-attestation
+ * score is DISCARDED, never trusted. The only thing this predicate changes is
+ * what the candidate is told.
+ *
+ * Both fields must be absent. A score that carries one and not the other is
+ * not a shape any build ever wrote, so it stays a rejection.
+ */
+export function isPreAttestationScore(entry: unknown): boolean {
+  if (typeof entry !== "object" || entry === null) return false;
+  const e = entry as { type?: unknown; scoredBy?: unknown; judgmentIds?: unknown };
+  return e.type === "track_scored" && e.scoredBy === undefined && e.judgmentIds === undefined;
+}
+
+/**
  * Put stored judgment rows into the shape `track_scored` requires: canonical
  * row order, plus the content address claimed for each.
  *

@@ -13,8 +13,13 @@ describe("multi-tab compare-and-swap (audit B1)", () => {
     const s = mem();
     let log = append([], { type: "attempt_started", attemptId: "a", config: cfg, ts: 1 } as never);
     saveAttempt(s, log);
+    // Tab B writes, and its write CARRIES WORK OF ITS OWN. It used to only
+    // bump the rev, which made this guard pass on a conflict that had nothing
+    // to protect — the case TEN-124 recovers from. An overwrite that destroys
+    // an append is the thing being refused, so the fixture now has one.
     const shape = JSON.parse(s.getItem(ATTEMPT_KEY)!);
-    shape.rev = shape.rev + 1; // tab B writes
+    shape.rev = shape.rev + 1;
+    shape.log = append(shape.log, { type: "track_started", trackId: "t4", ts: 2 } as never);
     s.setItem(ATTEMPT_KEY, JSON.stringify(shape));
     log = append(log, { type: "track_started", trackId: "t1", ts: 2 } as never);
     expect(() => saveAttempt(s, log)).toThrow(SaveConflictError);

@@ -59,6 +59,21 @@
  * `[bundle]`. To re-baseline: read the numbers out of a green CI run on `main`,
  * put them here, and say in the commit message which run they came from.
  * Raising one is allowed and expected — with the measurement and the reason.
+ *
+ * ONE TEST FOR WHETHER A RAISE IS HONEST, added 2026-09-09 after this gate came
+ * 92 bytes from failing on already-shipped work: RE-BASELINE ONLY WHEN EVERY
+ * COMPONENT OF THE DELTA IS UNDERSTOOD AND INTENDED. In likelihood order, a
+ * raise is NOT honest when the numbers came from a laptop (see TEN-90 above);
+ * when a PAGE budget is raised to absorb an unexplained page regression — the
+ * TEN-216 report.html jump was found by bisecting and fixed by moving an
+ * import, and the number was never the remedy; when the raise shares a commit
+ * with the change that needed it; when the delta was not decomposed; or when
+ * it is the second raise on one branch.
+ *
+ * A baseline is a statement about what is SHIPPED. `main` is a fact and a PR
+ * head is a proposal, which is why the procedure above says main: baselining on
+ * a branch turns one accepted delta into a permanent entitlement for everyone
+ * after it.
  */
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -68,7 +83,17 @@ import { fileURLToPath } from "node:url";
 
 const webRoot = fileURLToPath(new URL("..", import.meta.url));
 
-/** Measured on `w/deps`, both builds run clean. See the header for the two margins. */
+/**
+ * Measured on `w/deps`, both builds run clean. See the header for the two margins.
+ *
+ * THE MARGINS ARE THE GATE, and until 2026-09-09 nothing pinned them. Every
+ * budget in this file is `baseline × margin`, so editing `1.02` to `1.12` raises
+ * all of them at once, moves the half-mark up so the alarm goes QUIET, and
+ * passes every other assertion here — one character, no measurement, no run id,
+ * no decomposition. The header's five honesty conditions were all about
+ * BASELINES, which left the hole exactly where the cheapest dishonest edit
+ * lives. They are pinned below, and widening one is the sixth condition.
+ */
 const PAGE_MARGIN = 1.05;
 const TOTAL_MARGIN = 1.02;
 const budget = (measured: number, margin: number): number => Math.round(measured * margin);
@@ -99,10 +124,10 @@ const MODES: Mode[] = [
     // basePath is `/ailx` on Pages, so the href is `/ailx/_next/static/...`.
     resolve: (src) => join(webRoot, "out", src.slice(src.indexOf("/_next/") + 1)),
     marker: join(webRoot, "out/_next/static"),
-    allJsGzip: 693_550,
+    allJsGzip: 707_329,
     sharedGzip: 178_261,
     pages: {
-      "report.html": 297_237,
+      "report.html": 311_014,
       "exam.html": 278_801,
       "validate.html": 270_265,
       "wall.html": 240_018,
@@ -121,10 +146,10 @@ const MODES: Mode[] = [
     // static export's. The one route handler compiles in the hosted build and
     // only there, so its output is what tells the two `.next` apart.
     marker: join(webRoot, ".next/server/app/s/[token]/card.png"),
-    allJsGzip: 802_860,
+    allJsGzip: 817_237,
     sharedGzip: 214_951,
     pages: {
-      "report.html": 338_345,
+      "report.html": 353_611,
       "exam.html": 322_133,
       "validate.html": 308_275,
       "wall.html": 276_634,
@@ -157,6 +182,79 @@ function scriptsOf(html: string, mode: Mode): string[] {
   return [...srcs];
 }
 
+/**
+ * ONE LINE PER MODE, EVERY RUN, OUTSIDE THE PER-MODE SKIP.
+ *
+ * The first version of this lived inside the per-mode `describe`, which is
+ * `describe.skip` when a build is absent — so in the one case it was written for
+ * (telling "under half the tolerance" from "never measured") it printed nothing
+ * at all. The sentence "silence carries evidence" was true about intent and
+ * false about mechanism, and the mechanism was a `describe.skip` three lines up.
+ *
+ * So it lives here, at module level, and it says the missing case OUT LOUD. A
+ * run that measured nothing now looks different from a run that measured and was
+ * content.
+ */
+describe("every run says where the tolerance stands", () => {
+  it("prints a line per mode, measured or not", () => {
+    for (const mode of MODES) {
+      const cap = budget(mode.allJsGzip, TOTAL_MARGIN);
+      const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
+      const measurable = existsSync(mode.marker) && existsSync(mode.staticDir);
+      if (!measurable) {
+        console.log(
+          `[bundle] tolerance ${mode.name}: NOT MEASURED — no build output at ${mode.staticDir}`,
+        );
+        continue;
+      }
+      const measured = walk(mode.staticDir, /\.js$/).reduce((n, f) => n + gz(f), 0);
+      const spent = Math.round(((measured - mode.allJsGzip) / (cap - mode.allJsGzip)) * 100);
+      console.log(
+        `[bundle] tolerance ${mode.name}: ${spent}% spent ` +
+          `(${measured} B, baseline ${mode.allJsGzip}, half-mark ${half}, budget ${cap})`,
+      );
+    }
+    expect(MODES.length).toBe(2);
+  });
+});
+
+describe("the margins are the gate", () => {
+  /**
+   * Every budget here is `baseline × margin`, so the margins are the only
+   * numbers that move ALL of them. Widening one raises every budget, lifts the
+   * half-mark so the alarm stops speaking, and breaks nothing else — the
+   * cheapest dishonest edit in the file, and the one the baseline conditions in
+   * the header did not cover.
+   *
+   * Pinned here so a widening cannot be quiet. Changing a margin is a decision
+   * about what this repo will ship to a candidate on a slow connection, and it
+   * belongs in front of a reviewer with a reason, exactly like a re-baseline.
+   */
+  it("pins the two margins, so widening one cannot be silent", () => {
+    expect(TOTAL_MARGIN, "widening the total margin raises every total budget").toBe(1.02);
+    expect(PAGE_MARGIN, "widening the page margin raises every page AND shared budget").toBe(1.05);
+  });
+
+  it("pins what budget() DOES with a margin, not only the margin", () => {
+    // The pins above fix the INPUTS. `budget` consumes them, and until this test
+    // it was free: `(m, margin) => Math.round(m * margin * 1.05)` keeps
+    // TOTAL_MARGIN at 1.02, keeps half < budget, passes both pins above, and
+    // raises the static budget to 757549. Pin the function too.
+    expect(budget(1000, TOTAL_MARGIN), "budget() must be baseline x margin, nothing more").toBe(1020);
+    expect(budget(1000, PAGE_MARGIN), "budget() must be baseline x margin, nothing more").toBe(1050);
+    expect(budget(707_329, TOTAL_MARGIN)).toBe(721_476);
+  });
+
+  it("keeps the half-mark strictly inside the budget for any margin", () => {
+    // The alarm is only useful while it fires BEFORE the gate does.
+    for (const mode of MODES) {
+      const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
+      expect(half, `${mode.name} half-mark`).toBeGreaterThan(mode.allJsGzip);
+      expect(half, `${mode.name} half-mark`).toBeLessThan(budget(mode.allJsGzip, TOTAL_MARGIN));
+    }
+  });
+});
+
 for (const mode of MODES) {
   const present = existsSync(mode.marker) && existsSync(mode.staticDir);
   const run = present ? describe : describe.skip;
@@ -168,6 +266,91 @@ for (const mode of MODES) {
       // A budget over an empty tree passes on anything. Sentinels, not faith.
       expect(jsFiles.length, `no JS under ${mode.staticDir}`).toBeGreaterThan(10);
       expect(htmlFiles.length, `no prerendered HTML under ${mode.htmlRoot}`).toBeGreaterThan(5);
+    });
+
+    /**
+     * HALF-TOLERANCE ALARM, and it is the point of this file more than the
+     * budget below is.
+     *
+     * `measured + 2%` is a TOLERANCE around a measurement, not a limit. Read
+     * only as pass/fail it can never say "too much" — only "more than the last
+     * time someone looked". The proof is dated: on 2026-09-09 `main` measured
+     * 707329 B against a 707421 B budget in CI (run 34424902483). NO SINGLE PR
+     * HAD EVER FAILED THIS GATE, and it stood 92 bytes from red on work that
+     * was already shipped. The drift was not hidden; nothing surfaced it.
+     *
+     * AND IT WORKED ON ITS FIRST RUN. Added for the static export, it
+     * immediately fired on the HOSTED build in the same CI job — 816373 B
+     * against a 810889 B half-mark — which nobody had looked at. Main's hosted
+     * total measured 817237 B against an 818917 B budget: 1680 bytes left, a
+     * second cliff found by a warning rather than by a blocked branch.
+     *
+     * So this fires at HALF the tolerance — a warning with a name, long before
+     * an unlucky branch is blocked by drift it did not cause. It is deliberately
+     * a SOFT signal: it prints and does not fail, because a hard failure at 1%
+     * is the same guard one notch tighter and would be suspended the first time
+     * a feature legitimately lands. The durable fix is to fail on the DELTA
+     * against main's last CI total, which attributes growth to its author and
+     * does not depend on the floor at all (TEN-274).
+     */
+    it("warns once a PAGE has spent half its own tolerance", () => {
+      /**
+       * THE ALARM WATCHED TWO NUMBERS AND IGNORED SIXTEEN.
+       *
+       * Every half-mark added with the total alarm was computed from
+       * `mode.allJsGzip` with `TOTAL_MARGIN` — so the two TOTALS were watched
+       * and the eight pages per mode were not. That is exactly how
+       * `report.html` reached 92.7% of its page margin on `main` (311014 of a
+       * 312099 budget, 1085 B left; hosted 90.2%, 1651 B left) with NO single
+       * PR ever failing it: nothing was looking.
+       *
+       * The page margin is wider (5% against 2%), which makes silence here
+       * cheaper to accumulate, not dearer — a page can absorb several
+       * kilobytes before anything objects, and then one ordinary PR pays for
+       * all of it.
+       *
+       * Soft, like the total alarm and for the same reason: a hard failure at
+       * half is the same guard one notch tighter, and would be suspended the
+       * first time a page legitimately grows. And unconditional per page, so a
+       * page that is FINE is also on the record — silence must not be
+       * indistinguishable from "not measured".
+       */
+      for (const [file, baseline] of Object.entries(mode.pages)) {
+        const cap = budget(baseline, PAGE_MARGIN);
+        const half = Math.round(baseline * (1 + (PAGE_MARGIN - 1) / 2));
+        const html = htmlFiles.find((f) => f.endsWith(`/${file}`));
+        if (html === undefined) continue; // the per-page budget below fails loudly for a missing page
+        const scripts = scriptsOf(html, mode).filter((f) => existsSync(f));
+        const measured = scripts.reduce((n, f) => n + gz(f), 0);
+        const spent = Math.round(((measured - baseline) / (cap - baseline)) * 100);
+        console.log(`[bundle] tolerance ${mode.name} ${file}: ${spent}% spent (${measured} B, baseline ${baseline}, half-mark ${half}, budget ${cap})`);
+        if (measured > half) {
+          console.log(
+            `[bundle] WARNING ${mode.name} ${file}: ${measured} B gzip has spent over HALF its page ` +
+              `tolerance (half-mark ${half}, budget ${cap}). Find the growth, or re-baseline from a ` +
+              "green CI run on main — see TEN-274.",
+          );
+        }
+      }
+      // Reports; the page budgets below judge.
+      expect(Object.keys(mode.pages).length).toBeGreaterThan(5);
+    });
+
+    it("warns once the build has spent HALF its tolerance", () => {
+      const measured = jsFiles.reduce((n, f) => n + gz(f), 0);
+      const cap = budget(mode.allJsGzip, TOTAL_MARGIN);
+      const half = Math.round(mode.allJsGzip * (1 + (TOTAL_MARGIN - 1) / 2));
+      if (measured > half) {
+        console.log(
+          `[bundle] WARNING ${mode.name}: ${measured} B gzip has spent over HALF the ` +
+            `tolerance (half-mark ${half}, budget ${cap}). ` +
+            "Re-baseline from a green CI run on main, or find the growth — see TEN-274.",
+        );
+      }
+      // Deliberately no assertion on `measured`: this reports, the budget below
+      // judges. The assertion is on the MARGINS, which are the real gate — see
+      // "the margins are the gate" below.
+      expect(half).toBeLessThan(cap);
     });
 
     it("ships no more client JS in total than budgeted", () => {

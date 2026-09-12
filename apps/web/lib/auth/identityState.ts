@@ -79,6 +79,46 @@ let current: Identity = PENDING;
 const listeners = new Set<() => void>();
 
 /**
+ * HOW LONG `pending` MAY LAST (TEN-214).
+ *
+ * The bridge is the only thing that leaves `pending`, and it can only publish
+ * once Clerk's script has loaded and answered. An extension, a CSP or a dead
+ * CDN means it never does, and every reader here treats `pending` as "wait" —
+ * so a finished candidate sat on "Checking what the exam service has issued
+ * for this sitting…" with no button, for ever.
+ *
+ * Eight seconds is longer than a cold Clerk load on a slow phone and shorter
+ * than a candidate's patience. It is a deadline on the WAIT, not on Clerk: a
+ * bridge that answers late still wins, because `publishIdentity` is unchanged.
+ */
+export const IDENTITY_DEADLINE_MS = 8_000;
+
+let deadline: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Start the clock the first time something actually WAITS on the identity.
+ *
+ * Armed from `subscribeIdentity` rather than at module load, because that is
+ * the moment a view exists to be stuck: a server render subscribes to
+ * nothing, and a module that armed a timer on import would do it during SSR.
+ */
+function armDeadline(): void {
+  if (deadline !== null || current.status !== "pending") return;
+  if (typeof window === "undefined" || !isClerkEnabled()) return;
+  deadline = setTimeout(() => {
+    deadline = null;
+    if (current.status !== "pending") return;
+    /* What the browser ACTUALLY has when no provider ever registered: with
+       no token source, `authHeaders()` sends the asserted dev id, and the
+       service accepts it. `asserted` is that in one word — an identity, and
+       NOT an account, so nothing offers a sign-out or counts a funnel step
+       for it. `isClerkEnabled()` implies the hosted build, so there is no
+       second case to answer here. */
+    publishIdentity(DEV_IDENTITY);
+  }, IDENTITY_DEADLINE_MS);
+}
+
+/**
  * Called by the Clerk bridge, and by nothing else.
  *
  * An id belongs to a SIGNED-IN identity and to nothing else, and that is
@@ -90,6 +130,12 @@ export function publishIdentity(next: Identity): void {
   const userId = next.status === "signed-in" ? next.userId : null;
   if (next.status === current.status && userId === current.userId) return;
   current = next.status === "signed-in" ? { status: "signed-in", userId } : SNAPSHOTS[next.status];
+  /* An answer of any kind ends the wait, so the deadline has nothing left to
+     rescue — and a timer left running would keep a test's clock alive. */
+  if (current.status !== "pending" && deadline !== null) {
+    clearTimeout(deadline);
+    deadline = null;
+  }
   for (const listener of [...listeners]) listener();
 }
 
@@ -108,6 +154,7 @@ export function readIdentity(): Identity {
 
 /** Exported for the hook below and for the test that pins the notify rule. */
 export function subscribeIdentity(listener: () => void): () => void {
+  armDeadline();
   listeners.add(listener);
   return () => void listeners.delete(listener);
 }
@@ -123,6 +170,8 @@ export function useIdentity(): Identity {
 
 /** Test hook: forget everything a bridge published. */
 export function resetIdentity(): void {
+  if (deadline !== null) clearTimeout(deadline);
+  deadline = null;
   current = PENDING;
   for (const listener of [...listeners]) listener();
 }

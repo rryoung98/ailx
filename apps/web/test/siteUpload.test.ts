@@ -15,6 +15,8 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { T1_LIMITS } from "@ailx/contract";
+import { ATTEMPT_KEY, append } from "@ailx/session";
+import { MIRROR_WAIT_MS, getAttemptPersistence } from "../lib/data/persistence";
 import {
   DIRECT_UPLOAD_MIN_BYTES,
   PLATFORM_TOO_LARGE_MESSAGE,
@@ -444,6 +446,62 @@ describe("submitT1Site", () => {
     } finally {
       vi.unstubAllGlobals();
       window.localStorage.removeItem(`foray:sync:v1:${ATTEMPT}`);
+    }
+  });
+});
+
+/**
+ * TEN-218 — the publish that never started.
+ *
+ * `submitT1Site` awaits the mirror's `flush()` first, because on the
+ * offline-start path the mirror's next pass is what creates the server
+ * attempt the upload needs. With no deadline on the mirror, one hung POST
+ * meant the candidate finished the site they had just built and the publish
+ * sat in "uploading" for ever: no error, no retry, nothing to do.
+ */
+describe("a mirror that hangs does not swallow the publish", () => {
+  it("fails visibly, with a retryable kind, instead of never starting", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
+    const mem = fakeStorage();
+    Object.defineProperty(window, "localStorage", { value: mem, configurable: true });
+    // Accepts the connection, never answers, but honours `signal` — the
+    // deadline from TEN-210 is what ends it.
+    const hang = ((_u: unknown, init?: RequestInit) =>
+      new Promise<Response>((_res, rej) => {
+        init?.signal?.addEventListener("abort", () => rej(init.signal?.reason), { once: true });
+      })) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", hang);
+    Object.defineProperty(window, "fetch", { value: hang, configurable: true });
+    try {
+      // A real sitting in progress: loading it enqueues the sync pass that
+      // then hangs, which is the state the upload has to survive.
+      const log = append([], {
+        type: "attempt_started",
+        attemptId: ATTEMPT,
+        config: {
+          instrument: "ailx", version: "2026.1", locale: "en",
+          budgets: { t1: 600, t2: 600, t3: 600, t4: 600 },
+        },
+        ts: 1000,
+      });
+      mem.setItem(ATTEMPT_KEY, JSON.stringify({ formatVersion: 1, rev: 1, log }));
+      getAttemptPersistence().load();
+      const pending = submitT1Site(ATTEMPT, { html: "<h1>site</h1>", promptLog: [], selfReport: "" })!;
+      expect(pending).not.toBeNull();
+      // `MIRROR_WAIT_MS` is the bound on WAITING for the mirror, and it is
+      // shorter than the shared request deadline on purpose: the publish
+      // proceeds rather than sitting behind a socket that has not given up.
+      await vi.advanceTimersByTimeAsync(MIRROR_WAIT_MS + 1_000);
+      const r = await pending;
+      expect(r.ok).toBe(false);
+      // `unavailable` is the kind the exam page renders WITH a "Retry upload"
+      // button (app/exam/page.tsx SiteUploadNotice).
+      expect(r).toMatchObject({ ok: false, kind: "unavailable" });
+      expect((r as { message: string }).message).toContain("saved locally");
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
     }
   });
 });
