@@ -31,7 +31,7 @@ jobs:
       contents: read
       security-events: write # publishes findings to the Security tab
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # No build step: `javascript-typescript` analyses source directly, so
       # this never needs pnpm, a lockfile install, or a Next build.
       - uses: github/codeql-action/init@v3

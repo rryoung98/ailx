@@ -75,6 +75,7 @@ const notFound = vi.fn(() => {
 const TOKEN = "b".repeat(43);
 vi.mock("next/navigation", () => ({ notFound, useParams: () => ({ token: "b".repeat(43) }) }));
 
+const { SERVICE_INVALID_COPY } = await import("../lib/data/serviceFetch");
 const { ShareView } = await import("../features/share/ShareView");
 const { generateMetadata } = await import("../app/s/[token]/page.api");
 
@@ -324,5 +325,36 @@ describe("passing the link on", () => {
       expect(decoded).not.toContain(payload.band);
       for (const v of Object.values(payload.tracks)) expect(decoded).not.toContain(v.toFixed(1));
     }
+  });
+});
+
+/**
+ * TEN-216 — a 200 whose body is not a share view.
+ *
+ * The payload is dereferenced all the way down by the card, so a cast made
+ * wire drift a crash on the page the whole growth loop points at. The seam
+ * validates the body now.
+ */
+describe("a 200 whose body is not the shape /share/:token promises", () => {
+  it("says the answer was unreadable rather than throwing into the boundary", async () => {
+    const { payload: _payload, ...withoutPayload } = view;
+    result = { status: 200, body: { share: withoutPayload } };
+    const html = await markup();
+    expect(html).toContain(SERVICE_INVALID_COPY);
+    expect(html).not.toContain(payload.playerType.name);
+    // Not a 404 either: a withdrawn capability is a different fact.
+    expect(notFound).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The ADJACENT path of the same class, and the one a stranger sees FIRST:
+   * the metadata and the card are read on the SERVER, where the same cast
+   * lived. An unreadable body must unfurl as "link not found", never as a
+   * TypeError inside `generateMetadata`.
+   */
+  it("unfurls as not-found when the server read cannot be understood", async () => {
+    result = { status: 200, body: { share: { nope: 1 } } };
+    const meta = await generateMetadata(params);
+    expect(meta.title).toContain("link not found");
   });
 });

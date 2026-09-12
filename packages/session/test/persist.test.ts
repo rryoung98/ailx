@@ -125,6 +125,44 @@ describe("validated load (audit: multi-tab / duplicate-append protection)", () =
     st.setItem(ATTEMPT_KEY, JSON.stringify({ formatVersion: 1, log: [{ type: "track_started", trackId: "t1", ts: 1, seq: 0 }] }));
     expect(loadAttempt(st)).toBeNull();
   });
+
+  /**
+   * A log that drops EVERYTHING is the same fact as a log that drops its
+   * tail, and used to be reported as "there was no run" — so the candidate
+   * started over with no sentence at all (TEN-220).
+   */
+  it("reports a log dropped from entry 0 as a drop, never as an absent run", () => {
+    const st = memStorage();
+    st.setItem(
+      ATTEMPT_KEY,
+      JSON.stringify({ formatVersion: 1, log: [{ type: "track_started", trackId: "t1", ts: 1, seq: 0 }] }),
+    );
+    const v = loadAttemptValidated(st);
+    expect(v).not.toBeNull();
+    expect(v!.log).toHaveLength(0);
+    expect(v!.dropped).toBe(1);
+    expect(v!.reason).toContain("rejected");
+  });
+
+  /**
+   * The ADJACENT path of the same class: a stored attempt whose BYTES cannot
+   * be read at all (a half-written JSON, a shape from another build) loses
+   * exactly as much work and must not be silent either.
+   */
+  it("reports an unreadable stored attempt as a drop, never as an absent run", () => {
+    const st = memStorage();
+    st.setItem(ATTEMPT_KEY, "{not json");
+    const corrupt = loadAttemptValidated(st);
+    expect(corrupt).not.toBeNull();
+    expect(corrupt!.dropped).toBeGreaterThan(0);
+    st.setItem(ATTEMPT_KEY, JSON.stringify({ formatVersion: 2, log: [] }));
+    const wrongShape = loadAttemptValidated(st);
+    expect(wrongShape).not.toBeNull();
+    expect(wrongShape!.dropped).toBeGreaterThan(0);
+    // Nothing stored at all is still "there was no run".
+    st.removeItem(ATTEMPT_KEY);
+    expect(loadAttemptValidated(st)).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

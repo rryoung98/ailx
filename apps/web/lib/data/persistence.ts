@@ -17,12 +17,14 @@ import { apiPath, type ApiPath } from "@ailx/contract";
 import {
   clearAttempt,
   loadAttemptValidated,
+  SaveConflictError,
   saveAttempt,
   type SequencedEntry,
   type StorageLike,
   type ValidatedLog,
 } from "@ailx/session";
 import { serviceHeaders } from "./traceparent";
+import { deadline, isTimeout, type CallClass } from "./deadline";
 import { apiBase, isServerMode, siteApiRoot } from "../mode";
 
 /**
@@ -33,13 +35,67 @@ import { apiBase, isServerMode, siteApiRoot } from "../mode";
  */
 export { DEV_USER_KEY, clearDevUser, devUser } from "./authHeaders";
 
+/**
+ * Where this attempt's SERVER copy has got to.
+ *
+ * It exists because "the mirror failed" used to be a line in the console and
+ * nothing else (TEN-123), and because the one failure that matters — the
+ * finalize POST — happens after the last thing the candidate does, so no
+ * later `save()` was ever going to retry it (TEN-206). A status a surface can
+ * read is what lets the completion screen and the report say "your sitting is
+ * not scored yet" instead of showing a report with no score of record, no
+ * reason and no action.
+ */
+export type SyncPhase =
+  /** Static build, or nothing mirrored yet. There is no server copy to wait for. */
+  | "idle"
+  /** A pass is queued or running. */
+  | "pending"
+  /** Everything in the local log is on the server. */
+  | "synced"
+  /** The last pass failed and the bounded retries are used up. */
+  | "failed";
+
+export interface SyncStatus {
+  readonly phase: SyncPhase;
+  /** True once the service has finalized this attempt — and so scored it. */
+  readonly finalized: boolean;
+  /**
+   * The sitting is COMPLETE in this browser and the service has not finalized
+   * it. Nothing else issues the score of record (TEN-66), so while this is
+   * true the sitting has no score and the candidate must be told.
+   */
+  readonly finalizePending: boolean;
+  /** Failed passes since the last success. Zero after any success. */
+  readonly failures: number;
+  /** Why the last pass failed, as a sentence. Absent when nothing has failed. */
+  readonly message?: string;
+}
+
+const IDLE_STATUS: SyncStatus = Object.freeze({
+  phase: "idle",
+  finalized: false,
+  finalizePending: false,
+  failures: 0,
+});
+
 export interface AttemptPersistence {
   load(): ValidatedLog | null;
   /** Synchronous; throws SaveConflictError on multi-tab races (unchanged). */
   save(log: readonly SequencedEntry[]): void;
   clear(): void;
-  /** Resolves when pending server sync (if any) has settled. */
-  flush(): Promise<void>;
+  /** Resolves when pending server sync (if any) has settled, WITH its outcome. */
+  flush(): Promise<SyncStatus>;
+  /** The mirror's state right now, synchronously. */
+  status(): SyncStatus;
+  /**
+   * Ask again, now — the candidate pressing Retry, or a surface that owes
+   * them an answer. Re-reads the stored log first, so a page that never ran
+   * the sitting (the report) can still push it over the line.
+   */
+  resume(): Promise<SyncStatus>;
+  /** Called on every status change. Returns the unsubscribe. */
+  subscribe(fn: (status: SyncStatus) => void): () => void;
 }
 
 export function createLocalPersistence(storage: StorageLike): AttemptPersistence {
@@ -47,7 +103,13 @@ export function createLocalPersistence(storage: StorageLike): AttemptPersistence
     load: () => loadAttemptValidated(storage),
     save: (log) => saveAttempt(storage, log),
     clear: () => clearAttempt(storage),
-    flush: () => Promise.resolve(),
+    flush: () => Promise.resolve(IDLE_STATUS),
+    status: () => IDLE_STATUS,
+    resume: () => Promise.resolve(IDLE_STATUS),
+    // A local-only build has no server copy, so its status can never change.
+    // The subscription is still offered so a surface has one shape to code
+    // against in both builds.
+    subscribe: () => () => {},
   };
 }
 
@@ -133,19 +195,72 @@ function writeSyncState(storage: StorageLike, clientAttemptId: string, state: Sy
   }
 }
 
-/** Single GET path: same auth header, same error rule as {@link postJson}. */
+/**
+ * How long anything WAITING on the mirror may wait for it — the bound on
+ * `flush()`, and on nothing else.
+ *
+ * The REQUESTS are bounded by TEN-210's shared table (`deadline(callClass)`),
+ * which is where a socket's bound belongs. This number is a different claim:
+ * a pass is several requests, and the T1 upload that awaits `flush()` must
+ * not be parked for their sum. Without it one stalled POST never settled the
+ * serialized chain, and the publish never began, never failed and could not
+ * be retried (TEN-218).
+ */
+export const MIRROR_WAIT_MS = 12_000;
+
+/**
+ * A promise, or an ABANDONMENT. Used for `flush()` only.
+ *
+ * It RESOLVES when the time is up — it does not reject — because the caller's
+ * next move is to proceed, not to fail: the pass keeps its own abort and
+ * retries from `syncedThrough`, and `flush()` returns the status so the
+ * caller can see it has not landed. `withDeadline` in `lib/data/deadline.ts`
+ * is the rejecting version of the same shape; this one is named differently
+ * on purpose, because importing the wrong one here would silently turn a
+ * proceeding publish into a failing one.
+ */
+function settleWithin(work: Promise<unknown>, ms: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    void work.then(
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+    );
+  });
+}
+
+/**
+ * Single GET path: same auth header, same error rule as {@link postJson}, and
+ * the same BOUND. Every request through this module carries a deadline from
+ * `lib/data/deadline.ts` — before TEN-210 none of them did, so a stalled
+ * socket parked the mirror queue for the life of the tab and no `catch` in
+ * this file could ever run.
+ */
 async function getJson(
   storage: StorageLike,
   opts: ApiPersistenceOptions,
   path: ApiPath,
+  callClass: CallClass = "read",
 ): Promise<Record<string, unknown>> {
-  const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
-    headers: await serviceHeaders(storage),
-  });
-  if (!res.ok) {
-    throw new Error(`GET ${path} failed: ${res.status}`);
+  const bound = deadline(callClass);
+  try {
+    const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
+      headers: await serviceHeaders(storage),
+      signal: bound.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`GET ${path} failed: ${res.status}`);
+    }
+    return (await res.json()) as Record<string, unknown>;
+  } finally {
+    bound.settle();
   }
-  return (await res.json()) as Record<string, unknown>;
 }
 
 /** Single POST path shared by the mirror and attempt pre-creation. */
@@ -154,19 +269,26 @@ async function postJson(
   opts: ApiPersistenceOptions,
   path: ApiPath,
   body?: unknown,
+  callClass: CallClass = "write",
 ): Promise<Record<string, unknown>> {
-  const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(await serviceHeaders(storage)),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  if (!res.ok) {
-    throw new Error(`POST ${path} failed: ${res.status}`);
+  const bound = deadline(callClass);
+  try {
+    const res = await opts.fetchFn(`${opts.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(await serviceHeaders(storage)),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: bound.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`POST ${path} failed: ${res.status}`);
+    }
+    return (await res.json()) as Record<string, unknown>;
+  } finally {
+    bound.settle();
   }
-  return (await res.json()) as Record<string, unknown>;
 }
 
 /**
@@ -178,31 +300,157 @@ export function getServerAttemptId(storage: StorageLike, clientAttemptId: string
   return readSyncState(storage, clientAttemptId).serverAttemptId;
 }
 
+/**
+ * How long the mirror waits before asking again, and therefore HOW MANY TIMES
+ * it asks: four entries, so four automatic retries and then it stops.
+ *
+ * Bounded on purpose. An unbounded retry loop against a service that is
+ * refusing is a browser hammering a sick server, and — worse for the person
+ * in front of it — a spinner that is indistinguishable from progress. When
+ * these are used up the status goes to `failed`, the surfaces say so, and the
+ * next attempt is the candidate's own (`resume()`). The delays grow so a cold
+ * start (measured at 1213 ms, docs/ADR-redis.md) and a short outage are both
+ * absorbed without a person having to do anything.
+ */
+const RETRY_BACKOFF_MS = [1_000, 4_000, 10_000, 30_000] as const;
+
+/** The failure, as one sentence a candidate can be shown. */
+function syncFailureMessage(err: unknown): string {
+  if (isTimeout(err)) return "the Foray service did not answer in time";
+  return err instanceof Error ? err.message : String(err);
+}
+
 class ServerMirror {
   private lastLog: readonly SequencedEntry[] = [];
   private inflight: Promise<void> = Promise.resolve();
+  private phase: SyncPhase = "idle";
+  private failures = 0;
+  private message: string | undefined;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly listeners = new Set<(status: SyncStatus) => void>();
 
   constructor(
     private readonly storage: StorageLike,
     private readonly opts: ApiPersistenceOptions,
   ) {}
 
-  /** Queue a sync pass for `log`. Passes are serialized; failures retry on the next call. */
+  /**
+   * Queue a sync pass for `log`. Passes are serialized.
+   *
+   * A failure used to be retried only when something else called `save()` or
+   * `load()`. That is exactly why a failed FINALIZE was permanent: it is the
+   * pass that follows the last thing the candidate ever does, so nothing was
+   * coming to trigger it (TEN-206). The retry is now this module's own, and
+   * bounded — see {@link RETRY_BACKOFF_MS}.
+   */
   enqueue(log: readonly SequencedEntry[]): void {
     this.lastLog = log;
+    if (this.retryTimer !== null) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    this.setPhase("pending");
     this.inflight = this.inflight.then(() =>
-      this.syncPass().catch((err) => {
-        (this.opts.onSyncError ?? ((e) => console.warn("[ailx sync]", e)))(err);
-      }),
+      this.syncPass().then(
+        () => {
+          this.failures = 0;
+          this.message = undefined;
+          this.setPhase("synced");
+        },
+        (err: unknown) => {
+          this.failures += 1;
+          this.message = syncFailureMessage(err);
+          // Reported on EVERY failed pass, including the ones a retry is
+          // about to follow: a host that wants to log or count them sees all
+          // of them, and the phase below says whether anything more will
+          // happen on its own.
+          (this.opts.onSyncError ?? ((e) => console.warn("[ailx sync]", e)))(err);
+          this.scheduleRetry();
+        },
+      ),
     );
   }
 
-  flush(): Promise<void> {
-    return this.inflight;
+  /** Ask again now, on the candidate's say-so. Resets the retry budget. */
+  retryNow(log?: readonly SequencedEntry[]): Promise<SyncStatus> {
+    this.failures = 0;
+    const next = log ?? this.lastLog;
+    if (next.length > 0) this.enqueue(next);
+    return this.flush();
   }
 
-  private post(path: ApiPath, body?: unknown): Promise<Record<string, unknown>> {
-    return postJson(this.storage, this.opts, path, body);
+  status(): SyncStatus {
+    const log = this.lastLog;
+    const first = log[0];
+    const sync =
+      first?.type === "attempt_started" ? readSyncState(this.storage, first.attemptId) : undefined;
+    const completedLocally = log.length > 0 && log[log.length - 1].type === "attempt_completed";
+    const finalized = sync?.finalized === true;
+    return {
+      phase: this.phase,
+      finalized,
+      finalizePending: completedLocally && !finalized,
+      failures: this.failures,
+      ...(this.message === undefined ? {} : { message: this.message }),
+    };
+  }
+
+  subscribe(fn: (status: SyncStatus) => void): () => void {
+    this.listeners.add(fn);
+    return () => {
+      this.listeners.delete(fn);
+    };
+  }
+
+  /**
+   * Wait for the serialized sync chain — but NOT for ever — then report where
+   * it got to.
+   *
+   * Two bounds, and they are not the same bound. Every request in a pass
+   * carries `deadline(callClass)` from TEN-210, which stops the SOCKET. This
+   * one stops the WAIT: a pass can make several bounded requests, and a
+   * caller of `flush()` (the T1 site upload) must not be parked for their
+   * sum. It ABANDONS rather than rejects — see {@link settleWithin} — so the
+   * upload proceeds and the mirror keeps retrying behind it (TEN-218).
+   *
+   * Deliberately NOT `withDeadline` from `lib/data/deadline.ts`: that one
+   * REJECTS, which would turn "the publish starts anyway" into "the publish
+   * fails". Same idea, opposite answer, so it has a different name here.
+   */
+  async flush(): Promise<SyncStatus> {
+    await settleWithin(this.inflight, MIRROR_WAIT_MS);
+    return this.status();
+  }
+
+  private setPhase(phase: SyncPhase): void {
+    this.phase = phase;
+    const snapshot = this.status();
+    for (const fn of this.listeners) fn(snapshot);
+  }
+
+  /**
+   * The next automatic attempt, or none.
+   *
+   * `failed` is a terminal phase, not a pause: it is what a surface renders a
+   * retry button from. Getting there needs every entry of the backoff table
+   * to have been spent, so a candidate is only asked to act once this module
+   * has stopped being able to help.
+   */
+  private scheduleRetry(): void {
+    const wait = RETRY_BACKOFF_MS[this.failures - 1];
+    if (wait === undefined) {
+      this.setPhase("failed");
+      return;
+    }
+    this.setPhase("pending");
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (this.lastLog.length > 0) this.enqueue(this.lastLog);
+    }, wait);
+  }
+
+  private post(path: ApiPath, body?: unknown, callClass: CallClass = "write"): Promise<Record<string, unknown>> {
+    return postJson(this.storage, this.opts, path, body, callClass);
   }
 
   private async syncPass(): Promise<void> {
@@ -216,7 +464,7 @@ class ServerMirror {
 
     if (!state.serverAttemptId) {
       const created = await this.post(apiPath("createAttempt"), {});
-      state.serverAttemptId = (created.attempt as { id: string }).id;
+      state.serverAttemptId = createdAttemptId(created, apiPath("createAttempt"));
       this.write(clientAttemptId, state);
     }
     for (let i = state.syncedThrough; i < log.length; i++) {
@@ -230,7 +478,10 @@ class ServerMirror {
       this.write(clientAttemptId, state);
     }
     if (log[log.length - 1].type === "attempt_completed") {
-      await this.post(apiPath("finalizeAttempt", { id: state.serverAttemptId }));
+      // The one request that makes a sitting SCORED (TEN-66). Its own bound,
+      // because the service issues every track score inside it and that is
+      // real work, not a round trip.
+      await this.post(apiPath("finalizeAttempt", { id: state.serverAttemptId }), undefined, "finalize");
       state.finalized = true;
       this.write(clientAttemptId, state);
     }
@@ -254,8 +505,26 @@ export function createApiPersistence(
       return v;
     },
     save: (log) => {
-      local.save(log); // Local write is authoritative — throws before any mirroring.
-      mirror.enqueue([...log]);
+      // ORDER MATTERS, and it used to be wrong (TEN-208). The local write
+      // came first and threw, so on a full localStorage the entry reached
+      // NEITHER store: the mirror line below never ran. The two stores are
+      // independent, and the server's is the one a score of record is
+      // computed from, so a local failure may not take it down as well.
+      //
+      // A CONFLICT is the exception, and it is why this is not a bare
+      // try/finally. `SaveConflictError` means another tab owns this attempt
+      // and has written past us; mirroring our log then would push a
+      // divergent branch of the same attempt at the server. That failure
+      // still propagates before any mirroring, exactly as it did.
+      const snapshot = [...log];
+      try {
+        local.save(log);
+      } catch (err) {
+        if (err instanceof SaveConflictError) throw err;
+        mirror.enqueue(snapshot);
+        throw err;
+      }
+      mirror.enqueue(snapshot);
     },
     clear: () => {
       // Server rows are append-only and stay; only local state is dropped.
@@ -267,7 +536,53 @@ export function createApiPersistence(
       local.clear();
     },
     flush: () => mirror.flush(),
+    status: () => mirror.status(),
+    resume: () => {
+      // Re-read the stored log first: the surface that owes the candidate an
+      // answer is often not the one that ran the sitting. /report loads a
+      // fresh persistence for the same attempt, and before this it fired no
+      // pass at all — which is how a failed finalize became a report with no
+      // score, no reason and no action (TEN-206).
+      const v = local.load();
+      if (v && v.log.length > 0) return mirror.retryNow([...v.log]);
+      return mirror.retryNow();
+    },
+    subscribe: (fn) => mirror.subscribe(fn),
   };
+}
+
+/**
+ * The service answered, and what it said is not the shape this build knows.
+ *
+ * TYPED, because the two create paths have different readers: the start path
+ * puts the message in front of the candidate, and the mirror hands it to
+ * `onSyncError`. Both used to dereference the body and produce
+ * `Cannot read properties of undefined` — a raw TypeError shown to a person
+ * (TEN-230). An `id` that is present but not a NON-EMPTY STRING is refused
+ * here too, because it would otherwise throw one route later, inside
+ * `apiPath()`, on every sync pass for the rest of the sitting.
+ */
+export class ServiceShapeError extends Error {
+  constructor(path: string, what: string) {
+    super(`the exam service answered ${path} with something this build cannot read: ${what}`);
+    this.name = "ServiceShapeError";
+  }
+}
+
+/**
+ * The server attempt id out of a create response. One reader, two call sites
+ * (the mirror and the pre-created start), so they cannot disagree.
+ */
+function createdAttemptId(created: Record<string, unknown>, path: string): string {
+  const attempt = created.attempt;
+  if (typeof attempt !== "object" || attempt === null) {
+    throw new ServiceShapeError(path, "no `attempt` object in the body");
+  }
+  const id = (attempt as { id?: unknown }).id;
+  if (typeof id !== "string" || id === "") {
+    throw new ServiceShapeError(path, "`attempt.id` is not a non-empty string");
+  }
+  return id;
 }
 
 /** One track's exposure record, as POST /attempts returns it. */
@@ -348,7 +663,7 @@ export async function createServerAttempt(
   locale: string,
 ): Promise<string> {
   const created = await postJson(storage, opts, apiPath("createAttempt"), { locale, decks: true });
-  const id = (created.attempt as { id: string }).id;
+  const id = createdAttemptId(created, apiPath("createAttempt"));
   const recorded = readDecks(created);
   writeSyncState(storage, id, {
     serverAttemptId: id,
@@ -607,6 +922,15 @@ export async function startServerAttempt(locale: string): Promise<string | null>
  */
 const byStorage = new WeakMap<object, AttemptPersistence>();
 
+/**
+ * TEN-123 wanted a "not saved" indicator and added a module-level
+ * `mirrorSyncState` plus an `onSyncOk` callback to drive it. Both are gone:
+ * the mirror already publishes its own state (`status()` / `subscribe()`,
+ * TEN-206), so a second store of the same fact is one more thing that can
+ * disagree with the completion screen. `MirrorWarning` reads `useSyncStatus`
+ * instead, and `failures > 0` is the same claim the callback pair made —
+ * a pass has failed and nothing has landed since.
+ */
 export function browserApiOptions(): ApiPersistenceOptions {
   return {
     baseUrl: apiBase(),

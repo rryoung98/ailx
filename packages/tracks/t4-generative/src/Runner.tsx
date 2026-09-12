@@ -165,6 +165,10 @@ export function Runner(props: TrackUIProps) {
   const [customModel, setCustomModel] = useState("");
   const [genBusy, setGenBusy] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  // The cancel control for the call in flight (TEN-212). An image call has a
+  // deadline now, but a candidate on a clock should not have to wait out
+  // someone else's 90 seconds before trying a different prompt.
+  const genAbort = useRef<AbortController | null>(null);
   // Full-resolution originals per draft index (session only, never stored
   // in checkpoints — drafts persist a ≤200KB copy; finals promote these).
   const fullRes = useRef<Map<number, string>>(new Map());
@@ -294,6 +298,8 @@ export function Runner(props: TrackUIProps) {
       onFail();
       return;
     }
+    const controller = new AbortController();
+    genAbort.current = controller;
     setGenBusy(true);
     setGenError(null);
     try {
@@ -301,6 +307,7 @@ export function Runner(props: TrackUIProps) {
         modelFetch,
         buildImageRequest(p, effectiveModel),
         baseUrl,
+        { signal: controller.signal },
       );
       // Drafts persist a downscaled ≤200KB copy; the full-res original is
       // kept in memory for final promotion. If recompression fails we keep
@@ -319,9 +326,13 @@ export function Runner(props: TrackUIProps) {
       );
       onFail();
     } finally {
+      genAbort.current = null;
       setGenBusy(false);
     }
   };
+
+  /** Give up on the call in flight. The prompt comes back with it. */
+  const stopGeneration = () => genAbort.current?.abort();
 
   const generateDraft = async () => {
     // promptRef, not `prompt`: two Enter presses in one React batch share the
@@ -746,6 +757,14 @@ export function Runner(props: TrackUIProps) {
             >
               Regenerate last
             </button>
+            {/* Only while a real call is in flight: a stall has a 90s deadline
+                (TEN-212), and this is how a candidate on a clock takes that
+                minute and a half back instead of watching a disabled button. */}
+            {genBusy && realMode && (
+              <button type="button" className="t4-btn" onClick={stopGeneration}>
+                Stop
+              </button>
+            )}
           </div>
           </>
           )}

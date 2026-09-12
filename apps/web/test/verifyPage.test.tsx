@@ -27,6 +27,7 @@ import {
   stubFailingFetch,
   stubHangingFetch,
 } from "./helpers/clientPage";
+import { SERVICE_INVALID_COPY } from "../lib/data/serviceFetch";
 
 function completedState(): SessionState {
   const s = initialState();
@@ -170,11 +171,19 @@ describe("how it reads the credential", () => {
     expect(html).not.toContain("Cannot be confirmed");
   });
 
-  it("refuses a document that is not shaped like ours", async () => {
+  /**
+   * A document this build cannot read is OUR bug, not a verdict on the
+   * credential. It used to render "Cannot be confirmed" — the same sentence
+   * an unknown code gets — which tells a stranger something false about a
+   * credential that may be perfectly valid (TEN-216). The seam validates the
+   * body now, so the page says the service answered unreadably.
+   */
+  it("says a document it cannot read is OUR bug, not a verdict", async () => {
     document_ = { hello: "world" };
-    expect(dom(await markup()).querySelector(".verify-status")!.textContent).toBe(
-      "Cannot be confirmed",
-    );
+    const html = await markup();
+    expect(html).toContain(SERVICE_INVALID_COPY);
+    expect(html).not.toContain("Cannot be confirmed");
+    expect(html).not.toContain("Verified");
   });
 });
 

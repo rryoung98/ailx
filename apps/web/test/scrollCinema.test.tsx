@@ -52,9 +52,9 @@ describe("pinned scrubbed hero structure", () => {
     const phaseB = h.querySelector(".hero-phase-b");
     expect(phaseB).not.toBeNull();
     expect(phaseB!.getAttribute("aria-hidden")).toBe("true");
-    expect(phaseB!.textContent).toContain("Benchmarks are a hundred numbers.");
-    expect(phaseB!.textContent).toContain("one score");
-    expect(phaseB!.querySelector(".script-accent")?.textContent).toBe("one");
+    expect(phaseB!.textContent).toContain("Understand what AI can do.");
+    expect(phaseB!.textContent).toContain("Decide how you use it.");
+    expect(phaseB!.querySelector(".script-accent")?.textContent).toBe("you");
   });
 
   it("nests the sticky stage inside the scrub wrapper, hero phase A inside the stage", async () => {
@@ -237,5 +237,103 @@ describe("expanding desk panel (full-bleed scrub)", () => {
     const fg = [26, 26, 26]; // --fg
     const [hi, lo] = [lum(comp), lum(fg)].sort((x, y) => y - x);
     expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("hero fade leaves nothing clickable behind (TEN-222)", () => {
+  /** The declarations at a keyframes rule's final stop, as a style string. */
+  const finalStop = (name: string): string => {
+    const at = css.indexOf(`@keyframes ${name}`);
+    expect(at).toBeGreaterThan(-1);
+    const block = css.slice(at, css.indexOf("}", css.indexOf("}", at) + 1) + 1);
+    const stops = [...block.matchAll(/(?:to|100%)\s*\{([^}]*)\}/g)];
+    expect(stops.length).toBeGreaterThan(0);
+    return stops[stops.length - 1][1].trim();
+  };
+
+  /**
+   * Every rule that RUNS this animation, with the fill mode it declares —
+   * from the shorthand, or from an `animation-fill-mode` longhand that
+   * overrides it later in the same block.
+   *
+   * BOTH spellings of "run this animation" are matched: `animation: name …`
+   * and the `animation-name: name` longhand. globals.css already uses the
+   * longhand once (`.tv3-b2`), so a shorthand-only matcher would skip a
+   * future longhand hero rule in SILENCE — this guard would still be green
+   * while checking nothing. One rule may spell it both ways, so a block is
+   * reported once.
+   */
+  const runners = (name: string): Array<{ block: string; fill: string }> => {
+    const out = new Map<number, { block: string; fill: string }>();
+    const runs = new RegExp(`animation(?:-name)?:\\s*[^;]*\\b${name}\\b[^;]*;`, "g");
+    for (const m of css.matchAll(runs)) {
+      const at = css.lastIndexOf("{", m.index) + 1;
+      const block = css.slice(at, css.indexOf("}", m.index));
+      const shorthand = /animation:\s*[^;]+;/.exec(block)?.[0];
+      const longhand = /animation-fill-mode:\s*([^;]+);/.exec(block)?.[1];
+      // No fill declared in either spelling is not a crash: it is `none`,
+      // the CSS initial value, and the assertions below must SEE that.
+      out.set(at, { block, fill: (longhand ?? shorthand ?? "none").trim() });
+    }
+    expect(out.size, `a rule running ${name}`).toBeGreaterThan(0);
+    return [...out.values()];
+  };
+
+  it("sees a rule that runs an animation through the animation-name LONGHAND", () => {
+    // The matcher above is the whole guard: a hero rule it does not see is a
+    // rule this file checks nothing about, SILENTLY. globals.css already
+    // spells one animation the longhand way (`.tv3-b2 { … animation-name:
+    // tv3In2; }`), so the shorthand-only form of this matcher was one
+    // longhand hero rule away from passing while checking nothing.
+    const found = runners("tv3In2");
+    expect(found).toHaveLength(1);
+    expect(found[0].block).toContain("animation-name: tv3In2");
+    // That block declares no fill mode at all, in either spelling — which is
+    // the CSS initial value, and is reported as such rather than crashing.
+    expect(found[0].fill).toBe("none");
+  });
+
+  it("fills the fade BOTH ways, which is what keeps the final stop on screen", () => {
+    // This is the property that carries the fix, not the keyframe. A
+    // scroll-driven animation with `animation-fill-mode: none` drops every
+    // keyframed value the moment the scrub leaves its range — so the hero
+    // stage, still pinned over the viewport, would go back to opacity 1 and
+    // visibility: visible with the CTAs clickable underneath. The keyframe
+    // test above cannot see that: it applies the final stop by hand.
+    for (const name of ["heroFadeOut", "heroSettle"]) {
+      for (const { block, fill } of runners(name)) {
+        expect(fill, `${name} fill mode`).toMatch(/\bboth\b/);
+        // ...and it is the scrub that drives it, so "the range is over" is a
+        // state the page really sits in for the rest of the pin.
+        expect(block).toMatch(/animation-timeline:\s*--hero-scrub/);
+      }
+    }
+  });
+
+  it("heroFadeOut and heroSettle end hidden, not merely transparent", () => {
+    // opacity: 0 alone leaves the subtree hit-testable and in the tab order.
+    for (const name of ["heroFadeOut", "heroSettle"]) {
+      expect(finalStop(name)).toMatch(/visibility:\s*hidden/);
+    }
+  });
+
+  it("the faded drill and both CTAs are unfocusable once the fade has completed", async () => {
+    const h = await render(createElement(Home));
+    const cta = h.querySelector(".hero-cta.hero-fade") as HTMLElement | null;
+    const play = h.querySelector(".hero-play.hero-fade") as HTMLElement | null;
+    expect(cta).not.toBeNull();
+    expect(play).not.toBeNull();
+    // Play the fade to its end: jsdom runs no animation, so apply the final
+    // stop's own declarations, which is exactly what `animation-fill-mode:
+    // both` leaves on screen for the rest of the pin.
+    for (const el of [cta!, play!]) el.style.cssText = finalStop("heroFadeOut");
+    const controls = [...h.querySelectorAll(".hero-cta.hero-fade a, .hero-play.hero-fade button")];
+    expect(controls.length).toBeGreaterThanOrEqual(3); // 2 CTAs + drill buttons
+    for (const c of controls) {
+      // jsdom's focus() implements no rendering check, so assert the spec
+      // condition instead: a visibility:hidden element is not a focusable
+      // area (HTML §6.6.2) and is not hit-testable.
+      expect(getComputedStyle(c).visibility).toBe("hidden");
+    }
   });
 });

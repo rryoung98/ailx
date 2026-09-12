@@ -270,19 +270,21 @@ export const MIN_TREND_ANSWERS = 12;
  * page and its tests share a single wording (DRY) and it cannot drift.
  *
  * It used to say practice answers are "graded on the server", full stop. That
- * was false for the anonymous on-ramp: a signed-out round is recorded only in
- * the browser's own ledger (`localPractice.ts`, and the drill's
- * `recorded = server && signed-in` rule), so the service has nothing to grade
- * and /progress could only ever show zero while /practice showed a streak
- * (TEN-132). Both places a practice day can live are now named.
+ * was false for the anonymous on-ramp: a round the service cannot attribute
+ * to anybody is recorded only in the browser's own ledger
+ * (`localPractice.ts`), so the service has nothing to grade and /progress
+ * could only ever show zero while /practice showed a streak (TEN-132).
+ *
+ * The replacement said "while signed in", which claims more than the code
+ * does: the drill's rule is `hasIdentity(identity.status)`
+ * (`apps/web/features/practice/PracticeDrill.tsx`), and a hosted build with
+ * no Clerk records a round for an asserted dev identity nobody signed in to.
+ * So the sentence names IDENTITY, which is the question the code asks, and it
+ * names the claim, because a browser-kept day does reach an account when the
+ * service can finally identify the browser holding it.
  */
 export const PROGRESS_BASIS =
-  "Counted from what you actually did. Practice you finish while signed in is recorded and "
-  + "graded by the exam service. Practice you do signed out is kept by your browser and never "
-  + "reaches the service, so only that browser can show it. Each sitting's figures are that "
-  + "run's own scorer output from its stored event log. No percentile, no composite and "
-  + "no judged result — the judging pipeline is not built yet, so a number implying one "
-  + "would be a claim we cannot back.";
+  "The exam service records practice it can link to your identity. Other practice stays in your browser until you transfer it. Exam figures come from each run's saved record. No percentile, no composite and no judged result are shown here. The judging pipeline is not built yet.";
 
 /**
  * What a movement in practice accuracy is, and — much more important — what
@@ -304,10 +306,7 @@ export const PROGRESS_BASIS =
  *     "improvement" manufactures confidence it cannot back.
  */
 export const PRACTICE_ACCURACY_CAVEAT =
-  "This is your hit rate on a small corpus you meet again and again, so part of any rise is "
-  + "recognising pictures you have already been given the answer to. It also cannot tell a "
-  + "better eye from a greater readiness to call something AI — both look the same in a "
-  + "percentage. Read it as a record of what you did here, not as your detection getting better.";
+  "This percentage shows how often you answered correctly on a small, repeating image set. A rise may mean you remember answers or choose AI-generated more often. It does not prove your detection skills improved.";
 
 /**
  * A movement between two figures. The name is the WIRE name and is kept for
@@ -333,7 +332,6 @@ export interface ProgressReport {
   sittings: SittingPoint[];
   /** Only what genuinely moved; empty is a legitimate answer. */
   improvements: Improvement[];
-  basis: string;
   /** Why a figure is missing, so the page never shows a silent blank. */
   notEnoughYet: { practice: boolean; sittings: boolean };
 }
@@ -419,7 +417,6 @@ export function progressReport(input: {
     practiceAccuracy,
     sittings,
     improvements,
-    basis: PROGRESS_BASIS,
     notEnoughYet: {
       practice: practice.filter((p) => p.sessions > 0).length < MIN_TREND_DAYS,
       sittings: sittings.length < 2,

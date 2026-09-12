@@ -141,7 +141,10 @@ describe("the unlock gate counts a score of record wherever it was issued", () =
   });
 
   it("does not lock a finished sitting while the first read is in flight", () => {
-    const view = reportGate({ localScored: ["t1", "t4"], scores: undefined as never, reading: true });
+    // `null`, not `undefined as never`: the page passes `scores ?? null`
+    // (`app/report/page.tsx`), so a test that fed `undefined` asserted a
+    // shape the runtime never produces.
+    const view = reportGate({ localScored: ["t1", "t4"], scores: null, reading: true });
     expect(view.lede).not.toMatch(/finish the run/i);
     expect(view.cta).toBeNull();
   });
