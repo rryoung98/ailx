@@ -14,7 +14,7 @@
  * SDK through this file.
  */
 import { useSyncExternalStore } from "react";
-import { isClerkEnabled, isServerMode } from "../mode";
+import { isServerMode } from "../mode";
 
 /**
  * `pending` is a real state, not a loading spinner's excuse: Clerk resolves a
@@ -104,7 +104,7 @@ let deadline: ReturnType<typeof setTimeout> | null = null;
  */
 function armDeadline(): void {
   if (deadline !== null || current.status !== "pending") return;
-  if (typeof window === "undefined" || !isClerkEnabled()) return;
+  if (typeof window === "undefined" || !isServerMode()) return;
   deadline = setTimeout(() => {
     deadline = null;
     if (current.status !== "pending") return;
@@ -112,7 +112,7 @@ function armDeadline(): void {
        no token source, `authHeaders()` sends the asserted dev id, and the
        service accepts it. `asserted` is that in one word — an identity, and
        NOT an account, so nothing offers a sign-out or counts a funnel step
-       for it. `isClerkEnabled()` implies the hosted build, so there is no
+       for it. Server mode implies the hosted build, so there is no
        second case to answer here. */
     publishIdentity(DEV_IDENTITY);
   }, IDENTITY_DEADLINE_MS);
@@ -148,7 +148,7 @@ export function publishIdentity(next: Identity): void {
  * accepts. Only a build that really does mount Clerk can be waiting on it.
  */
 export function readIdentity(): Identity {
-  if (!isClerkEnabled()) return isServerMode() ? DEV_IDENTITY : ANONYMOUS;
+  if (!isServerMode()) return ANONYMOUS;
   return current;
 }
 

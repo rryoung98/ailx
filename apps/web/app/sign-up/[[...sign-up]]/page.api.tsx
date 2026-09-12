@@ -7,12 +7,12 @@
  */
 import { notFound } from "next/navigation";
 import { SignUp } from "@clerk/nextjs";
-import { isClerkEnabled } from "../../../lib/mode";
+import { isServerMode } from "../../../lib/mode";
 
 export const metadata = { title: "Create an account — Foray" };
 
 export default function SignUpPage() {
-  if (!isClerkEnabled()) notFound();
+  if (!isServerMode()) notFound();
   return (
     <main className="container" style={{ display: "grid", justifyContent: "center", padding: "3rem 0" }}>
       <SignUp path="/sign-up" signInUrl="/sign-in" fallbackRedirectUrl="/" />

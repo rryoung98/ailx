@@ -58,7 +58,7 @@ import {
   type ClaimedShare,
   type ClaimOutcome,
 } from "../../lib/data/localPractice";
-import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
+import { apiBase, assetUrl, isServerMode } from "../../lib/mode";
 import { useFocusRecovery } from "../../lib/useFocusRecovery";
 
 import styles from "../../components/PracticeDrill.module.css";
@@ -595,7 +595,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
             names what an account is for and what happens to these days, and
             it is absent from the static export, which has no sign-in page to
             send anybody to. */}
-        {!recorded && isClerkEnabled() ? (
+        {!recorded && isServerMode() ? (
           <p className="small faint">
             {SIGN_IN_VALUE_SHORT} {CLAIM_PROMISE}{" "}
             <Link href="/sign-in">Sign in</Link>

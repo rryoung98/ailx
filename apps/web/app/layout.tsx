@@ -12,7 +12,7 @@ import { FunnelVisit } from "../components/FunnelVisit";
 import { Loader } from "../components/Loader";
 import { NavLink } from "../components/ui/NavLink";
 import { NavStrip } from "../components/ui/NavStrip";
-import { assetUrl, isClerkEnabled, isServerMode } from "../lib/mode";
+import { assetUrl, isServerMode } from "../lib/mode";
 import { AuthShell } from "../lib/auth/AuthShell";
 import { QueryProvider } from "../lib/QueryProvider";
 import { AuthNav } from "../lib/auth/AuthNav";
@@ -83,7 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       and an identity buys a scored sitting and saved progress.
                       Absent unless Clerk is mounted, because /sign-in does not
                       exist in the static export. */}
-                  {isClerkEnabled() && <AuthNav />}
+                  {isServerMode() && <AuthNav />}
                 </NavStrip>
                 {/* Compact pill twin of the bottom .pill-cta, aligned right, and
                     outside the scrolling row so it is never scrolled off. */}

@@ -17,21 +17,20 @@ export function isServerMode(): boolean {
 /**
  * Is Clerk mounted in THIS build?
  *
- * Two conditions, and both are load-bearing. A build with no backend has
- * nothing to authenticate against, and a build with no publishable key cannot
- * mount `<ClerkProvider>` without throwing on first render — so a hosted
- * deploy that has not been given a key stays on the asserted dev id and keeps
- * working. That is the reversible half of the atomic switch in
- * docs/ARCHITECTURE.md §10.2: unset the key and the frontend is back where it
- * started, no rollback needed.
+ * Server mode means Clerk. A build with no backend has nothing to
+ * authenticate against; a build WITH a backend always mounts
+ * `<ClerkProvider>`. If the publishable key is missing, that is a
+ * CONFIGURATION ERROR — `ClerkProvider` will throw on first render, which
+ * is the correct outcome: a deploy without a key should fail loudly, not
+ * silently degrade to dev auth.
  *
- * The ONLY reader of NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in this app, the same
- * one-place rule `apiOrigin()` follows — Clerk's own SDK reads the variable
- * from the environment itself, so no call site needs to pass it around.
+ * This used to require both server mode AND a key, so a keyless deploy
+ * would keep working on the asserted dev identity. That was removed
+ * because it hid misconfiguration and made auth look optional in a build
+ * where it is not.
  */
 export function isClerkEnabled(): boolean {
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  return isServerMode() && typeof key === "string" && key !== "";
+  return isServerMode();
 }
 
 /**

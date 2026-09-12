@@ -120,7 +120,7 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    * story and the answer differs by build:
    *
    *  - STATIC EXPORT (no Clerk): `armDeadline` returns early on
-   *    `!isClerkEnabled()`, so no identity is ever published. The latch here
+   *    `!isServerMode()`, so no identity is ever published. The latch here
    *    is the ONLY thing that ends `reading`, and the gate falls back to this
    *    browser's own log. That is the case `stops calling itself reading when
    *    no answer ever comes` pins, and it is why this latch is not deletable
