@@ -1,10 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CALL_TIMEOUT_MS } from "../lib/data/deadline";
 import { append, attestJudgments, SaveConflictError, ATTEMPT_KEY, type SequencedEntry, type SessionConfig } from "@ailx/session";
 import {
   DEV_USER_KEY,
   DeckMismatchError,
+  ServiceShapeError,
   createApiPersistence,
   createLocalPersistence,
+  MIRROR_WAIT_MS,
   createServerAttempt,
   fetchPresentedDeck,
   startServerAttempt,
@@ -83,7 +86,15 @@ describe("createLocalPersistence", () => {
   });
 
   it("flush resolves immediately (nothing to sync)", async () => {
-    await expect(createLocalPersistence(fakeStorage()).flush()).resolves.toBeUndefined();
+    // `flush()` now REPORTS an outcome rather than resolving with nothing
+    // (TEN-206). A local-only build has no server copy, so the honest answer
+    // is `idle`: there is nothing to wait for and nothing unfinalized.
+    await expect(createLocalPersistence(fakeStorage()).flush()).resolves.toEqual({
+      phase: "idle",
+      finalized: false,
+      finalizePending: false,
+      failures: 0,
+    });
   });
 });
 
@@ -237,9 +248,13 @@ describe("createApiPersistence", () => {
     p.save(log);
     await p.flush();
     server.calls.length = 0;
-    // Simulate a foreign tab bumping the stored revision.
+    // Simulate a foreign tab writing work of its own. A rev bump ALONE is a
+    // conflict this tab can now absorb (TEN-124), and absorbing it is not
+    // what this test is about: it is about a save that must not happen
+    // reaching the network.
     const stored = JSON.parse(storage.getItem(ATTEMPT_KEY)!);
     stored.rev += 1;
+    stored.log = append(stored.log, { type: "track_started", trackId: "t4", ts: 1500 });
     storage.setItem(ATTEMPT_KEY, JSON.stringify(stored));
     expect(() => p.save(append(log, { type: "track_started", trackId: "t1", ts: 2000 }))).toThrow(SaveConflictError);
     await p.flush();
@@ -297,6 +312,49 @@ describe("createServerAttempt (per-attempt deck keying)", () => {
     const responses = server.calls.filter((c) => c.path.endsWith("/responses"));
     expect(responses.map((c) => c.path)).toEqual([`/api/attempts/${SERVER_ID}/responses`]);
     expect((responses[0].body as { seq: number }).seq).toBe(0);
+  });
+
+  /**
+   * A 200 the service means as a success, whose body this build does not
+   * know. Casting it produced `Cannot read properties of undefined` in front
+   * of the candidate, and an `id` that was not a string poisoned every later
+   * `apiPath` call instead (TEN-230).
+   */
+  it.each([
+    ["a body with no attempt", {}],
+    ["an attempt with no id", { attempt: {} }],
+    ["an id that is not a string", { attempt: { id: 7 } }],
+    ["an id that is empty", { attempt: { id: "" } }],
+  ])("refuses %s with a typed failure, not a TypeError", async (_what, body) => {
+    const storage = fakeStorage();
+    const fetchFn = (async () => ({ ok: true, status: 201, json: async () => body }) as Response) as typeof fetch;
+    const err = await createServerAttempt(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn }, "en").catch(
+      (e: unknown) => e,
+    );
+    expect(String(err)).not.toContain("Cannot read properties");
+    expect(err).toBeInstanceOf(ServiceShapeError);
+    expect(String(err)).toContain("attempt");
+    // Nothing was written under a bad id.
+    expect([...storage._map.keys()].filter((k) => k.startsWith("foray:sync:"))).toEqual([]);
+  });
+
+  /**
+   * The ADJACENT path of the same class: the MIRROR creates an attempt too,
+   * and a cast there breaks every later sync pass rather than the start.
+   */
+  it("reports the same failure when the MIRROR creates the attempt", async () => {
+    const storage = fakeStorage();
+    const errors: unknown[] = [];
+    const fetchFn = (async () => ({ ok: true, status: 201, json: async () => ({}) }) as Response) as typeof fetch;
+    const p = createApiPersistence(storage, {
+      baseUrl: "/api",
+      siteRoot: "/api",
+      fetchFn,
+      onSyncError: (e) => errors.push(e),
+    });
+    p.save(startedLog());
+    await p.flush();
+    expect(errors[0]).toBeInstanceOf(ServiceShapeError);
   });
 
   it("propagates a create failure (caller falls back to a local attempt id)", async () => {
@@ -485,5 +543,68 @@ describe("presented deck vs recorded deck", () => {
 describe("startServerAttempt", () => {
   it("returns null outside server mode — static showcase unchanged", async () => {
     await expect(startServerAttempt("en")).resolves.toBeNull();
+  });
+});
+
+/**
+ * TEN-218 — a mirror POST that HANGS rather than fails.
+ *
+ * `flush()` returns the serialized sync chain, and the T1 upload awaits it.
+ * With no deadline anywhere on the mirror, one request that never settles
+ * never settles the chain either: the candidate finishes the site they just
+ * built and the publish never starts, never fails, and cannot be retried.
+ *
+ * TWO bounds are in play and this test is about the second one. TEN-210's
+ * shared `deadline(callClass)` bounds each REQUEST; `MIRROR_WAIT_MS` bounds
+ * the WAIT, and it is shorter, so `flush()` abandons before the socket does.
+ */
+describe("a mirror request that never answers", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("settles flush() anyway, so what waits on it can proceed", async () => {
+    const storage = fakeStorage();
+    const signals: Array<AbortSignal | null | undefined> = [];
+    // A transport that accepts the connection and never answers — but which
+    // honours `signal`, as every real one does. The deadline is what turns
+    // "never" into a rejection here.
+    const fetchFn = ((_u: unknown, init?: RequestInit) => {
+      signals.push(init?.signal);
+      return new Promise<Response>((_res, rej) => {
+        init?.signal?.addEventListener("abort", () => rej(init.signal?.reason), { once: true });
+      });
+    }) as unknown as typeof fetch;
+    const p = createApiPersistence(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn });
+    p.save(startedLog());
+    const settled = p.flush();
+    await vi.advanceTimersByTimeAsync(MIRROR_WAIT_MS + 1_000);
+    // Settles with a STATUS rather than never, and the status does NOT claim
+    // the work landed — the caller proceeds, the mirror keeps trying.
+    await expect(settled).resolves.toMatchObject({ phase: "pending", finalized: false });
+    // And the request behind it is bounded too, so the pass itself is not
+    // wedged for the rest of the sitting.
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    // ...and the socket behind it is bounded too, by the SHARED deadline, so
+    // the pass itself is not wedged for the rest of the sitting.
+    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write);
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  /**
+   * The ADJACENT path of the same class: the local write must still be
+   * authoritative while the mirror is stalled, so the candidate keeps working
+   * and the next pass re-sends from `syncedThrough`.
+   */
+  it("keeps saving locally while the mirror is stalled", async () => {
+    const storage = fakeStorage();
+    const fetchFn = ((_u: unknown, init?: RequestInit) =>
+      new Promise<Response>((_res, rej) => {
+        init?.signal?.addEventListener("abort", () => rej(init.signal?.reason), { once: true });
+      })) as unknown as typeof fetch;
+    const p = createApiPersistence(storage, { baseUrl: "/api", siteRoot: "/api", fetchFn });
+    const log = startedLog();
+    p.save(log);
+    await vi.advanceTimersByTimeAsync(CALL_TIMEOUT_MS.write + 1_000);
+    expect(p.load()?.log).toEqual(log);
   });
 });

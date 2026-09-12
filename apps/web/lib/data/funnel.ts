@@ -46,6 +46,7 @@ import {
 import { daysBetween, localDay } from "@ailx/report";
 import type { StorageLike } from "@ailx/session";
 import { apiBase, apiOrigin } from "../mode";
+import { fetchWithDeadline } from "./deadline";
 
 /** The browser's own record of who it is. localStorage: it outlives a tab. */
 export const FUNNEL_CLIENT_KEY = "ailx.funnel.client.v1";
@@ -522,7 +523,13 @@ const SINK_MISSING = new Set([404, 405]);
 function browserSend(url: string, body: string): void {
   if (sinkAbsent) return;
   try {
-    void fetch(url, {
+    // BOUNDED, and `beacon`: a funnel step nobody reads must never outlive
+    // the interaction that produced it, and an unbounded one held a socket
+    // open for the life of the tab (TEN-210). `keepalive` is untouched, so a
+    // step emitted as the page hides still goes. A timed-out post is a lost
+    // event and nothing else — it is NOT a missing sink, so `sinkAbsent`
+    // stays false and the next step is still sent.
+    void fetchWithDeadline("beacon", url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body,

@@ -13,6 +13,7 @@ import { createRoot } from "react-dom/client";
 import { apiPath, DEV_USER_HEADER, type ApiPath } from "@ailx/contract";
 import {
   SERVICE_ERROR_COPY,
+  SERVICE_INVALID_COPY,
   firstValueQuery,
   firstValues,
   serviceFetch,
@@ -224,9 +225,32 @@ describe("what a failure is CALLED", () => {
     expect(await serviceFetch(apiPath("aggregates"))).toEqual({ state: "error", message: SERVICE_ERROR_COPY });
   });
 
-  it("treats an unparseable 200 body as an error rather than as data", async () => {
+  /**
+   * A 200 whose body is not JSON is the service answering with something
+   * unreadable — NOT a connection this reader can fix. Asserting only the
+   * state let the wrong sentence stay green (TEN-229).
+   */
+  it("treats an unparseable 200 body as an unreadable answer, not a dead connection", async () => {
     vi.stubGlobal("fetch", async () => new Response("<html>gateway</html>", { status: 200 }));
-    expect((await serviceFetch(apiPath("aggregates"))).state).toBe("error");
+    expect(await serviceFetch(apiPath("aggregates"))).toEqual({
+      state: "error",
+      message: SERVICE_INVALID_COPY,
+    });
+  });
+
+  /**
+   * The ADJACENT path of the same class: a page torn down mid-read must not
+   * flash the unreadable-answer sentence on its way out either.
+   */
+  it("stays in loading when the abort fired before the body could be read", async () => {
+    const ctrl = new AbortController();
+    vi.stubGlobal("fetch", async () => {
+      ctrl.abort();
+      return new Response("<html>gateway</html>", { status: 200 });
+    });
+    expect(await serviceFetch(apiPath("aggregates"), { signal: ctrl.signal })).toEqual({
+      state: "loading",
+    });
   });
 
   it("stays in loading when its own abort fired — a torn-down page shows nothing", async () => {

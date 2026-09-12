@@ -394,7 +394,34 @@ const OPERATIONAL_ITEMS: Item[] =
 const countOf = (haystack: string, needle: string): number =>
   haystack.split(needle).length - 1;
 
-const present = MODES.filter((mode) => existsSync(mode.dir));
+/** The two modes that are BUILD OUTPUT: not committed, and made by a build. */
+const BUILD_MODES = MODES.filter((mode) => mode.expectItemIds);
+
+/**
+ * The modes the sentinel below counts, and it is BUILD_MODES on purpose
+ * (TEN-225). It used to be every mode, and the third mode — `apps/web/public`
+ * — is committed, so `present` was never empty, the sentinel could not fail,
+ * and a moved build path would have skipped both build scans in silence.
+ */
+const SENTINEL_MODES = BUILD_MODES;
+
+/** Pure, so both directions are provable on a synthetic mode list. */
+function scannedOutputs(
+  modes: readonly { name: string; dir: string }[],
+  onDisk: (dir: string) => boolean,
+): string[] {
+  return modes.filter((mode) => onDisk(mode.dir)).map((mode) => mode.name);
+}
+
+/** The other direction: what a build step failed to leave behind. */
+function missingOutputs(
+  modes: readonly { name: string; dir: string }[],
+  onDisk: (dir: string) => boolean,
+): string[] {
+  return modes.filter((mode) => !onDisk(mode.dir)).map((mode) => mode.name);
+}
+
+const present = scannedOutputs(SENTINEL_MODES, existsSync);
 
 describe("no operational answer key reaches a built client bundle", () => {
   it("the released tier is small enough to be a budget, not a loophole", () => {
@@ -426,11 +453,24 @@ describe("no operational answer key reaches a built client bundle", () => {
     "scanned at least one build output",
     () => {
       expect(
-        present.map((m) => m.name),
+        present,
         "no build output found; run `pnpm --filter @ailx/web build` (and the AILX_BACKEND=1 build) first",
       ).not.toEqual([]);
     },
   );
+
+  /**
+   * ...and in CI, where `.github/workflows/ci.yml` runs BOTH builds before the
+   * test step, a missing output is a broken gate rather than an unbuilt tree.
+   * Skipping it there is how both scans could degrade silently (TEN-225), so
+   * it fails instead.
+   */
+  it.runIf(process.env.CI !== undefined)("scanned EVERY build output in CI", () => {
+    expect(
+      missingOutputs(BUILD_MODES, existsSync),
+      "CI builds both modes before this test; a missing one means a path moved",
+    ).toEqual([]);
+  });
 
   for (const mode of MODES) {
     const run = existsSync(mode.dir) ? describe : describe.skip;
@@ -677,6 +717,27 @@ describe("no operational answer key reaches a built client bundle", () => {
           expect(flat.includes(shape.value), `${shape.label} self-trips`).toBe(false);
         }
       }
+    });
+
+    it("the sentinel counts build outputs only, and fails when neither exists", () => {
+      // TEN-225: `apps/web/public` is COMMITTED, so a sentinel that counted it
+      // could never be empty and both build scans could skip with the suite
+      // green. Only a mode that must contain item ids is a build output.
+      expect(SENTINEL_MODES.map((m) => m.name)).toEqual([
+        "static export (apps/web/out)",
+        "hosted client assets (apps/web/.next/static)",
+      ]);
+      // Neither build directory on disk: the sentinel is empty, so it FAILS.
+      expect(scannedOutputs(SENTINEL_MODES, () => false)).toEqual([]);
+      expect(missingOutputs(SENTINEL_MODES, () => false)).toEqual(
+        SENTINEL_MODES.map((m) => m.name),
+      );
+      // A committed public tree may not rescue it.
+      expect(scannedOutputs(SENTINEL_MODES, (dir) => dir.endsWith(`${sep}public`))).toEqual([]);
+      // ...and it does see a build output that IS there.
+      expect(scannedOutputs(SENTINEL_MODES, (dir) => dir.endsWith(`${sep}out`))).toEqual([
+        "static export (apps/web/out)",
+      ]);
     });
 
     it("the id allowance catches a foreign item in either escaping", () => {

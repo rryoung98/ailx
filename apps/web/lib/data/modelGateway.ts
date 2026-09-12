@@ -25,6 +25,7 @@
 import { apiPath, MODEL_ROOT, type ApiPath } from "@ailx/contract";
 import type { StorageLike } from "@ailx/session";
 import { serviceHeaders } from "./traceparent";
+import { fetchWithDeadline } from "./deadline";
 import { apiBase, apiOrigin, isServerMode } from "../mode";
 
 /** What the service says about a stored key. Never the key. */
@@ -135,7 +136,20 @@ async function gatewayCall(
 ): Promise<{ status: number; body: unknown }> {
   const storage = browserStorage();
   const identity = storage === null ? {} : await serviceHeaders(storage);
-  const res = await fetch(`${apiBase()}${path}`, {
+  // CONTROL PLANE, so `read`: every route here asks the service ABOUT a key —
+  // its status, the start and finish of a connect, a disconnect. None of them
+  // runs a model, and none carries a candidate's work, so a panel waiting on
+  // one gets the same bound a page's own data gets (TEN-210).
+  //
+  // TEN-212 bounded these routes here with their own AbortController, before
+  // TEN-210's central deadline landed on main. That second mechanism is gone:
+  // one timeout table, one helper. The one thing it did that this does not is
+  // hold the abort across the BODY read — `fetchWithDeadline` clears its timer
+  // when the response headers arrive, deliberately (see deadline.ts). A
+  // `json()` that stalls after headers is therefore still unbounded, which is
+  // a gap in the shared helper rather than a reason to keep a private timer
+  // in one call site. Filed as its own issue.
+  const res = await fetchWithDeadline("read", `${apiBase()}${path}`, {
     ...init,
     cache: "no-store",
     headers: { ...identity, ...(init.body === undefined ? {} : { "content-type": "application/json" }) },
@@ -167,7 +181,17 @@ export async function modelGatewayFetch(input: string, init: RequestInit = {}): 
   const storage = browserStorage();
   const toGateway = modelGatewayAvailable() && input.startsWith(`${modelGatewayBase()}/`);
   const identity = storage === null || !toGateway ? {} : await serviceHeaders(storage);
-  return fetch(input, { ...init, headers: { ...safeCallerHeaders(init.headers), ...identity } });
+  // `model`, because this is the generation itself: a large model answering a
+  // long prompt takes tens of seconds legitimately, and the bound is here to
+  // stop "for ever" rather than to police latency. The CALLER'S signal is
+  // passed as the outer one, so a runner's cancel button still wins and still
+  // aborts with the runner's own reason.
+  return fetchWithDeadline(
+    "model",
+    input,
+    { ...init, headers: { ...safeCallerHeaders(init.headers), ...identity } },
+    init.signal ?? undefined,
+  );
 }
 
 /**
@@ -227,7 +251,11 @@ export async function disconnectKey(): Promise<KeyStatusResult> {
 /** What a failed read or delete means, by status. Said once. */
 export function statusFailureCopy(httpStatus: number): string {
   if (httpStatus === 401) return "The Foray service does not know who you are, so it will not say what it holds. Sign in.";
-  if (httpStatus === 0) return "The Foray service could not be reached, so what it holds is unknown. Nothing here was changed.";
+  // ZERO is "the call never landed", and since TEN-210 that covers two facts:
+  // a browser that could not reach the service, and a service that took
+  // longer than the bound to answer. The panel cannot tell them apart from
+  // one number, so the sentence names both rather than picking the wrong one.
+  if (httpStatus === 0) return "The Foray service did not answer — it is unreachable or too slow to use — so what it holds is unknown. Nothing here was changed.";
   return `The Foray service refused (HTTP ${httpStatus}), so what it holds is unknown. Nothing here was changed.`;
 }
 
@@ -259,6 +287,10 @@ export async function startConnect(): Promise<{ ok: true; start: ConnectStart } 
 
 /** What a callback refusal means. Each status is a different fact. */
 export function callbackFailureCopy(status: number): string {
+  // 200 is a real case here: the service answered, and what it said was not a
+  // key status. Saying "could not read" rather than "could not finish" keeps
+  // the reader from hunting a sign-in problem that does not exist (TEN-217).
+  if (status === 200) return "The Foray service answered your OpenRouter sign-in with something this page could not read, so nothing was changed here. Connect again.";
   if (status === 401) return "Sign in before connecting a model: the service stores your key against your identity.";
   if (status === 404) return "That sign-in was already used or was never started here. Connect again.";
   if (status === 410) return "That sign-in took too long and expired. Connect again.";
@@ -277,10 +309,13 @@ export async function finishConnect(
     method: "POST",
     body: JSON.stringify({ code: claim.code, state: claim.state }),
   });
-  if (status !== 200 || typeof body !== "object" || body === null) {
-    return { ok: false, message: callbackFailureCopy(status) };
-  }
-  return { ok: true, status: body as KeyStatus };
+  // The SAME reader the rest of this module uses. Casting here let a 200 with
+  // no `connected` end the round trip as a success whose falsy `connected`
+  // cleared the endpoint slot, and let a provider key ride in as a
+  // "fingerprint" (TEN-217).
+  const read = status === 200 ? readStatusBody(body) : null;
+  if (read === null) return { ok: false, message: callbackFailureCopy(status) };
+  return { ok: true, status: read };
 }
 
 /**

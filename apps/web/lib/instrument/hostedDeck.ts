@@ -238,38 +238,402 @@ function plantsOf(v: PresentedTrackView): readonly T3RevealedPlant[] {
 }
 
 /**
+ * Transcript turns that have not reached the service yet, as a number the
+ * exam chrome can read — and, since TEN-122's follow-up, as rows that OUTLIVE
+ * this tab.
+ *
+ * These rows are what the SERVER's T3 score reads for stances, so a dropped
+ * one is a scored stance the candidate will never be credited with. `record()`
+ * used to end in `.catch(console.warn)`: one transient failure removed the
+ * turn from the evidence for good, and nothing on screen said so (TEN-122).
+ *
+ * The retry fixed the failing POST and left the RELOAD. The queue was memory
+ * only, so a refresh, a crash or a closed tab took the outstanding turns with
+ * it: the count fell to 0, the "not sent yet" notice vanished, Finish enabled,
+ * and the stance had still never reached the service — TEN-122's own end
+ * state, reached by a different door. So the queue is PERSISTED, per attempt,
+ * exactly as the response mirror next door persists `syncedThrough`
+ * (`lib/data/persistence.ts`), and `resumeTranscriptTurns()` picks it up on
+ * the next load.
+ *
+ * A module-level store, like the mirror's own, because the bridge is built per
+ * track mount and the page has to be able to ask the question after the track
+ * is over. ONE queue per attempt, not one per bridge: a resumed sitting can
+ * build a second bridge for an attempt whose first bridge still holds a turn,
+ * and two queues over the same rows would post them twice and count them
+ * twice.
+ */
+
+/**
+ * Where an attempt's un-landed turns wait for the next load. Same spelling
+ * convention as the mirror's `foray:sync:v1:` key; no legacy `ailx:` twin to
+ * migrate, because this key never existed under the old name.
+ */
+export const transcriptTurnsKey = (attemptId: string): string => `foray:t3-turns:v1:${attemptId}`;
+
+/** The wire shape of a turn, taken from the poster so the two cannot drift. */
+type PendingTurn = Parameters<typeof postTranscriptTurn>[4];
+
+interface TurnQueue {
+  pending: PendingTurn[];
+  /** True while `drainQueue` is walking this queue; only one walker at a time. */
+  draining: boolean;
+  /** Bumped when the attempt is discarded, so an in-flight drain stops. */
+  epoch: number;
+}
+
+const queues = new Map<string, TurnQueue>();
+let outstandingTurns = 0;
+const turnListeners = new Set<() => void>();
+/** False once a write to localStorage has failed: the queue is memory-only. */
+let turnsPersisted = true;
+/**
+ * True once a stored queue came back unreadable in this page load (TEN-272).
+ * A separate fact from `turnsPersisted`: that one is about a write this
+ * browser refused, this one is about work that WAS written and cannot now be
+ * accounted for.
+ */
+let turnsUnreadable = false;
+
+export function outstandingTranscriptTurns(): number {
+  return outstandingTurns;
+}
+
+export function subscribeTranscriptTurns(listener: () => void): () => void {
+  turnListeners.add(listener);
+  return () => void turnListeners.delete(listener);
+}
+
+/**
+ * Will an outstanding turn survive a reload?
+ *
+ * Almost always yes — that is what the persisted queue is for. It is NO when
+ * a write to localStorage failed (quota, private mode, a storage-less
+ * embedding), and the candidate is told the difference rather than being
+ * promised a resume this browser cannot do (see {@link turnsOutstandingCopy}).
+ */
+export function transcriptTurnsSurviveReload(): boolean {
+  return turnsPersisted;
+}
+
+/**
+ * Did a stored queue come back unreadable in this page load?
+ *
+ * The answer the finish screen needs and could not get: an empty queue and an
+ * unaccountable one both counted 0, so Finish opened on both (TEN-272).
+ */
+export function transcriptTurnsUnreadable(): boolean {
+  return turnsUnreadable;
+}
+
+/** Shape check for a queue read back out of localStorage (never trusted). */
+function isPendingTurn(value: unknown): value is PendingTurn {
+  if (typeof value !== "object" || value === null) return false;
+  const t = value as Record<string, unknown>;
+  return (
+    typeof t.seq === "number" && Number.isFinite(t.seq) &&
+    typeof t.verb === "string" && t.verb.length > 0 &&
+    typeof t.object === "string" &&
+    (t.text === undefined || typeof t.text === "string") &&
+    (t.claimRefs === undefined ||
+      (Array.isArray(t.claimRefs) && t.claimRefs.every((r) => typeof r === "string")))
+  );
+}
+
+/**
+ * WHAT CAME BACK OUT OF STORAGE, AND WHETHER IT WAS ALL OF IT (TEN-272).
+ *
+ * "Nothing was stored" and "something was stored that could not be read" are
+ * different facts, and this used to answer both with `[]`. The second one
+ * then produced the exact failure the persisted queue was written to prevent:
+ * outstanding 0, no notice on screen, Finish open, and a stance that never
+ * reached the service — with the sentence that promised the resume no longer
+ * displayed, so nothing contradicted it.
+ */
+interface StoredTurns {
+  readonly turns: PendingTurn[];
+  /**
+   * True when the key held SOMETHING this build could not take up: a value
+   * that will not parse, a value that is not a list, or a row the shape check
+   * refused. It is not a count — the whole point is that we cannot say how
+   * much work is unaccounted for.
+   */
+  readonly unreadable: boolean;
+}
+
+function readPendingTurns(attemptId: string): StoredTurns {
+  let raw: string | null;
+  try {
+    raw = window.localStorage.getItem(transcriptTurnsKey(attemptId));
+  } catch {
+    // Storage revoked between the write and this read. Something WAS stored
+    // (the write side says so) and we can no longer see it.
+    return { turns: [], unreadable: true };
+  }
+  if (raw === null || raw === "") return { turns: [], unreadable: false };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { turns: [], unreadable: true };
+  }
+  if (!Array.isArray(parsed)) return { turns: [], unreadable: true };
+  // A row that does not validate is DROPPED rather than posted: it came back
+  // through localStorage, which any tab or extension can rewrite, and the
+  // service would refuse it anyway. The rows that do validate still go — and
+  // the dropped ones are now SAID, rather than being silently absent.
+  const turns = parsed.filter(isPendingTurn);
+  return { turns, unreadable: turns.length !== parsed.length };
+}
+
+function writePendingTurns(attemptId: string, turns: readonly PendingTurn[]): void {
+  try {
+    const key = transcriptTurnsKey(attemptId);
+    if (turns.length === 0) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, JSON.stringify(turns));
+  } catch {
+    // Quota, private mode, or no storage at all. The queue still retries in
+    // this tab; what it can no longer promise is the reload, so the notice
+    // stops promising it too.
+    turnsPersisted = false;
+    for (const listener of turnListeners) listener();
+  }
+}
+
+/**
+ * The queue for `attemptId`, resumed from storage the first time it is asked
+ * for in this page load.
+ */
+function queueFor(attemptId: string): TurnQueue {
+  let q = queues.get(attemptId);
+  if (!q) {
+    const stored = readPendingTurns(attemptId);
+    q = { pending: stored.turns, draining: false, epoch: 0 };
+    queues.set(attemptId, q);
+    /* LATCHED FOR THE PAGE LOAD, and deliberately not cleared by a later
+       successful write: the next write overwrites the key, so the evidence
+       goes, and the fact that some work could not be accounted for does
+       not stop being true because newer work was stored on top of it. */
+    if (stored.unreadable && !turnsUnreadable) {
+      turnsUnreadable = true;
+      for (const listener of turnListeners) listener();
+    }
+    recountTurns();
+  }
+  return q;
+}
+
+/**
+ * COUNTED across every queue, not read off one: a sitting can hold a queue for
+ * more than one attempt in a page load, and a count taken from either alone
+ * would hide the other's.
+ */
+function recountTurns(): void {
+  let total = 0;
+  for (const q of queues.values()) total += q.pending.length;
+  if (total === outstandingTurns) return;
+  outstandingTurns = total;
+  for (const listener of turnListeners) listener();
+}
+
+/**
+ * What a candidate is told while a T3 turn is still in this browser. Said
+ * once, and said HERE rather than in the page, for two reasons: the count and
+ * the sentence about the count belong together, and a Next.js page module may
+ * export nothing but a page (a second export fails `next build` outright).
+ *
+ * TWO sentences about the tab, because there are two truths and the copy may
+ * only claim the one that holds. The queue is normally on disk, so a reload
+ * resumes it; when the write failed there is nothing to come back to, and
+ * saying "keep this tab open" is then the whole of the promise.
+ */
+export function turnsOutstandingCopy(n: number, survivesReload = transcriptTurnsSurviveReload()): string {
+  return (
+    `${n} T3 ${n === 1 ? "turn has" : "turns have"} not reached the exam service yet, and the `
+    + "service scores your challenges from those. Foray is still sending them, so finishing "
+    + "waits until they land. "
+    + (survivesReload
+      ? "Keep this tab open if you can; if it closes, Foray takes them up again next time you open your run in this browser."
+      : "This browser would not let Foray save them, so they live in this tab only — closing it loses them.")
+  );
+}
+
+/**
+ * WHAT A CANDIDATE IS TOLD WHEN THE STORED QUEUE WILL NOT READ BACK.
+ *
+ * Its own sentence, because it is its own fact. `turnsOutstandingCopy` can
+ * say "Foray is still sending them" — it knows what they are. Here we do
+ * not: something was stored under this run's key and this build could not
+ * take it up, so the honest claim is that there MAY be work we can no longer
+ * account for, and the only thing that can settle it is the exam service's
+ * own record of the sitting.
+ */
+export const TURNS_UNREADABLE_COPY =
+  "Foray saved some T3 turns in this browser and could not read them back, so it cannot tell "
+  + "whether every challenge you made reached the exam service. Finishing is held here rather "
+  + "than closing the sitting on a record we cannot account for. Reopening your run in the "
+  + "browser you sat it in is the best chance of recovering them; if this is that browser, "
+  + "contact us before you finish.";
+
+/**
+ * The turns queued for an attempt that is being THROWN AWAY.
+ *
+ * `Discard this run` clears the log, the checkpoints and the site submission;
+ * a queue left behind would keep posting a discarded run's stances, and — far
+ * worse on screen — would keep the notice up and Finish shut on the run that
+ * replaces it. The rows go with the run they belong to.
+ */
+export function discardTranscriptTurns(attemptId: string): void {
+  const q = queues.get(attemptId);
+  if (q) {
+    q.pending.length = 0;
+    q.epoch += 1; // an in-flight drain stops instead of shifting a new turn off
+    queues.delete(attemptId);
+  }
+  try {
+    window.localStorage.removeItem(transcriptTurnsKey(attemptId));
+  } catch {
+    // Nothing to remove from a storage that will not answer.
+  }
+  /* The run is gone, so an unreadable queue that belonged to it is no longer
+     something to hold the NEXT run's Finish button shut for. */
+  turnsUnreadable = false;
+  recountTurns();
+}
+
+/**
+ * Take up an attempt's un-landed turns after a page load, and keep posting.
+ *
+ * Called by the exam page as soon as it knows which attempt this browser is
+ * sitting — NOT by the T3 track mount, because the screen that has to know is
+ * the finish screen, and a candidate who reloads on it never mounts T3 again.
+ * A no-op with nothing stored, which is every static-demo run.
+ */
+export function resumeTranscriptTurns(attemptId: string): void {
+  const q = queueFor(attemptId);
+  if (q.pending.length === 0) return;
+  void drainQueue(attemptId, browserApiOptions());
+}
+
+/**
+ * Tests only: forget the in-memory queues, exactly as a PAGE LOAD does.
+ *
+ * The persisted rows are deliberately left alone — that is what makes this a
+ * reload rather than a discard, and it is how `test/t3Transcript.test.tsx`
+ * reproduces the tab that closed with a turn outstanding. Use
+ * {@link discardTranscriptTurns} when the rows are meant to go too.
+ */
+export function resetTranscriptTurns(): void {
+  // A drain from the previous test is still walking its own queue object; the
+  // epoch bump stops it writing to the storage the next test just installed.
+  for (const q of queues.values()) q.epoch += 1;
+  queues.clear();
+  turnsPersisted = true;
+  // A page load starts with no opinion about a queue it has not read yet.
+  turnsUnreadable = false;
+  recountTurns();
+}
+
+/**
+ * How long the queue waits before re-posting a turn that failed. Capped and
+ * additive rather than exponential: the candidate is still in the track, and
+ * a stance that lands late is worth far more than one that lands politely.
+ *
+ * THE LAST DELAY REPEATS for as long as the tab is open. The queue never
+ * gives up, because giving up is the state the page cannot describe: the
+ * notice says Foray is still sending and finalize stays shut, so a queue that
+ * had stopped trying would make that sentence false and leave nothing working
+ * towards opening the button again.
+ */
+export const TURN_RETRY_DELAYS_MS = [1_000, 3_000, 10_000] as const;
+
+const retryDelayMs = (attempt: number): number =>
+  TURN_RETRY_DELAYS_MS[Math.min(attempt, TURN_RETRY_DELAYS_MS.length - 1)];
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Post the head of `attemptId`'s queue until it lands, then the next one.
+ *
+ * NOTHING IS DROPPED and nothing is given up on: a turn that has not landed
+ * stays counted, which is what keeps the notice up and finalize shut, and it
+ * is still being re-posted, which is what makes that notice true. It is also
+ * still on disk, so a reload that ends this walk resumes it.
+ *
+ * SERIALIZED per attempt — the rows are an ordered transcript, and a second
+ * walker must not overtake the one still retrying — which is what `draining`
+ * is for, and why a second bridge for the same attempt starts no second walk.
+ */
+async function drainQueue(attemptId: string, opts: ReturnType<typeof browserApiOptions>): Promise<void> {
+  const q = queueFor(attemptId);
+  if (q.draining) return;
+  q.draining = true;
+  const epoch = q.epoch;
+  try {
+    while (q.pending.length > 0 && q.epoch === epoch) {
+      const body = q.pending[0];
+      for (let attempt = 0; ; attempt++) {
+        if (attempt > 0) await wait(retryDelayMs(attempt - 1));
+        // Checked before every attempt, not only between turns: a run
+        // discarded mid-wait must stop posting at the next attempt rather
+        // than after one more.
+        if (q.epoch !== epoch) return;
+        try {
+          await postTranscriptTurn(window.localStorage, opts, attemptId, "t3", body);
+          break;
+        } catch (err) {
+          // Loud for a developer, and — through the count — visible to the
+          // candidate. Never swallowed.
+          console.warn("[ailx t3] transcript turn not mirrored, retrying", err);
+        }
+      }
+      // The run was discarded while this turn was in flight: the rows are gone
+      // and the queue is not ours to shift.
+      if (q.epoch !== epoch) break;
+      q.pending.shift();
+      writePendingTurns(attemptId, q.pending);
+      recountTurns();
+    }
+  } finally {
+    q.draining = false;
+  }
+}
+
+/**
  * The seam the hosted T3 Runner talks to the exam service through.
  *
- * Transcript mirroring is SERIALIZED and best-effort in the same shape as the
- * response mirror in `lib/data/persistence.ts`: these rows are what the server's
- * score reads for stances, and re-posting the same seq is a no-op there, so
- * ordering matters and a duplicate does not.
+ * Transcript mirroring is SERIALIZED, in the same shape as the response
+ * mirror in `lib/data/persistence.ts` — but no longer fire-and-forget. A turn
+ * that fails is RETRIED (the server row is keyed by seq, so a re-post of one
+ * that did land is a no-op), it is written to localStorage before the first
+ * post so a reload cannot lose it, and while any turn is still outstanding
+ * the page says so and will not let the run be finalized: finalizing is the
+ * moment the server stops accepting evidence, and doing it with a stance
+ * still in this browser is how the score is computed from less than the
+ * candidate did.
  */
 export function hostedT3Bridge(attemptId: string): T3Hosted {
   const opts = browserApiOptions();
-  let queue: Promise<unknown> = Promise.resolve();
   return {
     assist: async (req) => {
       const reply = await postT3Assist(window.localStorage, opts, attemptId, req);
       return { text: reply.text, claimRefs: reply.claimRefs };
     },
     record: (turn: T3Turn) => {
-      queue = queue
-        .then(() =>
-          postTranscriptTurn(window.localStorage, opts, attemptId, "t3", {
-            seq: turn.seq,
-            verb: turn.verb,
-            object: turn.object,
-            ...(turn.text !== undefined ? { text: turn.text } : {}),
-            ...(turn.claimIds !== undefined ? { claimRefs: turn.claimIds } : {}),
-          }),
-        )
-        .catch((err: unknown) => {
-          // The local log and checkpoint already hold this turn, and the
-          // server row is keyed by seq, so a retry costs nothing — but a
-          // silent loss would cost the candidate their stance, so say so.
-          console.warn("[ailx t3] transcript turn not mirrored", err);
-        });
+      const q = queueFor(attemptId);
+      q.pending.push({
+        seq: turn.seq,
+        verb: turn.verb,
+        object: turn.object,
+        ...(turn.text !== undefined ? { text: turn.text } : {}),
+        ...(turn.claimIds !== undefined ? { claimRefs: turn.claimIds } : {}),
+      });
+      // Persisted BEFORE the first post is attempted: a turn that is only in
+      // memory is a turn a reload loses, which is the defect this queue was
+      // rebuilt for.
+      writePendingTurns(attemptId, q.pending);
+      recountTurns();
+      void drainQueue(attemptId, opts);
     },
     reveal: async () => {
       const v = await fetchServerTrackView(attemptId, "t3");

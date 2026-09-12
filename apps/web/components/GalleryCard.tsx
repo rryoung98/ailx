@@ -13,7 +13,7 @@
 import Link from "next/link";
 import type { PublicGalleryEntry } from "@ailx/contract";
 import { shareUrlPath } from "@ailx/contract";
-import { shareMinutes } from "@ailx/report";
+import { formatTrackScore, shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait } from "./CharacterPortrait";
 import { siteHref } from "../lib/mode";
@@ -61,16 +61,15 @@ export function GalleryCard({
         </div>
       </div>
       {p.note !== null ? <blockquote className="share-quote">{p.note}</blockquote> : null}
-      <TrackRadar
-        values={p.tracks}
-        size={150}
-        label={`Track shape: ${TRACK_IDS.map((t) => `${t.toUpperCase()} ${p.tracks[t]}`).join(", ")}`}
-      />
+      <TrackRadar values={p.tracks} size={150} />
       <dl className="type-tile-tracks">
         {TRACK_IDS.map((t) => (
           <div key={t}>
             <dt className="mono small">{t.toUpperCase()}</dt>
-            <dd className="mono small">{p.tracks[t].toFixed(1)}</dd>
+            {/* With its denominator, from the one formatter: no track is
+                worth 100, and a bare "124.6" beside a full bar was read as a
+                score out of one (TEN-120). */}
+            <dd className="mono small">{formatTrackScore({ scaled: p.tracks[t] }, undefined, t)}</dd>
           </div>
         ))}
       </dl>

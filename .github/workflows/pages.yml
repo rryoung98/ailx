@@ -1,8 +1,12 @@
 name: pages
 
-# Deploy on merge to `main` — but only after `ci` has gone green on that same
-# commit. `workflow_run` chains the two; a `push` trigger here would race CI
-# and could publish a build whose tests are still running.
+# Deploy the GitHub Pages redirect to foray.tenken.co.
+#
+# The static demo used to be built and served here. The canonical home is now
+# https://foray.tenken.co (the Vercel hosted build), and every path under
+# /ailx/ redirects there, preserving the sub-path. The redirect is two HTML
+# files: index.html for /ailx/ and 404.html for everything else (GitHub Pages
+# serves 404.html for any path it cannot match).
 on:
   workflow_run:
     workflows: [ci]
@@ -13,51 +17,36 @@ on:
 permissions:
   contents: read
 
-# One deploy at a time, and never cancel one in flight: a cancelled run can
-# leave the site published from a commit that was never tagged.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
   build:
-    # Manual runs are deliberate; chained runs must have passed CI.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     outputs:
       sha: ${{ steps.rev.outputs.sha }}
     steps:
-      # `workflow_run` checks out the default branch by default; resolve the
-      # exact commit CI validated once, and reuse it everywhere below.
       - id: rev
         run: echo "sha=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.rev.outputs.sha }}
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # `pnpm -r build` already runs `next build` for @ailx/web (static export).
-      - run: pnpm -r build
-
-      # The deployed version, in the deployed bytes. One JSON file is enough to
-      # answer "which commit is live?" from the browser, and it needs no app
-      # code to carry a build constant.
-      - name: Stamp the build
-        env:
-          AILX_SHA: ${{ steps.rev.outputs.sha }}
+      - name: Prepare redirect site
         run: |
+          mkdir -p _site
+          cp apps/web/redirect/index.html _site/index.html
+          cp apps/web/redirect/404.html   _site/404.html
+          touch _site/.nojekyll
           printf '{"sha":"%s","ref":"%s","runId":"%s","builtAt":"%s"}\n' \
-            "$AILX_SHA" "${{ github.ref_name }}" "${{ github.run_id }}" \
-            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > apps/web/out/version.json
-          touch apps/web/out/.nojekyll
+            "${{ steps.rev.outputs.sha }}" "${{ github.ref_name }}" \
+            "${{ github.run_id }}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > _site/version.json
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: apps/web/out
+          path: _site
 
   deploy:
     needs: build
@@ -72,17 +61,13 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v5
 
-  # Versioning, deliberately minimal: one immutable tag per deployed commit.
-  # A 1-repo, 1-app project with no consumers publishing no packages gains
-  # nothing from changesets/semantic-release; it needs an answer to "what is
-  # live and which commit is it?", which a tag plus version.json gives.
   tag:
     needs: [build, deploy]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.build.outputs.sha }}
       - name: Tag the deployed commit

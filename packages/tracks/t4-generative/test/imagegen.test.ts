@@ -13,7 +13,6 @@ import {
   parseImageResponse,
   requestImage,
   hasModelEndpoint,
-  LLM_BASE_URL_STORAGE,
 } from "../src/imagegen.js";
 
 /** Any endpoint; the module has no default and must not grow one. */
@@ -74,8 +73,12 @@ describe("t4 imagegen — model catalog & shared storage slots", () => {
     ]);
   });
 
-  it("reuses the exact endpoint slot T1 uses, and declares no key slot", async () => {
-    expect(LLM_BASE_URL_STORAGE).toBe("foray:llm-base-url");
+  it("declares no key slot", async () => {
+    // That this IS the slot T1 reads is true by construction now — both
+    // packages re-export `@ailx/core`'s `MODEL_ENDPOINT_SLOT` — and the one
+    // equality over every surviving spelling is in
+    // `apps/web/test/mode.test.tsx` ("is the same slot the T1 and T4 runners
+    // read"). The literal is pinned once, in `packages/core/test`.
     const mod: Record<string, unknown> = await import("../src/imagegen.js");
     for (const [name, value] of Object.entries(mod)) {
       if (typeof value !== "string") continue;

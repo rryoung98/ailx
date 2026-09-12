@@ -17,8 +17,17 @@
  * consumes the stored artifact.
  */
 
-/** Persisted OpenAI-compatible API base (the gateway, the demo proxy, Ollama). */
-export const LLM_BASE_URL_STORAGE = "foray:llm-base-url";
+import { MODEL_ENDPOINT_SLOT } from "@ailx/core";
+
+/**
+ * Persisted OpenAI-compatible API base (the gateway, the demo proxy, Ollama).
+ *
+ * ONE spelling, `@ailx/core`'s: the footer, the run-start panel and T4 read
+ * the same slot, and the duplicate copies of this string cost a live defect
+ * (see `packages/core/src/connection.ts`). The historical name is kept so
+ * this package's callers do not have to be rewritten.
+ */
+export const LLM_BASE_URL_STORAGE = MODEL_ENDPOINT_SLOT;
 
 /** Every browser-local slot that makes up "a connected model". */
 export const LLM_CONNECTION_KEYS: ReadonlyArray<string> = [LLM_BASE_URL_STORAGE];
@@ -185,10 +194,13 @@ export function extractHtmlFence(text: string): string | null {
   return looksLikeDoc(bare) && !bare.includes("```") ? bare : null;
 }
 
+export type OpenRouterErrorKind = "http" | "network" | "shape" | "timeout" | "cancelled";
+
 export class OpenRouterError extends Error {
   constructor(
     message: string,
     public readonly status: number | null,
+    public readonly kind: OpenRouterErrorKind = "http",
   ) {
     super(message);
     this.name = "OpenRouterError";
@@ -202,6 +214,69 @@ type FetchLike = (url: string, init?: RequestInit) => Promise<{
 }>;
 
 /**
+ * How long one model call may take, and what a stall says (TEN-212).
+ *
+ * A model call used to carry no bound at all: a provider that accepted the
+ * request and then said nothing left the runner's busy flag set for the rest
+ * of the track — Send disabled, clock running to zero, nothing to press. The
+ * deadline is OURS rather than the transport's, because a fetch that never
+ * settles never rejects either; the abort behind it is what stops the request
+ * we have stopped waiting for.
+ *
+ * 60s is generous for a full-document rewrite on a slow provider and short
+ * against any track budget, so a stall costs a minute, not the track.
+ */
+export const MODEL_REQUEST_TIMEOUT_MS = 60_000;
+
+/** Said out loud, because the alternative is a candidate watching a clock. */
+export const MODEL_TIMEOUT_MESSAGE =
+  "The model did not answer within 60s — nothing was applied. Retry, or use the offline demo assist.";
+
+/** A stop the candidate asked for is not a failure, and must not read as one. */
+export const MODEL_CANCELLED_MESSAGE = "You stopped the request — nothing was applied.";
+
+/** Deadline and cancel control for one model call. */
+export interface ModelCallOptions {
+  /** The runner's Stop button. */
+  readonly signal?: AbortSignal;
+  /** Override the deadline (tests, and a slower endpoint later). */
+  readonly timeoutMs?: number;
+}
+
+/**
+ * Run `work` under a deadline and the caller's cancel control.
+ *
+ * The race — not the signal — is what ends the wait: an injected fetch (and a
+ * body read) can hang without ever observing an abort. The signal is still
+ * passed down so a real request is actually torn down rather than left in
+ * flight against a candidate we have already answered.
+ */
+async function withDeadline<T>(
+  work: (signal: AbortSignal) => Promise<T>,
+  options: ModelCallOptions | undefined,
+  fail: (kind: "timeout" | "cancelled") => Error,
+): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stalled = new Promise<never>((_resolve, reject) => {
+    const stop = (kind: "timeout" | "cancelled") => {
+      controller.abort();
+      reject(fail(kind));
+    };
+    timer = setTimeout(() => stop("timeout"), options?.timeoutMs ?? MODEL_REQUEST_TIMEOUT_MS);
+    const outer = options?.signal;
+    if (!outer) return;
+    if (outer.aborted) stop("cancelled");
+    else outer.addEventListener("abort", () => stop("cancelled"), { once: true });
+  });
+  try {
+    return await Promise.race([work(controller.signal), stalled]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Call the endpoint's chat completions and return the raw assistant text.
  *
  * `fetchImpl` is injected for testability AND for identity: the host passes
@@ -212,12 +287,32 @@ export async function requestVibeCompletion(
   fetchImpl: FetchLike,
   payload: ChatPayload,
   baseUrl?: string,
+  options?: ModelCallOptions,
+): Promise<string> {
+  return withDeadline(
+    (signal) => callVibe(fetchImpl, payload, baseUrl, signal),
+    options,
+    (kind) =>
+      kind === "timeout"
+        ? new OpenRouterError(MODEL_TIMEOUT_MESSAGE, null, "timeout")
+        : new OpenRouterError(MODEL_CANCELLED_MESSAGE, null, "cancelled"),
+  );
+}
+
+/** The request itself. Everything that can hang is INSIDE the deadline —
+ *  the body read as much as the round trip, because a provider that stops
+ *  mid-stream stalls `json()` and never the fetch. */
+async function callVibe(
+  fetchImpl: FetchLike,
+  payload: ChatPayload,
+  baseUrl: string | undefined,
+  signal: AbortSignal,
 ): Promise<string> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
-    res = await fetchImpl(chatCompletionsUrl(baseUrl), buildFetchInit(payload));
+    res = await fetchImpl(chatCompletionsUrl(baseUrl), { ...buildFetchInit(payload), signal });
   } catch {
-    throw new OpenRouterError("Network error reaching the model endpoint.", null);
+    throw new OpenRouterError("Network error reaching the model endpoint.", null, "network");
   }
   if (!res.ok) {
     const msg =
@@ -238,12 +333,12 @@ export async function requestVibeCompletion(
   try {
     json = await res.json();
   } catch {
-    throw new OpenRouterError("OpenRouter returned unparseable JSON.", res.status);
+    throw new OpenRouterError("OpenRouter returned unparseable JSON.", res.status, "shape");
   }
   const content = (json as { choices?: Array<{ message?: { content?: unknown } }> })
     ?.choices?.[0]?.message?.content;
   if (typeof content !== "string" || content.length === 0) {
-    throw new OpenRouterError("OpenRouter reply had no message content.", res.status);
+    throw new OpenRouterError("OpenRouter reply had no message content.", res.status, "shape");
   }
   return content;
 }
@@ -258,12 +353,29 @@ export function parseModelsResponse(json: unknown): string[] {
     .sort();
 }
 
-/** Fetch the model list from any OpenAI-compatible base. No credential. */
-export async function fetchModelIds(fetchImpl: FetchLike, baseUrl?: string): Promise<string[]> {
+/**
+ * Fetch the model list from any OpenAI-compatible base. No credential.
+ *
+ * Bounded too: this one is fired on mount and its failure is silent, so an
+ * endpoint that never answers would leave a request hanging for the whole
+ * track behind a list that stays empty. An empty list is the same answer we
+ * already give for every other failure here.
+ */
+export async function fetchModelIds(
+  fetchImpl: FetchLike,
+  baseUrl?: string,
+  options?: ModelCallOptions,
+): Promise<string[]> {
   try {
-    const res = await fetchImpl(modelsUrl(baseUrl), {});
-    if (!res.ok) return [];
-    return parseModelsResponse(await res.json());
+    return await withDeadline(
+      async (signal) => {
+        const res = await fetchImpl(modelsUrl(baseUrl), { signal });
+        if (!res.ok) return [];
+        return parseModelsResponse(await res.json());
+      },
+      options,
+      () => new OpenRouterError("The model list endpoint did not answer.", null, "timeout"),
+    );
   } catch {
     return [];
   }

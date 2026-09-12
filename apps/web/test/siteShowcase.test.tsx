@@ -22,6 +22,7 @@ import { act, createElement, isValidElement, type ReactElement, type ReactNode }
 import { createRoot, type Root } from "react-dom/client";
 import Home from "../app/page";
 import Methodology from "../app/methodology/page";
+import ValidatePage from "../app/validate/page";
 import RootLayout from "../app/layout";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
@@ -53,10 +54,10 @@ describe("landing proof showcase", () => {
     const rows = [...h.querySelectorAll(".showcase .showcase-row")];
     expect(rows).toHaveLength(2);
     const titles = rows.map((r) => r.querySelector(".showcase-title")!.textContent);
-    expect(titles).toEqual(["Read the methodology.", "Watch it prove itself."]);
+    expect(titles).toEqual(["Know what we measure.", "Check the scoring."]);
     for (const r of rows) expect(r.querySelector(".showcase-title .script-accent")).not.toBeNull();
     const notes = rows.map((r) => r.querySelector(".annotation")!.textContent);
-    expect(notes[0]).toContain("no black boxes");
+    expect(notes[0]).toContain("know the limits too");
     expect(notes[1]).toContain("runs in your browser");
     // second row flips the panel to the left
     expect(rows[1].classList.contains("showcase-row-flip")).toBe(true);
@@ -90,7 +91,7 @@ describe("landing proof showcase", () => {
       expect(scoreMini.textContent).not.toContain(band);
     }
     const checks = h.querySelector(".mini-card-checks")!;
-    for (const s of ["sha256 verified", "replay = live", "export matches"]) {
+    for (const s of ["saved inputs checked", "scores match", "export matches"]) {
       expect(checks.textContent).toContain(s);
     }
     expect(h.querySelector(".mini-card-report")).not.toBeNull();
@@ -123,7 +124,7 @@ describe("interior page heroes", () => {
     expect(hero.querySelector("img")!.getAttribute("src")).toContain("/media/pastoral.jpg");
     expect(hero.querySelector(".page-hero-scrim")).not.toBeNull();
     const h1 = hero.querySelector("h1")!;
-    expect(h1.textContent).toBe("What is measured, how it is scored, and what is honestly not yet known");
+    expect(h1.textContent).toBe("What we measure, and what we still need to learn");
     expect(h1.querySelector(".script-accent")).not.toBeNull();
     // content ids untouched; each intro gains a paper chip
     for (const id of ["construct", "psychometrics", "judges", "modularity"]) {
@@ -133,6 +134,19 @@ describe("interior page heroes", () => {
     for (const chip of h.querySelectorAll(".paper-chip")) {
       expect(chip.getAttribute("aria-hidden")).toBe("true");
     }
+  });
+
+  it("validate explains what passing checks can and cannot show", async () => {
+    const h = await render(createElement(ValidatePage));
+    expect(h.querySelector("h1")?.textContent).toBe("Check the scoring code");
+    expect(h.textContent).toContain("They test the code, not your AI skills.");
+    expect(h.textContent).toContain("It does not prove that scores measure real-world skill");
+    expect(h.textContent).toContain("asking a model to judge again may give a different result");
+    expect(h.textContent).toContain("score records do not store the runtime version");
+    const rerun = h.querySelector<HTMLButtonElement>(".run-card button");
+    expect(rerun?.textContent).toBe("Run again");
+    await act(async () => { rerun?.click(); });
+    expect(h.querySelector(".run-card .badge")?.textContent).toMatch(/^ALL \d+ CHECKS PASS$/);
   });
 
   it("validate page source uses the hero band, run card, and 2-col check-card grid", () => {
@@ -287,7 +301,7 @@ describe("parent dogfood follow-ups", () => {
   it("methodology defines the construct in one grammatical sentence", async () => {
     const h = await render(createElement(Methodology));
     const text = h.textContent!;
-    expect(text).toContain("applied AI literacy as a person\u2019s capacity to produce");
+    expect(text).toContain("Applied AI literacy means using AI to do useful work while keeping your own judgment");
     // declaude-pass artifacts closed: no strong/em run-ons, no dropped subject
     // and no capitalised mid-sentence verb left behind.
     for (const artifact of [
@@ -316,6 +330,11 @@ describe("parent dogfood follow-ups", () => {
     const text = h.textContent!;
     expect(text).toContain("Person-ability logits are not reported as scores");
     expect(text).not.toContain("person abilities are in logits");
+    expect(text).toContain("not yet validated as a predictor");
+    expect(text).toContain("Re-scoring is reproducible; re-judging is not.");
+    expect(text).toContain("Score records do not yet store that version");
+    expect(text).toContain("Inputs sent to a connected model leave this page");
+    expect(text).toContain("The figures below are not measurements of Foray judges");
   });
 
   it("nav links render through NavLink, which sets aria-current on the active page", () => {

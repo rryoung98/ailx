@@ -98,32 +98,157 @@ export function recordLocalPracticeRound(
   return { ledger, qualification };
 }
 
+/** What this browser is holding, and the day it is holding it on. */
+export interface LocalPracticeDays {
+  /** Every day in the ledger, claimed or not. */
+  days: string[];
+  /** The days this browser believes it has already handed to an account. */
+  claimed: string[];
+  /** The browser's own local day, so a summary is counted against it. */
+  today: string;
+}
+
 /**
- * The streak this browser has earned, by its own reckoning, as a hook — read
- * on mount and kept in step with the ledger.
+ * The ledger this browser is holding, as a hook — read on mount and kept in
+ * step with the ledger. RAW: the caller decides which days it may draw,
+ * because only the caller knows what the service just said.
  *
- * `null` until the first read, and `null` for a browser whose storage throws
- * (private mode, blocked cookies): a page must be able to tell "no days" from
- * "not asked yet" so it does not flash a wrong empty state.
+ * `null` means "nothing readable", and it is deliberately ONE value for the
+ * first render and for a browser whose storage throws (private mode, blocked
+ * cookies). It once promised a caller could tell "not asked yet" from "no
+ * days" and so avoid a flash; it could not — a throwing storage returned
+ * `null` too — and no caller ever used the distinction. A promise nothing
+ * keeps is worse than no promise.
  *
- * /progress needs this because a signed-out round never reaches the exam
- * service (TEN-132). Without it the page reports zero days to somebody whose
- * practice summary just said "1 day streak".
+ * /progress needs this because a round the service cannot attribute to
+ * anybody never reaches it (TEN-132). Without it the page reports zero days
+ * to somebody whose practice summary just said "1 day streak".
  */
-export function useLocalStreak(): StreakSummary | null {
-  const [streak, setStreak] = useState<StreakSummary | null>(null);
+export function useLocalPracticeDays(): LocalPracticeDays | null {
+  const [days, setDays] = useState<LocalPracticeDays | null>(null);
   useEffect(() => {
     const read = (): void => {
       try {
-        setStreak(localStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes()));
+        const ledger = readLocalLedger(window.localStorage);
+        setDays({
+          days: localPracticeDayStrings(ledger),
+          claimed: ledger.days.filter((d) => d.claimed).map((d) => d.day),
+          today: localDay(Date.now(), utcOffsetMinutes()),
+        });
       } catch {
-        setStreak(null);
+        setDays(null);
       }
     };
     read();
     return subscribeLocalPractice(read);
   }, []);
-  return streak;
+  return days;
+}
+
+/** A browser-held streak, and what is true of the days behind it. */
+export interface HeldHere {
+  streak: StreakSummary;
+  /**
+   * True when a day was left out because an account holds it. A run of days
+   * with a hole in it has no honest "best streak", so a caller that gets
+   * `partial` must show the COUNT and not a streak — see `LocalStreak`.
+   */
+  partial: boolean;
+  /**
+   * How many of the days that ARE shown have already been handed to an
+   * account — only ever more than `none` when nothing was subtracted, i.e.
+   * the service did not answer. The caller must then not say these days are
+   * on no account: `claimed: true` is written only from a 200 that named the
+   * day, so at least one of them is. `some` and `all` have their own
+   * sentences, because a browser one round old is entirely claimed.
+   */
+  handedOver: ClaimedShare;
+}
+
+/**
+ * The days a browser is holding that no figure on the page already counts,
+ * or `null` when there are none to draw.
+ *
+ * `alreadyCounted` is what the SERVICE said it holds for this caller — the
+ * practice days behind the figures above, never the browser's guess alone.
+ * Two reasons:
+ *
+ *  - the local `claimed` flag misses a claim whose RESPONSE was lost: the
+ *    server stored the day, this browser never heard so, and the day would be
+ *    drawn twice;
+ *  - when the service did not answer, `alreadyCounted` is `null` and NOTHING
+ *    is subtracted. A refusal or a 500 is not evidence that a day is on an
+ *    account, and subtracting on that evidence made a browser holding only
+ *    claimed days read "Nothing has been played in this browser" — false, on
+ *    the page whose whole bug was saying that. What the caller loses is the
+ *    right to call those days browser-only, which is what `handedOver` says.
+ *
+ * The local flags are unioned in only when the service DID answer, so a
+ * response that names fewer days than the browser handed over still cannot
+ * draw one day in two places. That hides a day claimed onto a DIFFERENT
+ * account on this browser, which is the safe direction: the alternative is
+ * printing "this browser is the only place they are held" about a day some
+ * account holds.
+ *
+ * `mergePracticeDays` is the other way to spend this overlap — one table of
+ * server and browser days, maxed per field. It is not used because the two
+ * blocks on /progress differ in PROVENANCE, not in arithmetic: merging would
+ * hide which days the service itself stamped, which is the one thing this
+ * page must not blur.
+ */
+export function heldOnlyHere(
+  local: LocalPracticeDays | null,
+  alreadyCounted: ReadonlySet<string> | null,
+): HeldHere | null {
+  if (local === null) return null;
+  const held =
+    alreadyCounted === null
+      ? local.days
+      : local.days.filter((d) => !alreadyCounted.has(d) && !local.claimed.includes(d));
+  if (held.length === 0) return null;
+  return {
+    streak: streakSummary(held, local.today),
+    partial: held.length < local.days.length,
+    handedOver: claimedShare(held.map((d) => ({ claimed: local.claimed.includes(d) }))),
+  };
+}
+
+/**
+ * How much of a set of days has already been handed to an account: `none`,
+ * `some`, or `all`. Which sentence a surface may print, in one word.
+ *
+ * `all` is not a rounding of `some`: the taster claims the day it just dealt,
+ * so a browser one round old is entirely claimed, and "the rest are kept in
+ * this browser alone" would then be a sentence about an empty set.
+ */
+export type ClaimedShare = "none" | "some" | "all";
+
+export function claimedShare(days: readonly { claimed: boolean }[]): ClaimedShare {
+  const claimed = days.filter((d) => d.claimed).length;
+  if (claimed === 0) return "none";
+  return claimed === days.length ? "all" : "some";
+}
+
+/**
+ * The same question about the whole LEDGER, read from storage — the durable
+ * answer, where the claim receipt in `readLastClaim` is one page's memory of
+ * one moment and knows only about today.
+ *
+ * A corrupt ledger, an empty one and one written by a build with no `claimed`
+ * field all come back `none`: `readLocalLedger` swallows the throw and
+ * `parseLocalLedger` only ever sets the flag from a literal `true`. `none` is
+ * the right answer for all three — an unreadable ledger has handed nothing
+ * over that anybody can point to.
+ *
+ * The DRILL asks this, over every day it is holding. /progress asks
+ * `claimedShare` over the days it is actually DRAWING, because it has already
+ * filtered the ones an account holds. The two surfaces can therefore print
+ * different sentences from the same ledger, and that is correct rather than
+ * drift: they are describing different sets. Making them agree would put a
+ * false sentence back on one of them.
+ */
+export function ledgerClaimedShare(storage: StorageLike): ClaimedShare {
+  return claimedShare(readLocalLedger(storage).days);
 }
 
 /** The streak this browser has earned, by its own reckoning. */

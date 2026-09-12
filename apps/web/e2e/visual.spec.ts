@@ -443,7 +443,7 @@ test.describe("landing hero · 390x844 phone", () => {
     await expectInViewport(page, title, "the hero headline");
     await expectTextNotClipped(title, "the hero headline");
     const play = page.getByRole("link", { name: "Play a full round" });
-    const credential = page.getByRole("link", { name: "Go for the credential" });
+    const credential = page.getByRole("link", { name: "Explore the full exam" });
     // The hero deliberately puts the playable card at the fold and the CTAs
     // just below it, so "in the viewport on load" is not the promise. The
     // promise is that they are whole and pressable once scrolled to.

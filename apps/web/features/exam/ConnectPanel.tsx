@@ -23,14 +23,14 @@
  *    static tier issues no score of record, so it does not need a credential.
  */
 import { useMutation } from "@tanstack/react-query";
-import { readMigratedItem, removeMigratedItem } from "@ailx/core";
+import { SHARED_DEMO_MODEL_BASE } from "../../lib/data/demoProxy";
+import { CONNECTION_CHANGED_EVENT, MODEL_ENDPOINT_SLOT, readMigratedItem, removeMigratedItem } from "@ailx/core";
 import { useCallback, useEffect, useState } from "react";
 import { useIdentity } from "../../lib/auth/identityState";
 import {
   clearLlmConnection,
   hasModelEndpoint,
   isUsableModelEndpoint,
-  LLM_BASE_URL_STORAGE,
   normalizeBaseUrl,
 } from "@ailx/track-t1";
 import {
@@ -47,9 +47,10 @@ import {
   type ModelCallback,
 } from "../../lib/data/modelGateway";
 
-/** Fired on every connection change so the same page (e.g. the start gate)
- *  can re-read the connection state without prop drilling. */
-export const CONNECTION_CHANGED_EVENT = "foray:connection-changed";
+/** Fired on every connection change so every reader of the slot — the start
+ *  gate on this page, and the footer under every page — can re-read it
+ *  without prop drilling. Spelled once, in `@ailx/core`'s `connection.ts`. */
+export { CONNECTION_CHANGED_EVENT };
 
 function announceChange() {
   try {
@@ -59,8 +60,10 @@ function announceChange() {
   }
 }
 
-/** Capped proxy that fronts the operator's OpenRouter key (shared demo). */
-export const SHARED_DEMO_BASE_URL = "https://ailx-shared-demo.vercel.app/api/v1";
+/** Capped proxy that fronts the operator's OpenRouter key (shared demo).
+    The ORIGIN is not spelled here: it is the same deployment the community
+    wall runs on, and it was typed out in three files (TEN-235). */
+export const SHARED_DEMO_BASE_URL = SHARED_DEMO_MODEL_BASE;
 
 /**
  * What a connected candidate is told, in the hosted build.
@@ -133,7 +136,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   const applyStatus = useCallback((s: KeyStatus) => {
     setStatus(s);
     try {
-      if (s.connected) window.localStorage.setItem(LLM_BASE_URL_STORAGE, modelGatewayBase());
+      if (s.connected) window.localStorage.setItem(MODEL_ENDPOINT_SLOT, modelGatewayBase());
       else clearLlmConnection(window.localStorage);
       setStorageBlocked(false);
     } catch {
@@ -162,7 +165,7 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
   useEffect(() => {
     if (hosted) return;
     try {
-      const storedBase = readMigratedItem(window.localStorage, LLM_BASE_URL_STORAGE);
+      const storedBase = readMigratedItem(window.localStorage, MODEL_ENDPOINT_SLOT);
       if (storedBase) setBaseUrl(storedBase);
     } catch {
       /* storage unavailable — connection simply not persisted */
@@ -244,10 +247,10 @@ export function ConnectPanel({ attention = 0 }: { attention?: number } = {}) {
       // A half-typed URL is not an error and not a connection: it is simply
       // not usable yet, so nothing is stored and nothing is claimed.
       if (isUsableModelEndpoint(value)) {
-        window.localStorage.setItem(LLM_BASE_URL_STORAGE, normalizeBaseUrl(value));
+        window.localStorage.setItem(MODEL_ENDPOINT_SLOT, normalizeBaseUrl(value));
         setError(null);
       } else {
-        removeMigratedItem(window.localStorage, LLM_BASE_URL_STORAGE);
+        removeMigratedItem(window.localStorage, MODEL_ENDPOINT_SLOT);
         setError(hasModelEndpoint(value) ? UNUSABLE_ENDPOINT_COPY : null);
       }
     } catch {

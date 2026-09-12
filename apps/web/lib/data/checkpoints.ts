@@ -32,17 +32,32 @@ interface CheckpointShape {
   state: unknown;
 }
 
+/** Whether the checkpoint reached the store, and what it said if not. */
+export type CheckpointWrite = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Write the checkpoint, and REPORT a refusal (TEN-219).
+ *
+ * It used to swallow quota and private-mode errors, on the argument that the
+ * log still holds completed artifacts. That is true of a COMPLETED track. For
+ * the track being sat right now the checkpoint IS the artifact of record on
+ * timeout — the watchdog scores whatever `loadCheckpoint` returns — so a
+ * candidate whose later writes failed was scored on the last one that fit,
+ * and told nothing. Still never throws: a storage failure must not take the
+ * runner down mid-track. The caller decides what to show.
+ */
 export function saveCheckpoint(
   storage: StorageLike,
   attemptId: string,
   trackId: TrackId,
   state: unknown,
-): void {
+): CheckpointWrite {
   const shape: CheckpointShape = { formatVersion: 2, attemptId, trackId, state };
   try {
     storage.setItem(checkpointKey(attemptId, trackId), JSON.stringify(shape));
-  } catch {
-    // Quota exceeded / private mode: the log still holds completed artifacts.
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
   }
 }
 
