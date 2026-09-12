@@ -1,11 +1,11 @@
 name: ci
 
-# The merge gate. Everything that must be true before code reaches `main`
+# The merge gate. Everything that must be true before code reaches `staging` or `main`
 # runs here; `pages.yml` deploys only after this workflow succeeds.
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, staging]
 
 permissions:
   contents: read
@@ -69,7 +69,7 @@ jobs:
 
       # Dual-mode drift is invisible unless both builds run (FRONTEND.md 6.5).
       # The static export above has no API surface at all; this one compiles
-      # the `route.api.ts` handlers.
+      # the hosted pages and the public Open Graph card route.
       #
       # It runs BEFORE the tests on purpose: `apps/web/test/bundleSecrecy.test.ts`
       # greps the BUILT client assets of BOTH modes for operational answer-key
@@ -77,6 +77,9 @@ jobs:
       # export lands in `apps/web/out`, the hosted client chunks in
       # `apps/web/.next/static` — so this step must be the one that leaves
       # `.next` behind.
+      - name: Clean Next output between build modes
+        run: rm -rf apps/web/.next
+
       - name: Build server mode (AILX_BACKEND=1)
         env:
           AILX_BACKEND: "1"
