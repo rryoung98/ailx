@@ -11,7 +11,9 @@ export function useConsumerHistory() {
     const read = () => {
       try {
         const attempts = parseConsumerHistory(window.localStorage.getItem(CONSUMER_STORAGE_KEY));
-        setState({ kind: "ready", attempts, durable: true, notice: "" });
+        setState(previous => previous.kind === "ready" && !previous.durable
+          ? previous
+          : { kind: "ready", attempts, durable: true, notice: "" });
       } catch {
         setState(previous => ({ kind: "ready", attempts: previous.kind === "ready" ? previous.attempts : [], durable: false,
           notice: "Saved tests could not be read. You can try this session, but it will not be saved. Existing stored data has not been changed." }));

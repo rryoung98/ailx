@@ -71,7 +71,7 @@ export function ConsumerResult({ attempt, durable, onRetake }: { attempt: Consum
         ))}
       </section>
       <div className={styles.actions}>
-        <Link className="btn primary" href="/me">View my activity</Link>
+        {durable && <Link className="btn primary" href="/me">View my activity</Link>}
         <button type="button" className="btn" onClick={copySummary}>Copy share summary</button>
         <button type="button" className="btn" onClick={onRetake}>Try the demo again</button>
       </div>

@@ -96,3 +96,51 @@ it('does not expose another browser’s result from an unknown attempt link', as
  await click('Start my test');
  expect(host.textContent).toContain('Decision 1 of 8');
 });
+
+
+it('preserves unsaved decisions and the warning when another tab updates history', async () => {
+ let fail = false;
+ Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+  getItem: (key: string) => saved.get(key) ?? null,
+  setItem: (key: string, value: string) => { if (fail) throw new Error('Quota exceeded'); saved.set(key, value); },
+ }});
+ await render(); await click("Let's find out");
+ fail = true;
+ await act(async()=>host.querySelector<HTMLInputElement>('input[type="radio"]')!.click());
+ await click('Continue');
+ expect(host.textContent).toContain('Decision 2 of 8');
+ const old = JSON.parse(saved.get(CONSUMER_STORAGE_KEY)!);
+ saved.set(CONSUMER_STORAGE_KEY, JSON.stringify([...old, {...old[0], id: 'another-tab'}]));
+ await act(async()=>window.dispatchEvent(new StorageEvent('storage', {key: CONSUMER_STORAGE_KEY})));
+ expect(host.textContent).toContain('Decision 2 of 8');
+ expect(host.textContent).toContain('could not be saved');
+ saved.clear();
+ await act(async()=>window.dispatchEvent(new StorageEvent('storage', {key: null})));
+ expect(host.textContent).toContain('Decision 2 of 8');
+ expect(host.textContent).toContain('Exit (not saved)');
+});
+
+it('keeps an unsaved result on screen and offers sharing instead of an empty activity page', async () => {
+ Object.defineProperty(window, 'localStorage', { configurable: true, value: {
+  getItem: () => null, setItem: () => { throw new Error('Quota exceeded'); },
+ }});
+ await render(); await click("Let's find out");
+ for (let i = 0; i < 8; i++) {
+  await act(async()=>host.querySelector<HTMLInputElement>('input[type="radio"]')!.click());
+  await click(i === 7 ? 'See my profile' : 'Continue');
+ }
+ expect(host.textContent).toContain('What your decisions showed');
+ expect(host.querySelector('a[href="/me"]')).toBeNull();
+ expect(host.textContent).toContain('Copy share summary');
+ expect(host.textContent).toContain('This result is only in this open page and has not been saved');
+});
+
+it('still adopts another tab’s saved decisions when local history is durable', async () => {
+ await render(); await click("Let's find out");
+ const history = JSON.parse(saved.get(CONSUMER_STORAGE_KEY)!);
+ history[0].responses.push('b');
+ saved.set(CONSUMER_STORAGE_KEY, JSON.stringify(history));
+ await act(async()=>window.dispatchEvent(new StorageEvent('storage', {key: CONSUMER_STORAGE_KEY})));
+ expect(host.textContent).toContain('Decision 2 of 8');
+ expect(host.textContent).toContain('Save & exit');
+});
