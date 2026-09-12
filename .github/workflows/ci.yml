@@ -144,7 +144,7 @@ jobs:
       # Never fatal: a rate-limited tokenless upload must not fail a green
       # build. Add CODECOV_TOKEN in repo secrets to make uploads reliable.
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: coverage/lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
