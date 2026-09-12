@@ -37,3 +37,5 @@ export * from "./progress.js";
 export * from "./share.js";
 export * from "./shareText.js";
 export * from "./tracks.js";
+
+export * from "./consumer.js";

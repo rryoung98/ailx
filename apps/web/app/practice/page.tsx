@@ -54,6 +54,8 @@ export default function PracticePage() {
           Review the clues you noticed and the ones you missed.
         </p>
 
+        <p className="muted">Practice uses separate images and does not change your test result.</p>
+        <details><summary>About this practice</summary>
         {/* The efficacy question, answered before anybody asks it, in the one
             wording every surface shares (@ailx/report). It sits directly
             under the drill because that is where a person decides what the
@@ -113,6 +115,7 @@ export default function PracticePage() {
             ) : null}
           </p>
         </section>
+        </details>
       </div>
     </main>
   );

@@ -153,7 +153,7 @@ const MODES: Mode[] = [
     // static export's. The one route handler compiles in the hosted build and
     // only there, so its output is what tells the two `.next` apart.
     marker: join(webRoot, ".next/server/app/s/[token]/card.png"),
-    allJsGzip: 817_237,
+    allJsGzip: 833_671,
     sharedGzip: 214_951,
     pages: {
       "report.html": 353_611,

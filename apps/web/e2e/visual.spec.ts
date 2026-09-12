@@ -13,7 +13,6 @@ import {
 } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { REQUIRES_SERVICE, hasExamService } from "./service";
-import { samplePracticeDeck } from "@ailx/report";
 import {
   awaitStableLayout,
   eventually,
@@ -44,7 +43,7 @@ import {
 const PHONE = { width: 390, height: 844 };
 
 /** Fixed seed for the stubbed practice deal, so the deck is the same deck. */
-const PRACTICE_SESSION = "e2e-landing-drill";
+const _PRACTICE_SESSION = "e2e-landing-drill";
 
 const deckFrame = (page: Page): Locator => page.getByTestId("swipe-deck");
 const runnerFrame = (page: Page): Locator => page.locator(".runner-frame");
@@ -420,143 +419,57 @@ test.describe("share view", () => {
   });
 });
 
-test.describe("landing hero · 390x844 phone", () => {
-  // The hero's entrance animation scales the CTAs while it plays, so a box
-  // measured mid-flight is 40px, not 44. Reduced motion is both the honest
-  // resting state and what a large minority of real visitors actually get.
+test.describe("consumer entry and profile · phone", () => {
   test.use({ viewport: PHONE, hasTouch: true, isMobile: true, contextOptions: { reducedMotion: "reduce" } });
 
-  /**
-   * The sticky header's budget on a phone, in CSS px. It is chrome on EVERY
-   * page, so a header that wraps into three rows spends the visitor's first
-   * screen before the page has said anything. 66px is the desktop token; the
-   * phone row is the same height plus the sticky border, and anything past
-   * this is a wrap.
-   */
-  const HEADER_BUDGET_PX = 72;
-
-  test("the hero fits the phone and its calls to action are pressable", async ({ page }) => {
+  test("the entry is readable and leads directly to the test", async ({ page }) => {
     await page.goto("/");
-
-    await expectNoHorizontalOverflow(page, "the landing page");
-    const title = page.locator("h1.hero-title");
-    await expectInViewport(page, title, "the hero headline");
-    await expectTextNotClipped(title, "the hero headline");
-    const play = page.getByRole("link", { name: "Play a full round" });
-    const credential = page.getByRole("link", { name: "Explore the full exam" });
-    // The hero deliberately puts the playable card at the fold and the CTAs
-    // just below it, so "in the viewport on load" is not the promise. The
-    // promise is that they are whole and pressable once scrolled to.
-    await settleAndSee(page, play, "the primary landing CTA");
-    await expectTapTarget(play, "the primary landing CTA");
-    await expectTapTarget(credential, "the secondary landing CTA");
-    await expectNoOverlap(play, credential, ["the primary landing CTA", "the secondary landing CTA"]);
+    await expectNoHorizontalOverflow(page, "homepage");
+    await expectTextNotClipped(page.locator("h1"), "headline");
+    const start = page.getByRole("link", { name: "Find my AI profile" });
+    await settleAndSee(page, start, "start test");
+    await expectTapTarget(start, "start test");
+    await start.click();
+    await expect(page).toHaveURL(/\/test/);
   });
 
-  test("the sticky header stays one row, here and on every other page", async ({ page }) => {
-    // Layout-wide chrome, so it is checked on more than the page that pays
-    // for it: the same header wraps or does not wrap everywhere.
-    for (const path of ["/", "/methodology"]) {
+  test("navigation stays compact across the consumer routes", async ({ page }) => {
+    for (const path of ["/", "/test", "/me", "/mission"]) {
       await page.goto(path);
-      await expectMaxHeight(page.locator("header.site-header"), `the site header (${path})`, HEADER_BUDGET_PX);
-      await expectNoHorizontalOverflow(page, `the page chrome (${path})`);
+      await expectMaxHeight(page.locator("header.site-header"), `header ${path}`, 72);
+      await expectNoHorizontalOverflow(page, path);
     }
   });
 
-  test("the hero drill is playable: whole, big enough, and nothing printed over it", async ({ page }) => {
-    // Deal a deterministic deck in the browser instead of over the network.
-    // The e2e app is a SERVER build, so the drill asks the exam service for a
-    // deck; with no service it renders its honest failure state and there is
-    // nothing to measure. This contract is about GEOMETRY, so the deal is
-    // stubbed and the geometry keeps being asserted with no backend at all —
-    // the alternative was skipping it, and a landing contract that only runs
-    // where a private service exists is a contract that never runs.
-    await page.route("**/practice", async (route) =>
-      route.fulfill({ json: { session: { id: PRACTICE_SESSION, itemIds: samplePracticeDeck(PRACTICE_SESSION) } } }),
-    );
-    await page.goto("/");
-    const drill = page.locator(".hero-play");
-    await settleAndSee(page, drill, "the hero drill");
-
-    const answers = drill.locator("button");
-    await expect(answers).toHaveCount(2);
-    for (let i = 0; i < 2; i++) {
-      const answer = answers.nth(i);
-      const name = `hero drill answer ${i + 1}`;
-      await settleAndSee(page, answer, name);
-      await expectTapTarget(answer, name);
-      // The fixed bottom pill used to print straight across both answers.
-      // `expectNotOccluded` is the right question and not `expectNoOverlap`:
-      // the pill clears itself by going transparent over `[data-pill-clear]`
-      // (app/page.tsx), and a pill that paints nothing is not in the way.
-      // Retried, because that clearing is a 200ms fade and the frame it
-      // starts on is not the state the visitor sits in.
-      await eventually(() => expectNotOccluded(answer, name));
+  test("finishes a test, restores it after reload, and opens profile history", async ({ page }, testInfo) => {
+    await page.goto("/test");
+    await page.getByRole("button", { name: "Let's find out" }).click();
+    for (let index = 0; index < 8; index++) {
+      await expect(page.getByText(`Decision ${index + 1} of 8`, { exact: true })).toBeVisible();
+      await expectNoHorizontalOverflow(page, `decision ${index + 1}`);
+      await page.getByRole("radio").first().check();
+      const advance = page.getByRole("button", { name: index === 7 ? "See my profile" : "Continue", exact: false });
+      await settleAndSee(page, advance, "continue");
+      await expectTapTarget(advance, "continue");
+      await advance.click();
+      if (index === 2) await page.reload();
     }
-    await expectTapTargets(drill, "the hero drill");
+    await expect(page.getByRole("heading", { name: "What your decisions showed" })).toBeVisible();
+    await page.getByRole("link", { name: "View my activity" }).click();
+    await expect(page.getByRole("slider", { name: "Your timeline" })).toBeVisible();
+    await expect(page.locator("tbody tr")).toHaveCount(6);
+    await expectNoHorizontalOverflow(page, "profile history");
+    await page.screenshot({ path: testInfo.outputPath("profile-mobile.png"), fullPage: true });
   });
 });
 
-test.describe("landing cast strip · 390x844 phone", () => {
-  test.use({ viewport: PHONE, hasTouch: true, isMobile: true, contextOptions: { reducedMotion: "reduce" } });
-
-  /**
-   * The sixteen faces are the identity payoff, and sixteen fixed-width tiles
-   * next to a text column is exactly the shape that pushes a page sideways.
-   * jsdom counts the tiles and reads their codes; only a layout engine can
-   * say whether the row wrapped, whether a face is whole, and whether the
-   * fixed bottom pill paints across them.
-   */
-  test("the cast row wraps instead of pushing the page sideways", async ({ page }) => {
-    await page.goto("/");
-    const row = page.locator(".cast .cast-row");
-    await settleAndSee(page, row, "the cast row");
-    await expectNoHorizontalOverflow(page, "the landing page (cast strip)");
-    await expectNoInnerScroll(row, "the cast row");
-  });
-
-  test("every face is whole, and the pill does not print over the last row", async ({ page }) => {
-    await page.goto("/");
-    const tiles = page.locator(".cast .cast-tile");
-    await expect(tiles).toHaveCount(16);
-    // First and last only: the contract is "the row is not clipped at either
-    // end", and measuring all sixteen buys nothing but minutes.
-    for (const [tile, name] of [
-      [tiles.first(), "the first character tile"],
-      [tiles.last(), "the last character tile"],
-    ] as const) {
-      await settleAndSee(page, tile, name);
-      await eventually(() => expectNotOccluded(tile, name));
-    }
-  });
-
-  test("the sample-card link is reachable and nothing paints over it", async ({ page }) => {
-    await page.goto("/");
-    const link = page.locator(".cast .cast-more a");
-    await settleAndSee(page, link, "the sample card link");
-    // NOT expectTapTarget: this is a quiet in-body text link, the same shape
-    // as the funnel's "Practise the tells" links, and holding it to 44x44
-    // would be a rule this page does not follow anywhere else. What it must
-    // be is whole and unpainted-over, which is what is asserted.
-    await eventually(() => expectNotOccluded(link, "the sample card link"));
-  });
-});
-
-test.describe("landing hero · desktop", () => {
-  // NOT reduced motion, and wide: the paper artifacts are `display: none`
-  // both under `prefers-reduced-motion: reduce` and under 700px, so a phone
-  // run cannot ask this question at all.
+test.describe("consumer entry · desktop", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
-
-  test("the paper decoration never prints over the hero copy", async ({ page }) => {
+  test("headline and main action remain visible and unobstructed", async ({ page }, testInfo) => {
     await page.goto("/");
-    // Retried: the green `.loader` splash really does cover the hero for its
-    // first ~850ms, on purpose. The resting state is the one to assert (§6.4)
-    // — and this is also the contract proving the splash always leaves.
-    await eventually(async () => {
-      await expectNotOccluded(page.locator("p.hero-lede"), "the hero lede");
-      await expectNotOccluded(page.locator("h1.hero-title"), "the hero headline");
-    });
-    await expectNoHorizontalOverflow(page, "the landing page (desktop)");
+    await eventually(() => expectNotOccluded(page.locator("h1"), "headline"));
+    await expectInViewport(page, page.getByRole("link", { name: "Find my AI profile" }), "start test");
+    await expectNoHorizontalOverflow(page, "homepage");
+    await page.screenshot({ path: testInfo.outputPath("home-desktop.png"), fullPage: true });
   });
 });

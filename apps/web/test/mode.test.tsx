@@ -205,16 +205,17 @@ describe("footer rendering", () => {
   const render = () =>
     renderToStaticMarkup(createElement(RootLayout, null, null));
 
-  it("renders the static claim in static mode", () => {
+  it("keeps the static footer focused on the mission", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "");
-    expect(render()).toContain("runs in this browser");
+    expect(render()).toContain("Practical AI literacy, open to everyone.");
+    expect(render()).not.toContain("static demo build");
   });
 
   it("drops the static claim in server mode", () => {
     vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
     const html = render();
     expect(html).not.toContain("runs in this browser");
-    expect(html).toContain("hosted build");
+    expect(html).toContain("Practical AI literacy, open to everyone.");
   });
 
   /**

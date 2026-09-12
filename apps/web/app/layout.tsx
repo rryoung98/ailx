@@ -6,13 +6,11 @@ import { Fraunces, Caveat } from "next/font/google";
 const serif = Fraunces({ subsets: ["latin"], axes: ["opsz"], weight: "variable", variable: "--font-serif", display: "swap" });
 const script = Caveat({ subsets: ["latin"], weight: "variable", variable: "--font-script", display: "swap" });
 import Link from "next/link";
-import { TOTAL_POINTS } from "@ailx/core";
-import { FooterMode } from "../components/FooterMode";
 import { FunnelVisit } from "../components/FunnelVisit";
 import { Loader } from "../components/Loader";
 import { NavLink } from "../components/ui/NavLink";
 import { NavStrip } from "../components/ui/NavStrip";
-import { assetUrl, isClerkEnabled, isServerMode } from "../lib/mode";
+import { assetUrl, isClerkEnabled } from "../lib/mode";
 import { AuthShell } from "../lib/auth/AuthShell";
 import { QueryProvider } from "../lib/QueryProvider";
 import { AuthNav } from "../lib/auth/AuthNav";
@@ -42,52 +40,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <a href="#main" className="skip-link">Skip to main content</a>
           <header className="site-header">
             <div className="inner">
-              <Link href="/" className="wordmark" aria-label="AILX home">
+              <Link href="/" className="wordmark" aria-label="Foray home">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={assetUrl("/media/logo.svg")} alt="AILX" className="wordmark-img" />
+                <img src={assetUrl("/media/logo.svg")} alt="Foray" className="wordmark-img" />
               </Link>
               <nav className="site-nav" aria-label="Primary">
-                {/* One scrolling row below 860px (display:contents above it,
-                    so the links stay direct flex children there). It used to
-                    wrap into two rows: 130px of chrome on every page before any
-                    content, and at 768px it broke phrases in half. Every route
-                    below is still in it, in both builds. */}
                 <NavStrip>
-                  {/* The graded run keeps a plain, obvious slot. It is no longer
-                      the pill: the pill is the fast, free thing, and a four-hour
-                      sitting is a terrible first click. */}
-                  <NavLink href="/exam">Full run</NavLink>
-                  {/* The daily plays in BOTH builds and needs no account: it
-                      is bundled public content, a device clock and
-                      localStorage. It is the shortest first click there is. */}
-                  <NavLink href="/daily">Daily</NavLink>
-                  {/* /progress reads the store, so it is hosted-only. Practice
-                      plays in BOTH builds (its corpus is bundled) and is the
-                      pill, so it is not repeated here. */}
-                  {isServerMode() && <NavLink href="/progress">Progress</NavLink>}
-                  <NavLink href="/report">Report</NavLink>
-                  {/* The share gallery reads the database, so it exists only in
-                      the hosted build; the static export links the T4 community
-                      wall instead. One nav slot, never a link that cannot work. */}
-                  {isServerMode() ? (
-                    <>
-                      <NavLink href="/gallery">Gallery</NavLink>
-                      <NavLink href="/world">World</NavLink>
-                    </>
-                  ) : (
-                    <NavLink href="/wall">Wall</NavLink>
-                  )}
-                  <NavLink href="/methodology">Methodology</NavLink>
-                  <NavLink href="/validate">Validate</NavLink>
-                  {/* Sign-in is a link, never a gate: the game plays anonymously
-                      and an identity buys a scored sitting and saved progress.
-                      Absent unless Clerk is mounted, because /sign-in does not
-                      exist in the static export. */}
+                  <NavLink href="/mission">Mission</NavLink>
+                  <NavLink href="/me">My activity</NavLink>
                   {isClerkEnabled() && <AuthNav />}
                 </NavStrip>
-                {/* Compact pill twin of the bottom .pill-cta, aligned right, and
-                    outside the scrolling row so it is never scrolled off. */}
-                <NavLink href="/practice" className="nav-pill"><span className="dot" aria-hidden />Play</NavLink>
+                <NavLink href="/test" className="nav-pill">Take the test</NavLink>
               </nav>
             </div>
           </header>
@@ -98,13 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <footer className="site-footer">
             <div className="container">
-              <FooterMode />
-              {/* The public purpose stays separate from the technical exam details. */}
               <p>Practical AI literacy, open to everyone.</p>
-              <p>
-                <span className="mono">AILX-Spec-2026.1</span> · four tracks, {TOTAL_POINTS} raw
-                points. Scoring code and practice examples are public; exam questions are private.
-              </p>
             </div>
           </footer>
         </AuthShell>

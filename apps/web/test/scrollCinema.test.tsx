@@ -17,7 +17,6 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import Home from "../app/page";
 import Methodology from "../app/methodology/page";
 import { Annotation } from "../components/ui/Annotation";
 
@@ -43,43 +42,6 @@ afterEach(() => {
   host?.remove();
   root = null;
   host = null;
-});
-
-describe("pinned scrubbed hero structure", () => {
-  it("keeps exactly one h1 in the DOM; phase-B copy is aria-hidden", async () => {
-    const h = await render(createElement(Home));
-    expect(h.querySelectorAll("h1")).toHaveLength(1);
-    const phaseB = h.querySelector(".hero-phase-b");
-    expect(phaseB).not.toBeNull();
-    expect(phaseB!.getAttribute("aria-hidden")).toBe("true");
-    expect(phaseB!.textContent).toContain("Understand what AI can do.");
-    expect(phaseB!.textContent).toContain("Decide how you use it.");
-    expect(phaseB!.querySelector(".script-accent")?.textContent).toBe("you");
-  });
-
-  it("nests the sticky stage inside the scrub wrapper, hero phase A inside the stage", async () => {
-    const h = await render(createElement(Home));
-    const stage = h.querySelector(".hero-cinema > .hero-stage");
-    expect(stage).not.toBeNull();
-    expect(stage!.querySelector(".hero.hero-phase-a")).not.toBeNull();
-  });
-
-  it("splits the headline into staggered .hero-line spans inside the single h1", async () => {
-    const h = await render(createElement(Home));
-    const lines = h.querySelectorAll("h1 .hero-line");
-    expect(lines).toHaveLength(2);
-    expect(h.querySelector(".hero-line-1")).not.toBeNull();
-    expect(h.querySelector(".hero-line-2")).not.toBeNull();
-  });
-
-  it("renders >= 3 aria-hidden parallax paper artifacts (pure SVG/CSS)", async () => {
-    const h = await render(createElement(Home));
-    const wrap = h.querySelector(".hero-artifacts");
-    expect(wrap).not.toBeNull();
-    expect(wrap!.getAttribute("aria-hidden")).toBe("true");
-    expect(wrap!.querySelectorAll(".hero-artifact").length).toBeGreaterThanOrEqual(3);
-    expect(wrap!.querySelector("img")).toBeNull(); // no raster assets
-  });
 });
 
 describe("scroll cinema CSS gating", () => {
@@ -134,12 +96,6 @@ describe("self-drawing annotations", () => {
 });
 
 describe("site-wide show-on-scroll coverage", () => {
-  it("landing: stats section and every track band reveal on scroll", async () => {
-    const h = await render(createElement(Home));
-    expect(h.querySelectorAll("main .reveal").length).toBeGreaterThanOrEqual(5);
-    const bands = h.querySelectorAll(".track-bands .reveal .track-band");
-    expect(bands).toHaveLength(4);
-  });
 
   it("methodology: each of the four chapters is a .reveal section", async () => {
     const h = await render(createElement(Methodology));
@@ -183,26 +139,6 @@ describe("site-wide show-on-scroll coverage", () => {
 });
 
 describe("expanding desk panel (full-bleed scrub)", () => {
-  it("renders the desk image as decorative: empty alt, aria-hidden panel, lazy, sized (no CLS)", async () => {
-    const h = await render(createElement(Home));
-    const panel = h.querySelector(".desk-cinema .desk-panel");
-    expect(panel).not.toBeNull();
-    expect(panel!.getAttribute("aria-hidden")).toBe("true");
-    const img = panel!.querySelector("img")!;
-    expect(img.getAttribute("alt")).toBe("");
-    expect(img.getAttribute("loading")).toBe("lazy");
-    expect(img.getAttribute("width")).toBe("1600");
-    expect(img.getAttribute("height")).toBe("872");
-    expect(panel!.querySelector(".desk-scrim")).not.toBeNull();
-  });
-
-  it("floats the quote and four track cards over the panel, each revealing on scroll", async () => {
-    const h = await render(createElement(Home));
-    const overlay = h.querySelector(".desk-cinema .desk-overlay")!;
-    expect(overlay.querySelector(".desk-quote")).not.toBeNull();
-    expect(overlay.querySelectorAll(".desk-card")).toHaveLength(4);
-    expect(overlay.querySelectorAll(".reveal").length).toBeGreaterThanOrEqual(5);
-  });
 
   it("gates the expand-to-full-bleed scrub and the sticky overlap behind @supports + motion", () => {
     const desk = css.slice(css.indexOf("scroll cinema: expanding desk panel"));
@@ -314,26 +250,6 @@ describe("hero fade leaves nothing clickable behind (TEN-222)", () => {
     // opacity: 0 alone leaves the subtree hit-testable and in the tab order.
     for (const name of ["heroFadeOut", "heroSettle"]) {
       expect(finalStop(name)).toMatch(/visibility:\s*hidden/);
-    }
-  });
-
-  it("the faded drill and both CTAs are unfocusable once the fade has completed", async () => {
-    const h = await render(createElement(Home));
-    const cta = h.querySelector(".hero-cta.hero-fade") as HTMLElement | null;
-    const play = h.querySelector(".hero-play.hero-fade") as HTMLElement | null;
-    expect(cta).not.toBeNull();
-    expect(play).not.toBeNull();
-    // Play the fade to its end: jsdom runs no animation, so apply the final
-    // stop's own declarations, which is exactly what `animation-fill-mode:
-    // both` leaves on screen for the rest of the pin.
-    for (const el of [cta!, play!]) el.style.cssText = finalStop("heroFadeOut");
-    const controls = [...h.querySelectorAll(".hero-cta.hero-fade a, .hero-play.hero-fade button")];
-    expect(controls.length).toBeGreaterThanOrEqual(3); // 2 CTAs + drill buttons
-    for (const c of controls) {
-      // jsdom's focus() implements no rendering check, so assert the spec
-      // condition instead: a visibility:hidden element is not a focusable
-      // area (HTML §6.6.2) and is not hit-testable.
-      expect(getComputedStyle(c).visibility).toBe("hidden");
     }
   });
 });
