@@ -21,5 +21,10 @@ export default defineConfig({
     ],
   },
   // e2e/ is Playwright's (it needs a server); vitest must not try to run it.
-  test: { passWithNoTests: true, exclude: [...configDefaults.exclude, "e2e/**"] },
+  test: {
+    passWithNoTests: true,
+    exclude: [...configDefaults.exclude, "e2e/**"],
+    // Mock canvas.getContext for jsdom (HeroCanvas, track3d use it).
+    setupFiles: ["./test/mocks/canvas.ts"],
+  },
 });
