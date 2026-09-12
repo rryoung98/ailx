@@ -23,7 +23,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Loader, LOADER_FALLBACK_MS, LOADER_MARK, WIPE_ANIMATION } from "../components/Loader";
+import { Loader, LOADER_FALLBACK_MS, LOADER_MARK } from "../components/Loader";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
