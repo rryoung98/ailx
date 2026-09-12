@@ -55,6 +55,13 @@
  * one of them changed a YAML number and some prose (TEN-90). A budget
  * calibrated somewhere the gate never runs is not a budget.
  *
+ * AND THE PERCENTAGE IS NOT PORTABLE EITHER, which is the trap, because a
+ * percentage LOOKS like a normalised machine-independent number and is not one.
+ * PR #72 measured 11% / 14% of tolerance spent on a laptop and 21% / 22% in CI —
+ * same tree, same procedure, roughly DOUBLE. Someone who would never quote a raw
+ * byte total from a laptop will happily quote a percentage from one. Every figure
+ * in a review, an issue or a commit message needs to say where it was measured.
+ *
  * So every measurement is printed on SUCCESS as well as failure, prefixed
  * `[bundle]`. To re-baseline: read the numbers out of a green CI run on `main`,
  * put them here, and say in the commit message which run they came from.
