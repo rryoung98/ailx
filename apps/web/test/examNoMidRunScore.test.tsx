@@ -173,7 +173,7 @@ describe("a hosted track completion", () => {
 
 describe("no code path can score an open attempt any more", () => {
   const sources = (dir: string, out: string[] = []): string[] => {
-    for (const name of readFileSync ? require("node:fs").readdirSync(dir) : []) {
+    for (const name of require("node:fs").readdirSync(dir) as string[]) {
       if (["node_modules", ".next", "out", "dist", "test", "e2e"].includes(name)) continue;
       const full = join(dir, name);
       if (require("node:fs").statSync(full).isDirectory()) sources(full, out);

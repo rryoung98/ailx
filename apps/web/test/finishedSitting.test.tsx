@@ -343,6 +343,7 @@ describe("a track that is still awaiting judgment", () => {
       },
       failure: null,
       bounded: true,
+      asked: true,
       reading: false,
       arrived: [],
       checkAgain: () => undefined,

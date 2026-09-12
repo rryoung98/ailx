@@ -22,7 +22,7 @@ import { append, saveAttempt, type SessionConfig } from "@ailx/session";
 
 /** A runner that saves one checkpoint, as every real runner does. */
 function CheckpointingRunner(props: TrackUIProps) {
-  useEffect(() => { props.onCheckpoint({ draft: "the candidate's work" }); }, [props.onCheckpoint]);
+  useEffect(() => { props.onCheckpoint?.({ draft: "the candidate's work" }); }, [props.onCheckpoint]);
   return createElement("p", null, "runner alive");
 }
 

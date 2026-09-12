@@ -95,7 +95,7 @@ async function mount(serverMode: boolean, clerk = false, props: { taster?: boole
   document.body.appendChild(host);
   root = createRoot(host);
   await act(async () => {
-    root!.render(createElement(PracticeDrill, props));
+    root!.render(createElement(PracticeDrill, { ...props, key: "drill" }));
   });
 }
 
