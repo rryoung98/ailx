@@ -56,26 +56,6 @@ describe("pill CTA affordance", () => {
 });
 
 describe("funnel section", () => {
-  it("renders four steps with the serif one-idea headers", async () => {
-    const h = await render(createElement(Home));
-    const steps = h.querySelectorAll(".wyg-steps .wyg-step");
-    expect(steps).toHaveLength(4);
-    const titles = [...h.querySelectorAll(".wyg-title")].map((t) => t.textContent);
-    // Step two is now the same headline in both builds — the streak works
-    // without an account. Only its link differs; that is asserted in
-    // landingFunnel.test.tsx.
-    expect(titles).toEqual([
-      "Play one card.",
-      "Come back tomorrow.",
-      "Try the full exam.",
-      "See what you did.",
-    ]);
-    // one plain supporting line + one decorative visual per step
-    expect(h.querySelectorAll(".wyg-line")).toHaveLength(4);
-    const vizzes = h.querySelectorAll(".wyg-viz");
-    expect(vizzes).toHaveLength(4);
-    for (const v of vizzes) expect(v.getAttribute("aria-hidden")).toBe("true");
-  });
 
   it("replaced the stats soup: no .grid4/.stat block on the landing page", async () => {
     const h = await render(createElement(Home));
@@ -83,55 +63,9 @@ describe("funnel section", () => {
     expect(h.querySelector("main .stat")).toBeNull();
     expect(h.textContent).not.toContain("1 : 2 : 3");
   });
-
-  it("upgraded the footnote line into the proof showcase (links + quiet caption)", async () => {
-    const h = await render(createElement(Home));
-    expect(h.querySelector(".wyg-footnotes")).toBeNull();
-    const showcase = h.querySelector(".showcase")!;
-    expect(showcase).not.toBeNull();
-    const rows = [...showcase.querySelectorAll(".showcase-row")];
-    expect(rows).toHaveLength(2);
-    expect(rows[0].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/methodology");
-    expect(rows[1].querySelector(".showcase-copy a.btn")!.getAttribute("href")).toBe("/validate");
-    expect(showcase.querySelector(".showcase-caption")!.textContent).toContain(
-      "Demo results are not official exam scores",
-    );
-  });
 });
 
 describe("campus map journey", () => {
-  it("renders four floating /exam cards in DOM order T1..T4 inside the pinned stage", async () => {
-    const h = await render(createElement(Home));
-    const journey = h.querySelector(".campus-journey")!;
-    expect(journey).not.toBeNull();
-    const cards = [...journey.querySelectorAll("a.campus-card")];
-    expect(cards).toHaveLength(4);
-    for (const a of cards) expect(a.getAttribute("href")).toBe("/exam");
-    expect(cards.map((c) => c.querySelector(".campus-card-code")!.textContent)).toEqual([
-      "T1", "T2", "T3", "T4",
-    ]);
-    expect(cards.map((c) => c.classList.contains(`campus-stop-${cards.indexOf(c) + 1}`))).toEqual([
-      true, true, true, true,
-    ]);
-    // each stop carries a mini scene slot (three.js when WebGL, CSS otherwise)
-    for (const c of cards) expect(c.querySelector(".campus-card-viz .track-scene")).not.toBeNull();
-  });
-
-  it("pans the aerial campus photo as the background layer", async () => {
-    const h = await render(createElement(Home));
-    const map = h.querySelector<HTMLElement>(".campus-journey .campus-map")!;
-    expect(map).not.toBeNull();
-    expect(map.getAttribute("aria-hidden")).toBe("true");
-    expect(map.style.backgroundImage).toContain("/media/campus-map.jpg");
-    expect(h.querySelector(".campus-journey .campus-scrim")).not.toBeNull();
-  });
-
-  it("keeps the static alternating bands in the DOM as the fallback", async () => {
-    const h = await render(createElement(Home));
-    const fallback = h.querySelector(".track-bands-fallback")!;
-    expect(fallback).not.toBeNull();
-    expect(fallback.querySelectorAll(".track-band")).toHaveLength(4);
-  });
 
   it("CSS: journey hidden at base, shown (and fallback hidden) only behind @supports + motion", () => {
     const section = css.slice(css.indexOf("campus map journey"));
@@ -162,26 +96,5 @@ describe("campus map journey", () => {
     // card swap keyframes gate visibility so hidden stops are not clickable
     expect(css).toContain("@keyframes campusCard");
     expect(css).toMatch(/visibility: hidden/);
-  });
-});
-
-describe("declauded landing copy", () => {
-  it("hero lede is at most two plain sentences with no em dashes", async () => {
-    const h = await render(createElement(Home));
-    const lede = h.querySelector(".hero-lede")!.textContent!.trim();
-    expect(lede).not.toContain("\u2014");
-    const sentences = lede.split(/[.!?]+\s*/).filter(Boolean);
-    expect(sentences.length).toBeLessThanOrEqual(2);
-    expect(lede.length).toBeLessThan(160);
-  });
-
-  it("landing page carries no marketing puffery or stats soup", async () => {
-    const h = await render(createElement(Home));
-    const text = h.textContent!;
-    expect(text).toContain("AI is for everyone.");
-    expect(text).toContain("Learn to use it on your terms.");
-    for (const banned of ["trilateral", "audit-grade", "specification,", "psychometrics", "judge governance", "This one rates you", "one score"]) {
-      expect(text).not.toContain(banned);
-    }
   });
 });

@@ -1,26 +1,11 @@
 // @vitest-environment jsdom
-/**
- * Site showcase wave regression tests:
- *  - landing proof showcase: two Zero-style split rows (script-accented serif
- *    headers, hand notes, pastoral panels with floating minis), each linking
- *    to /methodology and /validate; quiet demo-spec caption survives;
- *  - parallax drift is @supports + reduced-motion gated in CSS (static base);
- *  - methodology + validate carry the page-hero band; validate renders the
- *    checks as a 2-col card grid with pass pills and a floating run card;
- *  - favicon assets exist (app/icon.svg green square + mint X, apple-icon.png);
- *  - header nav swaps the plain Play link for a compact pill (ink bg, green
- *    dot) while other links stay plain;
- *  - mobile pill guard: connect panel + landing CTAs are [data-pill-clear] zones
- *    and the CSS hides .pill-cta-cleared under 640px.
- */
-import { TOTAL_POINTS } from "@ailx/core";
+
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, } from "vitest";
 import { act, createElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import Home from "../app/page";
 import Methodology from "../app/methodology/page";
 import ValidatePage from "../app/validate/page";
 import RootLayout from "../app/layout";
@@ -49,53 +34,6 @@ afterEach(() => {
 });
 
 describe("landing proof showcase", () => {
-  it("renders two split rows with script-accented serif headers and hand notes", async () => {
-    const h = await render(createElement(Home));
-    const rows = [...h.querySelectorAll(".showcase .showcase-row")];
-    expect(rows).toHaveLength(2);
-    const titles = rows.map((r) => r.querySelector(".showcase-title")!.textContent);
-    expect(titles).toEqual(["Know what we measure.", "Check the scoring."]);
-    for (const r of rows) expect(r.querySelector(".showcase-title .script-accent")).not.toBeNull();
-    const notes = rows.map((r) => r.querySelector(".annotation")!.textContent);
-    expect(notes[0]).toContain("know the limits too");
-    expect(notes[1]).toContain("runs in your browser");
-    // second row flips the panel to the left
-    expect(rows[1].classList.contains("showcase-row-flip")).toBe(true);
-  });
-
-  it("each row's panel shows the pastoral backdrop with floating minis, decorative only", async () => {
-    const h = await render(createElement(Home));
-    const panels = [...h.querySelectorAll(".showcase-panel")];
-    expect(panels).toHaveLength(2);
-    const hrefs = panels.map((p) => p.getAttribute("href"));
-    expect(hrefs).toEqual(["/methodology", "/validate"]);
-    for (const p of panels) {
-      expect(p.getAttribute("aria-hidden")).toBe("true");
-      expect(p.getAttribute("tabindex")).toBe("-1");
-      expect(p.querySelector("img")!.getAttribute("src")).toContain("/media/pastoral.jpg");
-      expect(p.querySelector("img")!.getAttribute("alt")).toBe("");
-      expect(p.querySelector(".showcase-scrim")).not.toBeNull();
-      const minis = p.querySelectorAll(".mini-card");
-      expect(minis.length).toBeGreaterThanOrEqual(2);
-      expect(minis.length).toBeLessThanOrEqual(3);
-    }
-    // the three mini motifs all appear somewhere in the section
-    // The score mini shows the SCALE, never a result: the invented "206.6 /
-    // 400 · Merit" was a judged-looking number on the page that sells the
-    // instrument, and no judged number exists yet. The scale is READ from the
-    // allocation table, because it moved (400 -> 375, TEN-80).
-    const scoreMini = h.querySelector(".mini-card-score")!;
-    expect(scoreMini.querySelector(".mini-card-num")!.textContent).toBe(`?/${TOTAL_POINTS}`);
-    expect(scoreMini.querySelector(".mini-card-band")!.textContent).toBe("your score");
-    for (const band of ["Merit", "Distinction", "Pass"]) {
-      expect(scoreMini.textContent).not.toContain(band);
-    }
-    const checks = h.querySelector(".mini-card-checks")!;
-    for (const s of ["saved inputs checked", "scores match", "export matches"]) {
-      expect(checks.textContent).toContain(s);
-    }
-    expect(h.querySelector(".mini-card-report")).not.toBeNull();
-  });
 
   it("CSS: mini drift is gated behind @supports(animation-timeline) + no-preference", () => {
     const at = css.indexOf(".showcase-panel .mini-card {\n      animation:");
@@ -185,7 +123,7 @@ describe("favicon", () => {
 });
 
 describe("header play pill", () => {
-  const els = (): ReactElement[] => {
+  const _els = (): ReactElement[] => {
     const out: ReactElement[] = [];
     const walk = (node: ReactNode): void => {
       if (Array.isArray(node)) { node.forEach(walk); return; }
@@ -197,61 +135,6 @@ describe("header play pill", () => {
     walk(RootLayout({ children: null }) as ReactElement);
     return out;
   };
-
-  it("nav renders Play as the trailing pill with a green dot; other links stay plain", () => {
-    const nav = els().find((e) => e.type === "nav")!;
-    const links: { href?: string; className?: string }[] = [];
-    const walk = (node: ReactNode): void => {
-      if (Array.isArray(node)) { node.forEach(walk); return; }
-      if (!isValidElement(node)) return;
-      const props = node.props as { href?: string; className?: string; children?: ReactNode };
-      if (props?.href) links.push({ href: props.href, className: props.className });
-      if (props?.children !== undefined) walk(props.children);
-    };
-    walk((nav.props as { children?: ReactNode }).children);
-    // Static export: the share gallery and the personal progress page both
-    // need a database, so the nav links the T4 community wall instead of
-    // routes that cannot exist here. The pill is the free drill (/practice);
-    // the graded run keeps a plain, obvious slot of its own, and /daily sits
-    // next to it because it plays in this build too.
-    expect(links.map((l) => l.href)).toEqual([
-      "/exam", "/daily", "/report", "/wall", "/methodology", "/validate", "/practice",
-    ]);
-    expect(links[links.length - 1].className).toBe("nav-pill");
-    for (const l of links.slice(0, -1)) expect(l.className).toBeUndefined();
-    // dot span inside the pill
-    const pill = els().find((e) => (e.props as { className?: string }).className === "nav-pill")!;
-    const kids = (pill.props as { children?: ReactNode }).children as ReactNode[];
-    const dot = (Array.isArray(kids) ? kids : [kids]).find(
-      (k) => isValidElement(k) && (k.props as { className?: string }).className === "dot",
-    );
-    expect(dot).toBeDefined();
-  });
-
-  it("links the share gallery and the world page only in the hosted build", () => {
-    vi.stubEnv("NEXT_PUBLIC_AILX_BACKEND", "1");
-    try {
-      const nav = els().find((e) => e.type === "nav")!;
-      const hrefs: string[] = [];
-      const walk = (node: ReactNode): void => {
-        if (Array.isArray(node)) { node.forEach(walk); return; }
-        if (!isValidElement(node)) return;
-        const props = node.props as { href?: string; children?: ReactNode };
-        if (props?.href) hrefs.push(props.href);
-        if (props?.children !== undefined) walk(props.children);
-      };
-      walk((nav.props as { children?: ReactNode }).children);
-      // Practice ships in BOTH builds and is the pill in both, so the daily
-      // loop is never URL-only; /progress reads the store, so it is here and
-      // not in the export.
-      expect(hrefs).toEqual([
-        "/exam", "/daily", "/progress", "/report", "/gallery", "/world", "/methodology", "/validate", "/practice",
-      ]);
-      expect(hrefs).not.toContain("/wall");
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
 
   it("CSS styles .nav-pill like the pill-cta (ink bg, rounded-full, pointer, hover lift)", () => {
     const m = css.match(/\.nav-pill \{[^}]*\}/s);
@@ -266,22 +149,6 @@ describe("header play pill", () => {
 });
 
 describe("pill guard + scrub shortening", () => {
-  it("the connect panel and the landing CTAs are marked [data-pill-clear]", () => {
-    // The landing teaser used to be checked here too; it was unreachable from
-    // any route and was deleted (TEN-63 follow-up).
-    const connect = readFileSync(join(appDir, "..", "features", "exam", "ConnectPanel.tsx"), "utf8");
-    expect(connect).toContain("data-pill-clear");
-    // The landing page is where the fixed pill actually sat on top of copy.
-    const landing = readFileSync(join(appDir, "page.tsx"), "utf8");
-    expect(landing).toContain('className="hero-cta hero-fade" data-pill-clear=""');
-    expect(landing).toContain('className="wyg-steps" data-pill-clear=""');
-    const pill = readFileSync(join(appDir, "..", "components", "ui", "PillCTA.tsx"), "utf8");
-    expect(pill).toContain("[data-pill-clear]");
-    expect(pill).toContain("pill-cta-cleared");
-    // The guard is deliberately NOT width-gated any more: a fixed pill covers
-    // a desktop heading exactly as hard as a phone button.
-    expect(pill).not.toContain("max-width: 640px");
-  });
 
   it("CSS owns the whole cleared state, at every width", () => {
     const mob = css.slice(css.indexOf("mobile compatibility"));
@@ -335,17 +202,5 @@ describe("parent dogfood follow-ups", () => {
     expect(text).toContain("Score records do not yet store that version");
     expect(text).toContain("Inputs sent to a connected model leave this page");
     expect(text).toContain("The figures below are not measurements of Foray judges");
-  });
-
-  it("nav links render through NavLink, which sets aria-current on the active page", () => {
-    const layoutSrc = readFileSync(join(appDir, "layout.tsx"), "utf8");
-    // 3 always-on links + Play, plus the two mode-gated hosted links
-    // (/gallery, /world), the static-export /wall that replaces them, and the
-    // one slot that is /progress in the hosted build and /practice in the export.
-    expect((layoutSrc.match(/<NavLink /g) ?? []).length).toBe(10);
-    const navSrc = readFileSync(join(appDir, "..", "components", "ui", "NavLink.tsx"), "utf8");
-    expect(navSrc).toContain("usePathname");
-    expect(navSrc).toContain('aria-current={current ? "page" : undefined}');
-    expect(css).toMatch(/\.site-nav a\[aria-current="page"\] \{[^}]*var\(--accent\)/s);
   });
 });

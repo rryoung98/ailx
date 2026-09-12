@@ -1,0 +1,72 @@
+.page { padding-bottom: 3rem; }
+.page h1 { max-width: 20ch; }
+.intro { max-width: 700px; margin: 1rem auto; }
+.intro h1 { font-size: clamp(2.3rem, 5vw, 3.8rem); line-height: 1.08; }
+.brief, .nextActivity { background: var(--bg-raised); padding: 1.5rem; border-radius: 1.2rem; margin: 2rem 0; border: 1px solid var(--border); }
+.note { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+.warning { padding: 1rem; border: 1px solid var(--warn); border-radius: 0.75rem; }
+.testTop { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.testTop a { min-height: 44px; display: inline-flex; align-items: center; }
+.progress { width: 100%; height: 6px; margin-top: 0.6rem; accent-color: var(--accent); }
+.stages { list-style: none; padding: 0; display: flex; gap: 1rem; font-size: 0.85rem; color: var(--muted); }
+.stages li[aria-current] { color: var(--accent); font-weight: 750; text-decoration: underline; text-underline-offset: 6px; }
+.questionTitle { font-size: clamp(1.8rem, 3vw, 2.5rem); line-height: 1.15; margin: 1.8rem 0; }
+.workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: stretch; }
+.source, .assistant { padding: 1.3rem; border-radius: 1rem; border: 1px solid var(--border); }
+.source { background: var(--card); }
+.source ul { padding-left: 1.2rem; margin: 0; }
+.source li + li { margin-top: 0.6rem; }
+.assistant { background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
+.assistant > p:last-child { font-size: 1.15rem; line-height: 1.55; }
+.choices { border: 0; padding: 0; margin: 1.75rem 0 0; min-width: 0; }
+.choices legend { font-weight: 650; font-size: 1.15rem; margin-bottom: 1rem; }
+.choice { display: flex; align-items: flex-start; gap: 0.9rem; padding: 1rem; margin-bottom: 0.7rem; border: 1px solid var(--border-strong); border-radius: 0.85rem; background: var(--card); cursor: pointer; }
+.choice:hover { border-color: var(--accent); }
+.choice:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.choice:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 3px; }
+.choice input { width: 20px; height: 20px; min-width: 20px; margin-top: 0.15rem; accent-color: var(--accent); }
+.actions { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; align-items: center; margin: 1.3rem 0; }
+.actions a { min-height: 44px; display: inline-flex; align-items: center; }
+.resultHero { display: flex; align-items: center; justify-content: space-between; gap: 2rem; margin-bottom: 2.5rem; }
+.resultHero h1 { font-size: clamp(2.2rem, 4vw, 3.5rem); line-height: 1.1; }
+.skills { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.skill { border: 1px solid var(--border); border-radius: 1rem; padding: 1.3rem; }
+.skill h3 { font-size: 1.3rem; margin: 0 0 1rem; }
+.review { padding: 1rem 0; border-bottom: 1px solid var(--border); }
+.review summary { cursor: pointer; min-height: 44px; }
+.review summary span { display: block; color: var(--muted); font-size: 0.85rem; padding-top: 0.3rem; }
+.exercise label { display: block; font-weight: 650; margin: 1rem 0 0.5rem; }
+.exercise textarea { width: 100%; font: inherit; padding: 1rem; border: 1px solid var(--border-strong); border-radius: 0.7rem; background: var(--card); color: var(--fg); }
+.historyCard { display: flex; align-items: center; gap: 1.5rem; border-bottom: 1px solid var(--border); padding: 1.5rem 0; }
+.historyCard h2 { font-size: 1.5rem; margin-top: 0; }
+@media (max-width: 600px) {
+  .workspace, .skills { grid-template-columns: 1fr; }
+  .resultHero { flex-direction: column-reverse; align-items: flex-start; gap: 1rem; }
+  .stages { gap: 0.8rem; }
+  .source, .assistant, .brief, .nextActivity { padding: 1rem; }
+  .historyCard { align-items: flex-start; gap: 0.7rem; }
+}
+
+.statCard { display: grid; grid-template-columns: 144px minmax(0, 1fr) minmax(260px, 340px); gap: 1.5rem; padding: 1.75rem; margin: 1.5rem 0; border: 1px solid var(--border-strong); border-radius: 1.5rem; background: var(--card); box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 6%, transparent); }
+.statFigure { margin: 0; min-width: 0; }
+.statFigure svg { display: block; width: 100%; overflow: visible; }
+.statFigure text { fill: var(--fg); font: 600 10px system-ui, sans-serif; letter-spacing: 0.4px; }
+.statFigure figcaption { text-align: center; font-size: 0.75rem; color: var(--muted); }
+.statFrame { fill: color-mix(in srgb, var(--accent) 4%, var(--card)); stroke: var(--border); }
+.statGrid { fill: none; stroke: var(--border-strong); stroke-width: 1; }
+.statValue { fill: color-mix(in srgb, var(--accent) 28%, transparent); stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.statCenter { fill: var(--accent); }
+@media (max-width: 850px) { .statCard { grid-template-columns: 120px minmax(0, 1fr); } .statCard > img { width: 120px !important; height: 120px !important; } .statFigure { grid-column: 1 / -1; width: min(100%, 340px); justify-self: center; } }
+@media (max-width: 400px) { .statCard { grid-template-columns: 1fr; padding: 1rem; } .statCard > img { justify-self: center; } }
+
+.historyControls { margin: 1.5rem 0; }
+.historyControls label { display: block; font-weight: 650; margin-bottom: 0.5rem; }
+.historyControls select { max-width: 100%; min-height: 44px; padding: 0.6rem 1rem; font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--border-strong); border-radius: 0.6rem; }
+.metricHistory { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.metricHistory th, .metricHistory td { padding: 0.85rem 0.4rem; border-bottom: 1px solid var(--border); text-align: left; }
+.metricHistory th span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.5rem; }
+
+.timeline { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.timeline input { flex: 1; min-width: 120px; min-height: 44px; accent-color: var(--accent); cursor: pointer; }
+.timeline output { font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.timeline button { min-height: 44px; }

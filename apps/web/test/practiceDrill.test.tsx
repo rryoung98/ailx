@@ -837,10 +837,11 @@ describe("the landing taster (TEN-156)", () => {
     expect(posted[0].url).toMatch(/\/api\/practice$/);
   });
 
-  it("is how the landing page mounts the drill", () => {
+  it("the landing page offers practice without starting a round", () => {
     // The prop is the whole fix, and it lives on one line of one page.
     const page = readFileSync(repoFile("app/page.tsx"), "utf8");
-    expect(page).toMatch(/<PracticeDrill taster \/>/);
+    expect(page).not.toContain("<PracticeDrill");
+    expect(page).toContain('href="/practice"');
   });
 });
 

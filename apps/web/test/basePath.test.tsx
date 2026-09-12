@@ -119,17 +119,11 @@ describe.each(CONFIGS)("route media under the $name basePath", ({ env, prefix })
     stub(env);
   });
 
-  it("the landing page prefixes every local media src", async () => {
-    const { default: Home } = await import("../app/page");
-    const el = await render(createElement(Home));
-    const srcs = [...el.querySelectorAll("img")]
-      .map((i) => i.getAttribute("src") ?? "")
-      .filter((s) => s.includes("/media/"));
-    expect(srcs.length).toBeGreaterThan(0);
-    for (const s of srcs) expect(s.startsWith(`${prefix}/media/`)).toBe(true);
-    // The campus map is a CSS background, not an <img>.
-    const map = el.querySelector<HTMLElement>(".campus-map");
-    expect(map?.style.backgroundImage).toContain(`${prefix}/media/campus-map.jpg`);
+  it("the result character prefixes its asset URL", async () => {
+    const { CharacterPortrait } = await import("../components/CharacterPortrait");
+    const el = await render(createElement(CharacterPortrait, { code: "MSAE", size: 72 }));
+    const src = el.querySelector("img")?.getAttribute("src");
+    expect(src).toMatch(new RegExp(`^${prefix}/characters/`));
   });
 
   it("the methodology page prefixes its hero image", async () => {

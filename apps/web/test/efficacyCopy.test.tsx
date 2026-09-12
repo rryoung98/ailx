@@ -153,12 +153,13 @@ describe("the practice surface claims nothing for itself", () => {
 });
 
 describe("the engagement surface survives intact", () => {
-  it("the landing funnel still asks people to come back, and still offers the drill", async () => {
+  it("the landing funnel leads to the short test and retains optional practice", async () => {
     const text = await renderedText(createElement(Home));
     // Activity language is honest language: it describes what happened.
-    expect(text).toContain("Play one card.");
-    expect(text).toMatch(/Meet the families\.|Come back tomorrow\./);
-    expect(text).toContain("Try a practice round");
+    expect(text).toContain("Find my AI profile");
+    expect(text).toContain("Return to my activity");
+    expect(host?.querySelector('a[href="/test"]')).not.toBeNull();
+    expect(host?.querySelector('a[href="/practice"]')).not.toBeNull();
   });
 
   it("the practice page still sells the round on the tells, not on a promise", async () => {

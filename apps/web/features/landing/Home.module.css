@@ -1,0 +1,36 @@
+.home { padding-bottom: 0; }
+.hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 4rem; align-items: center; padding-top: 2rem; padding-bottom: 4rem; }
+.intro h1 { font-size: clamp(2.5rem, 4.6vw, 4.6rem); line-height: 1.06; letter-spacing: -0.045em; max-width: 13ch; }
+.intro h1 em { color: var(--accent); }
+.lede { max-width: 36ch; margin-top: 1.6rem; }
+.invitation { margin-top: 2rem; font-weight: 650; }
+.note { color: var(--muted); font-size: 0.9rem; }
+.play { min-width: 0; padding: 1.5rem; border: 1px solid var(--border-strong); border-radius: 1.5rem; background: var(--card); box-shadow: 0 14px 40px color-mix(in srgb, var(--accent) 8%, transparent); }
+.continue { margin: 1rem 0 0; }
+.continue a { min-height: 44px; display: inline-flex; align-items: center; font-weight: 650; }
+.next { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 4rem; padding-top: 3rem; padding-bottom: 4rem; border-top: 1px solid var(--border); }
+.next h2 { font-size: 2.3rem; line-height: 1.15; }
+.next p { max-width: 42ch; }
+.daily { display: block; padding: 2rem; border-radius: 1.25rem; border: 1px solid var(--border-strong); color: var(--fg); background: var(--bg-raised); transition: border-color 180ms, box-shadow 180ms; }
+.daily:hover { text-decoration: none; border-color: var(--accent); box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 8%, transparent); }
+.daily:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.daily h3 { font-size: 1.6rem; line-height: 1.2; }
+.action { display: flex; justify-content: space-between; gap: 1rem; color: var(--accent); font-weight: 650; margin-top: 1.5rem; }
+.mission { background: var(--accent); color: var(--bg); scroll-margin-top: 5rem; }
+.missionInner { padding-top: 4rem; padding-bottom: 4rem; }
+.mission h2 { font-size: clamp(2rem, 3.8vw, 3.5rem); line-height: 1.1; }
+.mission p { max-width: 64ch; }
+.mission a, .mission :global(.eyebrow) { color: inherit; }
+.mission a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; text-underline-offset: 4px; }
+@media (max-width: 700px) {
+  .hero, .next { grid-template-columns: 1fr; gap: 1.5rem; }
+  .hero { padding-top: 0; padding-bottom: 2rem; }
+  .intro h1 { font-size: 2.5rem; max-width: none; }
+  .lede { margin-top: 1rem; }
+  .invitation { margin-top: 1rem; }
+  .play { padding: 1rem; }
+  .next { padding-top: 2rem; padding-bottom: 2rem; }
+  .daily { padding: 1.5rem; }
+  .missionInner { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+}
+@media (prefers-reduced-motion: reduce) { .daily { transition: none; } }

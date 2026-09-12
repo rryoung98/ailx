@@ -92,7 +92,7 @@ describe("plain vocabulary on product surfaces", () => {
     expectClean(String(metadata.description), "metadata description");
   });
 
-  it("footer states the public purpose and content limits", () => {
+  it("footer states the public purpose without technical detail", () => {
     const texts: string[] = [];
     const walk = (node: ReactNode): void => {
       if (Array.isArray(node)) { node.forEach(walk); return; }
@@ -103,11 +103,11 @@ describe("plain vocabulary on product surfaces", () => {
     };
     walk(RootLayout({ children: null }) as ReactElement);
     expect(texts.join(" ")).toContain("Practical AI literacy, open to everyone.");
-    expect(texts.join(" ")).toContain("exam questions are private");
+    expect(texts.join(" ")).not.toContain("raw points");
     expect(texts.join(" ")).not.toContain("item banks are public");
   });
 
-  it("nav pill plays the free drill, and the graded run keeps its own slot", () => {
+  it("nav leads to the short test and personal activity", () => {
     let found = false;
     let foundRun = false;
     const text = (node: ReactNode): string => {
@@ -123,10 +123,10 @@ describe("plain vocabulary on product surfaces", () => {
       // Header play control is a compact pill (green dot + Play label) and it
       // points at the fast, free drill. A four-hour sitting is a terrible
       // first click, so /exam is a plain nav link instead of the pill.
-      if (props?.href === "/practice" && props.className === "nav-pill" && text(props.children) === "Play") {
+      if (props?.href === "/test" && props.className === "nav-pill" && text(props.children) === "Take the test") {
         found = true;
       }
-      if (props?.href === "/exam" && props.className === undefined) foundRun = true;
+      if (props?.href === "/me" && props.className === undefined) foundRun = true;
       if (props?.children !== undefined) walk(props.children);
     };
     walk(RootLayout({ children: null }) as ReactElement);
