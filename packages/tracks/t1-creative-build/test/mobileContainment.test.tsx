@@ -107,7 +107,8 @@ describe("T1 mobile containment", () => {
   it("the prompt textarea is shrinkable (min-width: 0) and box-sized so it cannot overflow the card", () => {
     const c = mount();
     const ta = c.querySelector('textarea[aria-label="Assist prompt"]') as HTMLTextAreaElement;
-    expect(ta.style.minWidth).toBe("0");
+    // jsdom 30+ returns "0px" where earlier versions returned "0"
+    expect(["0", "0px"]).toContain(ta.style.minWidth);
     expect(ta.style.boxSizing).toBe("border-box");
     expect(ta.style.width).toBe("100%");
   });
