@@ -16,3 +16,10 @@ next-env.d.ts
 # re-encode is committed; the megabyte originals are not).
 .ailx-generated/
 __pycache__/
+
+# Agent orchestration scratch: batch criteria, gate logs, issue dumps, plans.
+# Local only. It leaked into the public tree once (PR #68) and must not again.
+.agent-work/
+
+# Gate logs from scripts/gates.sh — output, not source.
+gate-*.log

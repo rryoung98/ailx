@@ -25,6 +25,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useIdentity } from "../../lib/auth/identityState";
 import {
   DAILY_PITCH,
   DAILY_STREAK_MEANING,
@@ -44,6 +45,7 @@ import { DAILY_POOL } from "../../lib/instrument/demoItems";
 import { readDailyLedger, recordDailyRoundLocally } from "./dailyState";
 import { funnel } from "../../lib/data/funnel";
 import { assetUrl, basePath } from "../../lib/mode";
+import { useFocusRecovery } from "../../lib/useFocusRecovery";
 import { ShareTargets } from "../../components/ShareTargets";
 import styles from "../../components/PracticeDrill.module.css";
 
@@ -54,7 +56,7 @@ function utcOffsetMinutes(): number {
 
 /** A card whose picture never arrived is skipped, never counted as a miss. */
 const STIMULUS_FAILED =
-  "This picture did not load, so there is nothing to call. It has not been counted for or against you.";
+  "This picture did not load. It has not been counted for or against you.";
 
 interface Today {
   day: string;
@@ -77,6 +79,10 @@ function Grid({ results }: { results: readonly DailyResult[] }) {
 }
 
 export function DailyChallenge() {
+  // The round needs no identity and never will (see the header). The RESULT
+  // screen says one sentence about accounts, so it has to know whether the
+  // reader has one (TEN-151).
+  const identity = useIdentity();
   const [today, setToday] = useState<Today | null>(null);
   const [answers, setAnswers] = useState<Array<number | null>>([]);
   const [showing, setShowing] = useState<"card" | "feedback">("card");
@@ -84,6 +90,9 @@ export function DailyChallenge() {
   const [reload, setReload] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [justFinished, setJustFinished] = useState(false);
+  // Called before the controls in the stage are swapped, so focus lands on
+  // the next card's first control instead of on <body>.
+  const { stageRef, recoverFocus } = useFocusRecovery<HTMLDivElement>();
 
   // Mount: the device tells us the day, and the day tells us the deck.
   useEffect(() => {
@@ -114,7 +123,7 @@ export function DailyChallenge() {
     );
   }, []);
 
-  if (today === null) return <p className="muted">Dealing today&rsquo;s cards&hellip;</p>;
+  if (today === null) return <p className="muted">Loading today&apos;s cards&hellip;</p>;
 
   const { day, number, deck, ledger } = today;
   const playedToday = ledger.last !== null && ledger.last.day === day;
@@ -132,7 +141,13 @@ export function DailyChallenge() {
     setAnswers(next);
     setStimulusFailed(false);
     setShowing("card");
-    if (next.length < deck.length) return;
+    // The round continues, so the button that was pressed — "Next card", or
+    // "Skip this card" — is replaced by the next card's calls. The finished
+    // round is the other case: it moves focus to its heading instead.
+    if (next.length < deck.length) {
+      recoverFocus();
+      return;
+    }
     const graded = deck.map((card, i) => gradeDailyCard(card, next[i]));
     finish({ day, number, results: graded }, deck.length);
   }
@@ -143,6 +158,7 @@ export function DailyChallenge() {
     // drill uses: a dealt deck nobody touched is not a play (docs/KPI.md).
     if (answers.length === 0) funnel().playStarted("daily");
     setAnswers([...answers, choice]);
+    recoverFocus();
     setShowing("feedback");
   }
 
@@ -178,9 +194,12 @@ export function DailyChallenge() {
             the day for anybody who has not played (docs/SHARING.md §8). */}
         <DailyShareRow number={number} results={results} streak={streak.current} />
         <p className="small faint" style={{ maxWidth: "58ch" }}>
-          The next five arrive at your own midnight. Your streak lives on this device only:
-          clear your browser data and it is gone. There is no account to lose it to.{" "}
-          <Link href="/practice">Practise the tells →</Link>
+          New cards arrive at your local midnight. Your daily streak is saved only in this browser, even when you sign in. Clearing browser data deletes it.
+          {/* Said only to a reader who really has no account (TEN-151). The
+              sentence before it stays either way: the streak is browser state
+              in every build, and signing in does not move it. */}
+          {identity.status === "signed-in" ? null : " No account is needed to play."}{" "}
+          <Link href="/practice">Try image practice →</Link>
         </p>
       </div>
     );
@@ -190,7 +209,7 @@ export function DailyChallenge() {
   const called = showing === "feedback" ? answers[index - 1] : null;
 
   return (
-    <div className={styles.stage}>
+    <div ref={stageRef} className={styles.stage}>
       <p className={styles.progress}>
         <span aria-hidden style={{ fontSize: "1.2rem", letterSpacing: "0.08em" }}>
           {dailyGrid(results)}
@@ -259,7 +278,7 @@ export function DailyChallenge() {
       ) : (
         <div>
           <p role="status">
-            <strong>{called === card.key ? "Called it." : "Missed."}</strong> {card.tell}
+            <strong>{called === card.key ? "Right." : "Missed."}</strong> {card.tell}
           </p>
           {card.credit === null ? null : (
             <p className="small faint">
@@ -281,8 +300,7 @@ export function DailyChallenge() {
       )}
 
       <p className="small faint" style={{ maxWidth: "58ch" }}>
-        {DAILY_PITCH} Nothing here is scored: the daily uses published practice material and
-        reaches no Foray result.
+        {DAILY_PITCH} The daily uses public practice questions. Your answers do not affect your exam result.
       </p>
     </div>
   );

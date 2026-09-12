@@ -19,8 +19,8 @@
  */
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { apiPath, shareUrlPath } from "@ailx/contract";
-import { shareMinutes, type SharePayload } from "@ailx/report";
+import { API_RESPONSE_SCHEMAS, apiPath, shareUrlPath, type SharedView } from "@ailx/contract";
+import { formatTrackScore, shareMinutes } from "@ailx/report";
 import { TRACK_IDS } from "@ailx/session";
 import { CharacterPortrait, CharacterVoice } from "../../components/CharacterPortrait";
 import { FunnelStep } from "../../components/FunnelStep";
@@ -28,15 +28,16 @@ import { siteHref } from "../../lib/mode";
 import { PageError, PageLoading } from "../../components/PageNotice";
 import { ShareTargets } from "../../components/ShareTargets";
 import { ShareViewCount } from "../../components/ShareViewCount";
-import { TrackRadar } from "../../components/TrackRadar";
+import { TrackRadar, trackFillPercent } from "../../components/TrackRadar";
 import { serviceRefusedCopy, useService } from "../../lib/data/serviceFetch";
 
-export interface SharedView {
-  status: string;
-  createdAt: string;
-  views: number;
-  payload: SharePayload;
-}
+/**
+ * The shape of the anonymous share read. It is a SCHEMA in `@ailx/contract`
+ * now (`sharedViewSchema`), because the seam validates a body from the route
+ * table and an interface here would be a second definition of the same wire
+ * shape (TEN-216). Re-exported so the page and its metadata keep one import.
+ */
+export type { SharedView };
 
 export function ShareView() {
   const params = useParams<{ token: string }>();
@@ -45,7 +46,10 @@ export function ShareView() {
   // same way for everyone who holds one. Anonymous, said out loud.
   const result = useService<{ share: SharedView }>(
     token === null ? null : apiPath("shareView", { token }),
-    { identity: "anonymous" },
+    // VALIDATED: the payload is dereferenced all the way down by the card
+    // below, so an unknown shape was a crash on the growth loop's own page
+    // rather than the sentence written for it (TEN-216).
+    { identity: "anonymous", schema: API_RESPONSE_SCHEMAS.shareView },
   );
   if (result.state === "loading") return <PageLoading title="Opening this card" />;
   if (result.state === "error") return <PageError title="Opening this card" message={result.message} />;
@@ -119,16 +123,28 @@ export function ShareView() {
             <div>
               <h2 style={{ marginTop: 0 }}>How the run was shaped</h2>
               <p className={`reveal-band band-${p.band}`} style={{ margin: 0 }}>{p.band}</p>
-              <p className="muted small" style={{ margin: 0 }}>band over the demo cohort · four tracks, 100 points each</p>
+              {/* NOT "100 points each": the allocation is T1 135, T2 80,
+                  T3 160 and T4 nothing, and that sentence was the same wrong
+                  denominator the bars were drawn on (TEN-120). */}
+              <p className="muted small" style={{ margin: 0 }}>
+                band over the demo cohort · each track against its own total
+              </p>
             </div>
-            <TrackRadar values={p.tracks} label={`Track shape: ${TRACK_IDS.map((t) => `${t.toUpperCase()} ${p.tracks[t]}`).join(", ")}`} />
+            <TrackRadar values={p.tracks} />
           </div>
           <div className="share-track-bars">
             {TRACK_IDS.map((t) => (
               <div className="row" key={t}>
                 <span className="mono" style={{ color: "var(--accent)" }}>{t.toUpperCase()}</span>
-                <div className="meter"><div style={{ width: `${Math.max(0, Math.min(100, p.tracks[t]))}%` }} /></div>
-                <span className="mono" style={{ textAlign: "right" }}>{p.tracks[t].toFixed(1)}</span>
+                {/* Each bar against ITS OWN maximum, and the number carries
+                    the denominator — one formatter, `formatTrackScore`, so a
+                    figure and a number cannot disagree (TEN-120). */}
+                <div className="meter">
+                  <div style={{ width: `${trackFillPercent(t, p.tracks[t])}%` }} />
+                </div>
+                <span className="mono" style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                  {formatTrackScore({ scaled: p.tracks[t] }, undefined, t)}
+                </span>
               </div>
             ))}
           </div>

@@ -15,8 +15,7 @@ import { clearDevUser } from "../../lib/data/persistence";
 export function ForgetBrowser() {
   return (
     <p className="small faint" style={{ maxWidth: "62ch" }}>
-      This history belongs to this browser, not to an account. Nothing already recorded is
-      deleted — you would just stop being the person it belongs to.{" "}
+      This history belongs to this browser, not to an account. Forgetting this browser removes your access to this history here. It does not delete the saved records.{" "}
       <button
         type="button"
         className="btn small-btn"

@@ -343,13 +343,13 @@ describe("the wording of the ask", () => {
   });
 
   it("promises the days move, and says so before the ask", () => {
-    expect(CLAIM_PROMISE).toMatch(/move to your account/i);
-    expect(CLAIM_PROMISE).toMatch(/nothing is dropped/i);
+    expect(CLAIM_PROMISE).toMatch(/copied to your account/i);
+    expect(CLAIM_PROMISE).toMatch(/keep playing without signing in/i);
   });
 
   it("labels claimed days as the browser's word, not our measurement", () => {
-    expect(CLAIMED_DAYS_BASIS).toMatch(/reported/i);
-    expect(CLAIMED_DAYS_BASIS).toMatch(/reach no score/i);
+    expect(CLAIMED_DAYS_BASIS).toMatch(/browser's own counts/i);
+    expect(CLAIMED_DAYS_BASIS).toMatch(/do not affect exam scores/i);
   });
 
   it("claims no efficacy for practice anywhere in the ask", () => {

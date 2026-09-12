@@ -20,7 +20,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { API_ROUTES, apiPath, needsHumanApproval, shareUrlPath, type ShareStatus } from "@ailx/contract";
+import { TRACK_IDS, type TrackId } from "@ailx/session";
+import { useIdentity } from "../../lib/auth/identityState";
 import { serviceHeaders } from "../../lib/data/traceparent";
+import { deadline } from "../../lib/data/deadline";
+import { mayRetry, refusedBy, threwAs, UNREADABLE, writeFailureCopy, type WriteFailure } from "./writeFailure";
 import {
   DEFAULT_SHARE_SECTIONS,
   SHARE_NOTE_MAX,
@@ -71,6 +75,22 @@ type Phase = "loading" | "none" | "live" | "busy" | "error";
 /** The four manifest routes this panel drives, and nothing else. */
 type ShareRoute = "createShare" | "getShare" | "revokeShare" | "publishShare";
 
+/**
+ * The share off the wire, or null when the body is not one. A 200 carrying no
+ * share is not a share, and rendering one threw on `share.token` — the same
+ * check `scoresOfRecord.ts` makes, for the same reason.
+ */
+function ownerShare(body: unknown): ShareState | null {
+  const record = body as { share?: unknown } | null;
+  const share = record?.share as ShareState | undefined;
+  return share !== null &&
+    typeof share === "object" &&
+    typeof share?.token === "string" &&
+    typeof share.payload === "object"
+    ? share
+    : null;
+}
+
 /** Which sections a live link actually carries, read from its frozen payload. */
 function includedSections(payload: SharePayload): ShareSection[] {
   return SHARE_SECTIONS.filter((key) => {
@@ -97,13 +117,14 @@ function PublishControl({
   status,
   needsHuman,
   busy,
-  failed,
+  failure,
   onPublish,
 }: {
   status: ShareStatus;
   needsHuman: boolean;
   busy: boolean;
-  failed: boolean;
+  /** The LAST failure, or null. It says which kind, not merely that there was one. */
+  failure: WriteFailure | null;
   onPublish: () => void;
 }) {
   if (status === "revoked" || status === "rejected") return null;
@@ -126,7 +147,13 @@ function PublishControl({
   return (
     <div style={{ display: "grid", gap: "0.4rem" }} data-testid="publish-state">
       <div>
-        <button type="button" className="btn small-btn" onClick={onPublish} disabled={busy}>
+        <button
+          type="button"
+          className="btn small-btn"
+          onClick={onPublish}
+          /* A refusal that will not change is not offered again (TEN-234). */
+          disabled={busy || (failure !== null && !mayRetry(failure))}
+        >
           {busy ? "Submitting…" : "Publish to the gallery"}
         </button>
       </div>
@@ -135,23 +162,58 @@ function PublishControl({
           ? "Your card carries your own work, so a person reads it before it is listed."
           : "Your card carries no words of your own, so it is listed as soon as you press this."}
       </p>
-      {failed ? (
+      {failure !== null ? (
         <p className="small" style={{ margin: 0, color: "var(--bad)" }} role="alert">
-          That did not reach the gallery. Your link is untouched. Try again in a moment.
+          {writeFailureCopy(failure, "Your link is untouched.", "the gallery")}
         </p>
       ) : null}
     </div>
   );
 }
 
-export function ShareLink({ attemptId }: { attemptId: string }) {
+export function ShareLink({
+  attemptId,
+  sat,
+}: {
+  attemptId: string;
+  /**
+   * Which tracks this sitting covered. A sitting over PART of the instrument
+   * has no four-letter type, no character and no band to send, so the card
+   * this panel offers must not be described as if it had them (TEN-149).
+   */
+  sat?: readonly TrackId[];
+}) {
   const [phase, setPhase] = useState<Phase>("loading");
   const [share, setShare] = useState<ShareState | null>(null);
   const [sections, setSections] = useState<ShareSections>({ ...DEFAULT_SHARE_SECTIONS });
   const [note, setNote] = useState("");
   const [hasSite, setHasSite] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [publishFailed, setPublishFailed] = useState(false);
+  /**
+   * WHAT THE LAST FAILURE WAS, not merely that there was one (TEN-234). A
+   * refusal carries its status and the service's own sentence, and decides
+   * whether the button is offered again.
+   */
+  const [failure, setFailure] = useState<WriteFailure | null>(null);
+  /** The same fact for the publish button, which has a failure line of its own. */
+  const [publishFailure, setPublishFailure] = useState<WriteFailure | null>(null);
+
+  /**
+   * A SITTING OVER PART OF THE INSTRUMENT HAS NO CARD TO SHARE (TEN-233).
+   *
+   * `SharePayload` requires a band, a player type and all four track scores,
+   * and `buildSharePayload` returns null for a run that is not fully scored
+   * — so the create was refused by the service, and `ShareView` renders every
+   * field unconditionally, so a token that did exist would throw at a
+   * stranger. The panel used to offer the button anyway and describe a card
+   * carrying "the tracks you sat", which is not a shape this product has.
+   *
+   * So the offer is withdrawn HERE rather than at the call site: the panel is
+   * the one thing that knows what a card carries, and a second caller cannot
+   * get it wrong.
+   */
+  const partial = sat !== undefined && sat.length > 0 && sat.length < TRACK_IDS.length;
+  const satList = (sat ?? []).map((t) => t.toUpperCase()).join(" · ");
 
   const serverId = useCallback(
     () => getServerAttemptId(window.localStorage, attemptId) ?? attemptId,
@@ -165,62 +227,108 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   const request = useCallback(
     async (route: ShareRoute, body?: unknown): Promise<Response> => {
       const opts = browserApiOptions();
-      return opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id: serverId() })}`, {
-        method: API_ROUTES[route].method,
-        headers: {
-          "content-type": "application/json",
-          ...(await serviceHeaders(window.localStorage)),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+      /* BOUNDED, by what the route is FOR: asking whether a link exists is a
+         `read`, and creating, publishing or revoking one is a `write`. This
+         helper passed no signal at all until TEN-210, so a stalled service
+         left the panel on "Checking…" — or the button on "Submitting…" —
+         for the life of the page. */
+      const bound = deadline(route === "getShare" ? "read" : "write");
+      try {
+        return await opts.fetchFn(`${opts.baseUrl}${apiPath(route, { id: serverId() })}`, {
+          method: API_ROUTES[route].method,
+          headers: {
+            "content-type": "application/json",
+            ...(await serviceHeaders(window.localStorage)),
+          },
+          body: body === undefined ? undefined : JSON.stringify(body),
+          signal: bound.signal,
+        });
+      } finally {
+        bound.settle();
+      }
     },
     [serverId],
   );
 
+  /**
+   * THE READ MAY NOT FIRE WHILE THE IDENTITY IS PENDING (TEN-215).
+   *
+   * The same race the credential panel has, with the same consequence: a
+   * read sent before `ClerkTokenBridge` registers carries no Bearer token,
+   * the service answers 401, and 401 and 404 read alike below — so an owner
+   * who already has an unlisted link was shown the create form instead of
+   * the link they hold. `pending` is bounded by `IDENTITY_DEADLINE_MS`
+   * (`lib/auth/identityState.ts`, TEN-214), so this waits and never hangs.
+   */
+  const identityStatus = useIdentity().status;
+
   useEffect(() => {
-    if (!isServerMode()) return;
+    // Nothing to look for on a partial sitting: no link can exist, so asking
+    // would be a request made only to be ignored.
+    if (!isServerMode() || partial || identityStatus === "pending") return;
     setHasSite(loadSiteSubmission(window.localStorage, attemptId) !== null);
     let live = true;
     void (async () => {
       try {
         const res = await request("getShare");
         if (!live) return;
-        if (res.ok) {
-          const body = (await res.json()) as { share: ShareState };
-          setShare(body.share);
-          setPhase("live");
-        } else {
+        /* 404 is the ordinary answer for a sitting nobody has shared yet, and
+           it is the OFFER below rather than an error. */
+        const held = res.ok ? ownerShare(await res.json()) : null;
+        if (held === null) {
           setPhase("none");
+          return;
         }
-      } catch {
-        if (live) setPhase("error");
+        setShare(held);
+        setPhase("live");
+      } catch (err) {
+        if (!live) return;
+        setFailure(threwAs(err));
+        setPhase("error");
       }
     })();
     return () => {
       live = false;
     };
-  }, [attemptId, request]);
+  }, [attemptId, request, identityStatus, partial]);
 
   if (!isServerMode()) return null;
 
   const url =
     share === null ? null : `${window.location.origin}${shareUrlPath(share.token, basePath())}`;
 
+  const cardCopy = "your type, your four-track shape and your band";
+
   const create = async () => {
     setPhase("busy");
+    setFailure(null);
     try {
       const res = await request("createShare", {
         sections: { ...sections, site: sections.site && hasSite },
         note: sections.note ? note : "",
       });
-      if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as { share: ShareState };
-      setShare(body.share);
+      /* A REFUSAL IS AN ANSWER, READ RATHER THAN THROWN (TEN-234). The old
+         `throw new Error(String(res.status))` put the status into a message
+         nobody read, and landed in the same catch as an offline fetch. */
+      if (!res.ok) {
+        setFailure(await refusedBy(res));
+        setPhase("error");
+        return;
+      }
+      const created = ownerShare(await res.json());
+      /* A 2xx carrying no share is our bug, not the reader's connection. */
+      if (created === null) {
+        setFailure(UNREADABLE);
+        setPhase("error");
+        return;
+      }
+      setShare(created);
       setPhase("live");
       // A link now exists. The TOKEN never leaves with this event: it is a
       // capability, and a capability in a metrics table is a leak.
       funnel().step("share_created");
-    } catch {
+    } catch (err) {
+      setFailure(threwAs(err));
       setPhase("error");
     }
   };
@@ -233,14 +341,21 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
    */
   const publish = async () => {
     setPublishing(true);
-    setPublishFailed(false);
+    setPublishFailure(null);
     try {
       const res = await request("publishShare");
-      if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as { share?: ShareState };
-      if (body.share) setShare(body.share);
-    } catch {
-      setPublishFailed(true);
+      if (!res.ok) {
+        setPublishFailure(await refusedBy(res));
+        return;
+      }
+      const published = ownerShare(await res.json());
+      if (published === null) {
+        setPublishFailure(UNREADABLE);
+        return;
+      }
+      setShare(published);
+    } catch (err) {
+      setPublishFailure(threwAs(err));
     } finally {
       setPublishing(false);
     }
@@ -248,12 +363,18 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
 
   const revoke = async () => {
     setPhase("busy");
+    setFailure(null);
     try {
       const res = await request("revokeShare");
-      if (!res.ok) throw new Error(String(res.status));
+      if (!res.ok) {
+        setFailure(await refusedBy(res));
+        setPhase("error");
+        return;
+      }
       setShare(null);
       setPhase("none");
-    } catch {
+    } catch (err) {
+      setFailure(threwAs(err));
       setPhase("error");
     }
   };
@@ -264,14 +385,27 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
   return (
     <section className="card" aria-labelledby="share-heading" style={{ marginBottom: "2rem" }}>
       <p className="eyebrow" style={{ margin: 0 }}>share · private until you say so</p>
-      <h2 id="share-heading" style={{ margin: "0.2rem 0 0.4rem" }}>Send someone your player type</h2>
-      <p className="muted small" style={{ maxWidth: "62ch" }}>
-        Creates an unlisted link with your type, your four-track shape and your band, plus
-        whatever you tick below. Never your answers, the items you saw, or anything that could
-        identify you. It is unlisted and not indexed. Revoke it and it stops working everywhere,
-        at once.
-      </p>
+      <h2 id="share-heading" style={{ margin: "0.2rem 0 0.4rem" }}>
+        {partial ? "No card for a part-sitting" : "Send someone your player type"}
+      </h2>
+      {partial ? (
+        <p className="muted small" style={{ maxWidth: "62ch" }} data-testid="share-not-offered">
+          A share card carries your four-letter type, your character and your band, and all three
+          are read over the whole instrument. You sat {satList}, so this sitting has none of them
+          and there is no card to make — a link would be a page with holes in it. Sit the tracks
+          you have not, and the card is here. Your credential above already names this sitting,
+          and it is the thing a stranger can check.
+        </p>
+      ) : (
+        <p className="muted small" style={{ maxWidth: "62ch" }} data-testid="share-card-copy">
+          Creates an unlisted link with {cardCopy}, plus whatever you tick below. Never your
+          answers, the items you saw, or anything that could identify you. It is unlisted and not
+          indexed. Revoke it and it stops working everywhere, at once.
+        </p>
+      )}
 
+      {partial ? null : (
+        <>
       {phase === "loading" ? <p className="faint small" role="status">Checking…</p> : null}
 
       {phase === "none" || phase === "busy" || phase === "error" ? (
@@ -316,7 +450,13 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
             </p>
           ) : null}
           <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>
-            <button type="button" className="btn primary" onClick={create} disabled={phase === "busy"}>
+            <button
+              type="button"
+              className="btn primary"
+              onClick={create}
+              /* A refusal that will not change is not offered again (TEN-234). */
+              disabled={phase === "busy" || (failure !== null && !mayRetry(failure))}
+            >
               {phase === "busy" ? "Working…" : "Create a share link"}
             </button>
           </div>
@@ -352,8 +492,8 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
           </ShareTargets>
           <p className="small muted" style={{ margin: 0 }}>
             This link carries: {includedSections(share.payload).length === 0
-              ? "your type, shape and band only"
-              : `your type, shape and band, ${includedSections(share.payload)
+              ? `${cardCopy} only`
+              : `${cardCopy}, ${includedSections(share.payload)
                   .map((k) => SECTION_COPY[k].label.toLowerCase())
                   .join(", ")}`}
             . Contents are frozen when the link is made. To change them, revoke it and create a
@@ -363,7 +503,7 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
             status={share.status}
             needsHuman={needsHumanApproval(share.payload)}
             busy={publishing}
-            failed={publishFailed}
+            failure={publishFailure}
             onPublish={publish}
           />
           {share.status === "rejected" ? (
@@ -379,15 +519,17 @@ export function ShareLink({ attemptId }: { attemptId: string }) {
         </div>
       ) : null}
 
-      {phase === "error" ? (
+      {phase === "error" && failure !== null ? (
         <p className="small" style={{ color: "var(--bad)" }} role="alert">
-          That did not work. Your run is saved. Try again in a moment.
+          {writeFailureCopy(failure, "Your run is saved.", "the exam service")}
         </p>
       ) : null}
       <p className="faint small" style={{ marginBottom: 0 }}>
         Anyone with the link can open it, no account needed. Foray serves the page and its preview
         image from {assetUrl("/s/…")}, so a reader can see where the card came from.
       </p>
+        </>
+      )}
     </section>
   );
 }

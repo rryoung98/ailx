@@ -141,6 +141,13 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
   const [responses, setResponses] = useState<T2Response[]>(restored?.responses ?? []);
   const [replayIdx, setReplayIdx] = useState(restored?.replayIdx ?? 0);
   const shownAt = useRef(0);
+  /**
+   * The exposure this item has actually had, in milliseconds, and when that
+   * was last sampled. Held apart from `shownAt` (which anchors the decision
+   * latency) because the exposure clock stops for the confidence sheet and
+   * for a host pause, and time only counts while it runs.
+   */
+  const exposureClock = useRef({ consumed: 0, at: 0 });
   const decisionLatency = useRef<number | null>(null);
   /**
    * TEN-115. The host stops the TRACK clock on a pause and veils the
@@ -424,15 +431,26 @@ export function Runner({ locale, config, onEvent, onComplete, onPresentation, ch
       return;
     }
     setSecondsLeft(exposure);
+    exposureClock.current = { consumed: 0, at: shownAt.current };
     const t = setInterval(() => {
+      // The tick only SAMPLES the clock; what it subtracts is measured
+      // exposure, not the number of times this callback ran (TEN-231). A
+      // background tab is throttled to about one tick a minute, so a counted
+      // tick would hand that tab a minute of exposure per declared second
+      // while the decision latency beside it stayed wall clock.
+      const now = performance.now();
+      const clock = exposureClock.current;
       // Clock pauses while the confidence sheet is up: picking how sure you
       // are is reflection, not exposure — the decision latency was already
       // anchored at the swipe. (choiceRef mirrors `choice` to keep this
       // interval stable across renders.) It also pauses while the host has
       // stopped the track clock: a pause the candidate was invited to take
       // must not answer the item for them (TEN-115).
-      if (choiceRef.current !== null || pausedRef.current) return;
-      setSecondsLeft((s) => (s === null ? null : s - 1));
+      const running = choiceRef.current === null && !pausedRef.current;
+      if (running) clock.consumed += now - clock.at;
+      clock.at = now;
+      if (!running) return;
+      setSecondsLeft(Math.max(0, Math.ceil(exposure - clock.consumed / 1000)));
     }, 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -22,7 +22,13 @@
  * The static export has no exam service, so this renders nothing there.
  */
 import { CompositeCard } from "./CompositeCard";
-import { WITHHELD_LEDE, awaitingCopy, serviceCompositeView, withheldHeadline } from "./compositeView";
+import {
+  WITHHELD_LEDE,
+  awaitingCopy,
+  compositeStillPossible,
+  serviceCompositeView,
+  withheldHeadline,
+} from "./compositeView";
 import type { AttemptScores } from "./scoresOfRecord";
 
 export function HostedComposite({
@@ -73,7 +79,10 @@ export function HostedComposite({
           data-track-state={a.trackState}
           style={{ margin: "0.3rem 0 0" }}
         >
-          {awaitingCopy(a)}
+          {/* The whole set decides what a jury sentence may promise: one
+              track that was never sat means no composite is coming, whatever
+              the jury does with the rest (D4). */}
+          {awaitingCopy(a, compositeStillPossible(composite))}
         </p>
       ))}
       {composite.detail === "" ? null : (

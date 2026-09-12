@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
-import { apiPath } from "@ailx/contract";
+import { API_RESPONSE_SCHEMAS, apiPath } from "@ailx/contract";
 import type { SharePayload } from "@ailx/report";
-import { pageOrigin, serverApiBase } from "../../../../lib/server/page";
+import { pageOrigin, serverRead } from "../../../../lib/server/page";
 import { characterDataUrl } from "../../../../lib/server/portrait";
 import {
   SHARE_CARD_HEIGHT,
@@ -42,12 +42,17 @@ export async function GET(
     new Response("not found", { status: 404, headers: { "content-type": "text/plain" } });
   try {
     // Over HTTP to the exam service, exactly as the page does — this app has
-    // no store to read and no handler to call.
-    const res = await fetch(`${await serverApiBase()}${apiPath("shareView", { token })}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return notFound();
-    const payload = ((await res.json()) as { share: { payload: SharePayload } }).share.payload;
+    // no store to read and no handler to call. BOUNDED, because a hang here
+    // used to burn the function budget and break the preview in every social
+    // cache that fetched during the window (TEN-213).
+    const res = await serverRead(apiPath("shareView", { token }));
+    if (res === null || !res.ok) return notFound();
+    // VALIDATED, not cast: an unreadable body used to throw here and 500 the
+    // card, which every social cache then held (TEN-216). A body we cannot
+    // read is a card we cannot draw, which is the 404 above.
+    const parsed = API_RESPONSE_SCHEMAS.shareView.safeParse(await res.json());
+    if (!parsed.success) return notFound();
+    const payload: SharePayload = parsed.data.share.payload;
     // The character is loaded HERE, not inside the card tree, so the tree
     // stays pure and a failed read degrades to a portrait-less card.
     const portrait = await characterDataUrl(payload.playerType.code, await pageOrigin());

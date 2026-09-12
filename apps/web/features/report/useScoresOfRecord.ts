@@ -27,6 +27,21 @@ import {
   type AttemptScores,
 } from "./scoresOfRecord";
 
+/**
+ * HOW LONG THIS PAGE WAITS BEFORE IT STOPS SAYING IT IS READING.
+ *
+ * The read cannot fire while the identity is `pending` — a request sent
+ * before `ClerkTokenBridge` registers carries no token and the service
+ * refuses it, and a 401 does not fix itself on a retry. But a Clerk that
+ * mounts and never publishes leaves the identity pending for ever, and
+ * `reading` hid every link on the report while it lasted: "Checking what the
+ * exam service has issued…", no scores, no way out (TEN-128). After this
+ * wait the page stops CALLING it a read; the effect still fires the moment an
+ * identity arrives, so nothing is given up, and the gate falls back to this
+ * browser's own log meanwhile.
+ */
+export const IDENTITY_WAIT_MS = 8_000;
+
 /** What went wrong on the LAST read. The previous answer stays on screen. */
 export type ReadFailure = { kind: "missing"; status: number } | { kind: "error" };
 
@@ -38,6 +53,13 @@ export interface ScoresView {
   readonly bounded: boolean;
   /** True while the first read of a hosted sitting is still in flight. */
   readonly reading: boolean;
+  /**
+   * True once a request has actually gone out for this attempt. It stays
+   * FALSE in the static export, and while the identity is pending — the read
+   * cannot fire without one — so a page that says nothing came back can tell
+   * that apart from never having asked (TEN-128).
+   */
+  readonly asked: boolean;
   /** Tracks that went from "being judged" to scored while this page was open. */
   readonly arrived: readonly TrackId[];
   readonly checkAgain: () => void;
@@ -49,6 +71,7 @@ const IDLE: ScoresView = {
   failure: null,
   bounded: false,
   reading: false,
+  asked: false,
   arrived: [],
   checkAgain: () => undefined,
 };
@@ -72,9 +95,73 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
    * it is still reading rather than claiming there is nothing of record.
    */
   const identityStatus = useIdentity().status;
+  /**
+   * True once this page has waited `IDENTITY_WAIT_MS` for an ANSWER OF ANY
+   * KIND — an identity, or the first read that identity allows.
+   *
+   * LATCHED: set once and never cleared. An answer that arrives afterwards
+   * would otherwise put the page back into `reading`, so the candidate would
+   * watch the one link they had appear and then vanish.
+   *
+   * IT IS NOT CONDITIONAL ON `pending`, AND THAT IS THE POINT. It was, and
+   * two 8-second timers then raced: `identityState` resolves a Clerk that
+   * never publishes to the asserted dev identity after `IDENTITY_DEADLINE_MS`
+   * (TEN-214, #72), which is the SAME 8 seconds. The identity moved off
+   * `pending` first, this effect's cleanup cleared its own timer before it
+   * could fire, the latch never closed — and `reading` stayed true through a
+   * first read that had not answered. That is the TEN-128 dead end again:
+   * "Checking what the exam service has issued…", no scores, no link.
+   *
+   * Bounding the CLAIM in time rather than the identity covers both: a
+   * pending identity and a slow first read leave the page saying it has not
+   * heard, which is true of each, instead of saying it is still reading.
+   *
+   * WHICH DEPLOYMENTS REACH WHICH BRANCH, because the race is not the whole
+   * story and the answer differs by build:
+   *
+   *  - STATIC EXPORT (no Clerk): `armDeadline` returns early on
+   *    `!isClerkEnabled()`, so no identity is ever published. The latch here
+   *    is the ONLY thing that ends `reading`, and the gate falls back to this
+   *    browser's own log. That is the case `stops calling itself reading when
+   *    no answer ever comes` pins, and it is why this latch is not deletable
+   *    in favour of `identityState`'s deadline.
+   *  - HOSTED, Clerk publishes in time: normal path, read fires with a Bearer.
+   *  - HOSTED, Clerk never publishes: `identityState` publishes the asserted
+   *    DEV identity at `IDENTITY_DEADLINE_MS` and a read fires WITHOUT a
+   *    bearer token. `identityState`'s own comment says "the service accepts
+   *    it" — that was true when it was written and is NOT true of a Clerk
+   *    deployment now: the exam service refuses dev auth outright on anything
+   *    `publiclyReachable` can see (ailx-backend `7bb2407`, TEN-237). So that
+   *    read 401s, and this page reports `{kind:"missing", status:401}` about a
+   *    request that was never going to land. Filed separately — the repair
+   *    belongs in `identityState`, not here, because the wrong FALLBACK is the
+   *    defect and every caller of it is affected, not just this page.
+   *
+   * THE SEPARATION THAT SETTLES IT, and it is one sentence:
+   * **TEN-214's deadline exists to end the WAIT, not to authorise a REQUEST.**
+   * Ending the wait is right and this page depends on it. Firing a read under
+   * an identity the candidate does not have is a consequence neither PR
+   * designed: against a Clerk service that read 401s, and against a
+   * dev-accepting service it SUCCEEDS AS A DIFFERENT PARTICIPANT and then
+   * 404s on an attempt that account does not own. Both are transient —
+   * `identityStatus` is a dep of the read effect, so asserted -> signed-in
+   * fires a second, real read — and both beat a permanent dead end. But the
+   * honest description of the 8-second answer is "an answer about a request
+   * made under a fallback identity", not simply "an answer".
+   */
+  const [identityWaited, setIdentityWaited] = useState(false);
+  /** True once a request has really gone out. Latched for the same reason. */
+  const [asked, setAsked] = useState(false);
+
+  useEffect(() => {
+    if (!live || identityWaited) return;
+    const timer = window.setTimeout(() => setIdentityWaited(true), IDENTITY_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [live, identityWaited]);
 
   useEffect(() => {
     if (!live || identityStatus === "pending") return;
+    setAsked(true);
     let cancelled = false;
     let timer = 0;
     const startedAt = Date.now();
@@ -131,6 +218,21 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
 
   const checkAgain = useCallback(() => {
     setBounded(false);
+    /* The PREVIOUS read's failure is not this one's. Left standing, the
+       report said "the last read did not land" while a retry was in flight,
+       which describes a request that has not answered yet — the same
+       confusion `scores ?? null` caused (TEN-128). The last good ANSWER
+       stays: only the failure is cleared.
+
+       WHY THAT IS SAFE, AND WHAT IT DEPENDS ON. Clearing the failure makes
+       `reading` true again while the retry is out, and the gate offers no
+       link while reading — so an UNFINISHED sitting loses its Continue for
+       the length of the retry. Acceptable because the candidate pressed the
+       button, and because it is BOUNDED: `serviceFetch` wraps every read in
+       `deadline("read")`, 10 s (`lib/data/deadline.ts`), so even a retry
+       that never answers resolves into a failure and the link comes back.
+       Remove that deadline and the link goes for ever. */
+    setFailure(null);
     setRound((r) => r + 1);
   }, []);
 
@@ -141,7 +243,11 @@ export function useScoresOfRecord(attemptId: string | null): ScoresView {
     bounded,
     // "Reading" is the state before the first answer of ANY kind: a page that
     // called this a lock would tell a finished candidate to finish their run.
-    reading: scores === undefined && failure === null,
+    // It is BOUNDED, because a read that never starts is not a read: an
+    // identity stuck at `pending` used to leave the report with no scores
+    // and no link at all (TEN-128).
+    reading: scores === undefined && failure === null && !identityWaited,
+    asked,
     arrived,
     checkAgain,
   };

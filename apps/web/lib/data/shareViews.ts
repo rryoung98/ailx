@@ -39,6 +39,7 @@
  */
 import { apiPath } from "@ailx/contract";
 import { apiBase, apiOrigin } from "../mode";
+import { fetchWithDeadline } from "./deadline";
 import { funnel } from "./funnel";
 
 /**
@@ -83,7 +84,13 @@ export function countShareView(token: string): void {
     const url = endpoint(token);
     if (url === null) return;
     if (!funnel().once(shareViewKey(token))) return;
-    void fetch(url, {
+    // BOUNDED, and `beacon` because nobody is waiting for the answer: a view
+    // that is still in flight three seconds after the card rendered is a hole
+    // in a chart, and holding a socket open for it past that helps nobody
+    // (TEN-210). `keepalive` is untouched, so the post still survives the
+    // page being hidden inside that window. The abort is swallowed with every
+    // other failure — this function stays silent by contract.
+    void fetchWithDeadline("beacon", url, {
       method: "POST",
       keepalive: true,
       // Anonymous by construction: no cookie, no identity header, no body.

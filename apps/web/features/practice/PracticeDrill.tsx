@@ -30,7 +30,9 @@ import { apiPath } from "@ailx/contract";
 import {
   CLAIM_PROMISE,
   FAMILY_META,
+  LOCAL_PRACTICE_ALL_CLAIMED,
   LOCAL_PRACTICE_BASIS,
+  LOCAL_PRACTICE_PARTLY_CLAIMED,
   PRACTICE_OPTIONS,
   SIGNAL_CHOICE,
   SIGN_IN_VALUE_SHORT,
@@ -42,18 +44,22 @@ import {
   type StreakSummary,
 } from "@ailx/report";
 import { serviceHeaders } from "../../lib/data/traceparent";
+import { fetchWithDeadline, isTimeout } from "../../lib/data/deadline";
 import { hasIdentity, useIdentity } from "../../lib/auth/identityState";
 import { funnel } from "../../lib/data/funnel";
 import {
   claimLocalPractice,
+  ledgerClaimedShare,
   localStreakSummary,
   readLastClaim,
   recordLocalPracticeRound,
   subscribeLocalPractice,
   utcOffsetMinutes,
+  type ClaimedShare,
   type ClaimOutcome,
 } from "../../lib/data/localPractice";
 import { apiBase, assetUrl, isClerkEnabled, isServerMode } from "../../lib/mode";
+import { useFocusRecovery } from "../../lib/useFocusRecovery";
 
 import styles from "../../components/PracticeDrill.module.css";
 
@@ -82,11 +88,21 @@ type Stimulus = "pending" | "shown" | "failed";
  * candidate explains nothing and offers nothing.
  */
 const DEAL_FAILED =
-  "We could not deal a round. That is usually the connection, not anything you did.";
+  "We could not load a round. Check your connection and try again.";
 const SUBMIT_FAILED =
-  "Your round was not sent, so it is not recorded yet. Nothing was lost: the round below is exactly as you played it, and practice is unscored either way.";
+  "Your round was not sent, so it is not recorded yet. Your answers are still shown below. Try sending it again before leaving this page.";
+/**
+ * The SAME two failures, when the service is there and too slow to use. A
+ * different sentence because it is a different fact and it points somewhere
+ * else: reloading a slow service can work, checking a connection cannot fix
+ * one (TEN-210).
+ */
+const DEAL_TIMED_OUT =
+  "The round took too long to load. Try again.";
+const SUBMIT_TIMED_OUT =
+  "Saving your round took too long. We could not confirm it was recorded. Your answers are still shown below. Try sending it again before leaving this page.";
 const STIMULUS_FAILED =
-  "This picture did not load, so there is nothing to call. It has not been counted for or against you.";
+  "This picture did not load. It has not been counted for or against you.";
 
 /** Shape of what a submit returns; only the fields this view renders. */
 interface SubmitBody {
@@ -184,7 +200,27 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   const [qualification, setQualification] = useState<PracticeQualification | null>(null);
   /** What the sign-in claim did, if it happened while this page was open. */
   const [claim, setClaim] = useState<ClaimOutcome | null>(null);
+  /**
+   * How much of this browser's ledger has already been handed over. The
+   * sentence under the counters is about "your practice days", plural and
+   * durable, so the answer must be too: the in-memory claim receipt dies with
+   * the page and knows only about today, while the ledger's `claimed` flag
+   * survives a reload and covers every day behind the numbers on screen.
+   *
+   * Read in the subscribe effect below, never per render — the ledger is
+   * storage, and the panel re-renders on every card.
+   *
+   * This is the WHOLE ledger. /progress asks the same question about the days
+   * it is drawing, having already dropped the ones an account holds, so the
+   * two surfaces can print different sentences from one ledger. That is the
+   * two sets differing, not the copy drifting: making them agree would put a
+   * false sentence back on one of them.
+   */
+  const [handedOver, setHandedOver] = useState<ClaimedShare>("none");
   const [submitFailed, setSubmitFailed] = useState(false);
+  /** Whether the failure on screen is "too slow", for both the deal and the send. */
+  const [dealTimedOut, setDealTimedOut] = useState(false);
+  const [submitTimedOut, setSubmitTimedOut] = useState(false);
   const [sending, setSending] = useState(false);
   const [stimulus, setStimulus] = useState<Stimulus>("pending");
   // Bumped to remount the <img>, which is what actually re-requests a picture
@@ -205,16 +241,33 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   /** True once a card has been called: an unfinished round is never re-dealt. */
   const roundBegun = useRef(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  // Set when a control that had focus is about to be unmounted, so focus
+  // Called when a control that had focus is about to be unmounted, so focus
   // lands on the next card's first control instead of on <body>.
-  const [recoverFocus, setRecoverFocus] = useState(false);
+  const { stageRef, recoverFocus } = useFocusRecovery<HTMLDivElement>();
 
-  const deal = useCallback(async () => {
+  /**
+   * Deal a round.
+   *
+   * `resumeFocus` is true when a PERSON asked for this deal — "Another round"
+   * at the end, "Try again" after a failed one — because the button they
+   * pressed is unmounted by the deal itself, twice: first for "Dealing a
+   * round…", which holds no control at all, and then for the card that
+   * replaces it. Both steps have to put focus somewhere, or a keyboard user
+   * is dropped on <body> with a round already running (TEN-223).
+   *
+   * It is FALSE on the first deal and on a re-deal the drill decides for
+   * itself (an identity arriving from another tab). Nobody pressed anything,
+   * the drill is embedded in the landing hero, and taking focus as the page
+   * settles would be a defect of its own.
+   */
+  const deal = useCallback(async (resumeFocus = false) => {
+    if (resumeFocus) recoverFocus();
     setPhase("loading");
     setPlayed([]);
     setQualification(null);
     setSubmitFailed(false);
+    setDealTimedOut(false);
+    setSubmitTimedOut(false);
     setStimulus("pending");
     try {
       // No account (and the whole static export): the browser seeds its own
@@ -224,7 +277,8 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
       let id: string;
       let ids: string[];
       if (recorded) {
-        const res = await fetch(`${apiBase()}${apiPath("startPractice")}`, {
+        // `read`: this deals a deck and carries nothing of the candidate's.
+        const res = await fetchWithDeadline("read", `${apiBase()}${apiPath("startPractice")}`, {
           method: "POST",
           headers: await serviceHeaders(window.localStorage),
         });
@@ -245,12 +299,19 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
       shownAt.current = Date.now();
       roundStartedAt.current = shownAt.current;
       setPhase("card");
-    } catch {
+    } catch (err) {
       // The exception itself is never shown: offline, this is a TypeError
-      // reading "Failed to fetch", which is browser plumbing, not copy.
+      // reading "Failed to fetch", which is browser plumbing, not copy. WHICH
+      // failure it was does reach the page, because "too slow" and "no
+      // connection" ask a candidate to do different things.
+      setDealTimedOut(isTimeout(err));
       setPhase("error");
     }
-  }, [recorded]);
+    // The "Dealing a round…" line is being replaced in turn, so the focus it
+    // was holding moves on to whatever the deal produced — the first call of
+    // the new card, or the "Try again" of the failure.
+    if (resumeFocus) recoverFocus();
+  }, [recorded, recoverFocus]);
 
   useEffect(() => {
     // Deal nothing while Clerk is still answering: a round dealt now would be
@@ -272,6 +333,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   useEffect(() => {
     const refresh = () => {
       setClaim(readLastClaim());
+      setHandedOver(ledgerClaimedShare(window.localStorage));
       if (recorded) return;
       setStreak(localStreakSummary(window.localStorage, Date.now(), utcOffsetMinutes()));
     };
@@ -283,14 +345,6 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   useEffect(() => {
     if (phase === "done") headingRef.current?.focus();
   }, [phase]);
-
-  // A control that had focus was unmounted (a dropped card, a retried
-  // picture); put focus on the first control of what replaced it.
-  useEffect(() => {
-    if (!recoverFocus) return;
-    stageRef.current?.querySelector("button")?.focus();
-    setRecoverFocus(false);
-  }, [recoverFocus]);
 
   const index = played.length;
   const current = deck[index];
@@ -342,13 +396,16 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         },
       },
     ]);
+    // The call button the user just pressed is about to be unmounted with the
+    // rest of the card, exactly as it is on a drop.
+    recoverFocus();
     setPhase("feedback");
   }
 
   /** Give up on a card whose picture never arrived. It is never graded. */
   function drop(): void {
     if (current === undefined) return;
-    setRecoverFocus(true);
+    recoverFocus();
     advance([...played, { item: current, result: null }]);
   }
 
@@ -356,7 +413,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   function retryStimulus(): void {
     setStimulus("pending");
     setReload((n) => n + 1);
-    setRecoverFocus(true);
+    recoverFocus();
     shownAt.current = Date.now();
   }
 
@@ -397,7 +454,10 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
     }
     setSending(true);
     try {
-      const res = await fetch(`${apiBase()}${apiPath("submitPractice", { id: sessionId })}`, {
+      // `write`: this POST carries the candidate's answers, so it is given
+      // the longer bound — giving up early on a write loses work, and the
+      // server's per-seq idempotency makes the re-send below safe.
+      const res = await fetchWithDeadline("write", `${apiBase()}${apiPath("submitPractice", { id: sessionId })}`, {
         method: "POST",
         headers: { "content-type": "application/json", ...(await serviceHeaders(window.localStorage)) },
         body: JSON.stringify({
@@ -420,8 +480,10 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
       setStreak(body.progress.streak);
       setQualification(body.result.qualification);
       setSubmitFailed(false);
-    } catch {
+      setSubmitTimedOut(false);
+    } catch (err) {
       // Same rule as the deal: the exception is plumbing, the page gets copy.
+      setSubmitTimedOut(isTimeout(err));
       setSubmitFailed(true);
     } finally {
       setSending(false);
@@ -429,21 +491,31 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   }
 
   function next(): void {
+    // Same as an answer: this button goes with the feedback it sits in.
+    recoverFocus();
     advance(played);
   }
 
   if (phase === "error") {
     return (
-      <div className={styles.stage}>
-        <p role="alert">{DEAL_FAILED}</p>
-        <button type="button" className={styles.restart} onClick={() => void deal()}>
+      <div ref={stageRef} className={styles.stage}>
+        <p role="alert">{dealTimedOut ? DEAL_TIMED_OUT : DEAL_FAILED}</p>
+        <button type="button" className={styles.restart} onClick={() => void deal(true)}>
           Try again
         </button>
       </div>
     );
   }
 
-  if (phase === "loading") return <p className="muted">Dealing a round…</p>;
+  // `tabIndex={-1}` because this is a stage with nothing focusable in it: a
+  // re-deal has just unmounted the button that was pressed, and this line is
+  // where focus waits until the card arrives.
+  if (phase === "loading")
+    return (
+      <div ref={stageRef} tabIndex={-1}>
+        <p className="muted">Loading a round&hellip;</p>
+      </div>
+    );
 
   if (phase === "done") {
     return (
@@ -463,13 +535,11 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         {dropped > 0 ? (
           <p className="small faint">
             {dropped === 1 ? "One card" : `${dropped} cards`} never loaded, so{" "}
-            {dropped === 1 ? "it is" : "they are"} not in that count. A picture that did not
-            arrive is not a call you got wrong.
+            {dropped === 1 ? "it is" : "they are"} not in that count. Unloaded pictures do not count as wrong answers.
           </p>
         ) : null}
         <p className="muted">
-          Practice is not scored and never reaches your result. It gives you the tell before the
-          clock is running.
+          Practice does not affect your exam result. Each answer includes an explanation to review.
         </p>
         {streak !== null ? (
           <p className={styles.streak}>
@@ -489,14 +559,14 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         ) : null}
         {recorded && submitFailed && streak !== null ? (
           <p className="small faint">
-            That streak is what your last recorded round left. This round is not in it yet.
+            This streak is from your last recorded round. We have not confirmed this round was added.
           </p>
         ) : null}
         {qualification !== null && !qualification.counted ? (
           <p className="small faint">
             {qualification.reason === "too_fast"
-              ? "That round went too fast to count towards a streak day. The drill counts only if it was read."
-              : "That round did not finish, so it does not count towards a streak day. Finish one and it does."}
+              ? "That round went too fast to count towards a streak day. Take time to read each card."
+              : "You did not answer enough cards for this round to count towards a streak day."}
           </p>
         ) : null}
         {/* Where the days are, said plainly, on the screen that shows them.
@@ -506,8 +576,21 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
             The ROUND's own truth, not the next round's: a taster round is
             dealt in this browser and the answer to "where is this day?" was
             settled when it was dealt, even though the drill is recorded from
-            the moment it was engaged. */}
-        {roundRecorded.current ? null : <p className="small faint">{LOCAL_PRACTICE_BASIS}</p>}
+            the moment it was engaged.
+
+            ...unless the claim has since handed that very day over. Then
+            "kept in this browser … no account" is false, and the receipt
+            below it says the opposite on the same screen — the TEN-132
+            contradiction, one surface over. */}
+        {roundRecorded.current ? null : (
+          <p className="small faint">
+            {handedOver === "none"
+              ? LOCAL_PRACTICE_BASIS
+              : handedOver === "all"
+                ? LOCAL_PRACTICE_ALL_CLAIMED
+                : LOCAL_PRACTICE_PARTLY_CLAIMED}
+          </p>
+        )}
         {/* The ask, and only here: after a round, never in front of one. It
             names what an account is for and what happens to these days, and
             it is absent from the static export, which has no sign-in page to
@@ -523,15 +606,15 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         {claim?.ok && claim.claimed.length > 0 ? (
           <p className="small faint" role="status">
             {claim.claimed.length === 1
-              ? "The practice day this browser was holding is now on your account."
-              : `The ${claim.claimed.length} practice days this browser was holding are now on your account.`}
+              ? "The practice day saved in this browser is now on your account."
+              : `The ${claim.claimed.length} practice days saved in this browser are now on your account.`}
           </p>
         ) : null}
         {submitFailed ? (
           // The round above is still on screen: a failed send must not cost a
           // candidate the thing they just did.
           <div role="alert" className={styles.trouble}>
-            <p>{SUBMIT_FAILED}</p>
+            <p>{submitTimedOut ? SUBMIT_TIMED_OUT : SUBMIT_FAILED}</p>
             <button
               type="button"
               className={styles.restart}
@@ -543,7 +626,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
           </div>
         ) : null}
         <p className={styles.after}>
-          <button type="button" className={styles.restart} onClick={() => void deal()}>
+          <button type="button" className={styles.restart} onClick={() => void deal(true)}>
             Another round
           </button>
           {/* The end of a round is where somebody actually wants to see the

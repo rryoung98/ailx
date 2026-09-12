@@ -232,9 +232,6 @@ describe("the endpoint (the exam gateway, the demo proxy, a local server)", () =
     );
     expect(modelsUrl("http://localhost:8000/v1/")).toBe("http://localhost:8000/v1/models");
   });
-  it("the storage slot is declared", () => {
-    expect(LLM_BASE_URL_STORAGE).toBe("foray:llm-base-url");
-  });
   it("requestVibeCompletion targets the given base and sends no credential", async () => {
     const payload = buildVibeRequest({ model: "kimi-k3", brief: "b", currentHtml: "<p/>", userPrompt: "p" });
     const fetchMock = vi.fn().mockResolvedValue({

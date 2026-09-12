@@ -31,7 +31,10 @@ only from a `page.api.tsx` or a `route.api.ts`.
 `origin.ts` is the one origin predicate, shared by `mode.ts` and
 `server/origin.ts`. `reducedMotion.ts` is the one spelling of the
 reduced-motion query, read from both `components/` and `features/`.
-`redirect404.ts` computes the static export's 404 redirect. It has one
+`useFocusRecovery.ts` is the one focus-recovery hook, used by the practice
+drill and the daily challenge: a stage that unmounts the control the user just
+pressed calls it, and focus lands on the replacement instead of on `<body>`
+(FRONTEND.md §5). `redirect404.ts` computes the static export's 404 redirect. It has one
 caller, `app/not-found.tsx`, and `app/` holds routes only, so rule 6 has
 nowhere else to put it.
 

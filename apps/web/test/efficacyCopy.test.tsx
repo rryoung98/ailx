@@ -121,7 +121,8 @@ describe("the practice surface claims nothing for itself", () => {
     // Silence is not honesty here: somebody has just spent five minutes and
     // is entitled to know what it was worth.
     expect(text).toContain(PRACTICE_EFFICACY_NOTE);
-    expect(text).toContain("Does this actually work?");
+    expect(text).toContain("What can practice tell you?");
+    expect(host?.querySelector("details")?.open).toBe(false);
     // and it names the trial rather than asking to be believed
     expect(text).toMatch(/2507\.23492/);
     expect(text).toMatch(/250921/);
@@ -157,13 +158,13 @@ describe("the engagement surface survives intact", () => {
     // Activity language is honest language: it describes what happened.
     expect(text).toContain("Play one card.");
     expect(text).toMatch(/Meet the families\.|Come back tomorrow\./);
-    expect(text).toContain("Practise the tells");
+    expect(text).toContain("Try a practice round");
   });
 
   it("the practice page still sells the round on the tells, not on a promise", async () => {
     const text = await renderedText(createElement(PracticePage));
-    expect(text).toContain("Practise the tells.");
-    expect(text).toContain("Being shown the thing you looked straight past");
+    expect(text).toContain("Spot the AI-generated image.");
+    expect(text).toContain("Review the clues you noticed and the ones you missed");
   });
 });
 

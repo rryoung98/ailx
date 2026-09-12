@@ -274,11 +274,10 @@ export interface DailyShare {
  * between them is how an unevidenced claim gets back in.
  */
 export const DAILY_STREAK_MEANING =
-  "A streak counts the days you came back. It is not evidence your eye got better; "
-  + "no result says this kind of practice does that.";
+  "A streak counts the days you came back. It does not show whether your detection skills improved.";
 
 /** The daily's own one-line pitch. Same words on every surface (DRY). */
-export const DAILY_PITCH = "Five calls, one minute. The same five for everyone today.";
+export const DAILY_PITCH = "Five questions a day. Choose your answers and get feedback. Everyone gets the same set.";
 
 /** "4 of 5", plus the skipped cards named rather than quietly dropped. */
 export function dailyTallyLine(results: readonly DailyResult[]): string {

@@ -63,70 +63,15 @@ import { SiteExportPanel } from "../../features/report/SiteExportPanel";
 import { WithheldItems } from "../../features/report/WithheldItems";
 import { downloadBlob } from "../../features/report/siteExport";
 import { ShareLink } from "../../features/report/ShareLink";
+import { ShareToGallery } from "../../features/report/ShareToGallery";
 import { ScoresOfRecordView } from "../../features/report/ScoresOfRecordPanel";
 import { CompositeCard } from "../../features/report/CompositeCard";
 import { localCompositeView, serviceCompositeView } from "../../features/report/compositeView";
 import { HostedComposite } from "../../features/report/HostedComposite";
 import { useScoresOfRecord } from "../../features/report/useScoresOfRecord";
-import { reportGate } from "../../features/report/reportGate";
-
-const GALLERY_API = "https://ailx-shared-demo.vercel.app/api/gallery";
-
-/**
- * Opt-in share of the T4 chosen set to the public community wall.
- * Uploads ONLY on click: recompressed finals + direction note + model id.
- * Votes there are a human aesthetic signal, never part of the score.
- */
-function ShareToGallery({ artifact }: { artifact: unknown }) {
-  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
-  const a = artifact as {
-    finals?: { images?: { dataUri?: string; asset?: string; prompt?: string; modelId?: string }[] };
-    chosenSet?: number[];
-    note?: string;
-  } | null;
-  const chosen = (a?.chosenSet ?? []).map((i) => a?.finals?.images?.[i]).filter((f) => f?.dataUri);
-  if (chosen.length === 0) return null;
-  const share = async () => {
-    setState("busy");
-    try {
-      const { recompressDataUri } = await import("@ailx/track-t4");
-      const images = await Promise.all(
-        chosen.slice(0, 3).map(async (f) => {
-          const uri = f!.dataUri!;
-          return uri.length > 440 * 1024 ? await recompressDataUri(uri, 440 * 1024) : uri;
-        }),
-      );
-      const res = await fetch(GALLERY_API, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          images,
-          note: (a?.note ?? "").slice(0, 800),
-          model: chosen[0]?.modelId ?? "",
-        }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      setState("done");
-    } catch {
-      setState("error");
-    }
-  };
-  return (
-    <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: "0.6rem", flexWrap: "wrap" }}>
-      {state === "done" ? (
-        <Link className="btn small-btn" href="/wall">On the wall — see the sets →</Link>
-      ) : (
-        <button className="btn small-btn" onClick={share} disabled={state === "busy"}>
-          {state === "busy" ? "Sharing…" : "Share this set to the community wall"}
-        </button>
-      )}
-      {state === "error" ? <span className="small faint">Could not share — try again later.</span> : null}
-      <span className="small faint">
-        Opt-in and public. Uploads the chosen finals + direction note, nothing else.
-      </span>
-    </div>
-  );
-}
+import { useSyncStatus } from "../../lib/data/useSyncStatus";
+import { FinalizeNotice } from "../../features/exam/FinalizeNotice";
+import { reportGate, sittingShape } from "../../features/report/reportGate";
 
 /**
  * Live sandboxed snapshot of the T1 submission (server mode only — static
@@ -205,7 +150,24 @@ export default function ReportPage() {
    * dealt in the first place, so a deck that lost an item still reports the
    * length it was sat at (TEN-68).
    */
-  const [review, setReview] = useState<ServerReview | null>(null);
+  /**
+   * THREE ANSWERS, NOT TWO (TEN-221).
+   *
+   *  - `pending` — nothing read yet, or there was nothing to read: the
+   *    static demo, a sitting still in its sitting phase, a run the service
+   *    never saw. None of those is a failure and none may be worded as one.
+   *  - a `ServerReview` — the keys and the withheld list for the deck sat.
+   *  - `failed` — the read LANDED badly or did not land at all.
+   *
+   * `failed` used to be `null`, which is the same value as "nothing to
+   * read". The calibration section then fell back to this build's BUNDLED
+   * practice keys, which match no operational item id, so every bin was
+   * empty and the section rendered nothing — an error state drawn as an
+   * empty one, with the TEN-68 withheld disclosure gone with it.
+   */
+  const [review, setReview] = useState<ServerReview | "failed" | null>(null);
+  /** The review as a value, or null when there is no review to read from. */
+  const reviewKeys = review === "failed" || review === null ? null : review;
   const reportAttemptId = state?.attemptId;
   /**
    * THE ONE READ OF THE SERVICE'S SCORES. The gate below and the panel at the
@@ -214,6 +176,18 @@ export default function ReportPage() {
    * so it asks the service nothing.
    */
   const scoresView = useScoresOfRecord(sample ? null : (reportAttemptId ?? null));
+  /**
+   * FIRES THE RESUME PASS THE REPORT NEVER FIRED (TEN-206).
+   *
+   * This page reads the stored log directly, so a sitting whose finalize POST
+   * failed arrived here complete, unscored, and asked the service for
+   * nothing: `Run complete`, then a report with no score of record, no reason
+   * and no action. `resumeOnMount` re-offers the log; the mirror returns
+   * early when the service has already finalized, so a normal report costs
+   * one function call and no request. The bundled sample is nobody's sitting
+   * and asks for nothing.
+   */
+  const finalizeSync = useSyncStatus({ resumeOnMount: !sample });
   useEffect(() => {
     if (!reportAttemptId) return;
     let cancelled = false;
@@ -222,8 +196,13 @@ export default function ReportPage() {
         if (!cancelled && r) setReview(r);
       })
       // A report that cannot reach the server still renders everything that
-      // does not need a key; it must not blank the page.
-      .catch((err: unknown) => console.warn("[ailx report] review keys unavailable", err));
+      // does not need a key; it must not blank the page. What it may NOT do
+      // is stay silent: the T2 card says the key could not be read, and
+      // draws nothing that would depend on having it (TEN-221).
+      .catch((err: unknown) => {
+        console.warn("[ailx report] review keys unavailable", err);
+        if (!cancelled) setReview("failed");
+      });
     return () => {
       cancelled = true;
     };
@@ -237,9 +216,9 @@ export default function ReportPage() {
     // deck actually sat.
     return calibrationBins(
       t2ResponsesFromArtifact(state.tracks.t2.artifact),
-      { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(review?.keys ?? {}) },
+      { ...t2AnswerKeys(state.config?.locale ?? "en"), ...(reviewKeys?.keys ?? {}) },
     );
-  }, [state, review]);
+  }, [state, reviewKeys]);
 
   if (!hydrated) {
     return <main className="page"><div className="container"><p className="muted">Loading…</p></div></main>;
@@ -251,10 +230,18 @@ export default function ReportPage() {
        the log alone, so a finalized hosted sitting was told for ever to
        "finish the run", with a Continue that led back to /exam and from
        there back to here. */
-    const gate = reportGate({
+    const gateInput = {
       localScored: state ? TRACK_IDS.filter((t) => state.tracks[t].score !== undefined) : [],
-      scores: scoresView.scores ?? null,
+      /* NOT `?? null`: `undefined` (no answer yet) and `null` (answered,
+         issued none) are different facts, and flattening them had the page
+         describe a request still in flight as one that came back empty. */
+      scores: scoresView.scores,
       reading: scoresView.reading,
+      /* "Nothing came back", "the read did not land" and "we never asked"
+         are three sentences, and only the last is true with no identity and
+         no service. */
+      asked: scoresView.asked,
+      readFailed: scoresView.failure !== null,
       /* A finished run over PART of the instrument is finished (TEN-149).
          The gate needs both halves to say so: that the run ended, and which
          tracks it covered. */
@@ -264,7 +251,15 @@ export default function ReportPage() {
             sat: TRACK_IDS.filter((t) => state.tracks[t].status === "completed"),
           }
         : undefined,
-    });
+    };
+    const gate = reportGate(gateInput);
+    /* WHAT A FINISHED SITTING IS OWED, ON THIS SCREEN TOO (dogfood D2).
+       A hosted or partial sitting lands here rather than on the full report,
+       and this screen offered neither the credential nor the share — so the
+       exam service issued a credential on the first hand-rolled POST and no
+       candidate could ever have asked for one. Both panels are the SAME ones
+       the full report renders; there is no second path. */
+    const shape = sittingShape(gateInput);
     return (
       <main className="page">
         <div className="container" style={{ maxWidth: 820 }}>
@@ -292,8 +287,15 @@ export default function ReportPage() {
               goes above the track scores because it is what the candidate
               came for (TEN-92). It is the same card the local report draws,
               marked as the service's and claiming no local replay. */}
+          <FinalizeNotice status={finalizeSync.status} busy={finalizeSync.busy} onRetry={finalizeSync.retry} />
           {state?.attemptId ? (
             <HostedComposite attemptId={state.attemptId} scores={scoresView.scores} />
+          ) : null}
+          {state?.attemptId && shape.finished ? (
+            <CredentialPanel attemptId={state.attemptId} sat={shape.sat} />
+          ) : null}
+          {state?.attemptId && shape.finished ? (
+            <ShareLink attemptId={state.attemptId} sat={shape.sat} />
           ) : null}
           {state?.attemptId ? <ScoresOfRecordView view={scoresView} /> : null}
         </div>
@@ -312,6 +314,7 @@ export default function ReportPage() {
             <button type="button" className="btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setSample(false)}>Exit sample</button>
           </div>
         ) : null}
+        <FinalizeNotice status={finalizeSync.status} busy={finalizeSync.busy} onRetry={finalizeSync.retry} />
         <CompositeCard view={localCompositeView(state.attemptId, summary)} />
 
         {/* ONE identity: the type, then the evidence each axis was decided
@@ -390,9 +393,16 @@ export default function ReportPage() {
 
         <Diagnosis trackRaw={summary.trackRaw} process={sharedProcess} />
 
-        {!sample && state.attemptId ? <CredentialPanel attemptId={state.attemptId} /> : null}
+        {/* This branch needs a local score for all four tracks
+            (`candidateComposite` returns null otherwise), so the sitting IS a
+            full one and both panels are told so explicitly. */}
+        {!sample && state.attemptId ? (
+          <CredentialPanel attemptId={state.attemptId} sat={TRACK_IDS} />
+        ) : null}
 
-        {!sample && state.attemptId ? <ShareLink attemptId={state.attemptId} /> : null}
+        {!sample && state.attemptId ? (
+          <ShareLink attemptId={state.attemptId} sat={TRACK_IDS} />
+        ) : null}
 
         {/* The exam service's OWN numbers, including a T3 score the judging
             pass issues after finalize has answered (TEN-69). Separate from
@@ -438,7 +448,21 @@ export default function ReportPage() {
               {t === "t3" && <RelianceCard raw={score.raw} />}
               {t === "t1" && !sample && <SiteLiveLink attemptId={state.attemptId ?? undefined} />}
               {t === "t4" && !sample && <ShareToGallery artifact={ts.artifact} />}
-              {t === "t2" && calBins.some((b) => b.n > 0) && (
+              {/* THE FAILED REVIEW READ SAYS SO, AND DRAWS NOTHING (TEN-221).
+                  Both blocks below need the key for the deck that was
+                  actually sat. Without it the curve would be drawn from this
+                  build's bundled practice keys — a different deck — and the
+                  item-count check would claim a deck length nobody read. An
+                  error state is not an empty state, so this branch replaces
+                  both rather than hiding with them. */}
+              {t === "t2" && review === "failed" ? (
+                <p className="small" style={{ margin: "1rem 0 0" }} data-testid="t2-review-failed" role="status">
+                  The answer key for this deck could not be read from the Foray service, so the
+                  calibration curve and the item-count check are not shown. Your answers and this
+                  score are unaffected — reload to try again.
+                </p>
+              ) : null}
+              {t === "t2" && review !== "failed" && calBins.some((b) => b.n > 0) && (
                 <>
                   <h4 style={{ margin: "1rem 0 0", fontSize: "0.9rem" }}>Calibration — confidence vs observed accuracy</h4>
                   <CalibrationCurve bins={calBins} />
@@ -446,8 +470,8 @@ export default function ReportPage() {
               )}
               {/* An item the bank lost after the sitting is still an item the
                   candidate sat, and the count says so (TEN-68). */}
-              {t === "t2" && review ? (
-                <WithheldItems dealt={review.dealt} withheld={review.withheld} />
+              {t === "t2" && reviewKeys !== null ? (
+                <WithheldItems dealt={reviewKeys.dealt} withheld={reviewKeys.withheld} />
               ) : null}
               <p className="faint small mono" style={{ marginBottom: 0 }}>
                 rubric {ts.rubricVersion?.slice(0, 12)}… · scoring {ts.scoringDigest?.slice(0, 12)}… ·{" "}
