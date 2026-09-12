@@ -88,9 +88,9 @@ type Stimulus = "pending" | "shown" | "failed";
  * candidate explains nothing and offers nothing.
  */
 const DEAL_FAILED =
-  "We could not deal a round. That is usually the connection, not anything you did.";
+  "We could not load a round. Check your connection and try again.";
 const SUBMIT_FAILED =
-  "Your round was not sent, so it is not recorded yet. Nothing was lost: the round below is exactly as you played it, and practice is unscored either way.";
+  "Your round was not sent, so it is not recorded yet. Your answers are still shown below. Try sending it again before leaving this page.";
 /**
  * The SAME two failures, when the service is there and too slow to use. A
  * different sentence because it is a different fact and it points somewhere
@@ -98,11 +98,11 @@ const SUBMIT_FAILED =
  * one (TEN-210).
  */
 const DEAL_TIMED_OUT =
-  "The service did not deal a round in time. It is slow rather than down, so trying again often works.";
+  "The round took too long to load. Try again.";
 const SUBMIT_TIMED_OUT =
-  "The service did not take your round in time, so it is not recorded yet. Nothing was lost: the round below is exactly as you played it, and it is slow rather than down — send it again.";
+  "Saving your round took too long. We could not confirm it was recorded. Your answers are still shown below. Try sending it again before leaving this page.";
 const STIMULUS_FAILED =
-  "This picture did not load, so there is nothing to call. It has not been counted for or against you.";
+  "This picture did not load. It has not been counted for or against you.";
 
 /** Shape of what a submit returns; only the fields this view renders. */
 interface SubmitBody {
@@ -513,7 +513,7 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
   if (phase === "loading")
     return (
       <div ref={stageRef} tabIndex={-1}>
-        <p className="muted">Dealing a round&hellip;</p>
+        <p className="muted">Loading a round&hellip;</p>
       </div>
     );
 
@@ -535,13 +535,11 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         {dropped > 0 ? (
           <p className="small faint">
             {dropped === 1 ? "One card" : `${dropped} cards`} never loaded, so{" "}
-            {dropped === 1 ? "it is" : "they are"} not in that count. A picture that did not
-            arrive is not a call you got wrong.
+            {dropped === 1 ? "it is" : "they are"} not in that count. Unloaded pictures do not count as wrong answers.
           </p>
         ) : null}
         <p className="muted">
-          Practice is not scored and never reaches your result. It gives you the tell before the
-          clock is running.
+          Practice does not affect your exam result. Each answer includes an explanation to review.
         </p>
         {streak !== null ? (
           <p className={styles.streak}>
@@ -561,14 +559,14 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         ) : null}
         {recorded && submitFailed && streak !== null ? (
           <p className="small faint">
-            That streak is what your last recorded round left. This round is not in it yet.
+            This streak is from your last recorded round. We have not confirmed this round was added.
           </p>
         ) : null}
         {qualification !== null && !qualification.counted ? (
           <p className="small faint">
             {qualification.reason === "too_fast"
-              ? "That round went too fast to count towards a streak day. The drill counts only if it was read."
-              : "That round did not finish, so it does not count towards a streak day. Finish one and it does."}
+              ? "That round went too fast to count towards a streak day. Take time to read each card."
+              : "You did not answer enough cards for this round to count towards a streak day."}
           </p>
         ) : null}
         {/* Where the days are, said plainly, on the screen that shows them.
@@ -608,8 +606,8 @@ export function PracticeDrill({ taster = false }: { taster?: boolean } = {}) {
         {claim?.ok && claim.claimed.length > 0 ? (
           <p className="small faint" role="status">
             {claim.claimed.length === 1
-              ? "The practice day this browser was holding is now on your account."
-              : `The ${claim.claimed.length} practice days this browser was holding are now on your account.`}
+              ? "The practice day saved in this browser is now on your account."
+              : `The ${claim.claimed.length} practice days saved in this browser are now on your account.`}
           </p>
         ) : null}
         {submitFailed ? (

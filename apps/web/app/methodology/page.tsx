@@ -22,91 +22,82 @@ export default function Methodology() {
           </div>
           <div className="page-hero-copy">
             <div className="eyebrow">Foray 2026.1 · Methodology</div>
-            <h1>What is measured, how it is scored, and what is <span className="script-accent">honestly</span> not yet known</h1>
+            <h1>What we measure, and what we <span className="script-accent">still</span> need to learn</h1>
             <Annotation>no black boxes</Annotation>
           </div>
         </div>
         <p className="lede">
-          The construct, what the calibration sample allows, judge governance, and the
-          modularity rules that keep every score reproducible.
+          Foray tests how you use AI and make your own decisions. Here are the scoring
+          rules, the evidence behind them, and the limits of what a score can tell you.
         </p>
 
         <section className="reveal">
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§03</span><span className="paper-chip-note">four tracks</span></span>
-        <h2 id="construct">Construct definition (§03)</h2>
+        <h2 id="construct">What the tasks measure (§03)</h2>
         <p>
-          Foray defines <strong>applied AI literacy</strong> as a person&rsquo;s capacity to produce
-          good outcomes in an information environment saturated with generative systems &mdash;
-          stated tightly enough to be falsifiable. It resolves into four measurable capabilities,
-          each of which is a track:
+          <strong>Applied AI literacy</strong> means using AI to do useful work while keeping
+          your own judgment. Foray tests four skills:
         </p>
         <table>
-          <thead><tr><th>Track</th><th>Capability</th><th>Failure it detects</th></tr></thead>
+          <thead><tr><th>Track</th><th>Capability</th><th>What can go wrong</th></tr></thead>
           <tbody>
-            <tr><td className="mono">T1</td><td><strong>Create with AI</strong> — direct AI tooling to produce an artifact that meets an external standard of quality</td><td className="muted">Can operate a chatbot; cannot ship anything</td></tr>
-            <tr><td className="mono">T2</td><td><strong>Discriminate</strong> — tell authentic media from synthetic and legitimate messages from hostile ones, with calibrated confidence</td><td className="muted">Trusts everything, or trusts nothing</td></tr>
-            <tr><td className="mono">T3</td><td><strong>Reason with AI</strong> — use a model on a genuinely difficult problem while keeping and exercising independent judgment</td><td className="muted">Cognitive offloading; accepts wrong output</td></tr>
-            <tr><td className="mono">T4</td><td><strong>Direct generation</strong> — take a communicative brief to a finished visual result with proper attribution</td><td className="muted">Generates volume; communicates nothing</td></tr>
+            <tr><td className="mono">T1</td><td><strong>Create with AI</strong>. Use AI to make something that meets a clear quality standard</td><td className="muted">Can use a chatbot but cannot finish useful work</td></tr>
+            <tr><td className="mono">T2</td><td><strong>Spot what to trust</strong>. Tell real media from generated media and safe messages from scams. Judge how sure you are</td><td className="muted">Trusts everything, or trusts nothing</td></tr>
+            <tr><td className="mono">T3</td><td><strong>Reason with AI</strong>. Use a model on a difficult problem and check its answers</td><td className="muted">Accepts wrong answers without checking</td></tr>
+            <tr><td className="mono">T4</td><td><strong>Direct generation</strong>. Turn a brief into a finished image and credit the sources</td><td className="muted">Makes many images but misses the brief</td></tr>
           </tbody>
         </table>
         <p>
-          Construct-validity levels are <em>declared</em>, per NIST AI 800-2, rather than
-          left to be inferred: T2 is a <strong>direct</strong> measurement (discrimination
-          accuracy is the construct); T3 is direct on its planted-error component and a proxy on
-          its rubric component; T1 and T4 are <strong>proxy</strong> claims, where artifact
-          quality proxies creative capability and the criterion is comparative human judgment,
-          not a model score. The composite carries a <strong>predictive &mdash; unvalidated</strong>{" "}
-          label: no claim yet that it predicts real-world outcomes, and establishing that needs
-          the longitudinal follow-up on the 2028 roadmap.
+          Each track has limits. Following NIST AI 800-2, we state what each score measures.
+          T2 <strong>directly</strong> measures accuracy at spotting differences. T3 directly
+          tests whether you catch planted errors, but its rubric score is an indirect measure
+          of reasoning. T1 and T4 use work quality as a <strong>proxy</strong>, or indirect
+          measure, of creative skill. Human comparisons are the reference for those tracks,
+          not model scores. The combined score is <strong>not yet validated as a predictor</strong>
+          {" "}of real-world outcomes. Testing that needs long-term follow-up, planned for 2028.
         </p>
 
         </section>
 
         <section className="reveal">
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§09</span><span className="paper-chip-note">what the sample allows</span></span>
-        <h2 id="psychometrics">Psychometric honesty, and what the calibration sample allows (§09)</h2>
+        <h2 id="psychometrics">What the early results can tell us (§09)</h2>
         <blockquote>
-          <strong>Where the numbers come from, stated plainly.</strong> The 2026 calibration
-          cohort was small: <strong>n = 45</strong>. Its job was to develop and calibrate items,
-          not to certify anyone. Rasch is used diagnostically to rank item difficulty and cull
-          misfitting items at ±1 logit, which n = 45 supports. Person-ability logits are{" "}
-          <em>not</em> reported as scores. 2PL and 3PL are off the table entirely: GLAT needed
-          n = 355 for 2PL, AICOS needed 514 for 3PL. Absolute cut scores and certification
-          claims are deferred until the pooled sample crosses <strong>250</strong>; until then a
-          report carries percentiles and bands, never a competence certification.
+          The 2026 calibration group had just <strong>45 people</strong>. It helped develop
+          questions, not certify anyone. We use the Rasch model to estimate question difficulty
+          and flag questions that fit poorly. Person-ability logits are <em>not</em> reported as scores.
+          More complex models, called 2PL and 3PL, need larger samples. We defer pass thresholds
+          and competence certification until the pooled sample exceeds <strong>250</strong>.
+          Until then, percentiles and bands describe relative performance, not certified competence.
         </blockquote>
         <ul>
           <li>
-            <strong>The anchor-block move.</strong> An embedded block of published, externally
-            normed items (AICOS-SV, 18 items, normed on n = 514 adults) costs about eight minutes
-            of testing time and buys standing against a real external norm group. It also creates
-            the cross-form linkage that makes Year 2 comparable to Year 1.
+            <strong>Shared questions link results.</strong> The design includes 18 published
+            AICOS-SV questions, tested on 514 adults. They take about eight minutes and provide
+            an outside comparison group.
           </li>
           <li>
-            <strong>The composite forces a normal distribution</strong> (rank → percentile →
-            inverse-normal → mean 50, SD 15) rather than hoping for one. At n = 45 an empirically
-            normal raw distribution is unlikely. Every export says so, and the raw-distribution
-            shape is preserved separately in the data.
+            <strong>The combined score uses a bell-shaped scale.</strong> Ranks become percentiles,
+            then scores with a mean of 50 and a standard deviation of 15. This does not mean raw
+            performance follows a bell curve. Exports keep the raw distribution separately.
           </li>
           <li>
-            <strong>Reliability is reported with the right statistics:</strong>{" "}
-            Krippendorff’s α (headline, ≥ .80 satisfactory) for rubric-scored tracks;
-            ICC(2,k) absolute agreement judged on the 95% CI; split-panel correlation for
-            comparative judgement instead of optimistic SSR; QWK for T3 reported against
-            the human inter-rater ceiling (~0.72 on comparable essay tasks).
+            <strong>Agreement between judges needs checking.</strong> The plan uses Krippendorff's
+            alpha for rubric scores, with .80 as the target, and ICC with 95% confidence intervals
+            to measure agreement. Separate judging panels are compared for paired work. T3 also
+            uses weighted kappa, a measure of rating agreement, against human judges' agreement.
           </li>
           <li>
-            <strong>Standard setting is Modified Angoff</strong> — 8–10 subject-matter
-            experts, two rounds — the only method defensible <em>without examinee data</em>.
-            Bookmark is ruled out: it needs IRT parameters n = 45 cannot produce. So is
-            contrasting groups, which at this n is biased toward the smaller group.
+            <strong>Experts set the planned pass standard.</strong> Modified Angoff asks 8 to 10
+            experts, over two rounds, what a minimally competent person should achieve. The early
+            sample is too small for methods that need stable estimates of each question's difficulty
+            or comparisons between groups of test takers.
           </li>
           <li>
-            <strong>Cross-year comparability takes the AP model with ARC-AGI’s calibration
-            discipline.</strong> Year 1 is norm-referenced by quota, and a secure anchor block is
-            built from day one so Year 2 onward can be equated. The standard, once set by Angoff,
-            is held fixed and the raw cut floats. The public-vs-secure performance gap is tracked
-            annually as contamination telemetry.
+            <strong>Comparisons across years need stable questions.</strong> The design keeps a
+            secure set of questions to link annual versions. Once set, the competence standard stays
+            fixed, though the raw score needed may change. Comparing results on public and secure
+            questions helps check whether prior exposure is affecting scores.
           </li>
         </ul>
 
@@ -114,52 +105,52 @@ export default function Methodology() {
 
         <section className="reveal">
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§10</span><span className="paper-chip-note">jury rules</span></span>
-        <h2 id="judges">Judge governance (§10)</h2>
+        <h2 id="judges">How judging is checked (§10)</h2>
         <p>
-          Where models do score, the protocol is the product. Foray adopts
-          <strong> NIST AI 800-2, Practices for Automated Benchmark Evaluations</strong>{" "}
-          as its reporting spine: uncertainty quantification with variance decomposed by
-          source; documentation down to exact model versions, judge prompts and
-          item-level results; qualified claims separating observation from inference; and
-          a declared construct-validity level per track.
+          Model judges can make mistakes. The judging plan follows
+          <strong> NIST AI 800-2, Practices for Automated Benchmark Evaluations</strong>.
+          It calls for exact model and prompt versions, results for each question, and uncertainty
+          estimates. Reports must separate what the evidence shows from what we infer.
         </p>
-        <p>Known biases are quantified up front, with mitigations:</p>
+        <p>Published studies show these risks. The figures below are not measurements of Foray judges:</p>
         <table>
-          <thead><tr><th>Bias</th><th>Magnitude</th><th>Mitigation</th></tr></thead>
+          <thead><tr><th>Bias</th><th>Reported finding</th><th>Planned check</th></tr></thead>
           <tbody>
             <tr>
-              <td><strong>Formatting / style</strong> — the largest single effect</td>
+              <td><strong>Formatting and style</strong></td>
               <td className="muted">GPT-4 win rate for bold text: 89.5%; links 87.3%; lists 75.8%</td>
-              <td className="muted">Formatting-invariance ablation published; T3 judged on stripped and formatted renderings with the delta reported</td>
+              <td className="muted">Compare T3 judgments with and without formatting and report the difference</td>
             </tr>
             <tr>
               <td><strong>Position / order</strong></td>
-              <td className="muted">Swap consistency: GPT-4 65.0%, Claude-v1 23.8% — the bias is strongest when candidates are close in quality</td>
-              <td className="muted">Randomised position within every pair; swap used only as part of a combined strategy</td>
+              <td className="muted">Swap consistency: GPT-4 65.0%, Claude-v1 23.8%. Order matters most when work is close in quality</td>
+              <td className="muted">Randomize order and swap pairs, alongside other checks</td>
             </tr>
             <tr>
               <td><strong>Verbosity</strong></td>
-              <td className="muted">Heterogeneous in sign across model families (+0.44 to −0.12)</td>
-              <td className="muted">A heterogeneous three-family jury cancels direction; length enters comparative fits as a covariate</td>
+              <td className="muted">Some model families favor longer answers; others favor shorter ones, with reported effects from +0.44 to −0.12</td>
+              <td className="muted">Use judges from three model families and account for answer length in comparisons</td>
             </tr>
             <tr>
-              <td><strong>Self-enhancement / kinship</strong></td>
-              <td className="muted">Preference leakage between judge and candidate tooling</td>
-              <td className="muted">No judge from a lab whose model is offered as candidate tooling; panel published and rotated annually</td>
+              <td><strong>Favoring related models</strong></td>
+              <td className="muted">Judges may favor output from their own model family</td>
+              <td className="muted">Exclude judges from labs that supply the tools used in tasks; publish and rotate the panel each year</td>
             </tr>
           </tbody>
         </table>
-        <p>The judging protocol, in order:</p>
+        <p>The planned judging process:</p>
         <ol>
-          <li><strong>Lock</strong> — frozen rubric bundle; changing a prompt is a version bump, not a config tweak.</li>
-          <li><strong>Judge</strong> — a heterogeneous three-family jury with combined mitigations: position swaps, chain-of-thought before scoring, and a detailed rubric.</li>
-          <li><strong>Anchor</strong> — every decision must cite verbatim, mechanically verified evidence; unverifiable evidence invalidates the judgment.</li>
-          <li><strong>Calibrate</strong> — distribution calibration on ~200 human-labelled examples lifted the published essay-scoring QWK from ~0.5 to 0.71.</li>
-          <li><strong>Correct</strong> — report the bias-corrected estimator θ̂ = (p̂ + q₀ − 1)/(q₀ + q₁ − 1), never a raw judge score, with confidence intervals propagated.</li>
-          <li><strong>Defer</strong> — route jury disagreements and low-confidence cases to humans on a published trust curve, with known-wrong items planted to keep reviewers engaged.</li>
+          <li><strong>Fix the rules.</strong> Save the rubric and prompts as a version. Any change creates a new version.</li>
+          <li><strong>Use several judges.</strong> Three model families follow a detailed rubric, explain ratings, and compare work in both orders.</li>
+          <li><strong>Check the evidence.</strong> Judges must quote the work. A quote that cannot be verified invalidates the judgment.</li>
+          <li><strong>Compare with humans.</strong> Use human-rated examples to adjust model ratings. A published essay study improved rating agreement from about 0.5 to 0.71 using roughly 200 examples; this is not a Foray result.</li>
+          <li><strong>Account for errors.</strong> Adjust estimates for measured judge errors and report confidence intervals, rather than treating raw model ratings as truth.</li>
+          <li><strong>Ask humans when needed.</strong> Send disagreements and uncertain cases to reviewers. Publish the referral rules and use known-error examples to check reviewer attention.</li>
         </ol>
         <p>
-          Two things are published <em>before</em> the first cohort plays: an adversarial red-team assessment of the judges with a measured attack success rate, and a formatting-invariance ablation with the deltas tracked.
+          Before the first scored cohort, the plan requires published tests of attempts to
+          manipulate the judges, including attack success rates, and tests of how formatting
+          changes ratings. These requirements are not evidence that the checks have already passed.
         </p>
 
         </section>
@@ -170,74 +161,56 @@ export default function Methodology() {
             them. */}
         <h2 id="storage">What is stored, and who calls the model</h2>
         <p>
-          In the hosted build the exam service stores your event log, your answers, and any
-          site you published. It also holds the key for the model you connect. The browser
-          starts the sign-in, hands back the code it is redirected with, and is told a
-          12-character fingerprint. It never receives the key.
+          On the hosted site, the Foray service stores your activity during a run, your answers,
+          and any site you publish. If you connect a model, the service holds its key against
+          your account. Your browser receives only a 12-character fingerprint to identify the
+          connection, never the key.
         </p>
         <p>
-          Connect nothing and the service makes no model call for you. A track that can run
-          without one falls back to its own offline simulator, and says so on screen.
+          Tasks that support offline practice can use a simulator and label it on screen.
+          A simulator is not a live model, and its results are not an official score.
         </p>
         <p>
-          The static demo on GitHub Pages has no service at all. Every model call there is a
-          deterministic simulator seeded by SHA-256 of its inputs, and nothing leaves your
-          browser.
+          The GitHub Pages demo has no Foray exam service or account sign-in. You can use
+          the capped shared model or connect a model running on your own machine. Inputs sent
+          to a connected model leave this page, so do not include private information.
         </p>
         </section>
 
         <section className="reveal">
         <span className="paper-chip" aria-hidden="true"><span className="mono paper-chip-sec">§14</span><span className="paper-chip-note">replayable</span></span>
-        <h2 id="modularity">Modularity &amp; reproducibility (§14)</h2>
+        <h2 id="modularity">How scores can be checked later (§14)</h2>
         <p>
-          The failure mode designed against is specific: Year 2 changes a rubric, and Year
-          1’s scores silently become irreproducible. Everything serves one property —{" "}
-          <strong>any score, ever issued, can be recomputed byte-identically from stored
-          inputs.</strong> Four rules make it work:
+          Changing next year's rules must not erase this year's results. The goal is simple:
+          <strong> recompute the same score from the same stored inputs.</strong> The release
+          design has four rules:
         </p>
         <ul>
-          <li><strong>The package is the unit of release.</strong> Instruments live in their own repository as signed, immutable OCI artifacts, loaded by digest, never by tag.</li>
-          <li><strong>Item banks are content-addressed.</strong> <code>item_id = sha256(canonical_json(item))</code>. An edited item is a <em>new</em> item, never a mutation — cohorts cannot be compared across a silently edited item.</li>
-          <li><strong>Prompts are content.</strong> The judge prompt is hashed into <code>rubric_version</code>; changing it is a version bump.</li>
-          <li><strong>Locales live beside the item</strong>, with translation provenance recorded, because score comparability across languages is a validity claim that will be challenged.</li>
+          <li><strong>Release fixed versions.</strong> The design calls for signed instrument packages loaded by a hash of their contents, not a changeable name.</li>
+          <li><strong>Changed questions get new IDs.</strong> Each ID is a hash of the question content. Editing a question creates a new item, so changes cannot silently affect comparisons.</li>
+          <li><strong>Save the judging instructions.</strong> The prompt is part of <code>rubric_version</code>. Changing it creates a new version.</li>
+          <li><strong>Keep translations with each question.</strong> Record how they were translated. Comparable scores across languages need evidence.</li>
         </ul>
         <p>
-          <code>score()</code> being <strong>pure</strong> is the load-bearing constraint: no network, no clock, no randomness. Model calls happen in pipeline stages whose outputs are stored as inputs;
-          <code> score()</code> then consumes stored judgments and returns a number. This is worth
-          stating precisely, because an LLM judge does <em>not</em> repeat itself even at
-          temperature&nbsp;0: a judgment is evidence collected once, stored immutably and
-          content-addressed, and the guarantee is that <strong>re-scoring reproduces, not that
-          re-judging does</strong>. Ask the judge the same question twice and you may get two
-          answers; ask the scorer twice and you cannot. CI checks purity by running{" "}
-          <code>score()</code> inside a harness that replaces the clock ({" "}
-          <code>Date.now</code>, zero-argument <code>new Date()</code>,{" "}
-          <code>performance.now</code>), randomness (<code>Math.random</code>,{" "}
-          <code>crypto</code>), the network (<code>fetch</code>, <code>XMLHttpRequest</code>,{" "}
-          <code>WebSocket</code>) and deferred scheduling (<code>setTimeout</code> and friends)
-          with stubs that throw, rejects a scorer that returns a promise or adds a global, and
-          fails the build on any drift from the per-track golden fixtures. It is a trap set on
-          globals, <em>not</em> a sandbox: it cannot see a reference captured before the call, a{" "}
-          <code>node:fs</code> imported at module load, or a read of <code>process.env</code>,
-          so it is a strong smoke test for accidental impurity rather than a proof of it. The
-          proof of record is the golden fixtures plus the append-only inputs. Re-scores are inserts linked
-          by <code>superseded_by</code>, so no history is destroyed, and the stored model manifest
-          makes it possible in 2029 to prove which model version produced a 2026 certificate.
+          <code>score()</code> uses no network, clock, or randomness. It calculates a score from
+          stored answers and judgments. <strong>Re-scoring is reproducible; re-judging is not.</strong>
+          {" "}A model may give a different judgment when asked again, even at temperature 0.
+          We save its original judgment as an input rather than call it again to check a score.
+          Automated tests block common sources of changing results and compare scores with fixed
+          examples. These tests are not a sandbox or a proof of purity. They can miss references
+          captured earlier, file imports, or environment reads. New scores link to the old records
+          through <code>superseded_by</code>, without overwriting the history.
         </p>
         <p>
-          One limit, stated plainly rather than implied away. Byte-identical recomputation is
-          verified <em>on the same JavaScript runtime</em>: CI replays every stored score on the
-          Node version it pins. Scoring is not yet proven byte-identical <em>across</em> runtime
-          versions, because a score record does not currently store the runtime it was produced
-          on, and some scoring steps use unicode case folding, whose tables move with the
-          engine’s ICU version. Closing that gap means recording the runtime in provenance and
-          replaying old scores on it. Until then the claim is: reproducible from stored inputs,
-          on a recorded runtime.
+          There is also a runtime limit. Tests verify byte-identical results on the same
+          JavaScript runtime, not across engine versions. Score records do not yet store that
+          version. Some text-processing rules can change with the engine. Recording the runtime
+          and replaying old scores on it is still needed for a stronger long-term guarantee.
         </p>
         <p className="faint small">
-          This showcase build exercises the same contracts client-side: the purity
-          harness, content-addressing and golden-fixture checks on the{" "}
-          <Link href="/validate">validation page</Link> run the production code paths in your
-          browser.
+          You can run checks of the scoring code and content IDs in your browser on the{" "}
+          <Link href="/validate">validation page</Link>. They check code consistency, not whether
+          a score predicts real-world skill.
         </p>
         </section>
       </div>

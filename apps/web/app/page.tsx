@@ -112,7 +112,7 @@ function MiniScoreCard() {
 function MiniChecksCard() {
   return (
     <span className="mini-card mini-card-checks showcase-float-2">
-      {["sha256 verified", "replay = live", "export matches"].map((s) => (
+      {["saved inputs checked", "scores match", "export matches"].map((s) => (
         <span key={s} className="mini-check">
           <span className="mini-check-tick">✓</span>
           <span className="mono">{s}</span>
@@ -182,11 +182,11 @@ function CastStrip() {
     <section className="container cast" aria-label="The sixteen player types">
       <Reveal as="div" className="cast-copy">
         <h2 className="cast-title">
-          A full run ends on one of <span className="script-accent">sixteen</span> characters.
+          Meet your <span className="script-accent">AI character</span>.
         </h2>
         <p className="cast-line">
-          Four axes, one per track, read from what you did. It is for fun, never a grade, and the
-          card is the part people share.
+          Your choices across the four tasks match you with one of sixteen characters.
+          It is for fun, never a grade. Share the card if you like.
         </p>
         <p className="cast-more" data-pill-clear=""><Link href="/report">See a sample card →</Link></p>
       </Reveal>
@@ -223,14 +223,13 @@ export default function Home() {
                 <div className="hero-copy">
                   <div className="eyebrow hero-fade">{accessCopy()}</div>
                   <h1 className="hero-title">
-                    <span className="hero-line hero-line-1">Benchmarks rate the models.</span>
+                    <span className="hero-line hero-line-1">AI is for everyone.</span>
                     <br />
-                    <span className="hero-line hero-line-2">This one rates <span className="script-accent">you</span>.</span>
+                    <span className="hero-line hero-line-2">Learn to use it on <span className="script-accent">your terms</span>.</span>
                   </h1>
                   <span className="hero-fade hero-annotation"><Annotation>one card, right now</Annotation></span>
                   <p className="lede hero-lede hero-fade">
-                    Photograph, or generated? You get the answer and the tell the moment you
-                    call it.
+                    Photograph or AI-generated? Choose an answer to see why.
                   </p>
                 </div>
                 {/* The drill is tappable end to end, so the fixed bottom pill
@@ -245,18 +244,17 @@ export default function Home() {
                 </div>
                 <p className="hero-cta hero-fade" data-pill-clear="">
                   <Link className="btn primary" href="/practice">Play a full round</Link>
-                  <Link className="btn" href="/exam">Go for the credential</Link>
+                  <Link className="btn" href="/exam">Explore the full exam</Link>
                 </p>
               </div>
             </div>
           </section>
-          {/* Scroll-scrubbed interstitial. Decorative restatement of the h1's
-              claim: aria-hidden keeps the accessibility tree to a single
-              headline; CSS keeps it display:none without scroll timelines. */}
+          {/* Decorative restatement of the headline. Hidden from assistive
+              technology and browsers without scroll timelines. */}
           <div className="hero-phase-b" aria-hidden="true">
             <p className="hero-phase-b-copy">
-              <span className="hero-phase-b-line">Benchmarks are a hundred numbers.</span>
-              <span className="hero-phase-b-line">You are <span className="script-accent">one</span> score.</span>
+              <span className="hero-phase-b-line">Understand what AI can do.</span>
+              <span className="hero-phase-b-line">Decide how <span className="script-accent">you</span> use it.</span>
             </p>
           </div>
         </div>
@@ -281,7 +279,7 @@ export default function Home() {
           <div className="container">
             <Reveal as="div" className="desk-quote-wrap">
               <blockquote className="desk-quote">
-                Plays like a game.<br />Scored like an <span className="script-accent">instrument</span>.
+                Build with AI.<br />Learn to <span className="script-accent">question it</span>.
               </blockquote>
             </Reveal>
             <div className="desk-cards">
@@ -318,10 +316,10 @@ export default function Home() {
             <StepVizCalls />
             <h2 className="wyg-title">Play one card.</h2>
             <p className="wyg-line">
-              Photograph or generated? The answer and the tell arrive together. Free, unscored,
-              and it never touches the graded bank.
+              Choose photograph or AI-generated, then read the explanation. Practice is free
+              and separate from the exam.
             </p>
-            <p className="wyg-more"><Link href="/practice">Practise the tells →</Link></p>
+            <p className="wyg-more"><Link href="/practice">Try a practice round →</Link></p>
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizStreak />
@@ -331,32 +329,32 @@ export default function Home() {
                 that differs — the static export has no /progress. */}
             <h2 className="wyg-title">Come back tomorrow.</h2>
             <p className="wyg-line">
-              Finish a round and the day counts. With no account the days are kept in this
-              browser. The streak counts what you finished, never a number you told it.
+              Finish a round to add a day to your streak. With no account, your days are
+              kept in this browser.
             </p>
             <p className="wyg-more">
               {isServerMode() ? (
                 <Link href="/progress">See your progress →</Link>
               ) : (
-                <Link href="/practice">Practise the tells →</Link>
+                <Link href="/practice">Try a practice round →</Link>
               )}
             </p>
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizTracks />
-            <h2 className="wyg-title">Then take the whole thing.</h2>
+            <h2 className="wyg-title">Try the full exam.</h2>
             <p className="wyg-line">
-              Four tracks in one sitting, each on its own clock: build, spot fakes, catch lies,
-              direct. That is the graded run, and it is the long one.
+              Four timed tasks: build a website, identify AI-generated media, check an
+              assistant's answers, and create images and video.
             </p>
             <p className="wyg-more"><Link href="/exam">Start the full run →</Link></p>
           </Reveal>
           <Reveal as="li" className="wyg-step">
             <StepVizReport />
-            <h2 className="wyg-title">Keep what it leaves you.</h2>
+            <h2 className="wyg-title">See what you did.</h2>
             <p className="wyg-line">
-              A report you can share and a credential anyone can check. The credential records a
-              finished sitting, never a grade, and every point is recomputable from what you did.
+              Review your work in a report. In the hosted version, you can also get a
+              credential that confirms you finished the exam, never a grade.
             </p>
             <p className="wyg-more"><Link href="/report">See a sample report →</Link></p>
           </Reveal>
@@ -374,22 +372,22 @@ export default function Home() {
       <section className="container showcase" aria-label="See how the scoring works">
         <ShowcaseRow
           href="/methodology"
-          title={<>Read the <span className="script-accent">methodology</span>.</>}
-          note="no black boxes"
-          line="Construct, psychometrics, judge governance. All of it public."
+          title={<>Know what we <span className="script-accent">measure</span>.</>}
+          note="know the limits too"
+          line="Read what the tasks assess, how scoring works, and what a result cannot tell you."
           cta="Read the methodology"
           cards={<><MiniScoreCard /><MiniReportCard /></>}
         />
         <ShowcaseRow
           href="/validate"
           flip
-          title={<>Watch it <span className="script-accent">prove</span> itself.</>}
+          title={<>Check the <span className="script-accent">scoring</span>.</>}
           note="runs in your browser"
-          line="Eight live checks replay the real scoring path on this page."
+          line="Run the demo checks to see whether saved answers produce the same scores."
           cta="Run the checks"
           cards={<><MiniChecksCard /><MiniScoreCard /></>}
         />
-        <p className="showcase-caption faint small">This is the demo build of the Foray 2026.1 spec.</p>
+        <p className="showcase-caption faint small">Foray 2026.1. Demo results are not official exam scores.</p>
       </section>
       <PillCTA href="/practice">Play a round</PillCTA>
     </main>

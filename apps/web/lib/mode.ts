@@ -67,7 +67,7 @@ export function footerModeCopy(modelEndpoint?: string | null): string {
   }
   const origin = endpointOrigin(modelEndpoint);
   return origin === null
-    ? "Foray 2026.1 · static demo build. Every model call is a deterministic simulator, seeded by SHA-256 of its inputs, and runs in this browser."
+    ? "Foray 2026.1 · static demo build. Without a model connected, a simulator runs in this browser instead of live AI."
     : `Foray 2026.1 · static demo build. The simulator is the default and runs in this browser. You connected ${origin}, so a model call sends your prompt there.`;
 }
 

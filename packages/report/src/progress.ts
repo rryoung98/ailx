@@ -284,13 +284,7 @@ export const MIN_TREND_ANSWERS = 12;
  * service can finally identify the browser holding it.
  */
 export const PROGRESS_BASIS =
-  "Counted from what you actually did. Practice you finish in a browser the exam service can "
-  + "identify — an account, or whatever identity your deployment accepts — is recorded and "
-  + "graded by the service. Practice it cannot attribute to anyone is kept by your browser "
-  + "alone, so only that browser can show it until it is handed over. Each sitting's figures "
-  + "are that run's own scorer output from its stored event log. No percentile, no composite "
-  + "and no judged result — the judging pipeline is not built yet, so a number implying one "
-  + "would be a claim we cannot back.";
+  "The exam service records practice it can link to your identity. Other practice stays in your browser until you transfer it. Exam figures come from each run's saved record. No percentile, no composite and no judged result are shown here. The judging pipeline is not built yet.";
 
 /**
  * What a movement in practice accuracy is, and — much more important — what
@@ -312,10 +306,7 @@ export const PROGRESS_BASIS =
  *     "improvement" manufactures confidence it cannot back.
  */
 export const PRACTICE_ACCURACY_CAVEAT =
-  "This is your hit rate on a small corpus you meet again and again, so part of any rise is "
-  + "recognising pictures you have already been given the answer to. It also cannot tell a "
-  + "better eye from a greater readiness to call something AI — both look the same in a "
-  + "percentage. Read it as a record of what you did here, not as your detection getting better.";
+  "This percentage shows how often you answered correctly on a small, repeating image set. A rise may mean you remember answers or choose AI-generated more often. It does not prove your detection skills improved.";
 
 /**
  * A movement between two figures. The name is the WIRE name and is kept for

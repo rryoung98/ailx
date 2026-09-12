@@ -72,6 +72,18 @@ describe("what it publishes", () => {
     expect(html).toContain("95%"); // 40 finished of 42 started
   });
 
+  it("explains group results in plain language without claiming official scores", async () => {
+    const html = await markup();
+    expect(html).toContain("a test of practical AI skills");
+    expect(html).toContain("10-point bands");
+    expect(html).toContain("Median means the middle result; mean means the average");
+    expect(html).toContain("provisional, not official results");
+    expect(html).toContain("do not affect your overall score");
+    expect(html).toContain("not question names or IDs");
+    expect(html).not.toContain("attempt_decks");
+    expect(html).not.toContain("docs/SAMPLING.md");
+  });
+
   it("renders a decile histogram per track, hand-rolled and labeled", async () => {
     const html = await markup();
     expect(html.match(/class="histogram"/g)).toHaveLength(4);
@@ -87,7 +99,7 @@ describe("what it publishes", () => {
 
   it("summarizes item exposure without naming a single item", async () => {
     const html = await markup();
-    expect(html).toContain("distinct items shown");
+    expect(html).toContain("different questions shown");
     expect(html).toContain("120");
     expect(html).not.toMatch(/item-[a-z0-9]/i);
   });
@@ -112,7 +124,7 @@ describe("what it publishes", () => {
   it("never describes the stored runs as a population", async () => {
     const html = await markup();
     expect(html).not.toContain("whole population");
-    expect(html).toContain("no figure on this page describes a population");
+    expect(html).toContain("These results do not describe a country or the wider population");
   });
 });
 
@@ -122,7 +134,7 @@ describe("what it refuses to publish", () => {
     // The words appear once, in the disclaimer that we do NOT publish them.
     expect(html).toContain("no percentiles, no composites and no judged scores");
     expect(html.match(/percentile/g)).toHaveLength(1);
-    expect(html.match(/composite/g)).toHaveLength(2); // the disclaimer + "the scored composite never reads it"
+    expect(html.match(/composite/g)).toHaveLength(1); // only the disclaimer
     expect(html).not.toMatch(/\d+(st|nd|rd|th) percentile/);
     expect(html).not.toMatch(/composite[^a-z]{0,3}\d/);
   });
@@ -130,7 +142,7 @@ describe("what it refuses to publish", () => {
   it("suppresses every breakdown below the cohort floor, and explains the rule", async () => {
     payload = aggregates(MIN_COHORT_SIZE - 1);
     const html = await markup();
-    expect(html).toContain(`published only once ${MIN_COHORT_SIZE} are behind it`);
+    expect(html).toContain(`breakdowns stay hidden until at least ${MIN_COHORT_SIZE} runs`);
     expect(html).not.toContain("class=\"histogram\"");
     expect(html).not.toContain("type-bars");
     // Population counts survive: they describe everyone, so they name nobody.
@@ -185,7 +197,7 @@ describe("what it refuses to publish", () => {
 
   it("is a public, indexable page — it is the argument for the whole product", () => {
     expect(metadata.robots).toBeUndefined();
-    expect(String(metadata.title)).toMatch(/world/i);
+    expect(String(metadata.title)).toMatch(/community results/i);
   });
 });
 
@@ -275,7 +287,7 @@ describe("how it reads the service", () => {
     });
     const html = await markup();
     expect(html).toContain("Nobody has started a run yet");
-    expect(html).toContain("genuinely zero rather than");
+    expect(html).toContain("These counts are zero, not missing.");
     expect(html).not.toContain("was reached and refused");
     expect(html).not.toContain("did not answer");
   });

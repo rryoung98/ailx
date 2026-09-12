@@ -127,13 +127,13 @@ describe("the denial itself", () => {
   it("names the two things that make a rising practice percentage unreadable", () => {
     // repetition of a small corpus, and criterion vs sensitivity. Both have to
     // be in the words a person actually reads, not only in a code comment.
-    expect(PRACTICE_ACCURACY_CAVEAT).toMatch(/again and again|already been given the answer/i);
-    expect(PRACTICE_ACCURACY_CAVEAT).toMatch(/readiness to call/i);
+    expect(PRACTICE_ACCURACY_CAVEAT).toMatch(/repeating image set|remember answers/i);
+    expect(PRACTICE_ACCURACY_CAVEAT).toMatch(/choose AI-generated more often/i);
   });
 
-  it("the long note reports that the trial found no advantage, with its size", () => {
-    expect(PRACTICE_EFFICACY_NOTE).toMatch(/1,200/);
-    expect(PRACTICE_EFFICACY_NOTE).toMatch(/no advantage/i);
-    expect(PRACTICE_EFFICACY_NOTE).toMatch(/two weeks/i);
+  it("the long note states the evidence limit without claiming Foray was tested", () => {
+    expect(PRACTICE_EFFICACY_NOTE).toMatch(/similar practice has not shown lasting gains/i);
+    expect(PRACTICE_EFFICACY_NOTE).toMatch(/Foray itself has not been tested/i);
+    expect(PRACTICE_EFFICACY_NOTE).toMatch(/review examples/i);
   });
 });

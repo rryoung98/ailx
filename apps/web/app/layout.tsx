@@ -18,11 +18,11 @@ import { QueryProvider } from "../lib/QueryProvider";
 import { AuthNav } from "../lib/auth/AuthNav";
 
 export const metadata: Metadata = {
-  title: "Foray — the AI-literacy game that scores like an instrument",
+  title: "Foray | Practise using AI on your terms",
   // Meta descriptions are truncated around 155 characters; the old one ran to
   // 172 and lost its last clause in the SERP.
   description:
-    `Four playable tracks: build, detect, reason, direct. ${TOTAL_POINTS} raw points, and every score recomputable from what you did. Foray 2026.1 demo build.`,
+    "Explore what AI can do and where it goes wrong. Try free practice with instant feedback, or explore the four-part AI literacy exam.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -99,12 +99,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <footer className="site-footer">
             <div className="container">
               <FooterMode />
-              {/* The positioning line stays. It is eleven words, docs/POSITIONING.md
-                  owns it, and test/copyBan.test.tsx pins it deliberately. */}
-              <p>Foray plays like a game and is built like an instrument.</p>
+              {/* The public purpose stays separate from the technical exam details. */}
+              <p>Practical AI literacy, open to everyone.</p>
               <p>
                 <span className="mono">AILX-Spec-2026.1</span> · four tracks, {TOTAL_POINTS} raw
-                points, re-versioned annually · scoring and item banks are public.
+                points. Scoring code and practice examples are public; exam questions are private.
               </p>
             </div>
           </footer>

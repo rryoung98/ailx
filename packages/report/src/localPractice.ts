@@ -267,9 +267,7 @@ export function mergePracticeDays(
  * `PROGRESS_BASIS` and `PRACTICE_EFFICACY_NOTE` follow.
  */
 export const LOCAL_PRACTICE_BASIS =
-  "Your practice days are kept in this browser, not on our servers. No account, and nothing "
-  + "about you leaves this device. Clearing your site data ends it, and it will not follow you "
-  + "to another browser or another device.";
+  "Your practice days are kept in this browser, not on our servers. Clearing your site data deletes these days. They do not appear in another browser or on another device.";
 
 /**
  * What to say instead of `LOCAL_PRACTICE_BASIS` when SOME of the days on
@@ -283,9 +281,7 @@ export const LOCAL_PRACTICE_BASIS =
  * exactly how TEN-132 came back.
  */
 export const LOCAL_PRACTICE_PARTLY_CLAIMED =
-  "Some of these days are on an account already: this browser handed them over, and they are "
-  + "in both places now. The rest are kept in this browser alone — no account, and nothing "
-  + "about you leaves this device. Clearing your site data ends what is kept here.";
+  "Some of these days have been copied to an account. The rest are kept only in this browser. Clearing your site data deletes the browser copy, not the account record.";
 
 /**
  * And when EVERY day on screen has been handed over, which is the commonest
@@ -296,9 +292,7 @@ export const LOCAL_PRACTICE_PARTLY_CLAIMED =
  * about something.
  */
 export const LOCAL_PRACTICE_ALL_CLAIMED =
-  "These days are on an account already — this browser handed them over. What is kept here is "
-  + "its own copy, and nothing about you leaves this device: clearing your site data ends the "
-  + "copy, and the account keeps its record.";
+  "These days have been copied to an account. Clearing your site data deletes the browser copy, not the account record.";
 
 /**
  * What signing in actually buys. Three true things, in the order they matter,
@@ -316,8 +310,7 @@ export const SIGN_IN_VALUE = [
 
 /** One sentence for the same ask where a list will not fit. */
 export const SIGN_IN_VALUE_SHORT =
-  "An account is for a scored sitting, progress that survives a new device, and a credential "
-  + "you can show. Practice needs none of them.";
+  "An account lets you take the exam, keep progress across devices and share a completion credential. You can practise without one.";
 
 /**
  * What happens to the browser's days at sign-in. Shown BEFORE the ask, not
@@ -325,8 +318,7 @@ export const SIGN_IN_VALUE_SHORT =
  * not made.
  */
 export const CLAIM_PROMISE =
-  "If you do sign in, the practice days this browser is holding move to your account. "
-  + "Nothing is dropped, and you keep playing either way.";
+  "When you sign in, practice days saved in this browser are copied to your account. You can keep playing without signing in.";
 
 /**
  * How claimed days are labelled once they are on an account. They are the
@@ -334,6 +326,4 @@ export const CLAIM_PROMISE =
  * rather than blending them invisibly into days we measured ourselves.
  */
 export const CLAIMED_DAYS_BASIS =
-  "Practice days you brought with you from a browser before signing in. They are counted from "
-  + "what that browser reported, not from rounds we recorded, so they are shown as your own "
-  + "record rather than as our measurement. They reach no score.";
+  "These practice days were copied from a browser. They use the browser's own counts, not answers checked by the exam service. They do not affect exam scores.";

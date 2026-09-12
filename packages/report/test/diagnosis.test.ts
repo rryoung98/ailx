@@ -71,8 +71,8 @@ describe("diagnose", () => {
     expect(action.href).toBe("/practice");
     expect(action.drill).toBe(true);
     // The families the drill teaches are named, so the loop is legible.
-    expect(action.detail).toContain("physics violation");
-    expect(action.detail).toContain("sociocultural error");
+    expect(action.detail).toContain("light and physics");
+    expect(action.detail).toContain("details that do not fit");
   });
 
   it("gives every track an action, and never a dead end", () => {

@@ -299,7 +299,7 @@ describe("progressReport", () => {
     // account (`PracticeDrill.tsx`, `hasIdentity`). Copy saying "signed in"
     // would describe a narrower rule than the code (TEN-132).
     expect(PROGRESS_BASIS).not.toMatch(/signed in/i);
-    expect(PROGRESS_BASIS).toMatch(/identify/i);
+    expect(PROGRESS_BASIS).toMatch(/link to your identity/i);
   });
 
   it("withholds an accuracy trend below the answer floor", () => {

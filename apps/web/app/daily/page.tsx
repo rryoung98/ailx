@@ -22,7 +22,7 @@ import { DAILY_POOL } from "../../lib/instrument/demoItems";
  */
 
 export const metadata: Metadata = {
-  title: "Foray Daily — five calls, one minute",
+  title: "Foray Daily | Five questions a day",
   description:
     "One set of cards a day, the same for everyone: photograph or AI-generated, person or model, "
     + "genuine message or not. Published practice material. No score, no account. "
@@ -40,22 +40,16 @@ export default function DailyPage() {
         <DailyChallenge />
 
         <section aria-labelledby="how-it-works">
-          <h2 id="how-it-works">How the day works</h2>
+          <h2 id="how-it-works">How it works</h2>
           <ul className="checklist">
             <li>
-              <strong>Everyone gets the same five.</strong> Your browser works the cards out from
-              the date itself, so anyone on the same calendar date sees the same set. Nothing is
-              asked of a server.
+              <strong>Everyone gets the same five.</strong> Anyone on the same calendar date sees the same set. You do not need an account.
             </li>
             <li>
-              <strong>It turns over at your own midnight.</strong> Your device&rsquo;s clock and
-              timezone decide the day, so a friend eight hours east already has
-              tomorrow&rsquo;s cards.
+              <strong>New cards arrive at your local midnight.</strong> Your device clock and timezone set the date. Friends in other timezones may see a different set.
             </li>
             <li>
-              <strong>The grid gives nothing away.</strong> You post which calls you got right,
-              in order, never which card was which. It spoils nothing for somebody who has not
-              played.
+              <strong>Share your result without the answers.</strong> The grid shows right and wrong answers in order. It does not reveal the cards or their answers.
             </li>
             <li>
               <strong>{DAILY_STREAK_MEANING}</strong>
@@ -64,15 +58,12 @@ export default function DailyPage() {
         </section>
 
         <section aria-labelledby="honest">
-          <h2 id="honest">What this is, and what it is not</h2>
+          <h2 id="honest">Separate from the exam</h2>
           <p className="muted" style={{ maxWidth: "62ch" }}>
-            A game on published material. It is not the examination and reaches no score, report
-            or credential. No account, and your streak stays on this device.
+            The daily uses public practice questions. It does not affect exam scores, reports or credentials. You do not need an account. Your daily streak stays in this browser.
           </p>
           <p className="small faint" style={{ maxWidth: "62ch" }}>
-            {DAILY_POOL.length} cards in the pool, so one comes round again every couple of
-            weeks. The <Link href="/practice">practice drill</Link> shows the tell on every card;
-            the <Link href="/exam">full run</Link> is the instrument.
+            There are {DAILY_POOL.length} cards, so you will see repeats. Try the <Link href="/practice">image practice</Link> for more examples with explanations, or take the <Link href="/exam">full exam</Link>.
           </p>
         </section>
 

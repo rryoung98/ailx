@@ -467,7 +467,7 @@ describe("when the network fails under it", () => {
     });
     await mount(true);
     expect(host.textContent).not.toContain("Failed to fetch");
-    expect(host.querySelector('[role="alert"]')!.textContent).toMatch(/could not deal a round/i);
+    expect(host.querySelector('[role="alert"]')!.textContent).toMatch(/could not load a round/i);
     expect(buttons().some((b) => /Try again/.test(b.textContent ?? ""))).toBe(true);
   });
 });
@@ -477,7 +477,7 @@ describe("when the network fails under it", () => {
  *
  * Claimed: every swap that UNMOUNTS the control the user just pressed —
  * answering a card, "Next card", "Another round", "Try again" after a failed
- * deal, and the "Dealing a round…" wait in between — leaves focus inside the
+ * deal, and the "Loading a round…" wait in between — leaves focus inside the
  * drill rather than on `<body>` (TEN-223).
  *
  * NOT claimed, and known to be FALSE today: "Try sending it again". That
@@ -503,7 +503,7 @@ describe("focus never falls to <body> mid-round, except the send retry (TEN-223,
 
   /**
    * The re-deal is the same defect on a longer path. "Another round" unmounts
-   * the whole finished round, and what replaces it — "Dealing a round…" —
+   * the whole finished round, and what replaces it — "Loading a round…" —
    * holds no control at all, so focus has to survive BOTH steps: the wait,
    * and the card that ends it. Otherwise a keyboard user is back at the top
    * of the document with a round already dealt in front of them.
@@ -525,7 +525,7 @@ describe("focus never falls to <body> mid-round, except the send retry (TEN-223,
       throw new TypeError("Failed to fetch");
     });
     await mount(true);
-    expect(host.textContent).toMatch(/could not deal a round/i);
+    expect(host.textContent).toMatch(/could not load a round/i);
     installFetch(); // the network comes back
     await click(/Try again/);
     expect(document.activeElement).not.toBe(document.body);
@@ -536,15 +536,15 @@ describe("focus never falls to <body> mid-round, except the send retry (TEN-223,
 
   /**
    * The wait itself, held open: with the deal in flight the drill shows only
-   * "Dealing a round…", so focus has to be ON that line — the case the first
+   * "Loading a round…", so focus has to be ON that line — the case the first
    * fix missed, because a deal that returns instantly hides it.
    */
-  it("holds focus on the 'Dealing a round…' line while the deal is in flight", async () => {
+  it("holds focus on the 'Loading a round…' line while the deal is in flight", async () => {
     await mount(true);
     await playThrough();
     vi.stubGlobal("fetch", () => new Promise(() => {})); // a deal that never lands
     await click(/Another round/);
-    expect(host.textContent).toContain("Dealing a round");
+    expect(host.textContent).toContain("Loading a round");
     expect(document.activeElement).not.toBe(document.body);
     expect(host.contains(document.activeElement)).toBe(true);
     expect(document.activeElement).toBe(host.firstElementChild);
@@ -660,7 +660,7 @@ describe("hosted build, nobody signed in", () => {
   it("deals nothing until Clerk has answered", async () => {
     await mountWithClerk();
     expect(posted).toEqual([]);
-    expect(host.textContent).toMatch(/dealing a round/i);
+    expect(host.textContent).toMatch(/loading a round/i);
   });
 
   it("plays locally once Clerk says nobody is signed in, and calls no API", async () => {

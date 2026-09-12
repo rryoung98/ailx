@@ -56,7 +56,7 @@ function utcOffsetMinutes(): number {
 
 /** A card whose picture never arrived is skipped, never counted as a miss. */
 const STIMULUS_FAILED =
-  "This picture did not load, so there is nothing to call. It has not been counted for or against you.";
+  "This picture did not load. It has not been counted for or against you.";
 
 interface Today {
   day: string;
@@ -123,7 +123,7 @@ export function DailyChallenge() {
     );
   }, []);
 
-  if (today === null) return <p className="muted">Dealing today&rsquo;s cards&hellip;</p>;
+  if (today === null) return <p className="muted">Loading today&apos;s cards&hellip;</p>;
 
   const { day, number, deck, ledger } = today;
   const playedToday = ledger.last !== null && ledger.last.day === day;
@@ -194,13 +194,12 @@ export function DailyChallenge() {
             the day for anybody who has not played (docs/SHARING.md §8). */}
         <DailyShareRow number={number} results={results} streak={streak.current} />
         <p className="small faint" style={{ maxWidth: "58ch" }}>
-          The next five arrive at your own midnight. Your streak lives on this device only:
-          clear your browser data and it is gone.
+          New cards arrive at your local midnight. Your daily streak is saved only in this browser, even when you sign in. Clearing browser data deletes it.
           {/* Said only to a reader who really has no account (TEN-151). The
               sentence before it stays either way: the streak is browser state
               in every build, and signing in does not move it. */}
-          {identity.status === "signed-in" ? null : " There is no account to lose it to."}{" "}
-          <Link href="/practice">Practise the tells →</Link>
+          {identity.status === "signed-in" ? null : " No account is needed to play."}{" "}
+          <Link href="/practice">Try image practice →</Link>
         </p>
       </div>
     );
@@ -279,7 +278,7 @@ export function DailyChallenge() {
       ) : (
         <div>
           <p role="status">
-            <strong>{called === card.key ? "Called it." : "Missed."}</strong> {card.tell}
+            <strong>{called === card.key ? "Right." : "Missed."}</strong> {card.tell}
           </p>
           {card.credit === null ? null : (
             <p className="small faint">
@@ -301,8 +300,7 @@ export function DailyChallenge() {
       )}
 
       <p className="small faint" style={{ maxWidth: "58ch" }}>
-        {DAILY_PITCH} Nothing here is scored: the daily uses published practice material and
-        reaches no Foray result.
+        {DAILY_PITCH} The daily uses public practice questions. Your answers do not affect your exam result.
       </p>
     </div>
   );

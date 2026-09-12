@@ -176,8 +176,8 @@ describe("the practice drill, when the submit stalls", () => {
     // The round is over and the send is in flight: nothing says it failed yet.
     expect(alertText()).not.toMatch(/not recorded yet/);
     await pastBound("write");
-    expect(alertText()).toMatch(/not recorded yet/);
-    expect(alertText()).toMatch(/slow rather than down/);
+    expect(alertText()).toMatch(/could not confirm it was recorded/i);
+    expect(alertText()).toMatch(/Saving your round took too long/);
     // The work is still on screen, and the retry is offered.
     expect([...host.querySelectorAll("button")].some((b) => /Try sending it again/.test(b.textContent ?? ""))).toBe(true);
   });
