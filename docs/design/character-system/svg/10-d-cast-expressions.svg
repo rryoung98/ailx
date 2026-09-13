@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1110" height="610" viewBox="0 0 1110 610">
+<rect width="1110" height="610" fill="#F6F1E7"/>
+<text x="30" y="34" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#2B2A28">Cast test / the shared expression logic on the other two. Listening, uncertainty, overcommitment, reconsideration.</text>
+<g transform="translate(30,50) scale(0.8)"><path d="M84,228 C60,236 48,270 58,292 C66,306 92,302 94,284 C96,266 92,246 96,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="100" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="88" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="152" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="140" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M100,214 L176,214 L206,300 L70,300 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M104,214 L138,236 L172,214 L196,270 L80,270 Z" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M80,270 L196,270 L200,282 L76,282 Z" fill="#D6C8A8" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(9.0 136.0 222.0)">
+<ellipse cx="136.0" cy="182.0" rx="46.0" ry="40.0" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<ellipse cx="180.0" cy="190.0" rx="14" ry="10" fill="#D9694F" stroke="#2B2A28" stroke-width="3.2"/>
+<clipPath id="lid182"><ellipse cx="152.0" cy="182.0" rx="4" ry="5"/></clipPath>
+<ellipse cx="152.0" cy="182.0" rx="4" ry="5" fill="#2B2A28"/>
+<clipPath id="lid183"><ellipse cx="122.0" cy="182.0" rx="3.5" ry="5"/></clipPath>
+<ellipse cx="122.0" cy="182.0" rx="3.5" ry="5" fill="#2B2A28"/>
+<line x1="141.0" y1="162.0" x2="163.0" y2="162.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(-6.00 152.0 162.0)"/>
+<line x1="113.0" y1="162.0" x2="131.0" y2="162.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(-6.00 122.0 162.0)"/>
+</g>
+<g transform="rotate(-0.0 188 230)">
+<path d="M188,228 C212,236 224,270 214,292 C206,306 180,302 178,284 C176,266 180,246 176,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M196,262 L200,290 M206,262 L208,290" stroke="#2B2A28" stroke-width="2.2399999999999998" stroke-linecap="round"/>
+</g></g>
+<g transform="translate(30,300) scale(0.8)"><rect x="124.0" y="262.0" width="12" height="30" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M118.0,292.0 L142.0,292.0 L146.0,320.0 L114.0,320.0 Z" fill="#A8743F" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="114.0" y="314.0" width="32" height="6" fill="#7E5530"/>
+<line x1="122.0" y1="320.0" x2="122.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="118.0,320.0 100.0,320.0 118.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<line x1="138.0" y1="320.0" x2="138.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="134.0,320.0 160.0,320.0 142.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(20.0 90.0 244.0)">
+<line x1="90.0" y1="244.0" x2="84.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="84.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(-20.0 170.0 244.0)">
+<line x1="170.0" y1="244.0" x2="176.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="176.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(9.0 130.0 262.0)">
+<circle cx="130.0" cy="222.0" r="46.0" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="46.0" fill="none" stroke="#C9A24A" stroke-width="7"/>
+<circle cx="130.0" cy="222.0" r="49.5" fill="none" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="42.5" fill="none" stroke="#2B2A28" stroke-width="2.5600000000000005"/>
+<clipPath id="lid184"><ellipse cx="116.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="116.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+<clipPath id="lid185"><ellipse cx="144.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="144.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+</g></g>
+<text x="134.0" y="590" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#2B2A28">listening</text>
+<g transform="translate(300,50) scale(0.8)"><path d="M84,228 C60,236 48,270 58,292 C66,306 92,302 94,284 C96,266 92,246 96,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="100" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="88" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="152" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="140" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M100,214 L176,214 L206,300 L70,300 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M104,214 L138,236 L172,214 L196,270 L80,270 Z" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M80,270 L196,270 L200,282 L76,282 Z" fill="#D6C8A8" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(-7.0 136.0 222.0)">
+<ellipse cx="136.0" cy="182.0" rx="46.0" ry="40.0" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<ellipse cx="180.0" cy="190.0" rx="14" ry="10" fill="#D9694F" stroke="#2B2A28" stroke-width="3.2"/>
+<clipPath id="lid186"><ellipse cx="152.0" cy="182.0" rx="4" ry="5"/></clipPath>
+<ellipse cx="152.0" cy="182.0" rx="4" ry="5" fill="#2B2A28"/>
+<rect x="147.0" y="176.0" width="10" height="4.0" fill="#7F6EA6" clip-path="url(#lid186)"/>
+<line x1="148.0" y1="180.0" x2="156.0" y2="180.0" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid186)"/>
+<clipPath id="lid187"><ellipse cx="122.0" cy="182.0" rx="3.5" ry="5"/></clipPath>
+<ellipse cx="122.0" cy="182.0" rx="3.5" ry="5" fill="#2B2A28"/>
+<rect x="117.5" y="176.0" width="9.0" height="4.0" fill="#7F6EA6" clip-path="url(#lid187)"/>
+<line x1="118.5" y1="180.0" x2="125.5" y2="180.0" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid187)"/>
+<line x1="141.0" y1="166.0" x2="163.0" y2="166.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(-14.00 152.0 166.0)"/>
+<line x1="113.0" y1="166.0" x2="131.0" y2="166.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(10.00 122.0 166.0)"/>
+</g>
+<g transform="rotate(-70.0 188 230)">
+<path d="M188,228 C212,236 224,270 214,292 C206,306 180,302 178,284 C176,266 180,246 176,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M196,262 L200,290 M206,262 L208,290" stroke="#2B2A28" stroke-width="2.2399999999999998" stroke-linecap="round"/>
+</g></g>
+<g transform="translate(300,300) scale(0.8)"><rect x="124.0" y="262.0" width="12" height="30" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M118.0,292.0 L142.0,292.0 L146.0,320.0 L114.0,320.0 Z" fill="#A8743F" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="114.0" y="314.0" width="32" height="6" fill="#7E5530"/>
+<line x1="122.0" y1="320.0" x2="122.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="118.0,320.0 100.0,320.0 118.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<line x1="138.0" y1="320.0" x2="138.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="134.0,320.0 160.0,320.0 142.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(20.0 90.0 244.0)">
+<line x1="90.0" y1="244.0" x2="84.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="84.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(-110.0 170.0 244.0)">
+<line x1="170.0" y1="244.0" x2="176.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="176.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(-7.0 130.0 262.0)">
+<circle cx="130.0" cy="222.0" r="46.0" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="46.0" fill="none" stroke="#C9A24A" stroke-width="7"/>
+<circle cx="130.0" cy="222.0" r="49.5" fill="none" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="42.5" fill="none" stroke="#2B2A28" stroke-width="2.5600000000000005"/>
+<clipPath id="lid188"><ellipse cx="116.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="116.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+<rect x="109.0" y="213.0" width="14" height="5.8" fill="#EFE4CC" clip-path="url(#lid188)"/>
+<line x1="110.0" y1="218.8" x2="122.0" y2="218.8" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid188)"/>
+<clipPath id="lid189"><ellipse cx="144.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="144.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+<rect x="137.0" y="213.0" width="14" height="5.8" fill="#EFE4CC" clip-path="url(#lid189)"/>
+<line x1="138.0" y1="218.8" x2="150.0" y2="218.8" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid189)"/>
+</g></g>
+<text x="404.0" y="590" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#2B2A28">uncertainty</text>
+<g transform="translate(570,50) scale(0.8)"><path d="M84,228 C60,236 48,270 58,292 C66,306 92,302 94,284 C96,266 92,246 96,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="100" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="88" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="152" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="140" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M100,214 L176,214 L206,300 L70,300 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M104,214 L138,236 L172,214 L196,270 L80,270 Z" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M80,270 L196,270 L200,282 L76,282 Z" fill="#D6C8A8" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(-12.0 136.0 222.0)">
+<ellipse cx="136.0" cy="182.0" rx="46.0" ry="40.0" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<ellipse cx="180.0" cy="190.0" rx="14" ry="10" fill="#D9694F" stroke="#2B2A28" stroke-width="3.2"/>
+<clipPath id="lid190"><ellipse cx="152.0" cy="182.0" rx="4" ry="5"/></clipPath>
+<ellipse cx="152.0" cy="182.0" rx="4" ry="5" fill="#2B2A28"/>
+<clipPath id="lid191"><ellipse cx="122.0" cy="182.0" rx="3.5" ry="5"/></clipPath>
+<ellipse cx="122.0" cy="182.0" rx="3.5" ry="5" fill="#2B2A28"/>
+<line x1="141.0" y1="159.0" x2="163.0" y2="159.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 152.0 159.0)"/>
+<line x1="113.0" y1="159.0" x2="131.0" y2="159.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 122.0 159.0)"/>
+</g>
+<g transform="rotate(-0.0 188 230)">
+<path d="M188,228 C212,236 224,270 214,292 C206,306 180,302 178,284 C176,266 180,246 176,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M196,262 L200,290 M206,262 L208,290" stroke="#2B2A28" stroke-width="2.2399999999999998" stroke-linecap="round"/>
+</g></g>
+<g transform="translate(570,300) scale(0.8)"><rect x="124.0" y="262.0" width="12" height="30" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M118.0,292.0 L142.0,292.0 L146.0,320.0 L114.0,320.0 Z" fill="#A8743F" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="114.0" y="314.0" width="32" height="6" fill="#7E5530"/>
+<line x1="122.0" y1="320.0" x2="122.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="118.0,320.0 100.0,320.0 118.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<line x1="138.0" y1="320.0" x2="138.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="134.0,320.0 160.0,320.0 142.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(20.0 90.0 244.0)">
+<line x1="90.0" y1="244.0" x2="84.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="84.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(-20.0 170.0 244.0)">
+<line x1="170.0" y1="244.0" x2="176.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="176.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(-12.0 130.0 262.0)">
+<circle cx="130.0" cy="222.0" r="46.0" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="46.0" fill="none" stroke="#C9A24A" stroke-width="7"/>
+<circle cx="130.0" cy="222.0" r="49.5" fill="none" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="42.5" fill="none" stroke="#2B2A28" stroke-width="2.5600000000000005"/>
+<clipPath id="lid192"><ellipse cx="116.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="116.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+<clipPath id="lid193"><ellipse cx="144.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="144.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+</g></g>
+<text x="674.0" y="590" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#2B2A28">overcommitment</text>
+<g transform="translate(840,50) scale(0.8)"><path d="M84,228 C60,236 48,270 58,292 C66,306 92,302 94,284 C96,266 92,246 96,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="100" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="88" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="152" y="292" width="16" height="16" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<rect x="140" y="306" width="44" height="14" rx="4" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M100,214 L176,214 L206,300 L70,300 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M104,214 L138,236 L172,214 L196,270 L80,270 Z" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M80,270 L196,270 L200,282 L76,282 Z" fill="#D6C8A8" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(16.0 136.0 222.0)">
+<ellipse cx="136.0" cy="182.0" rx="46.0" ry="40.0" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2"/>
+<ellipse cx="180.0" cy="190.0" rx="14" ry="10" fill="#D9694F" stroke="#2B2A28" stroke-width="3.2"/>
+<clipPath id="lid194"><ellipse cx="152.0" cy="182.0" rx="4" ry="5"/></clipPath>
+<ellipse cx="152.0" cy="182.0" rx="4" ry="5" fill="#2B2A28"/>
+<rect x="147.0" y="176.0" width="10" height="6.0" fill="#7F6EA6" clip-path="url(#lid194)"/>
+<line x1="148.0" y1="182.0" x2="156.0" y2="182.0" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid194)"/>
+<clipPath id="lid195"><ellipse cx="122.0" cy="182.0" rx="3.5" ry="5"/></clipPath>
+<ellipse cx="122.0" cy="182.0" rx="3.5" ry="5" fill="#2B2A28"/>
+<rect x="117.5" y="176.0" width="9.0" height="6.0" fill="#7F6EA6" clip-path="url(#lid195)"/>
+<line x1="118.5" y1="182.0" x2="125.5" y2="182.0" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid195)"/>
+<line x1="141.0" y1="170.0" x2="163.0" y2="170.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(12.00 152.0 170.0)"/>
+<line x1="113.0" y1="170.0" x2="131.0" y2="170.0" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(12.00 122.0 170.0)"/>
+</g>
+<g transform="rotate(-0.0 188 230)">
+<path d="M188,228 C212,236 224,270 214,292 C206,306 180,302 178,284 C176,266 180,246 176,232 Z" fill="#7F6EA6" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<path d="M196,262 L200,290 M206,262 L208,290" stroke="#2B2A28" stroke-width="2.2399999999999998" stroke-linecap="round"/>
+</g></g>
+<g transform="translate(840,300) scale(0.8)"><rect x="124.0" y="262.0" width="12" height="30" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+<path d="M118.0,292.0 L142.0,292.0 L146.0,320.0 L114.0,320.0 Z" fill="#A8743F" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<rect x="114.0" y="314.0" width="32" height="6" fill="#7E5530"/>
+<line x1="122.0" y1="320.0" x2="122.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="118.0,320.0 100.0,320.0 118.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<line x1="138.0" y1="320.0" x2="138.0" y2="316.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<polygon points="134.0,320.0 160.0,320.0 142.0,312.0" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<g transform="rotate(20.0 90.0 244.0)">
+<line x1="90.0" y1="244.0" x2="84.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="84.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(-20.0 170.0 244.0)">
+<line x1="170.0" y1="244.0" x2="176.0" y2="294.0" stroke="#2B2A28" stroke-width="5.120000000000001" stroke-linecap="round"/>
+<circle cx="176.0" cy="294.0" r="6" fill="#C9A24A" stroke="#2B2A28" stroke-width="3.2"/>
+</g>
+<g transform="rotate(16.0 130.0 262.0)">
+<circle cx="130.0" cy="222.0" r="46.0" fill="#EFE4CC" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="46.0" fill="none" stroke="#C9A24A" stroke-width="7"/>
+<circle cx="130.0" cy="222.0" r="49.5" fill="none" stroke="#2B2A28" stroke-width="3.2"/>
+<circle cx="130.0" cy="222.0" r="42.5" fill="none" stroke="#2B2A28" stroke-width="2.5600000000000005"/>
+<clipPath id="lid196"><ellipse cx="116.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="116.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+<rect x="109.0" y="213.0" width="14" height="9.0" fill="#EFE4CC" clip-path="url(#lid196)"/>
+<line x1="110.0" y1="222.0" x2="122.0" y2="222.0" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid196)"/>
+<clipPath id="lid197"><ellipse cx="144.0" cy="222.0" rx="6" ry="8"/></clipPath>
+<ellipse cx="144.0" cy="222.0" rx="6" ry="8" fill="#2B2A28"/>
+<rect x="137.0" y="213.0" width="14" height="9.0" fill="#EFE4CC" clip-path="url(#lid197)"/>
+<line x1="138.0" y1="222.0" x2="150.0" y2="222.0" stroke="#2B2A28" stroke-width="1.92" clip-path="url(#lid197)"/>
+</g></g>
+<text x="944.0" y="590" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#2B2A28">reconsideration</text>
+</svg>

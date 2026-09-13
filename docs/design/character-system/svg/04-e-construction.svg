@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="360" viewBox="0 0 1000 360">
+<rect width="1000" height="360" fill="#F6F1E7"/>
+<text x="30" y="34" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#2B2A28">Pass 4 / Construction. One head unit H = 100. Guides in lilac.</text>
+<g transform="translate(150,200)"><g transform="rotate(0.00 0.0 0.0) scale(1.15)">
+<path d="M-14,-80.0 L-8,-106.0 L2,-84.0 L14,-102.0 L16,-78.0 Z" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<ellipse cx="0.0" cy="-42.0" rx="50.0" ry="46.0" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2"/>
+<g transform="rotate(0.00 36.0 -36.0)">
+<polygon points="36,-36.0 76.6,-36.0 36,-20.0" fill="#383B4C" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round" transform="rotate(0.00 36.0 -36.0)"/>
+<polygon points="36,-52.0 79.4,-35.0 36,-35.0" fill="#4B4F63" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+</g>
+<clipPath id="lid63"><ellipse cx="16.0" cy="-42.0" rx="9.799999999999999" ry="12.6"/></clipPath>
+<ellipse cx="16.0" cy="-42.0" rx="9.799999999999999" ry="12.6" fill="#2B2A28"/>
+<clipPath id="lid64"><ellipse cx="-24.0" cy="-42.0" rx="7.0" ry="12.6"/></clipPath>
+<ellipse cx="-24.0" cy="-42.0" rx="7.0" ry="12.6" fill="#2B2A28"/>
+<line x1="9.0" y1="-67.2" x2="27.0" y2="-67.2" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 18.0 -67.2)"/>
+<line x1="-31.0" y1="-67.2" x2="-17.0" y2="-67.2" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 -24.0 -67.2)"/>
+</g></g>
+<line x1="60" y1="112.0" x2="260" y2="112.0" stroke="#7F6EA6" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="264" y="115.0" font-family="Helvetica, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#7F6EA6">0  top of skull</text>
+<line x1="60" y1="158.0" x2="260" y2="158.0" stroke="#7F6EA6" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="264" y="161.0" font-family="Helvetica, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#7F6EA6">0.5  eye line</text>
+<line x1="60" y1="163.52" x2="260" y2="163.52" stroke="#7F6EA6" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="264" y="166.52" font-family="Helvetica, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#7F6EA6">0.56  beak base</text>
+<line x1="60" y1="204.0" x2="260" y2="204.0" stroke="#7F6EA6" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="264" y="207.0" font-family="Helvetica, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#7F6EA6">1.0  chin</text>
+<text x="60" y="300" font-family="Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#2B2A28">Head: ellipse 100 x 92. Tuft adds 8. Eyes: solid ovals, near 14 x 18, far 10 x 18.</text>
+<text x="60" y="316" font-family="Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#2B2A28">Near eye sits 16 right of centre, far eye 24 left. Brows: 18-long strokes, 18 above the eye line.</text>
+<text x="60" y="332" font-family="Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#2B2A28">Beak base is 36 right of centre. Upper wedge 62 long, fixed. Lower wedge 58 long, opens up to 24 degrees.</text>
+<g transform="translate(560,120)">
+<circle cx="0" cy="0" r="4" fill="#7F6EA6"/>
+<text x="8" y="-6" font-family="Helvetica, Arial, sans-serif" font-size="10" text-anchor="start" font-weight="normal" fill="#7F6EA6">shoulder pivot</text>
+<g transform="rotate(0.00 0.0 0.0) scale(1,1)"><path d="M0,0 C16,6 26,40 18,66 C14,80 -6,80 -10,66 C-16,40 -10,10 0,0 Z" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/><path d="M-4,60 L-2,72 M6,62 L8,74" stroke="#2B2A28" stroke-width="2.2399999999999998" stroke-linecap="round"/></g>
+<g transform="translate(70,0)" opacity="0.5"><g transform="rotate(-60.00 0.0 0.0) scale(1,1)"><path d="M0,0 C16,6 26,40 18,66 C14,80 -6,80 -10,66 C-16,40 -10,10 0,0 Z" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/><path d="M-4,60 L-2,72 M6,62 L8,74" stroke="#2B2A28" stroke-width="2.2399999999999998" stroke-linecap="round"/></g></g>
+<g transform="translate(140,0)" opacity="0.5"><g transform="rotate(-150.00 0.0 0.0) scale(1,1)"><path d="M0,0 C16,6 26,40 18,66 C14,80 -6,80 -10,66 C-16,40 -10,10 0,0 Z" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/><path d="M-4,60 L-2,72 M6,62 L8,74" stroke="#2B2A28" stroke-width="2.2399999999999998" stroke-linecap="round"/></g></g>
+</g>
+<text x="560" y="230" font-family="Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#2B2A28">Wing: one teardrop 36 x 80, pivots at the shoulder. Two short primaries.</text>
+<text x="560" y="246" font-family="Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#2B2A28">No thumb. Grip is the tip curling around an object. Range 0 to 150 degrees.</text>
+<g transform="translate(560,300)">
+<rect x="20" y="-30" width="8" height="22" fill="#4B4F63" stroke="#2B2A28" stroke-width="3.2"/>
+<polygon points="-8,0 54,0 26,-14" fill="#4B4F63" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+</g>
+<text x="640" y="296" font-family="Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#2B2A28">Foot: one wedge 62 wide, 14 tall, no toes drawn. Leg 8 wide.</text>
+<text x="640" y="312" font-family="Helvetica, Arial, sans-serif" font-size="11" text-anchor="start" font-weight="normal" fill="#2B2A28">Feet splay outward in front and three-quarter views.</text>
+</svg>

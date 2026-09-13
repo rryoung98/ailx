@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="690" height="280" viewBox="0 0 690 280">
+<rect width="690" height="280" fill="#F6F1E7"/>
+<text x="30" y="34" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#2B2A28">Pass 4 / Eye line. Lower reads younger, higher reads older.</text>
+<g transform="translate(120,190)"><g transform="rotate(0.00 0.0 0.0) scale(1.15)">
+<path d="M-14,-80.0 L-8,-106.0 L2,-84.0 L14,-102.0 L16,-78.0 Z" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<ellipse cx="0.0" cy="-42.0" rx="50.0" ry="46.0" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2"/>
+<g transform="rotate(0.00 36.0 -36.0)">
+<polygon points="36,-36.0 76.6,-36.0 36,-20.0" fill="#383B4C" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round" transform="rotate(0.00 36.0 -36.0)"/>
+<polygon points="36,-52.0 79.4,-35.0 36,-35.0" fill="#4B4F63" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+</g>
+<clipPath id="lid9"><ellipse cx="16.0" cy="-53.04" rx="9.799999999999999" ry="12.6"/></clipPath>
+<ellipse cx="16.0" cy="-53.04" rx="9.799999999999999" ry="12.6" fill="#2B2A28"/>
+<clipPath id="lid10"><ellipse cx="-24.0" cy="-53.04" rx="7.0" ry="12.6"/></clipPath>
+<ellipse cx="-24.0" cy="-53.04" rx="7.0" ry="12.6" fill="#2B2A28"/>
+<line x1="9.0" y1="-78.24" x2="27.0" y2="-78.24" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 18.0 -78.2)"/>
+<line x1="-31.0" y1="-78.24" x2="-17.0" y2="-78.24" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 -24.0 -78.2)"/>
+</g></g>
+<line x1="30" y1="136.96" x2="230" y2="136.96" stroke="#7F6EA6" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="130" y="250" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#2B2A28">38 % of head height</text>
+<g transform="translate(340,190)"><g transform="rotate(0.00 0.0 0.0) scale(1.15)">
+<path d="M-14,-80.0 L-8,-106.0 L2,-84.0 L14,-102.0 L16,-78.0 Z" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<ellipse cx="0.0" cy="-42.0" rx="50.0" ry="46.0" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2"/>
+<g transform="rotate(0.00 36.0 -36.0)">
+<polygon points="36,-36.0 76.6,-36.0 36,-20.0" fill="#383B4C" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round" transform="rotate(0.00 36.0 -36.0)"/>
+<polygon points="36,-52.0 79.4,-35.0 36,-35.0" fill="#4B4F63" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+</g>
+<clipPath id="lid11"><ellipse cx="16.0" cy="-42.0" rx="9.799999999999999" ry="12.6"/></clipPath>
+<ellipse cx="16.0" cy="-42.0" rx="9.799999999999999" ry="12.6" fill="#2B2A28"/>
+<clipPath id="lid12"><ellipse cx="-24.0" cy="-42.0" rx="7.0" ry="12.6"/></clipPath>
+<ellipse cx="-24.0" cy="-42.0" rx="7.0" ry="12.6" fill="#2B2A28"/>
+<line x1="9.0" y1="-67.2" x2="27.0" y2="-67.2" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 18.0 -67.2)"/>
+<line x1="-31.0" y1="-67.2" x2="-17.0" y2="-67.2" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 -24.0 -67.2)"/>
+</g></g>
+<line x1="250" y1="148.0" x2="450" y2="148.0" stroke="#7F6EA6" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="350" y="250" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#2B2A28">50 % (selected)</text>
+<g transform="translate(560,190)"><g transform="rotate(0.00 0.0 0.0) scale(1.15)">
+<path d="M-14,-80.0 L-8,-106.0 L2,-84.0 L14,-102.0 L16,-78.0 Z" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+<ellipse cx="0.0" cy="-42.0" rx="50.0" ry="46.0" fill="#D3A045" stroke="#2B2A28" stroke-width="3.2"/>
+<g transform="rotate(0.00 36.0 -36.0)">
+<polygon points="36,-36.0 76.6,-36.0 36,-20.0" fill="#383B4C" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round" transform="rotate(0.00 36.0 -36.0)"/>
+<polygon points="36,-52.0 79.4,-35.0 36,-35.0" fill="#4B4F63" stroke="#2B2A28" stroke-width="3.2" stroke-linejoin="round"/>
+</g>
+<clipPath id="lid13"><ellipse cx="16.0" cy="-30.96" rx="9.799999999999999" ry="12.6"/></clipPath>
+<ellipse cx="16.0" cy="-30.96" rx="9.799999999999999" ry="12.6" fill="#2B2A28"/>
+<clipPath id="lid14"><ellipse cx="-24.0" cy="-30.96" rx="7.0" ry="12.6"/></clipPath>
+<ellipse cx="-24.0" cy="-30.96" rx="7.0" ry="12.6" fill="#2B2A28"/>
+<line x1="9.0" y1="-56.16" x2="27.0" y2="-56.16" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 18.0 -56.2)"/>
+<line x1="-31.0" y1="-56.16" x2="-17.0" y2="-56.16" stroke="#2B2A28" stroke-width="3.5200000000000005" stroke-linecap="round" transform="rotate(0.00 -24.0 -56.2)"/>
+</g></g>
+<line x1="470" y1="159.04" x2="670" y2="159.04" stroke="#7F6EA6" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="570" y="250" font-family="Helvetica, Arial, sans-serif" font-size="12" text-anchor="middle" font-weight="bold" fill="#2B2A28">62 %</text>
+</svg>
